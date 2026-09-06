@@ -1,0 +1,60 @@
+package npcs
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+
+	"vtt-backend/internal/apperror"
+	"vtt-backend/internal/auth"
+)
+
+type Handler struct{ repo *Repository }
+
+func NewHandler(repo *Repository) *Handler { return &Handler{repo: repo} }
+
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	items, err := h.repo.List(r.Context(), r.PathValue("campaignID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"npcs": items})
+}
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Name  string `json:"name"`
+		Sheet Sheet  `json:"sheet"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	in.Name = strings.TrimSpace(in.Name)
+	if err := validate(in.Name, in.Sheet); err != nil {
+		return err
+	}
+	item, err := h.repo.Create(r.Context(), r.PathValue("campaignID"), p.UserID, in.Name, in.Sheet)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+func validate(name string, sheet Sheet) error {
+	if name == "" || len([]rune(name)) > 120 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Size < 1 || sheet.Size > 6 || sheet.Color < 0 || sheet.Color > 16777215 {
+		return apperror.BadRequest("INVALID_NPC", "Confira nome, PV, CA, tamanho e cor do NPC.")
+	}
+	return nil
+}
+func write(w http.ResponseWriter, status int, value any) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(value)
+}
+func mapError(err error) error {
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Apenas o narrador pode gerenciar NPCs.")
+	}
+	return apperror.Internal(err)
+}

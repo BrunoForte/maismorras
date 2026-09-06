@@ -1,0 +1,58 @@
+package apperror
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+)
+
+// Error é o formato único de erro exposto pela API.
+type Error struct {
+	Status  int
+	Code    string
+	Message string
+	Err     error
+}
+
+func (e *Error) Error() string { return e.Message }
+func (e *Error) Unwrap() error { return e.Err }
+
+func BadRequest(code, message string) *Error {
+	return &Error{Status: http.StatusBadRequest, Code: code, Message: message}
+}
+
+func Unauthorized(message string) *Error {
+	return &Error{Status: http.StatusUnauthorized, Code: "UNAUTHORIZED", Message: message}
+}
+
+func Forbidden(message string) *Error {
+	return &Error{Status: http.StatusForbidden, Code: "FORBIDDEN", Message: message}
+}
+
+func NotFound(code, message string) *Error {
+	return &Error{Status: http.StatusNotFound, Code: code, Message: message}
+}
+
+func ServiceUnavailable(message string) *Error {
+	return &Error{Status: http.StatusServiceUnavailable, Code: "SERVICE_UNAVAILABLE", Message: message}
+}
+
+func BadGateway(err error) *Error {
+	return &Error{Status: http.StatusBadGateway, Code: "UPSTREAM_IMAGE_ERROR", Message: "Não foi possível gerar a imagem no provedor externo.", Err: err}
+}
+
+func Internal(err error) *Error {
+	return &Error{Status: http.StatusInternalServerError, Code: "INTERNAL_ERROR", Message: "Ocorreu um erro interno.", Err: err}
+}
+
+func Write(w http.ResponseWriter, err error) {
+	var appErr *Error
+	if !errors.As(err, &appErr) {
+		appErr = Internal(err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(appErr.Status)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error": map[string]string{"code": appErr.Code, "message": appErr.Message},
+	})
+}

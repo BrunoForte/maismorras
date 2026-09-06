@@ -1,0 +1,100 @@
+package apphttp
+
+import (
+	"log/slog"
+	"net/http"
+	"time"
+
+	"vtt-backend/internal/apperror"
+	"vtt-backend/internal/auth"
+	"vtt-backend/internal/campaigns"
+	"vtt-backend/internal/characters"
+	"vtt-backend/internal/config"
+	"vtt-backend/internal/events"
+	"vtt-backend/internal/notes"
+	"vtt-backend/internal/npcs"
+	"vtt-backend/internal/scenes"
+	"vtt-backend/internal/tokens"
+)
+
+type errorHandler func(http.ResponseWriter, *http.Request) error
+
+func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/v1/tokens/gerar", withError(tokenHandler.Generate))
+	mux.Handle("GET /api/v1/ws", realtimeHandler)
+	mux.Handle("GET /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.List))
+	mux.Handle("POST /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Create))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/invites", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.CreateInvite))
+	mux.Handle("POST /api/v1/invites/{code}/accept", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.AcceptInvite))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.GetMine))
+	mux.Handle("PUT /api/v1/campaigns/{campaignID}/character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveMine))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/participants", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.ListForGM))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Create))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.Create))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/scenes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/scenes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Create))
+	mux.Handle("GET /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Detail))
+	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateToken))
+	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromCharacter))
+	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-npc", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromNPC))
+	mux.Handle("PATCH /api/v1/scenes/{sceneID}/tokens/{tokenID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateToken))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	return recoverer(logger)(requestLogger(logger)(cors(cfg.CORSOrigin)(mux)))
+}
+
+func withError(next errorHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := next(w, r); err != nil {
+			apperror.Write(w, err)
+		}
+	})
+}
+
+func cors(origin string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					logger.Error("panic recovered", "value", recovered)
+					apperror.Write(w, apperror.Internal(nil))
+				}
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			started := time.Now()
+			next.ServeHTTP(w, r)
+			logger.Info("request completed", "method", r.Method, "path", r.URL.Path, "duration", time.Since(started).String())
+		})
+	}
+}
