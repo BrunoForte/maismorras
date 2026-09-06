@@ -48,6 +48,32 @@ func (h *Handler) ListForGM(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusOK, map[string]any{"participants": items})
 }
 
+func (h *Handler) GetForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	item, err := h.repo.GetForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, item)
+}
+
+func (h *Handler) SaveForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var sheet Sheet
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 48<<10)).Decode(&sheet); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	sheet.Name = strings.TrimSpace(sheet.Name)
+	if err := validate(sheet); err != nil {
+		return err
+	}
+	item, err := h.repo.SaveForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, sheet)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, item)
+}
+
 func validate(sheet Sheet) error {
 	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Speed < 0 || sheet.Speed > 300 {
 		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV, CA e deslocamento da ficha.")

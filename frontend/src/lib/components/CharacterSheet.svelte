@@ -3,7 +3,9 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		createEmptySheet,
+		getCharacterForGM,
 		getMyCharacter,
+		saveCharacterForGM,
 		saveMyCharacter,
 		type CharacterSheet as Sheet
 	} from '$lib/services/characterApi';
@@ -14,6 +16,8 @@
 		sceneId,
 		session,
 		isGM,
+		characterId = null,
+		characterOwnerName = '',
 		onclose,
 		onTokenCreated
 	}: {
@@ -21,6 +25,8 @@
 		sceneId: string;
 		session: Session;
 		isGM: boolean;
+		characterId?: string | null;
+		characterOwnerName?: string;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -41,9 +47,12 @@
 
 	onMount(async () => {
 		try {
-			sheet = (await getMyCharacter(session, campaignId)).sheet;
+			sheet = characterId
+				? (await getCharacterForGM(session, campaignId, characterId)).sheet
+				: (await getMyCharacter(session, campaignId)).sheet;
 		} catch (error) {
-			if ((error as Error & { status?: number }).status === 404) isNewCharacter = true;
+			if (!characterId && (error as Error & { status?: number }).status === 404)
+				isNewCharacter = true;
 			else message = error instanceof Error ? error.message : 'Não foi possível carregar a ficha.';
 		} finally {
 			loading = false;
@@ -71,7 +80,11 @@
 		saving = true;
 		message = '';
 		try {
-			sheet = (await saveMyCharacter(session, campaignId, sheet)).sheet;
+			sheet = (
+				characterId
+					? await saveCharacterForGM(session, campaignId, characterId, sheet)
+					: await saveMyCharacter(session, campaignId, sheet)
+			).sheet;
 			isNewCharacter = false;
 			message = 'Ficha salva.';
 		} catch (error) {
@@ -85,7 +98,9 @@
 		saving = true;
 		message = '';
 		try {
-			const character = await saveMyCharacter(session, campaignId, sheet);
+			const character = characterId
+				? await saveCharacterForGM(session, campaignId, characterId, sheet)
+				: await saveMyCharacter(session, campaignId, sheet);
 			sheet = character.sheet;
 			await createTokenFromCharacter(session, sceneId, character.id);
 			message = 'Token criado e vinculado à ficha.';
@@ -110,6 +125,7 @@
 			<div>
 				<p>FICHA D&D 2024 · MVP</p>
 				<h2>{sheet.name || 'Nova ficha'}</h2>
+				{#if characterOwnerName}<small>Personagem de {characterOwnerName}</small>{/if}
 			</div>
 			<button onclick={onclose} aria-label="Fechar ficha">×</button>
 		</header>
@@ -274,6 +290,12 @@
 		font-size: 0.65rem;
 		font-weight: 800;
 		letter-spacing: 0.12em;
+	}
+	header small {
+		display: block;
+		margin-top: 0.25rem;
+		color: #a99c91;
+		font-size: 0.75rem;
 	}
 	h2,
 	h3 {

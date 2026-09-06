@@ -70,6 +70,18 @@ export const saveMyCharacter = (session: Session, campaignId: string, sheet: Cha
 	});
 export const listParticipants = (session: Session, campaignId: string) =>
 	request<{ participants: Participant[] }>(session, `/api/v1/campaigns/${campaignId}/participants`);
+export const getCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`);
+export const saveCharacterForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	sheet: CharacterSheet
+) =>
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, {
+		method: 'PUT',
+		body: JSON.stringify(sheet)
+	});
 
 export function createEmptySheet(): CharacterSheet {
 	return {

@@ -7,6 +7,8 @@
 	import ParticipantsPanel from '$lib/components/ParticipantsPanel.svelte';
 	import NotesPanel from '$lib/components/NotesPanel.svelte';
 	import NPCsPanel from '$lib/components/NPCsPanel.svelte';
+	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
+	import LibraryView from '$lib/components/LibraryView.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -21,6 +23,9 @@
 	let campaignName = $state('');
 	let loadingCampaigns = $state(false);
 	let sheetOpen = $state(false);
+	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
+	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'campaign';
+	let workspaceTab = $state<WorkspaceTab>('map');
 	let inviteStatus = $state('');
 	let inviteProcessed = false;
 	let participantsOpen = $state(false);
@@ -35,15 +40,14 @@
 			loading = false;
 			return;
 		}
-		supabase.auth.getSession().then(({ data }) => {
+		supabase.auth.getSession().then(async ({ data }) => {
 			session = data.session;
-			if (data.session)
-				void acceptPendingInvite(data.session).then(() => loadCampaigns(data.session));
+			if (data.session) await restoreSession(data.session);
 			loading = false;
 		});
 		const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
 			session = nextSession;
-			if (nextSession) void acceptPendingInvite(nextSession).then(() => loadCampaigns(nextSession));
+			if (nextSession) void restoreSession(nextSession);
 			else {
 				campaigns = [];
 				activeCampaign = null;
@@ -56,7 +60,9 @@
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
-			options: { redirectTo: window.location.origin }
+			// Preserve ?invite=... across OAuth. Using origin here used to lose the
+			// invitation code before the authenticated session could accept it.
+			options: { redirectTo: window.location.href }
 		});
 		if (authError) error = authError.message;
 	}
@@ -105,16 +111,23 @@
 		if (!code || inviteProcessed) return;
 		inviteProcessed = true;
 		try {
-			const campaign = await api(
+			const campaign: Campaign = await api(
 				`/api/v1/invites/${code}/accept`,
 				{ method: 'POST' },
 				currentSession
 			);
 			inviteStatus = `Você entrou em “${campaign.name}”.`;
 			window.history.replaceState({}, '', window.location.pathname);
+			return campaign;
 		} catch (err) {
 			inviteStatus = err instanceof Error ? err.message : 'Não foi possível aceitar o convite.';
+			return null;
 		}
+	}
+	async function restoreSession(currentSession: Session) {
+		const invitedCampaign = await acceptPendingInvite(currentSession);
+		await loadCampaigns(currentSession);
+		if (invitedCampaign) await openCampaign(invitedCampaign);
 	}
 	async function createInvite() {
 		if (!activeCampaign || !session) return;
@@ -152,6 +165,7 @@
 		// Tokens pertencem a uma cena. Nunca carregue o estado visual da mesa anterior.
 		personagens.set([]);
 		activeCampaign = campaign;
+		workspaceTab = 'map';
 		activeScene = null;
 		if (!session) return;
 		try {
@@ -165,6 +179,14 @@
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Não foi possível abrir a cena.';
 		}
+	}
+	function openMySheet() {
+		editingCharacter = null;
+		sheetOpen = true;
+	}
+	function openCharacter(characterId: string, ownerName: string) {
+		editingCharacter = { id: characterId, ownerName };
+		sheetOpen = true;
 	}
 	function selectScene(sceneId: string) {
 		const scene = availableScenes.find((item) => item.id === sceneId);
@@ -263,7 +285,7 @@
 					<p class="eyebrow">MESA ATIVA</p>
 					<h1>{activeCampaign.name}</h1>
 				</div>
-				<div class="game-actions">
+				<div class="game-meta">
 					<div class="scene-control">
 						<label for="scene-select">Cena</label><select
 							id="scene-select"
@@ -281,42 +303,69 @@
 					</div>
 					<span class="role-badge {activeCampaign.role}"
 						>{activeCampaign.role === 'gm' ? '✦ Narrador' : '◈ Jogador'}</span
-					>{#if activeCampaign.role === 'gm'}<button class="secondary-button" onclick={createInvite}
-							>Convidar jogador</button
-						>{/if}
-					>{#if activeCampaign.role === 'gm'}<button
-							class="secondary-button"
-							onclick={() => (participantsOpen = true)}>Participantes</button
-						>{/if}
-					>{#if activeCampaign.role === 'gm'}<button
-							class="secondary-button"
-							onclick={() => (npcsOpen = true)}>NPCs</button
-						>{/if}
-					><button class="secondary-button" onclick={() => (notesOpen = true)}>Notas</button><button
-						class="secondary-button"
-						onclick={() => (sheetOpen = true)}>Minha ficha</button
-					><button class="secondary-button" onclick={() => (activeCampaign = null)}
-						>Trocar mesa</button
 					>
 				</div>
 			</section>
-			<main class="vtt-workspace">
-				{#if activeScene}{#key activeScene.id}<CanvasMesa
-							scene={activeScene}
-							{session}
-							isGM={activeCampaign.role === 'gm'}
-						/><Sidebar
-							isGM={activeCampaign.role === 'gm'}
-							campaignId={activeCampaign.id}
-							{session}
-						/>{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
-			</main>
+			<nav class="workspace-tabs" aria-label="Áreas da mesa">
+				<button class:active={workspaceTab === 'map'} onclick={() => (workspaceTab = 'map')}
+					>Mesa</button
+				>
+				<button class:active={workspaceTab === 'sheets'} onclick={() => (workspaceTab = 'sheets')}
+					>Fichas</button
+				>
+				<button class:active={workspaceTab === 'library'} onclick={() => (workspaceTab = 'library')}
+					>Biblioteca</button
+				>
+				{#if activeCampaign.role === 'gm'}<button
+						class:active={workspaceTab === 'campaign'}
+						onclick={() => (workspaceTab = 'campaign')}>Campanha</button
+					>{/if}
+			</nav>
+			{#if workspaceTab === 'map'}<main class="vtt-workspace">
+					{#if activeScene}{#key activeScene.id}<CanvasMesa
+								scene={activeScene}
+								{session}
+								isGM={activeCampaign.role === 'gm'}
+							/><Sidebar
+								isGM={activeCampaign.role === 'gm'}
+								campaignId={activeCampaign.id}
+								{session}
+							/>{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
+				</main>
+			{:else if workspaceTab === 'sheets'}<CampaignSheets
+					campaignId={activeCampaign.id}
+					{session}
+					isGM={activeCampaign.role === 'gm'}
+					onopenmine={openMySheet}
+					onopencharacter={openCharacter}
+				/>
+			{:else if workspaceTab === 'library'}<LibraryView />
+			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
+					class="campaign-settings"
+				>
+					<section>
+						<p class="eyebrow">GESTÃO DA CAMPANHA</p>
+						<h2>Controle da mesa</h2>
+						<p>Convites, participantes, NPCs e anotações de narrador estão reunidos aqui.</p>
+					</section>
+					<div class="settings-actions">
+						<button class="primary-button" onclick={createInvite}>Copiar convite de jogador</button
+						><button class="secondary-button" onclick={() => (participantsOpen = true)}
+							>Participantes</button
+						><button class="secondary-button" onclick={() => (npcsOpen = true)}>NPCs</button><button
+							class="secondary-button"
+							onclick={() => (notesOpen = true)}>Notas do narrador</button
+						>
+					</div>
+				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 			{#if sheetOpen && activeScene}<CharacterSheet
 					campaignId={activeCampaign.id}
 					sceneId={activeScene.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
+					characterId={editingCharacter?.id}
+					characterOwnerName={editingCharacter?.ownerName ?? ''}
 					onclose={() => (sheetOpen = false)}
 					onTokenCreated={() => void reloadActiveScene()}
 				/>{/if}
@@ -895,10 +944,60 @@
 		margin: 0;
 		font-size: clamp(2rem, 4vw, 3.4rem);
 	}
-	.game-actions {
+	.game-meta {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+	.workspace-tabs {
+		display: flex;
+		gap: 0.3rem;
+		padding: 0 clamp(1.25rem, 5vw, 5rem);
+		border-bottom: 1px solid #30292a;
+		background: rgba(24, 20, 23, 0.68);
+	}
+	.workspace-tabs button {
+		border: 0;
+		border-bottom: 2px solid transparent;
+		padding: 0.85rem 1rem 0.75rem;
+		color: #9e9288;
+		background: transparent;
+		font-size: 0.78rem;
+		font-weight: 750;
+	}
+	.workspace-tabs button:hover {
+		color: #edcf94;
+	}
+	.workspace-tabs button.active {
+		border-bottom-color: #d8ad67;
+		color: #f4e5cb;
+	}
+	.campaign-settings {
+		display: grid;
+		gap: 1.5rem;
+		min-height: 510px;
+		padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.25rem, 5vw, 5rem);
+		color: #e9dfd3;
+	}
+	.campaign-settings h2 {
+		margin: 0 0 0.6rem;
+		font:
+			500 clamp(1.8rem, 4vw, 2.7rem) Georgia,
+			serif;
+	}
+	.campaign-settings section > p:not(.eyebrow) {
+		max-width: 580px;
+		color: #a99c91;
+		line-height: 1.6;
+	}
+	.settings-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+		align-items: center;
+	}
+	.settings-actions .primary-button {
+		width: auto;
 	}
 	.scene-control {
 		display: flex;
@@ -989,6 +1088,13 @@
 		.game-header {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+		.workspace-tabs {
+			overflow-x: auto;
+			padding: 0 1.25rem;
+		}
+		.workspace-tabs button {
+			white-space: nowrap;
 		}
 		.vtt-workspace {
 			flex-direction: column;

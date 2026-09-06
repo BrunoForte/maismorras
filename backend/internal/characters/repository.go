@@ -135,14 +135,64 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	return item, nil
 }
 
+// GetForGM lets the campaign narrator open a character already linked to this
+// campaign. A player never receives this route, so a sheet remains private
+// from other players even when they share a table.
+func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, userID string) (Character, error) {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Character{}, err
+	}
+	var item Character
+	var raw []byte
+	err := r.pool.QueryRow(ctx, `select id::text,campaign_id::text,owner_id::text,sheet from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	}
+	if err != nil {
+		return Character{}, fmt.Errorf("get character for gm: %w", err)
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, fmt.Errorf("decode character sheet: %w", err)
+	}
+	return item, nil
+}
+
+// SaveForGM is deliberately separate from SaveMine. This makes the authority
+// boundary explicit: only the GM can update another member's linked sheet.
+func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, userID string, sheet Sheet) (Character, error) {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Character{}, err
+	}
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	var item Character
+	err = r.pool.QueryRow(ctx, `update actors set name=$1,sheet=$2 where id=$3 and campaign_id=$4 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	}
+	if err != nil {
+		return Character{}, fmt.Errorf("save character for gm: %w", err)
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	return item, nil
+}
+
+func (r *Repository) requireGM(ctx context.Context, campaignID, userID string) error {
+	var role string
+	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	return nil
+}
+
 // ListForGM exposes only enough sheet data for table management. It is intentionally
 // restricted to the campaign GM; players continue using GetMine for their own sheet.
 func (r *Repository) ListForGM(ctx context.Context, campaignID, userID string) ([]Participant, error) {
-	var role string
-	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil {
-		return nil, ErrForbidden
-	}
-	if role != "gm" {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
 		return nil, ErrForbidden
 	}
 	rows, err := r.pool.Query(ctx, `select m.user_id::text,p.display_name,m.role::text,a.id::text,a.owner_id::text,a.sheet from campaign_members m join profiles p on p.id=m.user_id left join actors a on a.campaign_id=m.campaign_id and a.owner_id=m.user_id and a.kind='character' where m.campaign_id=$1 order by m.joined_at`, campaignID)
