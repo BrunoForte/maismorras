@@ -320,14 +320,21 @@
 		border-radius: 8px;
 		overflow: hidden;
 		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
-		width: min(100%, 1000px);
-		height: min(70vh, 720px);
+		width: 100%;
+		height: min(calc(100dvh - 210px), 900px);
+		min-height: 560px;
 	}
 
 	canvas {
 		display: block;
 		width: 100%;
 		height: 100%;
+	}
+	@media (max-width: 760px) {
+		.borda-mesa {
+			height: calc(100dvh - 180px);
+			min-height: 460px;
+		}
 	}
 	.token-inspector {
 		position: absolute;

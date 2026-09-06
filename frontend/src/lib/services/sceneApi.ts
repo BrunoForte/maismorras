@@ -57,6 +57,13 @@ export const createScene = (session: Session, campaignId: string, name: string) 
 	});
 export const loadScene = (session: Session, sceneId: string) =>
 	request<{ scene: Scene; tokens: PersistedToken[] }>(session, `/api/v1/scenes/${sceneId}`);
+export const getCombat = (session: Session, sceneId: string) =>
+	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
+export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>
+	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`, {
+		method: 'PATCH',
+		body: JSON.stringify({ activeTokenId: activeTokenId ?? '' })
+	});
 
 export const createToken = (
 	session: Session,

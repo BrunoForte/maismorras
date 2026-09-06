@@ -47,6 +47,28 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens})
 }
+func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	state, err := h.repo.Combat(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, state)
+}
+func (h *Handler) SetCombat(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		ActiveTokenID string `json:"activeTokenId"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	state, err := h.repo.SetCombat(r.Context(), r.PathValue("sceneID"), strings.TrimSpace(in.ActiveTokenID), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, state)
+}
 func (h *Handler) CreateToken(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var t Token

@@ -63,3 +63,9 @@ export const saveRoll = (
 		method: 'POST',
 		body: JSON.stringify({ type: 'dice.roll', payload: { ...details, text } })
 	});
+
+export const rollDice = (session: Session, campaignId: string, expression: string) =>
+	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
+		method: 'POST',
+		body: JSON.stringify({ type: 'dice.roll', payload: { expression } })
+	});

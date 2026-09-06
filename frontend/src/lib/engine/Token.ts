@@ -128,6 +128,13 @@ export class Token {
 		this.circuloFundo.clear();
 		this.circuloFundo.circle(centro, centro, raio + 2);
 		this.circuloFundo.fill(this.dados.cor);
+		// Condições são discretas, mas perceptíveis mesmo sem abrir o inspector.
+		// A regra completa continua no painel do token; este aro é só um lembrete visual.
+		if (this.dados.status?.length) {
+			const statusColor = this.corDaCondicao(this.dados.status[0]);
+			this.circuloFundo.circle(centro, centro, raio + 5);
+			this.circuloFundo.stroke({ width: 3, color: statusColor, alpha: 0.95 });
+		}
 		this.atualizarCoordenada();
 
 		// 2. Redesenha o corte da máscara circular. Informações como HP e condições
@@ -154,6 +161,17 @@ export class Token {
 			this.spriteFoto.x = centro + (this.dados.fotoOffsetX || 0);
 			this.spriteFoto.y = centro + (this.dados.fotoOffsetY || 0);
 		}
+	}
+
+	private corDaCondicao(status: string) {
+		const colors: Record<string, number> = {
+			Envenenado: 0x78b159,
+			Queimando: 0xdf6b40,
+			Caído: 0xa49789,
+			Invisível: 0x8a79c8,
+			Concentrando: 0x67b6d6
+		};
+		return colors[status] ?? 0xe0b86f;
 	}
 
 	private atualizarCoordenada() {

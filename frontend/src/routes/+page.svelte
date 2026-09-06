@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import Sidebar from '$lib/components/Sidebar.svelte';
 	import CanvasMesa from '$lib/components/CanvasMesa.svelte';
+	import FloatingChat from '$lib/components/FloatingChat.svelte';
+	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
+	import TableTools from '$lib/components/TableTools.svelte';
 	import CharacterSheet from '$lib/components/CharacterSheet.svelte';
 	import ParticipantsPanel from '$lib/components/ParticipantsPanel.svelte';
 	import NotesPanel from '$lib/components/NotesPanel.svelte';
@@ -322,15 +324,17 @@
 					>{/if}
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
-					{#if activeScene}{#key activeScene.id}<CanvasMesa
-								scene={activeScene}
-								{session}
-								isGM={activeCampaign.role === 'gm'}
-							/><Sidebar
-								isGM={activeCampaign.role === 'gm'}
+					{#if activeScene}{#key activeScene.id}
+							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} />
+							<DiceOverlay />
+							<TableTools
 								campaignId={activeCampaign.id}
+								sceneId={activeScene.id}
 								{session}
-							/>{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
+								isGM={activeCampaign.role === 'gm'}
+							/>
+							<FloatingChat campaignId={activeCampaign.id} {session} />
+						{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
 				</main>
 			{:else if workspaceTab === 'sheets'}<CampaignSheets
 					campaignId={activeCampaign.id}
@@ -339,23 +343,23 @@
 					onopenmine={openMySheet}
 					onopencharacter={openCharacter}
 				/>
-			{:else if workspaceTab === 'library'}<LibraryView />
+			{:else if workspaceTab === 'library'}<LibraryView
+					isGM={activeCampaign.role === 'gm'}
+					onnotes={() => (notesOpen = true)}
+				/>
 			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
 					class="campaign-settings"
 				>
 					<section>
 						<p class="eyebrow">GESTÃO DA CAMPANHA</p>
-						<h2>Controle da mesa</h2>
-						<p>Convites, participantes, NPCs e anotações de narrador estão reunidos aqui.</p>
+						<h2>Convites e configurações</h2>
+						<p>Gerencie quem entra na campanha e as opções que afetam toda a mesa.</p>
 					</section>
 					<div class="settings-actions">
 						<button class="primary-button" onclick={createInvite}>Copiar convite de jogador</button
 						><button class="secondary-button" onclick={() => (participantsOpen = true)}
 							>Participantes</button
-						><button class="secondary-button" onclick={() => (npcsOpen = true)}>NPCs</button><button
-							class="secondary-button"
-							onclick={() => (notesOpen = true)}>Notas do narrador</button
-						>
+						><button class="secondary-button" onclick={() => (npcsOpen = true)}>NPCs</button>
 					</div>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
@@ -1044,9 +1048,7 @@
 		color: #f6d89c;
 	}
 	.vtt-workspace {
-		display: flex;
-		align-items: flex-start;
-		gap: 1.25rem;
+		position: relative;
 		padding: 1.25rem clamp(1.25rem, 5vw, 5rem) 3rem;
 	}
 	@media (max-width: 760px) {
@@ -1095,9 +1097,6 @@
 		}
 		.workspace-tabs button {
 			white-space: nowrap;
-		}
-		.vtt-workspace {
-			flex-direction: column;
 		}
 	}
 </style>

@@ -1,3 +1,7 @@
+<script lang="ts">
+	let { isGM, onnotes }: { isGM: boolean; onnotes: () => void } = $props();
+</script>
+
 <section class="library-view" aria-label="Biblioteca da campanha">
 	<header>
 		<div>
@@ -5,7 +9,11 @@
 			<h2>Handouts e mídias</h2>
 			<span>Imagens, mapas, documentos e trilhas que pertencem a esta mesa.</span>
 		</div>
-		<span class="soon">EM PREPARAÇÃO</span>
+		{#if isGM}<div class="library-actions">
+				<button class="primary" disabled title="O armazenamento será conectado na próxima entrega"
+					>Adicionar mídia</button
+				><button onclick={onnotes}>Notas da campanha</button>
+			</div>{/if}
 	</header>
 	<div class="library-grid">
 		<article>
@@ -22,9 +30,9 @@
 		</article>
 	</div>
 	<aside>
-		<strong>Próxima entrega: apresentação de handouts.</strong><span
+		<strong>Em breve: apresentação de handouts.</strong><span
 			>O narrador enviará uma imagem e poderá revelá-la para todos em uma janela de foco, com o mapa
-			escurecido ao fundo.</span
+			escurecido ao fundo. A base desta aba já é exclusiva para esse fluxo.</span
 		>
 	</aside>
 </section>
@@ -64,16 +72,29 @@
 		color: #a99c91;
 		font-size: 0.85rem;
 	}
-	.soon {
+	.library-actions {
+		display: flex;
+		gap: 0.55rem;
+	}
+	.library-actions button {
 		border: 1px solid #765d3d;
-		border-radius: 999px;
-		padding: 0.28rem 0.5rem;
+		border-radius: 7px;
+		padding: 0.52rem 0.65rem;
 		color: #edc77f;
 		background: #2b211e;
-		font-size: 0.62rem;
-		font-weight: 800;
-		letter-spacing: 0.09em;
+		font-size: 0.72rem;
+		font-weight: 750;
+		cursor: pointer;
 		white-space: nowrap;
+	}
+	.library-actions button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.library-actions .primary {
+		border: 0;
+		color: #26190e;
+		background: #e0b86f;
 	}
 	.library-grid {
 		display: grid;
@@ -119,6 +140,9 @@
 			serif;
 	}
 	@media (max-width: 650px) {
+		header {
+			flex-direction: column;
+		}
 		.library-grid {
 			grid-template-columns: 1fr;
 		}

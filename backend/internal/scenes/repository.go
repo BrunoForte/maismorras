@@ -16,6 +16,9 @@ type Scene struct {
 	BackgroundURL *string `json:"backgroundUrl"`
 	GridSize      int     `json:"gridSize"`
 }
+type CombatState struct {
+	ActiveTokenID *string `json:"activeTokenId"`
+}
 type Token struct {
 	ID         string     `json:"id"`
 	ActorID    *string    `json:"actorId"`
@@ -119,6 +122,35 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		items = append(items, applyVisibility(t, role, userID))
 	}
 	return s, items, rows.Err()
+}
+
+func (r *Repository) Combat(ctx context.Context, sceneID, userID string) (CombatState, error) {
+	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
+		return CombatState{}, ErrForbidden
+	}
+	var state CombatState
+	if err := r.pool.QueryRow(ctx, `select active_token_id::text from scenes where id=$1`, sceneID).Scan(&state.ActiveTokenID); err != nil {
+		return CombatState{}, err
+	}
+	return state, nil
+}
+
+func (r *Repository) SetCombat(ctx context.Context, sceneID, tokenID, userID string) (CombatState, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return CombatState{}, ErrForbidden
+	}
+	if tokenID != "" {
+		var exists bool
+		if err := r.pool.QueryRow(ctx, `select exists(select 1 from scene_tokens where id=$1 and scene_id=$2)`, tokenID, sceneID).Scan(&exists); err != nil || !exists {
+			return CombatState{}, fmt.Errorf("token not found")
+		}
+	}
+	var state CombatState
+	if err := r.pool.QueryRow(ctx, `update scenes set active_token_id=nullif($1,'')::uuid,updated_at=now() where id=$2 returning active_token_id::text`, tokenID, sceneID).Scan(&state.ActiveTokenID); err != nil {
+		return CombatState{}, err
+	}
+	return state, nil
 }
 func (r *Repository) CreateToken(ctx context.Context, sceneID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
