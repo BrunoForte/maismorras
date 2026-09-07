@@ -69,8 +69,8 @@
 				method: 'POST',
 				body: JSON.stringify({ actorId: npc.id })
 			});
+			await ontokencreated();
 			message = `${npc.name} foi adicionado à cena.`;
-			ontokencreated();
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Não foi possível adicionar o NPC.';
 		} finally {

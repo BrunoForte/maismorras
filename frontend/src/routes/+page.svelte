@@ -31,6 +31,7 @@
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
 	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign';
 	let workspaceTab = $state<WorkspaceTab>('map');
+	let sceneRevision = $state(0);
 	let inviteStatus = $state('');
 	let inviteProcessed = false;
 	let participantsOpen = $state(false);
@@ -220,11 +221,10 @@
 		}
 	}
 	async function reloadActiveScene() {
-		const currentScene = activeScene;
-		if (!currentScene) return;
-		activeScene = null;
+		// A scene keeps the same id after receiving a token. The revision forces
+		// a deterministic Pixi remount, so the fresh scene request includes it.
+		sceneRevision += 1;
 		await tick();
-		activeScene = currentScene;
 	}
 </script>
 
@@ -349,7 +349,7 @@
 					>{/if}
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
-					{#if activeScene}{#key activeScene.id}
+					{#if activeScene}{#key `${activeScene.id}:${sceneRevision}`}
 							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} onopensheet={(actorId) => activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()} />
 							<DiceOverlay />
 							<TableTools

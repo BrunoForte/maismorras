@@ -4,16 +4,49 @@
 	import { supabase } from '$lib/services/supabase';
 	let {
 		campaignId,
+		session,
 		isGM,
 		onnotes
 	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
 	type Asset = { name: string; url: string; type: 'image' | 'audio' };
+	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
+	let handouts = $state<Handout[]>([]);
 	let uploading = $state(false);
+	let savingHandout = $state(false);
+	let handoutOpen = $state(false);
+	let handoutTitle = $state('');
+	let handoutBody = $state('');
+	let handoutVisibility = $state<'gm' | 'players'>('players');
 	let message = $state('');
 	let preview = $state<Asset | null>(null);
 	const folder = () => `campaigns/${campaignId}/media`;
-	onMount(() => void loadAssets());
+	onMount(() => {
+		void loadAssets();
+		void loadHandouts();
+	});
+	async function notesRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+		const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`, {
+			...init,
+			headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json', ...init.headers }
+		});
+		const data = await response.json();
+		if (!response.ok) throw new Error(data.error?.message ?? 'Não foi possível salvar o handout.');
+		return data as T;
+	}
+	async function loadHandouts() {
+		try { handouts = (await notesRequest<{ notes: Handout[] }>(`/api/v1/campaigns/${campaignId}/notes`)).notes; }
+		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível carregar os handouts.'; }
+	}
+	async function saveHandout() {
+		if (!handoutTitle.trim() || savingHandout) return;
+		savingHandout = true; message = '';
+		try {
+			const handout = await notesRequest<Handout>(`/api/v1/campaigns/${campaignId}/notes`, { method: 'POST', body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: handoutVisibility }) });
+			handouts = [handout, ...handouts]; handoutTitle = ''; handoutBody = ''; handoutVisibility = 'players'; handoutOpen = false;
+		} catch (error) { message = error instanceof Error ? error.message : 'Não foi possível salvar o handout.'; }
+		finally { savingHandout = false; }
+	}
 	async function loadAssets() {
 		if (!supabase) return;
 		const client = supabase;
@@ -86,10 +119,16 @@
 						onchange={upload}
 						disabled={uploading}
 					/></label
-				><button onclick={onnotes}>Notas da campanha</button>
+				><button onclick={() => (handoutOpen = !handoutOpen)}>Novo handout</button><button onclick={onnotes}>Notas internas</button>
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
+	{#if handoutOpen && isGM}<form class="handout-form" onsubmit={(event) => { event.preventDefault(); void saveHandout(); }}>
+		<input bind:value={handoutTitle} maxlength="120" placeholder="Título do handout" />
+		<textarea bind:value={handoutBody} maxlength="32000" placeholder="Texto, links e orientações para a mesa"></textarea>
+		<div><select bind:value={handoutVisibility}><option value="players">Visível aos jogadores</option><option value="gm">Somente narrador</option></select><button disabled={savingHandout}>{savingHandout ? 'Salvando…' : 'Salvar handout'}</button></div>
+	</form>{/if}
+	<section class="handouts" aria-label="Handouts da campanha"><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? 'Compartilhado' : 'Privado'}</small><h4>{handout.title}</h4><p>{handout.body || 'Sem texto.'}</p></article>{/each}</div>{:else}<p class="empty-handouts">Nenhum handout salvo nesta campanha.</p>{/if}</section>
 	{#if assets.length}<section class="asset-grid">
 			{#each assets as asset (asset.url)}<article>
 					{#if asset.type === 'image'}<button class="asset-image" onclick={() => (preview = asset)}
@@ -177,6 +216,34 @@
 	.actions input {
 		display: none;
 	}
+	.handout-form {
+		display: grid;
+		gap: 0.6rem;
+		margin: 0 0 1.2rem;
+		padding: 1rem;
+		border: 1px solid #5a493b;
+		border-radius: 10px;
+		background: #211b1e;
+	}
+	.handout-form input, .handout-form textarea, .handout-form select {
+		border: 1px solid #5a493b;
+		border-radius: 6px;
+		padding: 0.55rem;
+		color: #eee4d6;
+		background: #121012;
+		font: inherit;
+	}
+	.handout-form textarea { min-height: 100px; resize: vertical; }
+	.handout-form div { display: flex; justify-content: space-between; gap: 0.6rem; }
+	.handout-form button { border: 0; border-radius: 7px; padding: 0.52rem 0.7rem; color: #26190e; background: #e0b86f; font-weight: 750; cursor: pointer; }
+	.handouts { margin: 0 0 1.4rem; }
+	.handouts h3 { margin: 0 0 0.7rem; color: #d8ad67; font: 0.8rem Georgia, serif; letter-spacing: 0.08em; text-transform: uppercase; }
+	.handout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.7rem; }
+	.handout-grid article { min-width: 0; padding: 0.85rem; border: 1px solid #493c39; border-radius: 9px; background: #211b1e; }
+	.handout-grid small { color: #d8ad67; font-size: 0.65rem; text-transform: uppercase; }
+	.handout-grid h4 { margin: 0.35rem 0; color: #eee4d6; font: 600 1rem Georgia, serif; }
+	.handout-grid p { color: #b9aa9d; white-space: pre-wrap; font-size: 0.82rem; line-height: 1.45; }
+	.empty-handouts { padding: 0.9rem; border: 1px dashed #5a493b; border-radius: 8px; color: #a99c91; font-size: 0.82rem; }
 	.message {
 		margin: 0 0 1rem;
 		color: #f0cb85;
