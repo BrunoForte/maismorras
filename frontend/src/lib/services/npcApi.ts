@@ -12,6 +12,16 @@ export type NPC = {
 		size: number;
 		color: number;
 		imageUrl: string;
+		creatureType: string;
+		challenge: string;
+		speed: string;
+		abilities: { strength: number; dexterity: number; constitution: number; intelligence: number; wisdom: number; charisma: number };
+		traits: { name: string; description: string }[];
+		actions: { name: string; kind: 'action' | 'bonus' | 'reaction'; toHit: number; range: string; damage: string; saveDC: number; description: string }[];
+		resistances: string[];
+		immunities: string[];
+		senses: string;
+		languages: string;
 	};
 };
 
@@ -40,3 +50,5 @@ export const createNPC = (
 		method: 'POST',
 		body: JSON.stringify(input)
 	});
+export const updateNPC = (session: Session, campaignId: string, npcId: string, input: Omit<NPC, 'id' | 'campaignId'>) =>
+	request<NPC>(session, `/api/v1/campaigns/${campaignId}/npcs/${npcId}`, { method: 'PUT', body: JSON.stringify(input) });

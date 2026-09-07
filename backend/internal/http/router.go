@@ -41,6 +41,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Create))
+	mux.Handle("PUT /api/v1/campaigns/{campaignID}/npcs/{npcID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Update))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/scenes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.List))

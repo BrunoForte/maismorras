@@ -12,6 +12,7 @@
 	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
 	import LibraryView from '$lib/components/LibraryView.svelte';
 	import CompendiumView from '$lib/components/CompendiumView.svelte';
+	import BestiaryView from '$lib/components/BestiaryView.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -27,7 +28,7 @@
 	let loadingCampaigns = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
-	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'campaign';
+	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign';
 	let workspaceTab = $state<WorkspaceTab>('map');
 	let inviteStatus = $state('');
 	let inviteProcessed = false;
@@ -339,6 +340,7 @@
 				<button class:active={workspaceTab === 'compendium'} onclick={() => (workspaceTab = 'compendium')}
 					>Compêndio</button
 				>
+				{#if activeCampaign.role === 'gm'}<button class:active={workspaceTab === 'bestiary'} onclick={() => (workspaceTab = 'bestiary')}>Bestiário</button>{/if}
 				{#if activeCampaign.role === 'gm'}<button
 						class:active={workspaceTab === 'campaign'}
 						onclick={() => (workspaceTab = 'campaign')}>Campanha</button
@@ -377,6 +379,7 @@
 					isGM={activeCampaign.role === 'gm'}
 					ontokencreated={() => void reloadActiveScene()}
 				/>
+			{:else if workspaceTab === 'bestiary' && activeCampaign.role === 'gm'}<BestiaryView campaignId={activeCampaign.id} sceneId={activeScene?.id} {session} ontokencreated={() => void reloadActiveScene()} />
 			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
 					class="campaign-settings"
 				>

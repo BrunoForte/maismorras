@@ -48,7 +48,9 @@
 					initiative: 0,
 					size: 1,
 					color: 3381504,
-					imageUrl: ''
+					imageUrl: '', creatureType: 'humanoide', challenge: '', speed: '9 m',
+					abilities: { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 },
+					traits: [], actions: [], resistances: [], immunities: [], senses: '', languages: ''
 				}
 			});
 			npcs = [...npcs, npc];
