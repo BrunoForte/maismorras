@@ -322,13 +322,27 @@
 	}
 	@media (max-width: 650px) {
 		.table-tools {
-			top: 1.75rem;
-			left: 1.25rem;
+			top: auto;
+			left: 50%;
+			bottom: 0.9rem;
+			transform: translateX(-50%);
+		}
+		.tool-group {
+			display: flex;
+		}
+		.tool-group button {
+			width: 3rem;
+			height: 3rem;
+			font-size: 1.25rem;
 		}
 		.tool-popover,
+		.dice-popover,
 		.initiative-popover {
-			left: 2.75rem;
-			width: min(300px, calc(100vw - 5rem));
+			top: auto;
+			bottom: 3.55rem;
+			left: 50%;
+			width: min(340px, calc(100vw - 1.5rem));
+			transform: translateX(-50%);
 		}
 	}
 </style>

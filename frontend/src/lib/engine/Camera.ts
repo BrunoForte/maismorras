@@ -5,6 +5,7 @@ export class Camera {
 	private fundoInterativo: PIXI.Graphics;
 	private arrastandoCamera = false;
 	private posicaoInicialCamera = { x: 0, y: 0 };
+	private pinchDistance = 0;
 	private readonly onWheel = (e: WheelEvent) => {
 		e.preventDefault();
 		const direcao = e.deltaY < 0 ? 1 : -1;
@@ -29,6 +30,11 @@ export class Camera {
 
 	private configurarEventos() {
 		this.app.canvas.addEventListener('wheel', this.onWheel, { passive: false });
+		this.app.canvas.style.touchAction = 'none';
+		this.app.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+		this.app.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+		this.app.canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
+		this.app.canvas.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
 
 		this.fundoInterativo.eventMode = 'static';
 		this.fundoInterativo.on('pointerdown', (e) => {
@@ -50,9 +56,35 @@ export class Camera {
 		this.app.stage.on('pointerup', soltarCamera);
 		this.app.stage.on('pointerupoutside', soltarCamera);
 	}
+	private onTouchStart = (event: TouchEvent) => { if (event.touches.length === 2) this.pinchDistance = this.distance(event.touches[0], event.touches[1]); };
+	private onTouchMove = (event: TouchEvent) => {
+		if (event.touches.length !== 2 || !this.pinchDistance) return;
+		event.preventDefault();
+		const nextDistance = this.distance(event.touches[0], event.touches[1]);
+		const factor = nextDistance / this.pinchDistance;
+		this.pinchDistance = nextDistance;
+		const rect = this.app.canvas.getBoundingClientRect();
+		this.zoomAt(factor, (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left, (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top);
+	};
+	private onTouchEnd = (event: TouchEvent) => { if (event.touches.length < 2) this.pinchDistance = 0; };
+	private distance(a: Touch, b: Touch) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+	private zoomAt(factor: number, x: number, y: number) {
+		const oldScale = this.mundo.scale.x;
+		const newScale = Math.max(0.3, Math.min(3, oldScale * factor));
+		if (newScale === oldScale) return;
+		const worldX = (x - this.mundo.x) / oldScale;
+		const worldY = (y - this.mundo.y) / oldScale;
+		this.mundo.scale.set(newScale);
+		this.mundo.x = x - worldX * newScale;
+		this.mundo.y = y - worldY * newScale;
+	}
 
 	destroy() {
 		this.app.canvas.removeEventListener('wheel', this.onWheel);
+		this.app.canvas.removeEventListener('touchstart', this.onTouchStart);
+		this.app.canvas.removeEventListener('touchmove', this.onTouchMove);
+		this.app.canvas.removeEventListener('touchend', this.onTouchEnd);
+		this.app.canvas.removeEventListener('touchcancel', this.onTouchEnd);
 		this.fundoInterativo.removeAllListeners();
 		this.app.stage.removeAllListeners();
 	}
