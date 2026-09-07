@@ -10,12 +10,16 @@ export type AbilityScores = {
 };
 export type Attack = { name: string; attackBonus: number; damage: string; notes: string };
 export type Spell = { name: string; level: number; notes: string };
+export type CharacterResource = { id: string; name: string; current: number; max: number; restoreOn: 'short' | 'long' };
+export type SpellSlot = { level: number; current: number; max: number };
 export type InventoryItem = { entryId: string; name: string; quantity: number; equipped: boolean; rules: Record<string, unknown> };
 export type CharacterSheet = {
 	name: string;
 	class: string;
+	subclass: string;
 	level: number;
 	species: string;
+	speciesLineage: string;
 	background: string;
 	alignment: string;
 	abilityScores: AbilityScores;
@@ -28,12 +32,16 @@ export type CharacterSheet = {
 	hitPointsMax: number;
 	temporaryHP: number;
 	hitDice: string;
+	hitDiceSpent: number;
 	passivePerception: number;
 	attacks: Attack[];
 	spells: Spell[];
 	features: string;
+	feats: string;
 	equipment: string;
 	inventory: InventoryItem[];
+	resources: CharacterResource[];
+	spellSlots: SpellSlot[];
 };
 export type Character = { id: string; campaignId: string; ownerId: string; sheet: CharacterSheet };
 export type Participant = {
@@ -72,7 +80,14 @@ function normalizeCharacter(character: Character): Character {
 		spells: character.sheet.spells ?? [],
 		inventory: character.sheet.inventory ?? [],
 		savingThrows: character.sheet.savingThrows ?? [],
-		skillProficiencies: character.sheet.skillProficiencies ?? []
+		skillProficiencies: character.sheet.skillProficiencies ?? [],
+		speciesLineage: character.sheet.speciesLineage ?? '',
+		feats: character.sheet.feats ?? ''
+		,
+		resources: character.sheet.resources ?? [],
+		spellSlots: character.sheet.spellSlots ?? []
+		,
+		hitDiceSpent: character.sheet.hitDiceSpent ?? 0
 	};
 	return character;
 }
@@ -107,8 +122,10 @@ export function createEmptySheet(): CharacterSheet {
 	return {
 		name: '',
 		class: '',
+		subclass: '',
 		level: 1,
 		species: '',
+		speciesLineage: '',
 		background: '',
 		alignment: '',
 		abilityScores: {
@@ -128,11 +145,15 @@ export function createEmptySheet(): CharacterSheet {
 		hitPointsMax: 10,
 		temporaryHP: 0,
 		hitDice: '1d8',
+		hitDiceSpent: 0,
 		passivePerception: 10,
 		attacks: [],
 		spells: [],
 		features: '',
+		feats: '',
 		equipment: '',
-		inventory: []
+		inventory: [],
+		resources: [],
+		spellSlots: []
 	};
 }

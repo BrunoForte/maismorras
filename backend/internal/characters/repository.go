@@ -21,8 +21,10 @@ var (
 type Sheet struct {
 	Name               string          `json:"name"`
 	Class              string          `json:"class"`
+	Subclass           string          `json:"subclass"`
 	Level              int             `json:"level"`
 	Species            string          `json:"species"`
+	SpeciesLineage     string          `json:"speciesLineage"`
 	Background         string          `json:"background"`
 	Alignment          string          `json:"alignment"`
 	AbilityScores      AbilityScores   `json:"abilityScores"`
@@ -35,12 +37,16 @@ type Sheet struct {
 	HitPointsMax       int             `json:"hitPointsMax"`
 	TemporaryHP        int             `json:"temporaryHP"`
 	HitDice            string          `json:"hitDice"`
+	HitDiceSpent       int             `json:"hitDiceSpent"`
 	PassivePerception  int             `json:"passivePerception"`
 	Attacks            []Attack        `json:"attacks"`
 	Spells             []Spell         `json:"spells"`
 	Features           string          `json:"features"`
+	Feats              string          `json:"feats"`
 	Equipment          string          `json:"equipment"`
 	Inventory          []InventoryItem `json:"inventory"`
+	Resources          []Resource      `json:"resources"`
+	SpellSlots         []SpellSlot     `json:"spellSlots"`
 }
 
 type AbilityScores struct {
@@ -61,6 +67,18 @@ type Spell struct {
 	Name  string `json:"name"`
 	Level int    `json:"level"`
 	Notes string `json:"notes"`
+}
+type Resource struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Current   int    `json:"current"`
+	Max       int    `json:"max"`
+	RestoreOn string `json:"restoreOn"`
+}
+type SpellSlot struct {
+	Level   int `json:"level"`
+	Current int `json:"current"`
+	Max     int `json:"max"`
 }
 
 // InventoryItem keeps a compact snapshot of the mechanic selected from the

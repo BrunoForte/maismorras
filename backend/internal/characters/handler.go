@@ -97,6 +97,9 @@ func validate(sheet Sheet) error {
 	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Speed < 0 || sheet.Speed > 300 {
 		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV, CA e deslocamento da ficha.")
 	}
+	if len([]rune(strings.TrimSpace(sheet.SpeciesLineage))) > 80 {
+		return apperror.BadRequest("INVALID_SHEET", "A linhagem da espécie é longa demais.")
+	}
 	for _, score := range []int{sheet.AbilityScores.Strength, sheet.AbilityScores.Dexterity, sheet.AbilityScores.Constitution, sheet.AbilityScores.Intelligence, sheet.AbilityScores.Wisdom, sheet.AbilityScores.Charisma} {
 		if score < 1 || score > 30 {
 			return apperror.BadRequest("INVALID_SHEET", "Atributos devem estar entre 1 e 30.")

@@ -30,3 +30,12 @@ func TestValidateRejectsInvalidAbilityScore(t *testing.T) {
 		t.Fatal("expected invalid ability score to be rejected")
 	}
 }
+
+func TestValidateAcceptsSpeciesLineage(t *testing.T) {
+	sheet := validSheet()
+	sheet.Species = "Elf"
+	sheet.SpeciesLineage = "Drow"
+	if err := validate(sheet); err != nil {
+		t.Fatalf("expected lineage to be valid, got %v", err)
+	}
+}
