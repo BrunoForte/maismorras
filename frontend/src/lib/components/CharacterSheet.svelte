@@ -51,6 +51,7 @@ import {
 	let rollingWeapon = $state<string | null>(null);
 	let newFeat = $state('');
 	let selectedFeat = $state('');
+	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -305,12 +306,14 @@ import {
 			).sheet;
 			isNewCharacter = false;
 			message = 'Ficha salva.';
+			onTokenCreated();
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Não foi possível salvar a ficha.';
 		} finally {
 			saving = false;
 		}
 	}
+	function syncTokenSoon() { if (tokenSyncTimer) clearTimeout(tokenSyncTimer); tokenSyncTimer = setTimeout(() => { if (!saving) void save(); }, 450); }
 	async function createBoardToken() {
 		if (!isGM) return;
 		saving = true;
@@ -409,7 +412,7 @@ import {
 				<section class="combat">
 					<h3>Combate</h3>
 					<div class="rest-actions"><button onclick={() => rest('short')}>Descanso curto</button><button onclick={() => rest('long')}>Descanso longo</button></div>
-					<label>CA<input type="number" min="0" max="99" bind:value={sheet.armorClass} /></label
+					<label>CA<input type="number" min="0" max="99" bind:value={sheet.armorClass} oninput={syncTokenSoon} /></label
 					><label>Deslocamento (m)<input type="number" min="0" bind:value={sheet.speed} /></label
 					><label>Proficiência<input type="number" bind:value={sheet.proficiencyBonus} /></label
 					><label
@@ -418,8 +421,9 @@ import {
 							min="0"
 							max={sheet.hitPointsMax}
 							bind:value={sheet.hitPointsCurrent}
+							oninput={syncTokenSoon}
 						/></label
-					><label>PV máximos<input type="number" min="1" bind:value={sheet.hitPointsMax} /></label
+					><label>PV máximos<input type="number" min="1" bind:value={sheet.hitPointsMax} oninput={syncTokenSoon} /></label
 					><label
 						>PV temporários<input type="number" min="0" bind:value={sheet.temporaryHP} /></label
 					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label><label

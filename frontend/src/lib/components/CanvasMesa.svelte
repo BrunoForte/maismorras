@@ -238,7 +238,7 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
-			<div class="token-rolls"><span>Rolagens rápidas</span><button onclick={() => rollToken('1d20')}>🎲 d20</button><button onclick={() => rollToken('1d20+2')}>Iniciativa</button><button onclick={() => rollToken('1d4')}>d4</button><button onclick={() => rollToken('1d6')}>d6</button><button onclick={() => rollToken('1d8')}>d8</button><button onclick={() => rollToken('1d10')}>d10</button><button onclick={() => rollToken('1d12')}>d12</button></div>
+			<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => rollToken(`1d20${personagemSelecionado.iniciativa >= 0 ? '+' : ''}${personagemSelecionado.iniciativa}`)}>Iniciativa {personagemSelecionado.iniciativa >= 0 ? '+' : ''}{personagemSelecionado.iniciativa}</button></div>
 			<div class="hp-control">
 				<div>
 					<span>Pontos de vida</span><strong

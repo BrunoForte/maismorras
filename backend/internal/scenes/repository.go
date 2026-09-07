@@ -222,6 +222,13 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if err := json.Unmarshal(raw, &sheet); err != nil {
 		return Token{}, fmt.Errorf("decode character actor: %w", err)
 	}
+	var characterAlreadyLinked bool
+	if err := r.pool.QueryRow(ctx, `select exists(select 1 from scene_tokens where scene_id=$1 and actor_id=$2)`, sceneID, actorID).Scan(&characterAlreadyLinked); err != nil {
+		return Token{}, err
+	}
+	if characterAlreadyLinked {
+		return Token{}, ErrAlreadyLinked
+	}
 	name := sheet.Name
 	if name == "" {
 		name = actorName
@@ -230,11 +237,7 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, Color: 3381504, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) on conflict (scene_id,actor_id) where actor_id is not null do update set owner_id=excluded.owner_id,name=excluded.name,color=excluded.color,size=excluded.size,hp_current=excluded.hp_current,hp_max=excluded.hp_max,armor_class=excluded.armor_class,initiative=excluded.initiative,updated_at=now() returning id::text,position_x,position_y,statuses,is_hidden,visibility`, sceneID, actorID, ownerID, name, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID, &t.X, &t.Y, &statuses, &t.Hidden, &visibility)
-	if err == nil {
-		_ = json.Unmarshal(statuses, &t.Statuses)
-		_ = json.Unmarshal(visibility, &t.Visibility)
-	}
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, actorID, ownerID, name, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
 	return t, err
 }
 
@@ -266,15 +269,18 @@ func (r *Repository) CreateTokenFromNPC(ctx context.Context, sceneID, actorID, u
 	if err := json.Unmarshal(raw, &sheet); err != nil {
 		return Token{}, fmt.Errorf("decode npc actor: %w", err)
 	}
+	var npcAlreadyLinked bool
+	if err := r.pool.QueryRow(ctx, `select exists(select 1 from scene_tokens where scene_id=$1 and actor_id=$2)`, sceneID, actorID).Scan(&npcAlreadyLinked); err != nil {
+		return Token{}, err
+	}
+	if npcAlreadyLinked {
+		return Token{}, ErrAlreadyLinked
+	}
 	imageURL := sheet.ImageURL
 	t := Token{ActorID: &actorID, Name: actorName, ImageURL: &imageURL, Color: sheet.Color, X: 70, Y: 70, Size: sheet.Size, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, Initiative: sheet.Initiative, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) on conflict (scene_id,actor_id) where actor_id is not null do update set name=excluded.name,image_url=excluded.image_url,color=excluded.color,size=excluded.size,hp_current=excluded.hp_current,hp_max=excluded.hp_max,armor_class=excluded.armor_class,initiative=excluded.initiative,updated_at=now() returning id::text,position_x,position_y,statuses,is_hidden,visibility`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID, &t.X, &t.Y, &statuses, &t.Hidden, &visibility)
-	if err == nil {
-		_ = json.Unmarshal(statuses, &t.Statuses)
-		_ = json.Unmarshal(visibility, &t.Visibility)
-	}
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
 	return t, err
 }
 
