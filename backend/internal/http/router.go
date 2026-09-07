@@ -9,6 +9,7 @@ import (
 	"vtt-backend/internal/auth"
 	"vtt-backend/internal/campaigns"
 	"vtt-backend/internal/characters"
+	"vtt-backend/internal/compendium"
 	"vtt-backend/internal/config"
 	"vtt-backend/internal/events"
 	"vtt-backend/internal/notes"
@@ -19,7 +20,7 @@ import (
 
 type errorHandler func(http.ResponseWriter, *http.Request) error
 
-func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/tokens/gerar", withError(tokenHandler.Generate))
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
@@ -33,6 +34,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.GetForGM))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveForGM))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/characters", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.CreateForGM))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/compendium", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.CreateEntry))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.List))

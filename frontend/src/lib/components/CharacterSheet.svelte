@@ -10,6 +10,7 @@
 		type CharacterSheet as Sheet
 	} from '$lib/services/characterApi';
 	import { createTokenFromCharacter } from '$lib/services/sceneApi';
+	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 
 	let {
 		campaignId,
@@ -35,6 +36,7 @@
 	let saving = $state(false);
 	let message = $state('');
 	let isNewCharacter = $state(false);
+	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -46,6 +48,11 @@
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 
 	onMount(async () => {
+		// Lists come from the campaign compendium, so a GM can mix SRD choices,
+		// private references and homebrew without exposing unpublished entries.
+		void getCompendium(session, campaignId)
+			.then((data) => (compendiumEntries = data.entries))
+			.catch(() => undefined);
 		try {
 			sheet = characterId
 				? (await getCharacterForGM(session, campaignId, characterId)).sheet
@@ -58,6 +65,8 @@
 			loading = false;
 		}
 	});
+	const optionsFor = (entryType: string) =>
+		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	function updateScore(key: keyof Sheet['abilityScores'], value: string) {
 		sheet.abilityScores[key] = Math.max(1, Math.min(30, Number(value) || 1));
 	}
@@ -146,12 +155,15 @@
 							maxlength="120"
 							placeholder="Nome do personagem"
 						/></label
-					><label>Classe<input bind:value={sheet.class} placeholder="Ex.: Guerreiro" /></label
+					><label>Classe<input bind:value={sheet.class} list="class-options" placeholder="Ex.: Guerreiro" /></label
 					><label>Nível<input type="number" min="1" max="20" bind:value={sheet.level} /></label
-					><label>Espécie<input bind:value={sheet.species} placeholder="Ex.: Humano" /></label
-					><label>Antecedente<input bind:value={sheet.background} /></label><label
+					><label>Espécie<input bind:value={sheet.species} list="species-options" placeholder="Ex.: Humano" /></label
+					><label>Antecedente<input bind:value={sheet.background} list="background-options" /></label><label
 						>Alinhamento<input bind:value={sheet.alignment} /></label
 					>
+					<datalist id="class-options">{#each optionsFor('class') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
+					<datalist id="species-options">{#each optionsFor('species') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
+					<datalist id="background-options">{#each optionsFor('background') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
 				</section>
 				<section>
 					<h3>Atributos</h3>

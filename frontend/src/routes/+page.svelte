@@ -11,6 +11,7 @@
 	import NPCsPanel from '$lib/components/NPCsPanel.svelte';
 	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
 	import LibraryView from '$lib/components/LibraryView.svelte';
+	import CompendiumView from '$lib/components/CompendiumView.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -26,7 +27,7 @@
 	let loadingCampaigns = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
-	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'campaign';
+	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'campaign';
 	let workspaceTab = $state<WorkspaceTab>('map');
 	let inviteStatus = $state('');
 	let inviteProcessed = false;
@@ -335,6 +336,9 @@
 				<button class:active={workspaceTab === 'library'} onclick={() => (workspaceTab = 'library')}
 					>Biblioteca</button
 				>
+				<button class:active={workspaceTab === 'compendium'} onclick={() => (workspaceTab = 'compendium')}
+					>Compêndio</button
+				>
 				{#if activeCampaign.role === 'gm'}<button
 						class:active={workspaceTab === 'campaign'}
 						onclick={() => (workspaceTab = 'campaign')}>Campanha</button
@@ -365,6 +369,11 @@
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					onnotes={() => (notesOpen = true)}
+				/>
+			{:else if workspaceTab === 'compendium'}<CompendiumView
+					campaignId={activeCampaign.id}
+					{session}
+					isGM={activeCampaign.role === 'gm'}
 				/>
 			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
 					class="campaign-settings"
