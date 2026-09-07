@@ -5,7 +5,7 @@
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { rollDice } from '$lib/services/eventApi';
-	import { getCombat, setCombat } from '$lib/services/sceneApi';
+	import { getCombat, rollSceneInitiative, setCombat } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 
@@ -20,6 +20,7 @@
 	let diceOpen = $state(false);
 	let rolling = $state(false);
 	let activeTokenId = $state<string | null>(null);
+	let rollingInitiative = $state(false);
 	let sceneSocket: SceneSocket | null = null;
 	let combatants = $derived([...$personagens].sort((a, b) => b.iniciativa - a.iniciativa));
 	async function syncCombat() {
@@ -81,6 +82,22 @@
 		const combat = await setCombat(session, sceneId, null);
 		activeTokenId = combat.activeTokenId;
 		sceneSocket?.publishRefresh();
+}
+	async function rollAllInitiative() {
+		if (!isGM || rollingInitiative) return;
+		rollingInitiative = true;
+		try {
+			const result = await rollSceneInitiative(session, sceneId);
+			const values = new Map(result.tokens.map((token) => [token.id, token.initiative]));
+			$personagens = $personagens.map((token) =>
+				token.persistedId && values.has(token.persistedId)
+					? { ...token, iniciativa: values.get(token.persistedId)! }
+					: token
+			);
+			sceneSocket?.publishRefresh();
+		} finally {
+			rollingInitiative = false;
+		}
 	}
 	async function selectTurn(tokenId: string | undefined) {
 		if (!isGM || !tokenId) return;
@@ -145,7 +162,7 @@
 	{#if initiativeOpen}<section class="initiative-popover">
 			<header>
 				<div><span>COMBATE</span><strong>Iniciativa</strong></div>
-				{#if isGM}<div class="combat-actions"><button onclick={() => void nextTurn()}>{activeTokenId ? 'Próximo turno →' : 'Iniciar combate'}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>Encerrar</button>{/if}</div>{/if}
+				{#if isGM}<div class="combat-actions"><button onclick={() => void rollAllInitiative()} disabled={rollingInitiative}>{rollingInitiative ? 'Rolando…' : 'Rolar todos'}</button><button onclick={() => void nextTurn()}>{activeTokenId ? 'Próximo turno →' : 'Iniciar combate'}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>Encerrar</button>{/if}</div>{/if}
 			</header>
 			{#if combatants.length === 0}<p>
 					Nenhum token nesta cena.

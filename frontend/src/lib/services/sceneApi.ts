@@ -69,6 +69,10 @@ export const setCombat = (session: Session, sceneId: string, activeTokenId: stri
 		method: 'PATCH',
 		body: JSON.stringify({ activeTokenId: activeTokenId ?? '' })
 	});
+export const rollSceneInitiative = (session: Session, sceneId: string) =>
+	request<{ tokens: { id: string; initiative: number }[] }>(session, `/api/v1/scenes/${sceneId}/combat/roll-initiative`, {
+		method: 'POST'
+	});
 
 export const createToken = (
 	session: Session,

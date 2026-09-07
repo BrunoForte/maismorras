@@ -88,6 +88,14 @@ func (h *Handler) SetCombat(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, state)
 }
+func (h *Handler) RollInitiative(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	tokens, err := h.repo.RollInitiative(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"tokens": tokens})
+}
 func (h *Handler) CreateToken(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var t Token

@@ -2,8 +2,10 @@ package scenes
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/characters"
@@ -23,9 +25,9 @@ type CombatState struct {
 	ActiveTokenID *string `json:"activeTokenId"`
 }
 type Token struct {
-	ID         string     `json:"id"`
-	ActorID    *string    `json:"actorId"`
-	OwnerID    *string    `json:"-"`
+	ID      string  `json:"id"`
+	ActorID *string `json:"actorId"`
+	OwnerID *string `json:"-"`
 	// IsOwner is deliberately a boolean instead of exposing OwnerID to browsers.
 	// It lets a player open only the sheet tied to their own token.
 	IsOwner    bool       `json:"isOwner"`
@@ -190,6 +192,37 @@ func (r *Repository) SetCombat(ctx context.Context, sceneID, tokenID, userID str
 		return CombatState{}, err
 	}
 	return state, nil
+}
+
+// RollInitiative assigns a fresh d20 result to every token in a scene. The roll
+// happens on the server so all connected clients receive the same combat order.
+func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string) ([]Token, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return nil, ErrForbidden
+	}
+	rows, err := r.pool.Query(ctx, `select id::text from scene_tokens where scene_id=$1 order by id`, sceneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Token{}
+	for rows.Next() {
+		var item Token
+		if err := rows.Scan(&item.ID); err != nil {
+			return nil, err
+		}
+		roll, err := rand.Int(rand.Reader, big.NewInt(20))
+		if err != nil {
+			return nil, fmt.Errorf("roll initiative: %w", err)
+		}
+		item.Initiative = int(roll.Int64()) + 1
+		if _, err := r.pool.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, item.Initiative, item.ID, sceneID); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 func (r *Repository) CreateToken(ctx context.Context, sceneID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
