@@ -36,6 +36,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/characters", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.CreateForGM))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/compendium", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.CreateEntry))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/import", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.ImportEntries))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.List))
@@ -50,6 +51,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateToken))
 	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromCharacter))
 	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-npc", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromNPC))
+	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-compendium-monster", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromCompendiumMonster))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}/tokens/{tokenID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateToken))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")

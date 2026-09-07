@@ -90,3 +90,9 @@ export const createTokenFromCharacter = (session: Session, sceneId: string, acto
 		method: 'POST',
 		body: JSON.stringify({ actorId })
 	});
+
+export const createTokenFromCompendiumMonster = (session: Session, sceneId: string, entryId: string) =>
+	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/from-compendium-monster`, {
+		method: 'POST',
+		body: JSON.stringify({ entryId })
+	});

@@ -372,8 +372,10 @@
 				/>
 			{:else if workspaceTab === 'compendium'}<CompendiumView
 					campaignId={activeCampaign.id}
+					sceneId={activeScene?.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
+					ontokencreated={() => void reloadActiveScene()}
 				/>
 			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
 					class="campaign-settings"

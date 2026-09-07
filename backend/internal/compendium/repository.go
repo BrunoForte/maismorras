@@ -167,3 +167,50 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 	}
 	return item, nil
 }
+
+// UpsertEntries is an idempotent importer for a single entry type. Re-importing a
+// corrected file updates its private entries instead of creating duplicates.
+func (r *Repository) UpsertEntries(ctx context.Context, campaignID, userID string, items []Entry) (int, error) {
+	role, err := r.role(ctx, campaignID, userID)
+	if err != nil {
+		return 0, err
+	}
+	if role != "gm" {
+		return 0, ErrForbidden
+	}
+	if len(items) == 0 {
+		return 0, nil
+	}
+	var readOnly bool
+	err = r.pool.QueryRow(ctx, `select is_read_only from compendium_sources where id=$1 and campaign_id=$2`, items[0].SourceID, campaignID).Scan(&readOnly)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	if readOnly {
+		return 0, ErrForbidden
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, item := range items {
+		if len(item.Rules) == 0 {
+			item.Rules = json.RawMessage(`{}`)
+		}
+		if len(item.Translations) == 0 {
+			item.Translations = json.RawMessage(`{}`)
+		}
+		_, err = tx.Exec(ctx, `insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9) on conflict (source_id,entry_type,name) do update set summary=excluded.summary,rules=excluded.rules,translations=excluded.translations,is_published=excluded.is_published,updated_at=now()`, campaignID, item.SourceID, item.EntryType, item.Name, item.Summary, item.Rules, item.Translations, item.IsPublished, userID)
+		if err != nil {
+			return 0, fmt.Errorf("upsert compendium entry: %w", err)
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return len(items), nil
+}

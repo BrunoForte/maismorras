@@ -139,6 +139,27 @@ func (h *Handler) CreateTokenFromNPC(w http.ResponseWriter, r *http.Request) err
 	}
 	return write(w, http.StatusCreated, token)
 }
+
+// CreateTokenFromCompendiumMonster places a monster directly from a private or
+// licensed compendium entry. The entry must contain a compact stat block; an
+// index-only reference cannot accidentally become a misleading default token.
+func (h *Handler) CreateTokenFromCompendiumMonster(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		EntryID string `json:"entryId"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.EntryID) == "" {
+		return apperror.BadRequest("INVALID_MONSTER", "Escolha um monstro do compêndio.")
+	}
+	token, err := h.repo.CreateTokenFromCompendiumMonster(r.Context(), r.PathValue("sceneID"), strings.TrimSpace(in.EntryID), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, token)
+}
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(v); err != nil {
 		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")

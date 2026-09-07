@@ -248,6 +248,50 @@ func (r *Repository) CreateTokenFromNPC(ctx context.Context, sceneID, actorID, u
 	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
 	return t, err
 }
+
+// CreateTokenFromCompendiumMonster only accepts a fully-described monster card.
+// This keeps the hundreds of SRD index references searchable without presenting
+// invented statistics when the GM has not yet registered a usable stat block.
+func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, sceneID, entryID, userID string) (Token, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return Token{}, ErrForbidden
+	}
+	var name string
+	var raw []byte
+	err = r.pool.QueryRow(ctx, `select e.name,e.rules from compendium_entries e join scenes s on s.campaign_id=e.campaign_id where e.id=$1 and s.id=$2 and e.entry_type='other' and coalesce(e.rules->>'kind', e.rules->>'catalog')='monster'`, entryID, sceneID).Scan(&name, &raw)
+	if err != nil {
+		return Token{}, fmt.Errorf("load compendium monster: %w", err)
+	}
+	var stats struct {
+		HPMax      int    `json:"hpMax"`
+		ArmorClass int    `json:"armorClass"`
+		Initiative int    `json:"initiative"`
+		Size       int    `json:"size"`
+		Color      int    `json:"color"`
+		ImageURL   string `json:"imageUrl"`
+	}
+	if err := json.Unmarshal(raw, &stats); err != nil {
+		return Token{}, fmt.Errorf("decode compendium monster: %w", err)
+	}
+	if stats.HPMax < 1 || stats.ArmorClass < 0 || stats.ArmorClass > 99 {
+		return Token{}, fmt.Errorf("monster has no usable stat block")
+	}
+	if stats.Size < 1 || stats.Size > 6 {
+		stats.Size = 1
+	}
+	if stats.Color < 0 || stats.Color > 16777215 {
+		stats.Color = 4921830
+	}
+	t := Token{Name: name, Color: stats.Color, X: 70, Y: 70, Size: stats.Size, HPCurrent: stats.HPMax, HPMax: stats.HPMax, ArmorClass: stats.ArmorClass, Initiative: stats.Initiative, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	if stats.ImageURL != "" {
+		t.ImageURL = &stats.ImageURL
+	}
+	statuses, _ := json.Marshal(t.Statuses)
+	visibility, _ := json.Marshal(t.Visibility)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
+	return t, err
+}
 func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {
