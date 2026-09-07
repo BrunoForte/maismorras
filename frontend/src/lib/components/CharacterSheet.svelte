@@ -63,6 +63,7 @@ import {
 			sheet = characterId
 				? (await getCharacterForGM(session, campaignId, characterId)).sheet
 				: (await getMyCharacter(session, campaignId)).sheet;
+			sheet.inventory ??= [];
 		} catch (error) {
 			if (!characterId && (error as Error & { status?: number }).status === 404)
 				isNewCharacter = true;
@@ -560,6 +561,17 @@ import {
 		color: #bbaea1;
 	}
 	@media (max-width: 700px) {
+		.sheet-backdrop { padding: 0; }
+		.sheet {
+			width: 100%;
+			max-height: 100dvh;
+			height: 100dvh;
+			border: 0;
+			border-radius: 0;
+		}
+		header,
+		footer { padding: 0.8rem 1rem; }
+		footer { position: sticky; bottom: 0; background: #1b171a; }
 		.identity,
 		.combat {
 			grid-template-columns: repeat(2, 1fr);

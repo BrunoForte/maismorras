@@ -332,8 +332,17 @@
 	}
 	@media (max-width: 760px) {
 		.borda-mesa {
-			height: calc(100dvh - 180px);
-			min-height: 460px;
+			height: calc(100dvh - 142px);
+			min-height: 420px;
+			border-width: 2px;
+		}
+		.token-inspector {
+			top: auto;
+			right: 0.45rem;
+			bottom: 0.45rem;
+			width: calc(100% - 0.9rem);
+			max-height: 52%;
+			overflow: auto;
 		}
 	}
 	.token-inspector {
@@ -548,5 +557,15 @@
 		color: #ffb2aa;
 		background: rgba(52, 18, 18, 0.94);
 		font-size: 0.76rem;
+	}
+	@media (max-width: 760px) {
+		.token-inspector {
+			top: auto;
+			right: 0.45rem;
+			bottom: 0.45rem;
+			width: calc(100% - 0.9rem);
+			max-height: 52%;
+			overflow: auto;
+		}
 	}
 </style>

@@ -63,17 +63,30 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 	}
 	return response.json() as Promise<T>;
 }
+// Fichas criadas antes do inventário estruturado possuem arrays serializados
+// como null. Normalizar na borda mantém os dados antigos compatíveis.
+function normalizeCharacter(character: Character): Character {
+	character.sheet = {
+		...character.sheet,
+		attacks: character.sheet.attacks ?? [],
+		spells: character.sheet.spells ?? [],
+		inventory: character.sheet.inventory ?? [],
+		savingThrows: character.sheet.savingThrows ?? [],
+		skillProficiencies: character.sheet.skillProficiencies ?? []
+	};
+	return character;
+}
 export const getMyCharacter = (session: Session, campaignId: string) =>
-	request<Character>(session, `/api/v1/campaigns/${campaignId}/character`);
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/character`).then(normalizeCharacter);
 export const saveMyCharacter = (session: Session, campaignId: string, sheet: CharacterSheet) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/character`, {
 		method: 'PUT',
 		body: JSON.stringify(sheet)
-	});
+	}).then(normalizeCharacter);
 export const listParticipants = (session: Session, campaignId: string) =>
 	request<{ participants: Participant[] }>(session, `/api/v1/campaigns/${campaignId}/participants`);
 export const getCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
-	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`);
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`).then(normalizeCharacter);
 export const saveCharacterForGM = (
 	session: Session,
 	campaignId: string,
@@ -83,12 +96,12 @@ export const saveCharacterForGM = (
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, {
 		method: 'PUT',
 		body: JSON.stringify(sheet)
-	});
+	}).then(normalizeCharacter);
 export const createCharacterForGM = (session: Session, campaignId: string, ownerId: string) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters`, {
 		method: 'POST',
 		body: JSON.stringify({ ownerId })
-	});
+	}).then(normalizeCharacter);
 
 export function createEmptySheet(): CharacterSheet {
 	return {

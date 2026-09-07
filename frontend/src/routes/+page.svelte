@@ -1149,5 +1149,18 @@
 		.workspace-tabs button {
 			white-space: nowrap;
 		}
+		.game-header {
+			gap: 0.65rem;
+			padding: 0.85rem 1rem;
+		}
+		.game-header h1 {
+			font-size: 1.45rem;
+		}
+		.scene-control select {
+			max-width: 125px;
+		}
+		.vtt-workspace {
+			padding: 0.45rem 0 0;
+		}
 	}
 </style>
