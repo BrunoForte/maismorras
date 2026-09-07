@@ -6,6 +6,7 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { rollDice } from '$lib/services/eventApi';
 	import { getCombat, setCombat } from '$lib/services/sceneApi';
+	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 
 	let {
@@ -18,15 +19,27 @@
 	let toolsOpen = $state(false);
 	let diceOpen = $state(false);
 	let rolling = $state(false);
+	let activeTokenId = $state<string | null>(null);
+	let sceneSocket: SceneSocket | null = null;
 	let combatants = $derived([...$personagens].sort((a, b) => b.iniciativa - a.iniciativa));
-	onMount(async () => {
+	async function syncCombat() {
 		try {
 			const combat = await getCombat(session, sceneId);
-			$turnoAtualId =
-				combatants.find((token) => token.persistedId === combat.activeTokenId)?.id ?? null;
+			activeTokenId = combat.activeTokenId;
 		} catch (error) {
 			console.error('Falha ao carregar turno:', error);
 		}
+	}
+	$effect(() => {
+		$turnoAtualId = combatants.find((token) => token.persistedId === activeTokenId)?.id ?? null;
+	});
+	onMount(() => {
+		sceneSocket = connectSceneSocket(session, sceneId, () => void syncCombat());
+		void syncCombat();
+		return () => {
+			sceneSocket?.close();
+			sceneSocket = null;
+		};
 	});
 
 	async function roll(expression: string) {
@@ -60,8 +73,20 @@
 		const current = combatants.findIndex((token) => token.id === $turnoAtualId);
 		const next = combatants[(current + 1) % combatants.length];
 		if (!next.persistedId) return;
-		await setCombat(session, sceneId, next.persistedId);
-		$turnoAtualId = next.id;
+		const combat = await setCombat(session, sceneId, next.persistedId);
+		activeTokenId = combat.activeTokenId;
+		sceneSocket?.publishRefresh();
+	}
+	async function endCombat() {
+		const combat = await setCombat(session, sceneId, null);
+		activeTokenId = combat.activeTokenId;
+		sceneSocket?.publishRefresh();
+	}
+	async function selectTurn(tokenId: string | undefined) {
+		if (!isGM || !tokenId) return;
+		const combat = await setCombat(session, sceneId, tokenId);
+		activeTokenId = combat.activeTokenId;
+		sceneSocket?.publishRefresh();
 	}
 	function setInitiative(id: number, value: string) {
 		const initiative = Number(value);
@@ -120,16 +145,16 @@
 	{#if initiativeOpen}<section class="initiative-popover">
 			<header>
 				<div><span>COMBATE</span><strong>Iniciativa</strong></div>
-				{#if isGM}<button onclick={() => void nextTurn()}>Próximo turno →</button>{/if}
+				{#if isGM}<div class="combat-actions"><button onclick={() => void nextTurn()}>{activeTokenId ? 'Próximo turno →' : 'Iniciar combate'}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>Encerrar</button>{/if}</div>{/if}
 			</header>
 			{#if combatants.length === 0}<p>
 					Nenhum token nesta cena.
 				</p>{:else}{#each combatants as token (token.id)}<article
-						class:turn={token.id === $turnoAtualId}
+						class:turn={token.persistedId === activeTokenId}
 					>
 						<i style={`background:#${token.cor.toString(16).padStart(6, '0')}`}></i><strong
 							>{token.nome}</strong
-						>{#if isGM}<input
+						>{#if isGM}<button class="turn-select" onclick={() => void selectTurn(token.persistedId)}>{token.persistedId === activeTokenId ? 'Ativo' : 'Ativar'}</button><input
 								type="number"
 								value={token.iniciativa}
 								onchange={(event) => setInitiative(token.id, event.currentTarget.value)}
@@ -274,6 +299,15 @@
 		display: grid;
 		gap: 0.15rem;
 	}
+	.combat-actions {
+		display: flex;
+		gap: 0.35rem;
+	}
+	.initiative-popover header .end-combat {
+		border-color: #69413d;
+		color: #e7b3aa;
+		background: #2a1b1c;
+	}
 	.initiative-popover header span {
 		color: #b58b52;
 		font-size: 0.58rem;
@@ -291,6 +325,15 @@
 	.initiative-popover article.turn {
 		border-left: 2px solid #e0b86f;
 		background: rgba(115, 71, 34, 0.25);
+	}
+	.turn-select {
+		border: 1px solid #765d3d;
+		border-radius: 5px;
+		padding: 0.25rem 0.35rem;
+		color: #f0d29d;
+		background: #2b211c;
+		font-size: 0.62rem;
+		cursor: pointer;
 	}
 	.initiative-popover i {
 		width: 0.55rem;
