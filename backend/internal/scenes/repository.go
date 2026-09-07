@@ -26,6 +26,9 @@ type Token struct {
 	ID         string     `json:"id"`
 	ActorID    *string    `json:"actorId"`
 	OwnerID    *string    `json:"-"`
+	// IsOwner is deliberately a boolean instead of exposing OwnerID to browsers.
+	// It lets a player open only the sheet tied to their own token.
+	IsOwner    bool       `json:"isOwner"`
 	Name       string     `json:"name"`
 	ImageURL   *string    `json:"imageUrl"`
 	Color      int        `json:"color"`
@@ -154,6 +157,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		if err := json.Unmarshal(visibility, &t.Visibility); err != nil {
 			return Scene{}, nil, err
 		}
+		t.IsOwner = t.OwnerID != nil && *t.OwnerID == userID
 		items = append(items, applyVisibility(t, role, userID))
 	}
 	return s, items, rows.Err()

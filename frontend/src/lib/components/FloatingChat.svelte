@@ -8,6 +8,7 @@
 	let { campaignId, session }: { campaignId: string; session: Session } = $props();
 	let open = $state(true);
 	let sending = $state(false);
+	let expanded = $state<{ author: string; text: string } | null>(null);
 
 	onMount(async () => {
 		try {
@@ -68,7 +69,7 @@
 				{#each $chatMensagens as message (message.id)}
 					<article>
 						<strong>{message.autor}</strong>
-						{#if message.tipo === 'texto'}<span>{message.texto}</span>
+						{#if message.tipo === 'texto'}<span>{message.texto}</span>{#if message.texto.length > 80}<button class="expand" onclick={() => expanded = { author: message.autor, text: message.texto }}>Ler em destaque</button>{/if}
 						{:else if message.detalhesRolagem}<div class="roll">
 								<small>{message.detalhesRolagem.expressao}</small><b
 									>{message.detalhesRolagem.total}</b
@@ -88,6 +89,7 @@
 		</div>
 	{/if}
 </aside>
+{#if expanded}<div class="reading-backdrop" role="presentation" onclick={(event) => event.currentTarget === event.target && (expanded = null)}><section><button aria-label="Fechar" onclick={() => expanded = null}>×</button><small>{expanded.author}</small><p>{expanded.text}</p></section></div>{/if}
 
 <style>
 	.floating-chat {
@@ -222,4 +224,5 @@
 			height: 280px;
 		}
 	}
+	.expand{justify-self:start;border:1px solid #765d3d;border-radius:5px;padding:.25rem .4rem;color:#f0cb85;background:#2b211c;font-size:.65rem;cursor:pointer}.reading-backdrop{position:fixed;z-index:40;inset:0;display:grid;place-items:center;padding:1.25rem;background:#080608c9;backdrop-filter:blur(6px)}.reading-backdrop section{position:relative;width:min(720px,100%);max-height:80vh;overflow:auto;border:1px solid #765d3d;border-radius:12px;padding:clamp(1.5rem,4vw,3rem);color:#f0e6d7;background:#201a1c;box-shadow:0 30px 90px #000}.reading-backdrop button{position:absolute;top:.7rem;right:.8rem;border:0;color:#ddc7ad;background:transparent;font-size:1.4rem}.reading-backdrop small{color:#d8ad67;text-transform:uppercase;letter-spacing:.12em}.reading-backdrop p{white-space:pre-wrap;font:1.05rem/1.75 Georgia,serif}
 </style>

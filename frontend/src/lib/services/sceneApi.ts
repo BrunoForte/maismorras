@@ -13,6 +13,7 @@ export type Scene = {
 export type PersistedToken = {
 	id: string;
 	actorId: string | null;
+	isOwner: boolean;
 	name: string;
 	imageUrl: string | null;
 	color: number;
@@ -72,7 +73,7 @@ export const setCombat = (session: Session, sceneId: string, activeTokenId: stri
 export const createToken = (
 	session: Session,
 	sceneId: string,
-	token: Omit<PersistedToken, 'id' | 'actorId'>
+	token: Omit<PersistedToken, 'id' | 'actorId' | 'isOwner'>
 ) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens`, {
 		method: 'POST',
@@ -82,7 +83,7 @@ export const createToken = (
 export const updateToken = (
 	session: Session,
 	sceneId: string,
-	token: Omit<PersistedToken, 'actorId'>
+	token: Omit<PersistedToken, 'actorId' | 'isOwner'>
 ) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/${token.id}`, {
 		method: 'PATCH',

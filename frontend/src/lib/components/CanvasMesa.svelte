@@ -22,7 +22,7 @@
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 
-	let { scene, session, isGM }: { scene: Scene; session: Session; isGM: boolean } = $props();
+	let { scene, session, isGM, onopensheet = (_actorId: string) => {} }: { scene: Scene; session: Session; isGM: boolean; onopensheet?: (actorId: string) => void } = $props();
 
 	let canvasMesa: HTMLCanvasElement;
 	let container: HTMLDivElement;
@@ -40,6 +40,8 @@
 		return {
 			id: index + 1,
 			persistedId: token.id,
+			actorId: token.actorId ?? undefined,
+			isOwned: token.isOwner,
 			nome: token.name,
 			cor: token.color,
 			x: token.x,
@@ -61,7 +63,7 @@
 		};
 	}
 
-	function asPersisted(personagem: Personagem): Omit<PersistedToken, 'id' | 'actorId'> {
+	function asPersisted(personagem: Personagem): Omit<PersistedToken, 'id' | 'actorId' | 'isOwner'> {
 		return {
 			name: personagem.nome,
 			imageUrl: personagem.fotoUrl ?? null,
@@ -238,6 +240,7 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
+			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
 			<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => rollToken(`1d20${personagemSelecionado.iniciativa >= 0 ? '+' : ''}${personagemSelecionado.iniciativa}`)}>Iniciativa {personagemSelecionado.iniciativa >= 0 ? '+' : ''}{personagemSelecionado.iniciativa}</button></div>
 			<div class="hp-control">
 				<div>
@@ -387,6 +390,7 @@
 			serif;
 	}
 	.token-rolls { display:flex; flex-wrap:wrap; gap:.35rem; padding:.7rem 1rem; border-top:1px solid #493c39; }.token-rolls>span{width:100%;color:#b9aa9d;font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.token-rolls button{border:1px solid #765d3d;border-radius:6px;padding:.36rem .48rem;color:#f0d29d;background:#2b211c;font-size:.68rem;cursor:pointer}
+	.open-sheet{margin:0 1rem .5rem;border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#f0d29d;background:#2b211c;font-size:.7rem;cursor:pointer}
 	.close-button {
 		border: 0;
 		padding: 0 0.2rem;

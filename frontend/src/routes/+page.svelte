@@ -350,7 +350,7 @@
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
 					{#if activeScene}{#key activeScene.id}
-							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} />
+							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} onopensheet={(actorId) => activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()} />
 							<DiceOverlay />
 							<TableTools
 								campaignId={activeCampaign.id}
@@ -405,6 +405,7 @@
 					isGM={activeCampaign.role === 'gm'}
 					characterId={editingCharacter?.id}
 					characterOwnerName={editingCharacter?.ownerName ?? ''}
+					docked={workspaceTab === 'map'}
 					onclose={() => (sheetOpen = false)}
 					onTokenCreated={() => void reloadActiveScene()}
 				/>{/if}

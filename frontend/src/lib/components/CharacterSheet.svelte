@@ -24,6 +24,7 @@ import {
 		isGM,
 		characterId = null,
 		characterOwnerName = '',
+		docked = false,
 		onclose,
 		onTokenCreated
 	}: {
@@ -33,6 +34,7 @@ import {
 		isGM: boolean;
 		characterId?: string | null;
 		characterOwnerName?: string;
+		docked?: boolean;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -52,6 +54,7 @@ import {
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
+	let minimized = $state(false);
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -336,26 +339,27 @@ import {
 
 <div
 	class="sheet-backdrop"
+	class:docked
 	role="presentation"
 	onclick={(event) => {
 		if (event.currentTarget === event.target) onclose();
 	}}
 >
-	<section class="sheet" aria-label="Ficha de personagem D&D 2024">
+	<section class="sheet" class:minimized aria-label="Ficha de personagem D&D 2024">
 		<header>
 			<div>
 				<p>FICHA D&D 2024 · MVP</p>
 				<h2>{sheet.name || 'Nova ficha'}</h2>
 				{#if characterOwnerName}<small>Personagem de {characterOwnerName}</small>{/if}
 			</div>
-			<button onclick={onclose} aria-label="Fechar ficha">×</button>
+			<div class="sheet-actions">{#if docked}<button onclick={() => minimized = !minimized} aria-label="Minimizar ficha">{minimized ? '▸' : '▾'}</button>{/if}<button onclick={onclose} aria-label="Fechar ficha">×</button></div>
 		</header>
-		{#if !loading}<nav class="sheet-tabs" aria-label="Seções da ficha">
+		{#if !loading && !minimized}<nav class="sheet-tabs" aria-label="Seções da ficha">
 			{#each [['profile', 'Perfil'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
 				<button class:active={activeTab === tab} onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button>
 			{/each}
 		</nav>{/if}
-		{#if loading}<p class="status">Carregando ficha…</p>{:else}
+		{#if loading}<p class="status">Carregando ficha…</p>{:else if !minimized}
 			<div class="sheet-body">
 				{#if isNewCharacter}
 					<aside class="onboarding">
@@ -508,6 +512,9 @@ import {
 		background: rgba(8, 6, 8, 0.72);
 		backdrop-filter: blur(5px);
 	}
+	.sheet-backdrop.docked { z-index: 9; display:block; padding:0; background:transparent; backdrop-filter:none; pointer-events:none; }
+	.sheet-backdrop.docked .sheet { position:fixed; top:5.8rem; left:1rem; width:min(390px,calc(100vw - 2rem)); max-height:calc(100vh - 7rem); pointer-events:auto; box-shadow:0 18px 48px #000a; }
+	.sheet.minimized { width:auto!important; min-width:190px; max-height:none!important; }.sheet-actions{display:flex;gap:.45rem}.sheet-actions button{border:0;color:#cbb9a7;background:transparent;font-size:1.35rem}
 	.sheet {
 		width: min(100%, 940px);
 		max-height: min(92vh, 900px);
