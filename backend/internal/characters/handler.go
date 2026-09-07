@@ -102,6 +102,14 @@ func validate(sheet Sheet) error {
 			return apperror.BadRequest("INVALID_SHEET", "Atributos devem estar entre 1 e 30.")
 		}
 	}
+	if len(sheet.Inventory) > 200 {
+		return apperror.BadRequest("INVALID_SHEET", "A ficha pode ter no máximo 200 itens.")
+	}
+	for _, item := range sheet.Inventory {
+		if strings.TrimSpace(item.Name) == "" || len([]rune(item.Name)) > 120 || item.Quantity < 0 || item.Quantity > 9999 {
+			return apperror.BadRequest("INVALID_SHEET", "Confira nome e quantidade dos itens.")
+		}
+	}
 	return nil
 }
 

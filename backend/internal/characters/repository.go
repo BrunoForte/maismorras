@@ -19,27 +19,28 @@ var (
 // Features, attacks and spells are user-authored notes, allowing the sheet to stay
 // compact while still retaining the practical information used at the table.
 type Sheet struct {
-	Name               string        `json:"name"`
-	Class              string        `json:"class"`
-	Level              int           `json:"level"`
-	Species            string        `json:"species"`
-	Background         string        `json:"background"`
-	Alignment          string        `json:"alignment"`
-	AbilityScores      AbilityScores `json:"abilityScores"`
-	ProficiencyBonus   int           `json:"proficiencyBonus"`
-	SavingThrows       []string      `json:"savingThrows"`
-	SkillProficiencies []string      `json:"skillProficiencies"`
-	ArmorClass         int           `json:"armorClass"`
-	Speed              int           `json:"speed"`
-	HitPointsCurrent   int           `json:"hitPointsCurrent"`
-	HitPointsMax       int           `json:"hitPointsMax"`
-	TemporaryHP        int           `json:"temporaryHP"`
-	HitDice            string        `json:"hitDice"`
-	PassivePerception  int           `json:"passivePerception"`
-	Attacks            []Attack      `json:"attacks"`
-	Spells             []Spell       `json:"spells"`
-	Features           string        `json:"features"`
-	Equipment          string        `json:"equipment"`
+	Name               string          `json:"name"`
+	Class              string          `json:"class"`
+	Level              int             `json:"level"`
+	Species            string          `json:"species"`
+	Background         string          `json:"background"`
+	Alignment          string          `json:"alignment"`
+	AbilityScores      AbilityScores   `json:"abilityScores"`
+	ProficiencyBonus   int             `json:"proficiencyBonus"`
+	SavingThrows       []string        `json:"savingThrows"`
+	SkillProficiencies []string        `json:"skillProficiencies"`
+	ArmorClass         int             `json:"armorClass"`
+	Speed              int             `json:"speed"`
+	HitPointsCurrent   int             `json:"hitPointsCurrent"`
+	HitPointsMax       int             `json:"hitPointsMax"`
+	TemporaryHP        int             `json:"temporaryHP"`
+	HitDice            string          `json:"hitDice"`
+	PassivePerception  int             `json:"passivePerception"`
+	Attacks            []Attack        `json:"attacks"`
+	Spells             []Spell         `json:"spells"`
+	Features           string          `json:"features"`
+	Equipment          string          `json:"equipment"`
+	Inventory          []InventoryItem `json:"inventory"`
 }
 
 type AbilityScores struct {
@@ -60,6 +61,17 @@ type Spell struct {
 	Name  string `json:"name"`
 	Level int    `json:"level"`
 	Notes string `json:"notes"`
+}
+
+// InventoryItem keeps a compact snapshot of the mechanic selected from the
+// compendium. The entry ID preserves its source while the snapshot keeps old
+// characters readable if a private compendium entry is later edited.
+type InventoryItem struct {
+	EntryID  string          `json:"entryId"`
+	Name     string          `json:"name"`
+	Quantity int             `json:"quantity"`
+	Equipped bool            `json:"equipped"`
+	Rules    json.RawMessage `json:"rules"`
 }
 type Character struct {
 	ID         string `json:"id"`
@@ -191,7 +203,7 @@ func (r *Repository) CreateForGM(ctx context.Context, campaignID, ownerID, userI
 	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, ownerID).Scan(&member); err != nil || !member {
 		return Character{}, ErrForbidden
 	}
-	sheet := Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, SavingThrows: []string{}, SkillProficiencies: []string{}}
+	sheet := Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}}
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err

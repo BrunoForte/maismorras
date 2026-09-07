@@ -10,6 +10,7 @@ export type AbilityScores = {
 };
 export type Attack = { name: string; attackBonus: number; damage: string; notes: string };
 export type Spell = { name: string; level: number; notes: string };
+export type InventoryItem = { entryId: string; name: string; quantity: number; equipped: boolean; rules: Record<string, unknown> };
 export type CharacterSheet = {
 	name: string;
 	class: string;
@@ -32,6 +33,7 @@ export type CharacterSheet = {
 	spells: Spell[];
 	features: string;
 	equipment: string;
+	inventory: InventoryItem[];
 };
 export type Character = { id: string; campaignId: string; ownerId: string; sheet: CharacterSheet };
 export type Participant = {
@@ -117,6 +119,7 @@ export function createEmptySheet(): CharacterSheet {
 		attacks: [],
 		spells: [],
 		features: '',
-		equipment: ''
+		equipment: '',
+		inventory: []
 	};
 }

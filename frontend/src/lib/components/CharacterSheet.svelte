@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import {
+import {
 		createEmptySheet,
 		getCharacterForGM,
 		getMyCharacter,
 		saveCharacterForGM,
 		saveMyCharacter,
-		type CharacterSheet as Sheet
+		type CharacterSheet as Sheet,
+		type InventoryItem
 	} from '$lib/services/characterApi';
 	import { createTokenFromCharacter } from '$lib/services/sceneApi';
 	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
@@ -38,6 +39,9 @@
 	let isNewCharacter = $state(false);
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let rulesLocale = $state<'pt-BR' | 'en'>('pt-BR');
+	let selectedItemId = $state('');
+	let selectedSpellId = $state('');
+	let spellCircle = $state('all');
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -71,6 +75,44 @@
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	const optionLabel = (entry: CompendiumEntry) =>
 		rulesLocale === 'pt-BR' ? (entry.translations?.['pt-BR'] || entry.name) : entry.name;
+	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
+	const itemEntries = () => compendiumEntries.filter((entry) => entry.entryType === 'item');
+	const itemLabel = (item: InventoryItem) => item.name;
+	const modifierText = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
+	function canonicalClass(value: string) {
+		const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+		return ({ barbaro: 'barbarian', bardo: 'bard', clerigo: 'cleric', druida: 'druid', guerreiro: 'fighter', monge: 'monk', paladino: 'paladin', patrulheiro: 'ranger', ladino: 'rogue', feiticeiro: 'sorcerer', bruxo: 'warlock', mago: 'wizard' } as Record<string, string>)[normalized] ?? normalized;
+	}
+	const spellEntries = () => compendiumEntries.filter((entry) => {
+		if (entry.entryType !== 'spell') return false;
+		const rules = entryRules(entry);
+		const level = Number(rules.level ?? 0);
+		const classes = Array.isArray(rules.classes) ? rules.classes.map(String) : [];
+		return (spellCircle === 'all' || level === Number(spellCircle)) && (!canonicalClass(sheet.class) || classes.length === 0 || classes.includes(canonicalClass(sheet.class)));
+	});
+	function addInventoryItem() {
+		const entry = itemEntries().find((item) => item.id === selectedItemId);
+		if (!entry) return;
+		sheet.inventory = [...sheet.inventory, { entryId: entry.id, name: optionLabel(entry), quantity: 1, equipped: false, rules: entry.rules }];
+		selectedItemId = '';
+	}
+	function removeInventoryItem(index: number) { sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index); }
+	function addWeaponAttack(item: InventoryItem) {
+		const rules = item.rules;
+		if (rules.category !== 'weapon') return;
+		const ability = rules.attackAbility === 'dexterity' ? sheet.abilityScores.dexterity : sheet.abilityScores.strength;
+		const abilityModifier = modifier(ability);
+		const damage = `${String(rules.damage ?? '')}${abilityModifier ? ` ${modifierText(abilityModifier)}` : ''} ${String(rules.damageType ?? '')}`.trim();
+		sheet.attacks = [...sheet.attacks, { name: item.name, attackBonus: abilityModifier + sheet.proficiencyBonus, damage, notes: `Item do compêndio · ${Array.isArray(rules.properties) ? rules.properties.join(', ') : ''}` }];
+	}
+	function addCompendiumSpell() {
+		const entry = spellEntries().find((spell) => spell.id === selectedSpellId);
+		if (!entry || sheet.spells.some((spell) => spell.name === optionLabel(entry))) return;
+		const rules = entryRules(entry);
+		sheet.spells = [...sheet.spells, { name: optionLabel(entry), level: Number(rules.level ?? 0), notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}` }];
+		selectedSpellId = '';
+	}
+	const equippedDefense = () => sheet.inventory.filter((item) => item.equipped).reduce((total, item) => total + Number(item.rules.armorClassBonus ?? 0), 0);
 	function updateScore(key: keyof Sheet['abilityScores'], value: string) {
 		sheet.abilityScores[key] = Math.max(1, Math.min(30, Number(value) || 1));
 	}
@@ -210,6 +252,11 @@
 						/></label
 					>
 				</section>
+				<section class="inventory-section">
+					<div class="section-title"><h3>Equipamento</h3><span class="defense-hint">Defesa equipada: +{equippedDefense()} CA</span></div>
+					<div class="compendium-picker"><select bind:value={selectedItemId}><option value="">Adicionar item do compêndio…</option>{#each itemEntries() as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)}</option>{/each}</select><button onclick={addInventoryItem} disabled={!selectedItemId}>Adicionar</button></div>
+					{#if sheet.inventory.length}<div class="inventory-list">{#each sheet.inventory as item, index}<div class="inventory-item"><label><input type="checkbox" bind:checked={item.equipped}/> equipado</label><strong>{itemLabel(item)}</strong><input type="number" min="0" max="9999" bind:value={item.quantity} aria-label={`Quantidade de ${item.name}`}/>{#if item.rules.category === 'weapon'}<button onclick={() => addWeaponAttack(item)}>+ ataque</button>{/if}<button onclick={() => removeInventoryItem(index)}>×</button></div>{/each}</div>{:else}<p class="empty-inline">Use a lista para incluir armas, escudos e itens rastreáveis.</p>{/if}
+				</section>
 				<section>
 					<div class="section-title">
 						<h3>Ataques</h3>
@@ -230,6 +277,7 @@
 						<h3>Magias</h3>
 						<button onclick={addSpell}>+ Magia</button>
 					</div>
+					<div class="compendium-picker spell-picker"><select bind:value={spellCircle}><option value="all">Todos os círculos</option><option value="0">Truques</option>{#each [1,2,3,4,5,6,7,8,9] as circle}<option value={String(circle)}>Círculo {circle}</option>{/each}</select><select bind:value={selectedSpellId}><option value="">{sheet.class ? 'Magia disponível para a classe…' : 'Defina a classe para filtrar magias…'}</option>{#each spellEntries() as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)} · círculo {Number(entryRules(entry).level ?? 0)}</option>{/each}</select><button onclick={addCompendiumSpell} disabled={!selectedSpellId}>Adicionar</button></div>
 					{#each sheet.spells as spell, index}<div class="line-item">
 							<input bind:value={spell.name} placeholder="Nome" /><input
 								type="number"
@@ -412,6 +460,61 @@
 		background: #2a211e;
 		font-size: 0.72rem;
 	}
+	.defense-hint {
+		color: #b9d8ad;
+		font-size: 0.72rem;
+	}
+	.compendium-picker {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.45rem;
+		margin-bottom: 0.55rem;
+	}
+	.spell-picker {
+		grid-template-columns: 130px minmax(0, 1fr) auto;
+	}
+	.compendium-picker select,
+	.inventory-item input {
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.5rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.compendium-picker button,
+	.inventory-item button {
+		border: 1px solid #725a3b;
+		border-radius: 6px;
+		padding: 0.35rem 0.55rem;
+		color: #e8c786;
+		background: #2a211e;
+		font-size: 0.72rem;
+	}
+	.inventory-list {
+		display: grid;
+		gap: 0.4rem;
+	}
+	.inventory-item {
+		display: grid;
+		grid-template-columns: auto minmax(90px, 1fr) 60px auto auto;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.45rem;
+		border: 1px solid #453a38;
+		border-radius: 6px;
+		background: #181416;
+		font-size: 0.78rem;
+	}
+	.inventory-item label {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.62rem;
+	}
+	.inventory-item label input { width: auto; }
+	.empty-inline { margin: 0; color: #96897e; font-size: 0.76rem; }
 	.line-item {
 		display: grid;
 		grid-template-columns: 1fr 80px 1fr auto;
@@ -470,5 +573,7 @@
 		.notes {
 			grid-template-columns: 1fr;
 		}
+		.spell-picker,
+		.inventory-item { grid-template-columns: 1fr; }
 	}
 </style>
