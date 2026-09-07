@@ -35,6 +35,8 @@
 	let npcsOpen = $state(false);
 	let availableScenes = $state<Scene[]>([]);
 	let creatingScene = $state(false);
+	let sceneCreatorOpen = $state(false);
+	let sceneDraft = $state('');
 
 	onMount(() => {
 		if (!supabase) {
@@ -198,13 +200,15 @@
 	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
-		const name = window.prompt('Nome da nova cena:', `Cena ${availableScenes.length + 1}`)?.trim();
+		const name = sceneDraft.trim();
 		if (!name) return;
 		creatingScene = true;
 		try {
 			const scene = await createScene(session, activeCampaign.id, name);
 			availableScenes = [...availableScenes, scene];
 			selectScene(scene.id);
+			sceneDraft = '';
+			sceneCreatorOpen = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Não foi possível criar a cena.';
 		} finally {
@@ -298,11 +302,24 @@
 								>{/each}</select
 						>{#if activeCampaign.role === 'gm'}<button
 								class="scene-add"
-								onclick={addScene}
+								onclick={() => (sceneCreatorOpen = !sceneCreatorOpen)}
 								disabled={creatingScene}
 								title="Criar cena">+</button
 							>{/if}
 					</div>
+					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
+							class="scene-creator"
+							onsubmit={(event) => {
+								event.preventDefault();
+								void addScene();
+							}}
+						>
+							<input
+								bind:value={sceneDraft}
+								maxlength="120"
+								placeholder="Nome da nova cena"
+							/><button disabled={creatingScene}>{creatingScene ? 'Criando…' : 'Criar'}</button>
+						</form>{/if}
 					<span class="role-badge {activeCampaign.role}"
 						>{activeCampaign.role === 'gm' ? '✦ Narrador' : '◈ Jogador'}</span
 					>
@@ -344,6 +361,8 @@
 					onopencharacter={openCharacter}
 				/>
 			{:else if workspaceTab === 'library'}<LibraryView
+					campaignId={activeCampaign.id}
+					{session}
 					isGM={activeCampaign.role === 'gm'}
 					onnotes={() => (notesOpen = true)}
 				/>
@@ -1035,6 +1054,29 @@
 	}
 	.scene-add:hover {
 		background: #4a3223;
+	}
+	.scene-creator {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.scene-creator input {
+		width: 150px;
+		border: 1px solid #5c5045;
+		border-radius: 7px;
+		padding: 0.48rem 0.55rem;
+		color: #eee4d6;
+		background: #181216;
+		font-size: 0.75rem;
+	}
+	.scene-creator button {
+		border: 1px solid #806039;
+		border-radius: 7px;
+		padding: 0.48rem 0.6rem;
+		color: #25190f;
+		background: #e0b86f;
+		font-size: 0.72rem;
+		font-weight: 800;
 	}
 	.secondary-button {
 		border: 1px solid #5c5045;

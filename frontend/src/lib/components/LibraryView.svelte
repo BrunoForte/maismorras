@@ -1,5 +1,74 @@
 <script lang="ts">
-	let { isGM, onnotes }: { isGM: boolean; onnotes: () => void } = $props();
+	import { onMount } from 'svelte';
+	import type { Session } from '@supabase/supabase-js';
+	import { supabase } from '$lib/services/supabase';
+	let {
+		campaignId,
+		isGM,
+		onnotes
+	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
+	type Asset = { name: string; url: string; type: 'image' | 'audio' };
+	let assets = $state<Asset[]>([]);
+	let uploading = $state(false);
+	let message = $state('');
+	let preview = $state<Asset | null>(null);
+	const folder = () => `campaigns/${campaignId}/media`;
+	onMount(() => void loadAssets());
+	async function loadAssets() {
+		if (!supabase) return;
+		const client = supabase;
+		const { data, error } = await client.storage
+			.from('campaign-assets')
+			.list(folder(), { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+		if (error) {
+			message = error.message;
+			return;
+		}
+		const listed = await Promise.all(
+			(data ?? []).map(async (file) => {
+				const signed = await client.storage
+					.from('campaign-assets')
+					.createSignedUrl(`${folder()}/${file.name}`, 3600);
+				return signed.data?.signedUrl
+					? {
+							name: file.name.replace(/^[a-f0-9-]+-/, ''),
+							url: signed.data.signedUrl,
+							type: file.metadata?.mimetype?.startsWith('audio/')
+								? ('audio' as const)
+								: ('image' as const)
+						}
+					: null;
+			})
+		);
+		assets = listed.filter((asset): asset is Asset => asset !== null);
+	}
+	async function upload(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file || !supabase) return;
+		if (
+			(!file.type.startsWith('image/') && !file.type.startsWith('audio/')) ||
+			file.size > 20 * 1024 * 1024
+		) {
+			message = 'Envie imagem ou áudio de até 20 MB.';
+			return;
+		}
+		uploading = true;
+		message = '';
+		try {
+			const name = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+			const { error } = await supabase.storage
+				.from('campaign-assets')
+				.upload(`${folder()}/${crypto.randomUUID()}-${name}`, file, { contentType: file.type });
+			if (error) throw error;
+			await loadAssets();
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível enviar a mídia.';
+		} finally {
+			uploading = false;
+			input.value = '';
+		}
+	}
 </script>
 
 <section class="library-view" aria-label="Biblioteca da campanha">
@@ -7,35 +76,48 @@
 		<div>
 			<p>BIBLIOTECA DA CAMPANHA</p>
 			<h2>Handouts e mídias</h2>
-			<span>Imagens, mapas, documentos e trilhas que pertencem a esta mesa.</span>
+			<span>Imagens, mapas, documentos e trilhas desta mesa.</span>
 		</div>
-		{#if isGM}<div class="library-actions">
-				<button class="primary" disabled title="O armazenamento será conectado na próxima entrega"
-					>Adicionar mídia</button
+		{#if isGM}<div class="actions">
+				<label
+					>{uploading ? 'Enviando…' : 'Adicionar mídia'}<input
+						type="file"
+						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav"
+						onchange={upload}
+						disabled={uploading}
+					/></label
 				><button onclick={onnotes}>Notas da campanha</button>
 			</div>{/if}
 	</header>
-	<div class="library-grid">
-		<article>
-			<span>▧</span><strong>Handouts</strong>
-			<p>Imagens e documentos revelados pelo narrador durante a sessão.</p>
-		</article>
-		<article>
-			<span>♫</span><strong>Trilhas</strong>
-			<p>Músicas ambiente com controle individual de volume para cada jogador.</p>
-		</article>
-		<article>
-			<span>◈</span><strong>Acervo privado</strong>
-			<p>Arquivos protegidos por campanha; apenas conteúdos liberados serão exibidos.</p>
-		</article>
-	</div>
-	<aside>
-		<strong>Em breve: apresentação de handouts.</strong><span
-			>O narrador enviará uma imagem e poderá revelá-la para todos em uma janela de foco, com o mapa
-			escurecido ao fundo. A base desta aba já é exclusiva para esse fluxo.</span
-		>
-	</aside>
+	{#if message}<p class="message">{message}</p>{/if}
+	{#if assets.length}<section class="asset-grid">
+			{#each assets as asset (asset.url)}<article>
+					{#if asset.type === 'image'}<button class="asset-image" onclick={() => (preview = asset)}
+							><img src={asset.url} alt={asset.name} /></button
+						>{:else}<span class="audio-mark">♫</span><audio controls src={asset.url}
+						></audio>{/if}<small>{asset.name}</small>
+				</article>{/each}
+		</section>{:else}<div class="empty">
+			<strong>{isGM ? 'Adicione a primeira mídia.' : 'A biblioteca ainda está vazia.'}</strong><span
+				>Handouts e trilhas desta campanha aparecerão aqui.</span
+			>
+		</div>{/if}
 </section>
+{#if preview}<div
+		class="preview-backdrop"
+		role="presentation"
+		onclick={(event) => {
+			if (event.currentTarget === event.target) preview = null;
+		}}
+	>
+		<section>
+			<button onclick={() => (preview = null)} aria-label="Fechar imagem">×</button><img
+				src={preview.url}
+				alt={preview.name}
+			/>
+			<p>{preview.name}</p>
+		</section>
+	</div>{/if}
 
 <style>
 	.library-view {
@@ -45,11 +127,10 @@
 	}
 	header {
 		display: flex;
-		align-items: start;
 		justify-content: space-between;
 		gap: 1rem;
-		margin-bottom: 2rem;
-		padding-bottom: 1.4rem;
+		margin-bottom: 1.5rem;
+		padding-bottom: 1.2rem;
 		border-bottom: 1px solid #3b3030;
 	}
 	p {
@@ -72,11 +153,12 @@
 		color: #a99c91;
 		font-size: 0.85rem;
 	}
-	.library-actions {
+	.actions {
 		display: flex;
 		gap: 0.55rem;
 	}
-	.library-actions button {
+	.actions label,
+	.actions button {
 		border: 1px solid #765d3d;
 		border-radius: 7px;
 		padding: 0.52rem 0.65rem;
@@ -87,64 +169,119 @@
 		cursor: pointer;
 		white-space: nowrap;
 	}
-	.library-actions button:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-	.library-actions .primary {
+	.actions label {
 		border: 0;
 		color: #26190e;
 		background: #e0b86f;
 	}
-	.library-grid {
+	.actions input {
+		display: none;
+	}
+	.message {
+		margin: 0 0 1rem;
+		color: #f0cb85;
+		font-size: 0.8rem;
+	}
+	.empty {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		gap: 0.35rem;
+		padding: 2rem;
+		border: 1px dashed #5a493b;
+		border-radius: 10px;
+		color: #a99c91;
+		text-align: center;
+	}
+	.empty strong {
+		color: #e9dcc9;
+		font:
+			600 1.1rem Georgia,
+			serif;
+	}
+	.asset-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: 0.8rem;
 	}
-	.library-grid article {
+	.asset-grid article {
 		display: grid;
-		gap: 0.55rem;
-		min-height: 180px;
-		padding: 1rem;
+		gap: 0.45rem;
+		min-width: 0;
+		padding: 0.55rem;
 		border: 1px solid #493c39;
-		border-radius: 11px;
-		background: linear-gradient(145deg, #251e20, #1b1719);
+		border-radius: 9px;
+		background: #211b1e;
 	}
-	.library-grid article span {
-		color: #d8ad67;
+	.asset-image {
+		height: 125px;
+		overflow: hidden;
+		border: 0;
+		border-radius: 6px;
+		padding: 0;
+		background: #120f11;
+		cursor: zoom-in;
+	}
+	.asset-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.asset-grid small {
+		overflow: hidden;
+		color: #c8b8a8;
+		font-size: 0.7rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.audio-mark {
+		color: #e0b86f;
 		font-size: 1.5rem;
 	}
-	.library-grid strong {
-		font:
-			600 1.08rem Georgia,
-			serif;
+	.asset-grid audio {
+		width: 100%;
+		height: 30px;
 	}
-	.library-grid p,
-	aside span {
-		color: #a99c91;
-		font-size: 0.8rem;
-		line-height: 1.55;
-	}
-	aside {
+	.preview-backdrop {
+		position: fixed;
+		z-index: 30;
+		inset: 0;
 		display: grid;
-		gap: 0.3rem;
-		margin-top: 1rem;
-		padding: 1rem;
-		border-left: 2px solid #b58445;
-		background: rgba(81, 49, 27, 0.2);
+		place-items: center;
+		padding: 1.5rem;
+		background: rgba(7, 5, 7, 0.82);
+		backdrop-filter: blur(7px);
 	}
-	aside strong {
-		color: #f0cb85;
-		font:
-			600 1rem Georgia,
-			serif;
+	.preview-backdrop section {
+		position: relative;
+		max-width: min(100%, 1100px);
+		max-height: 90vh;
+	}
+	.preview-backdrop img {
+		display: block;
+		max-width: 100%;
+		max-height: 82vh;
+		object-fit: contain;
+	}
+	.preview-backdrop button {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		width: 2rem;
+		height: 2rem;
+		border: 0;
+		border-radius: 50%;
+		color: white;
+		background: rgba(0, 0, 0, 0.6);
+		font-size: 1.3rem;
+		cursor: pointer;
+	}
+	.preview-backdrop p {
+		margin: 0.55rem 0 0;
+		color: #e9dcc9;
+		text-align: center;
 	}
 	@media (max-width: 650px) {
 		header {
 			flex-direction: column;
-		}
-		.library-grid {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>

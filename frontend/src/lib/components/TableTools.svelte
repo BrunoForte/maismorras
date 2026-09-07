@@ -6,6 +6,7 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { rollDice } from '$lib/services/eventApi';
 	import { getCombat, setCombat } from '$lib/services/sceneApi';
+	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 
 	let {
 		campaignId,
@@ -15,6 +16,7 @@
 	}: { campaignId: string; sceneId: string; session: Session; isGM: boolean } = $props();
 	let initiativeOpen = $state(false);
 	let toolsOpen = $state(false);
+	let diceOpen = $state(false);
 	let rolling = $state(false);
 	let combatants = $derived([...$personagens].sort((a, b) => b.iniciativa - a.iniciativa));
 	onMount(async () => {
@@ -68,25 +70,42 @@
 			token.id === id ? { ...token, iniciativa: initiative } : token
 		);
 	}
+	function setRulerMode(mode: RulerMode) {
+		rulerMode.set(mode);
+	}
 </script>
 
 <div class="table-tools" aria-label="Ferramentas da mesa">
 	<div class="tool-group">
-		<button
-			class:active={toolsOpen}
-			onclick={() => (toolsOpen = !toolsOpen)}
-			title="Régua e instruções">⌁</button
+		<button class:active={toolsOpen} onclick={() => (toolsOpen = !toolsOpen)} title="Régua de área"
+			>📏</button
 		><button
 			class:active={initiativeOpen}
 			onclick={() => (initiativeOpen = !initiativeOpen)}
-			title="Iniciativa">≣</button
-		><button onclick={() => void roll('1d20')} disabled={rolling} title="Rolar d20">◇</button>
+			title="Iniciativa">⚔️</button
+		><button
+			class:active={diceOpen}
+			onclick={() => (diceOpen = !diceOpen)}
+			disabled={rolling}
+			title="Dados">🎲</button
+		>
 	</div>
 	{#if toolsOpen}<section class="tool-popover">
-			<strong>Régua</strong><span
-				>Segure <kbd>Shift</kbd> e arraste sobre o mapa para medir. Ao mover um token, o mesmo gesto mede
-				o deslocamento.</span
+			<strong>Régua de magia</strong><span
+				>Escolha a área e segure <kbd>Shift</kbd> enquanto arrasta no mapa.</span
 			>
+			<div class="mode-buttons">
+				<button class:active={$rulerMode === 'line'} onclick={() => setRulerMode('line')}
+					>Linha</button
+				><button class:active={$rulerMode === 'circle'} onclick={() => setRulerMode('circle')}
+					>Círculo</button
+				><button class:active={$rulerMode === 'cone'} onclick={() => setRulerMode('cone')}
+					>Leque</button
+				>
+			</div>
+		</section>{/if}
+	{#if diceOpen}<section class="dice-popover">
+			<strong>Dados</strong>
 			<div class="quick-dice">
 				<button onclick={() => void roll('1d4')}>d4</button><button onclick={() => void roll('1d6')}
 					>d6</button
@@ -96,6 +115,7 @@
 					onclick={() => void roll('1d20')}>d20</button
 				>
 			</div>
+			<small>Use o chat para expressões como <code>/r 2d6+3</code>.</small>
 		</section>{/if}
 	{#if initiativeOpen}<section class="initiative-popover">
 			<header>
@@ -148,6 +168,7 @@
 		border-color: #e0b86f;
 	}
 	.tool-popover,
+	.dice-popover,
 	.initiative-popover {
 		position: absolute;
 		top: 0;
@@ -164,6 +185,39 @@
 	.tool-popover {
 		display: grid;
 		gap: 0.45rem;
+	}
+	.dice-popover {
+		top: 5.5rem;
+		display: grid;
+		gap: 0.55rem;
+	}
+	.dice-popover strong {
+		color: #f0cb85;
+		font:
+			600 1rem Georgia,
+			serif;
+	}
+	.dice-popover small {
+		color: #bcae9f;
+		font-size: 0.7rem;
+	}
+	.mode-buttons {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.35rem;
+	}
+	.mode-buttons button {
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.4rem;
+		color: #e8d2aa;
+		background: #2b211e;
+		cursor: pointer;
+		font-size: 0.7rem;
+	}
+	.mode-buttons button.active {
+		color: #281a0f;
+		background: #e0b86f;
 	}
 	.tool-popover strong,
 	.initiative-popover strong {

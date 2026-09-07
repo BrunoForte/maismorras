@@ -82,6 +82,11 @@ export const saveCharacterForGM = (
 		method: 'PUT',
 		body: JSON.stringify(sheet)
 	});
+export const createCharacterForGM = (session: Session, campaignId: string, ownerId: string) =>
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters`, {
+		method: 'POST',
+		body: JSON.stringify({ ownerId })
+	});
 
 export function createEmptySheet(): CharacterSheet {
 	return {

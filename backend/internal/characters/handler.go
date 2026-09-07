@@ -74,6 +74,25 @@ func (h *Handler) SaveForGM(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusOK, item)
 }
 
+func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		OwnerID string `json:"ownerId"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	in.OwnerID = strings.TrimSpace(in.OwnerID)
+	if in.OwnerID == "" {
+		return apperror.BadRequest("INVALID_OWNER", "Escolha um participante válido.")
+	}
+	item, err := h.repo.CreateForGM(r.Context(), r.PathValue("campaignID"), in.OwnerID, p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+
 func validate(sheet Sheet) error {
 	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Speed < 0 || sheet.Speed > 300 {
 		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV, CA e deslocamento da ficha.")

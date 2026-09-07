@@ -1,4 +1,6 @@
 import * as PIXI from 'pixi.js';
+import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
+import type { Unsubscriber } from 'svelte/store';
 
 export class RulerManager {
 	private graphics: PIXI.Graphics;
@@ -6,6 +8,8 @@ export class RulerManager {
 	private medindo = false;
 	private startX = 0;
 	private startY = 0;
+	private mode: RulerMode = 'line';
+	private unsubscribe: Unsubscriber;
 
 	constructor(
 		private mundo: PIXI.Container,
@@ -32,6 +36,7 @@ export class RulerManager {
 		// Adicionamos no "mundo" para que a régua dê zoom junto com o mapa
 		this.mundo.addChild(this.graphics);
 		this.mundo.addChild(this.texto);
+		this.unsubscribe = rulerMode.subscribe((mode) => (this.mode = mode));
 
 		this.configurarEventos();
 	}
@@ -63,30 +68,46 @@ export class RulerManager {
 
 			const pos = this.mundo.toLocal(e.global);
 
-			// Desenha a linha visual (dourada e meio transparente)
+			// Linha, círculo e cone compartilham o mesmo ponto inicial, grid e zoom.
 			this.graphics.clear();
-			this.graphics.moveTo(this.startX, this.startY);
-			this.graphics.lineTo(pos.x, pos.y);
-			this.graphics.stroke({ width: 4, color: 0xffaa00, alpha: 0.8 });
-
-			// Desenha dois círculos nas pontas para ficar com cara de VTT profissional
-			this.graphics.circle(this.startX, this.startY, 5).fill(0xffaa00);
-			this.graphics.circle(pos.x, pos.y, 5).fill(0xffaa00);
-
-			// CÁLCULO DE D&D (Euclidiano simples para o grid)
 			const dx = pos.x - this.startX;
 			const dy = pos.y - this.startY;
 			const distanciaPixels = Math.sqrt(dx * dx + dy * dy);
-
-			// Se 1 quadrado (tamanhoGrid) = 1.5 metros:
 			const quadrados = distanciaPixels / this.tamanhoGrid;
-			// Arredondamos para ficar em múltiplos cravados de 1.5m (como manda o D&D)
 			const metros = Math.floor(quadrados) * 1.5;
+			if (this.mode === 'line') {
+				this.graphics
+					.moveTo(this.startX, this.startY)
+					.lineTo(pos.x, pos.y)
+					.stroke({ width: 4, color: 0xffaa00, alpha: 0.9 });
+				this.graphics.circle(this.startX, this.startY, 5).circle(pos.x, pos.y, 5).fill(0xffaa00);
+			} else if (this.mode === 'circle') {
+				this.graphics
+					.circle(this.startX, this.startY, distanciaPixels)
+					.fill({ color: 0x5e9bdd, alpha: 0.18 })
+					.stroke({ width: 3, color: 0x8bc4ff, alpha: 0.9 });
+				this.graphics.circle(this.startX, this.startY, 5).fill(0x8bc4ff);
+			} else {
+				const angle = Math.atan2(dy, dx);
+				const spread = Math.PI / 6; // cone de 60°, formato mais comum em D&D
+				this.graphics.moveTo(this.startX, this.startY);
+				this.graphics.arc(
+					this.startX,
+					this.startY,
+					distanciaPixels,
+					angle - spread,
+					angle + spread
+				);
+				this.graphics
+					.closePath()
+					.fill({ color: 0xd878c7, alpha: 0.2 })
+					.stroke({ width: 3, color: 0xf0a8e1, alpha: 0.9 });
+			}
 
 			// Posiciona o texto exatamente no meio da linha
 			this.texto.x = this.startX + dx / 2;
 			this.texto.y = this.startY + dy / 2 - 15; // -15px para ficar um pouco acima da linha
-			this.texto.text = `${metros.toFixed(1)}m`;
+			this.texto.text = `${metros.toFixed(1)}m · ${this.mode === 'line' ? 'linha' : this.mode === 'circle' ? 'raio' : 'cone 60°'}`;
 		});
 
 		// SOLTANDO O CLIQUE
@@ -103,6 +124,7 @@ export class RulerManager {
 	}
 
 	destroy() {
+		this.unsubscribe();
 		this.graphics.destroy();
 		this.texto.destroy();
 	}

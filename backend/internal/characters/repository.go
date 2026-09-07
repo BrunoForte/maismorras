@@ -181,6 +181,32 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	return item, nil
 }
 
+// CreateForGM creates the one character slot assigned to a campaign member.
+// It is useful when the GM is preparing a sheet with the player at the table.
+func (r *Repository) CreateForGM(ctx context.Context, campaignID, ownerID, userID string) (Character, error) {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Character{}, err
+	}
+	var member bool
+	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, ownerID).Scan(&member); err != nil || !member {
+		return Character{}, ErrForbidden
+	}
+	sheet := Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, SavingThrows: []string{}, SkillProficiencies: []string{}}
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	var item Character
+	err = r.pool.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character',$3,$4) returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, ownerID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	if err != nil {
+		return Character{}, fmt.Errorf("create character for gm: %w", err)
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	return item, nil
+}
+
 func (r *Repository) requireGM(ctx context.Context, campaignID, userID string) error {
 	var role string
 	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil || role != "gm" {

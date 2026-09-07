@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { listParticipants, type Participant } from '$lib/services/characterApi';
+	import {
+		createCharacterForGM,
+		listParticipants,
+		type Participant
+	} from '$lib/services/characterApi';
 
 	let {
 		campaignId,
@@ -20,6 +24,7 @@
 	let participants = $state<Participant[]>([]);
 	let loading = $state(true);
 	let message = $state('');
+	let creatingFor = $state<string | null>(null);
 
 	onMount(async () => {
 		if (!isGM) {
@@ -34,6 +39,18 @@
 			loading = false;
 		}
 	});
+	async function createSheet(participant: Participant) {
+		creatingFor = participant.userId;
+		message = '';
+		try {
+			const character = await createCharacterForGM(session, campaignId, participant.userId);
+			onopencharacter(character.id, participant.displayName);
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível criar a ficha.';
+		} finally {
+			creatingFor = null;
+		}
+	}
 </script>
 
 <section class="sheets-view" aria-label="Fichas da campanha">
@@ -85,7 +102,12 @@
 							onclick={() => onopencharacter(participant.character!.id, participant.displayName)}
 							>Abrir e editar</button
 						>
-					{:else}<span class="waiting">Aguardando</span>{/if}
+					{:else}<button
+							class="create"
+							onclick={() => void createSheet(participant)}
+							disabled={creatingFor === participant.userId}
+							>{creatingFor === participant.userId ? 'Criando…' : 'Criar ficha'}</button
+						>{/if}
 				</article>
 			{/each}
 		</div>
@@ -230,10 +252,10 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.waiting {
-		color: #8f8378;
-		font-size: 0.7rem;
-		font-style: italic;
+	.create {
+		border-color: #806039;
+		color: #26190e;
+		background: #e0b86f;
 	}
 	.status {
 		color: #b9aa9d;
