@@ -162,6 +162,9 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
+	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
+		return Character{}, err
+	}
 	return item, nil
 }
 
@@ -208,7 +211,20 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
+	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
+		return Character{}, err
+	}
 	return item, nil
+}
+
+// Tokens linked to a character are instances for position and conditions, but
+// their sheet-derived combat numbers must follow the character sheet.
+func (r *Repository) syncSceneTokens(ctx context.Context, actorID string, sheet Sheet) error {
+	_, err := r.pool.Exec(ctx, `update scene_tokens set hp_current=$1,hp_max=$2,armor_class=$3,updated_at=now() where actor_id=$4`, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, actorID)
+	if err != nil {
+		return fmt.Errorf("sync character tokens: %w", err)
+	}
+	return nil
 }
 
 // CreateForGM creates the one character slot assigned to a campaign member.

@@ -91,7 +91,7 @@
 
 <style>
 	.floating-chat {
-		position: absolute;
+		position: fixed;
 		z-index: 8;
 		right: 1rem;
 		bottom: 1rem;

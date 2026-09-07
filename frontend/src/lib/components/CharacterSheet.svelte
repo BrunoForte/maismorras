@@ -49,6 +49,8 @@ import {
 	let activeTab = $state<'profile' | 'combat' | 'inventory' | 'spells' | 'details'>('profile');
 	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
 	let rollingWeapon = $state<string | null>(null);
+	let newFeat = $state('');
+	let selectedFeat = $state('');
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -188,6 +190,10 @@ import {
 	}
 	const subclassOptions = () => classData[progressionClass(sheet.class)]?.subclasses ?? [];
 	const derivedFeatures = () => classFeatures(sheet.class, sheet.level, sheet.subclass);
+	const featList = () => sheet.feats.split(/\n|,/).map((feat) => feat.trim()).filter(Boolean);
+	const featDescription = (feat: string) => optionsFor('feat').find((entry) => optionLabel(entry).toLowerCase() === feat.toLowerCase() || entry.name.toLowerCase() === feat.toLowerCase())?.summary || 'Talento privado ou sem resumo cadastrado no compêndio.';
+	function addFeat() { const feat = newFeat.trim(); if (!feat || featList().some((item) => item.toLowerCase() === feat.toLowerCase())) return; sheet.feats = [...featList(), feat].join('\n'); selectedFeat = feat; newFeat = ''; }
+	function removeFeat(feat: string) { sheet.feats = featList().filter((item) => item !== feat).join('\n'); if (selectedFeat === feat) selectedFeat = ''; }
 	function syncProgression() {
 		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);
 		sheet.resources = defaults.map((resource) => ({ ...resource, current: sheet.resources.find((old) => old.id === resource.id)?.current ?? resource.max }));
@@ -341,6 +347,11 @@ import {
 			</div>
 			<button onclick={onclose} aria-label="Fechar ficha">×</button>
 		</header>
+		{#if !loading}<nav class="sheet-tabs" aria-label="Seções da ficha">
+			{#each [['profile', 'Perfil'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
+				<button class:active={activeTab === tab} onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button>
+			{/each}
+		</nav>{/if}
 		{#if loading}<p class="status">Carregando ficha…</p>{:else}
 			<div class="sheet-body">
 				{#if isNewCharacter}
@@ -351,11 +362,6 @@ import {
 						>
 					</aside>
 				{/if}
-				<nav class="sheet-tabs" aria-label="Seções da ficha">
-					{#each [['profile', 'Perfil'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
-						<button class:active={activeTab === tab} onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button>
-					{/each}
-				</nav>
 				{#if activeTab === 'profile'}
 				<section class="identity">
 					<label>Nome<input bind:value={sheet.name} maxlength="120" placeholder="Nome do personagem" /></label>
@@ -467,7 +473,7 @@ import {
 				{#if activeTab === 'details'}
 				<section class="notes">
 					<label>Características<textarea bind:value={sheet.features} placeholder="Habilidades raciais, de classe e observações."></textarea></label>
-					<label>Talentos<textarea bind:value={sheet.feats} placeholder="Alert, Magic Initiate, Fighting Style e outros talentos."></textarea></label>
+					<div class="feat-manager"><div><h3>Talentos</h3><div class="feat-add"><input bind:value={newFeat} list="feat-options" placeholder="Adicionar talento"/><button onclick={addFeat}>Adicionar</button></div><datalist id="feat-options">{#each optionsFor('feat') as feat (feat.id)}<option value={optionLabel(feat)}>{feat.summary}</option>{/each}</datalist><div class="feat-list">{#each featList() as feat}<div class="feat-row"><button class:active={selectedFeat === feat} onclick={() => selectedFeat = feat}>{feat}</button><button class="remove-feat" aria-label={`Remover ${feat}`} onclick={() => removeFeat(feat)}>×</button></div>{/each}{#if !featList().length}<small>Nenhum talento cadastrado.</small>{/if}</div></div><aside><strong>{selectedFeat || 'Selecione um talento'}</strong><p>{selectedFeat ? featDescription(selectedFeat) : 'A descrição do talento aparece aqui sem ocupar a ficha inteira.'}</p></aside></div>
 					<label class="legacy-equipment">Anotações de equipamento<textarea bind:value={sheet.equipment} placeholder="Moedas, cargas, conteúdo de mochilas e observações."></textarea></label>
 				</section>
 				{/if}
@@ -568,7 +574,10 @@ import {
 		display: flex;
 		gap: 0.35rem;
 		overflow-x: auto;
-		padding-bottom: 0.1rem;
+		flex: 0 0 auto;
+		padding: 0.7rem 1.25rem;
+		border-bottom: 1px solid #403536;
+		background: #1b171a;
 	}
 	.sheet-tabs button,
 	.inventory-filters button {
@@ -743,6 +752,8 @@ import {
 		font-size: 0.78rem;
 	}
 	.roll-weapon { border-color: #9d7744 !important; color: #ffe1a4 !important; background: #3b291e !important; }
+	.feat-manager { display: grid; grid-template-columns: minmax(180px, .9fr) 1.1fr; gap: .8rem; border: 1px solid #494045; border-radius: 8px; padding: .75rem; background: #171417; }
+	.feat-manager h3 { margin: 0 0 .5rem; font-size: .92rem; }.feat-add { display:flex; gap:.4rem; }.feat-add input { min-width:0; flex:1; }.feat-add button,.feat-list button { border:1px solid #5b493b; border-radius:6px; color:#dfceb7; background:#241d1e; font-size:.72rem; cursor:pointer; }.feat-add button { padding:.4rem .5rem; }.feat-list { display:grid; gap:.35rem; margin-top:.55rem; }.feat-row{display:flex;gap:.3rem}.feat-row>button:first-child{flex:1;text-align:left;padding:.42rem .5rem}.feat-row .remove-feat{width:2rem;color:#cda692;font-size:1rem}.feat-list button.active { border-color:#c89655; background:#38281f; }.feat-manager aside { min-height:90px; border-left:1px solid #493c39; padding-left:.8rem; }.feat-manager aside strong { color:#f0cb85; font:600 .9rem Georgia,serif; }.feat-manager aside p { color:#b9aa9d; font-size:.78rem; line-height:1.45; white-space:pre-wrap; }
 	.inventory-item label {
 		display: flex;
 		align-items: center;
@@ -808,6 +819,7 @@ import {
 		header,
 		footer { padding: 0.8rem 1rem; }
 		footer { position: sticky; bottom: 0; background: #1b171a; }
+		.feat-manager { grid-template-columns: 1fr; }.feat-manager aside { border-left:0; border-top:1px solid #493c39; padding: .7rem 0 0; }
 		.identity,
 		.combat {
 			grid-template-columns: repeat(2, 1fr);
