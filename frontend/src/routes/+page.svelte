@@ -13,6 +13,7 @@
 	import LibraryView from '$lib/components/LibraryView.svelte';
 	import CompendiumView from '$lib/components/CompendiumView.svelte';
 	import BestiaryView from '$lib/components/BestiaryView.svelte';
+	import SceneSettings from '$lib/components/SceneSettings.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -39,6 +40,7 @@
 	let creatingScene = $state(false);
 	let sceneCreatorOpen = $state(false);
 	let sceneDraft = $state('');
+	let sceneSettingsOpen = $state(false);
 
 	onMount(() => {
 		if (!supabase) {
@@ -299,7 +301,7 @@
 							id="scene-select"
 							value={activeScene?.id ?? ''}
 							onchange={(event) => selectScene(event.currentTarget.value)}
-							>{#each availableScenes as scene (scene.id)}<option value={scene.id}
+						>{#each availableScenes as scene (scene.id)}<option value={scene.id}
 									>{scene.name}</option
 								>{/each}</select
 						>{#if activeCampaign.role === 'gm'}<button
@@ -307,7 +309,7 @@
 								onclick={() => (sceneCreatorOpen = !sceneCreatorOpen)}
 								disabled={creatingScene}
 								title="Criar cena">+</button
-							>{/if}
+						>{/if}{#if activeCampaign.role === 'gm' && activeScene}<button class="scene-add" onclick={() => sceneSettingsOpen = true} title="Configurar cena">⚙</button>{/if}
 					</div>
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
@@ -426,6 +428,7 @@
 					onclose={() => (npcsOpen = false)}
 					ontokencreated={() => void reloadActiveScene()}
 				/>{/if}
+			{#if sceneSettingsOpen && activeScene}<SceneSettings scene={activeScene} {session} onclose={() => sceneSettingsOpen = false} onsaved={(scene) => { activeScene = scene; availableScenes = availableScenes.map((item) => item.id === scene.id ? scene : item); }} />{/if}
 		{:else}
 			<main class="campaign-hub">
 				<section class="hub-hero">

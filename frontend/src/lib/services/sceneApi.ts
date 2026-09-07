@@ -6,6 +6,9 @@ export type Scene = {
 	name: string;
 	backgroundUrl: string | null;
 	gridSize: number;
+	playerAccess: 'hidden' | 'available' | 'active';
+	fogEnabled: boolean;
+	visionMode: 'manual' | 'shared' | 'token';
 };
 export type PersistedToken = {
 	id: string;
@@ -55,6 +58,7 @@ export const createScene = (session: Session, campaignId: string, name: string) 
 		method: 'POST',
 		body: JSON.stringify({ name })
 	});
+export const updateScene = (session: Session, scene: Scene) => request<Scene>(session, `/api/v1/scenes/${scene.id}`, { method: 'PATCH', body: JSON.stringify(scene) });
 export const loadScene = (session: Session, sceneId: string) =>
 	request<{ scene: Scene; tokens: PersistedToken[] }>(session, `/api/v1/scenes/${sceneId}`);
 export const getCombat = (session: Session, sceneId: string) =>

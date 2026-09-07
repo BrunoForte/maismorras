@@ -15,6 +15,9 @@ type Scene struct {
 	Name          string  `json:"name"`
 	BackgroundURL *string `json:"backgroundUrl"`
 	GridSize      int     `json:"gridSize"`
+	PlayerAccess  string  `json:"playerAccess"`
+	FogEnabled    bool    `json:"fogEnabled"`
+	VisionMode    string  `json:"visionMode"`
 }
 type CombatState struct {
 	ActiveTokenID *string `json:"activeTokenId"`
@@ -57,11 +60,15 @@ func (r *Repository) memberRole(ctx context.Context, sceneID, userID string) (st
 	return role, err
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Scene, error) {
-	var exists bool
-	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, userID).Scan(&exists); err != nil || !exists {
+	var role string
+	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil {
 		return nil, ErrForbidden
 	}
-	rows, err := r.pool.Query(ctx, `select id::text,campaign_id::text,name,background_url,grid_size from scenes where campaign_id=$1 order by created_at`, campaignID)
+	query := `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode from scenes where campaign_id=$1`
+	if role != "gm" {
+		query += ` and player_access <> 'hidden'`
+	}
+	rows, err := r.pool.Query(ctx, query+` order by created_at`, campaignID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +76,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sce
 	items := []Scene{}
 	for rows.Next() {
 		var s Scene
-		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize); err != nil {
+		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode); err != nil {
 			return nil, err
 		}
 		items = append(items, s)
@@ -85,8 +92,33 @@ func (r *Repository) Create(ctx context.Context, campaignID, userID, name string
 		return Scene{}, ErrForbidden
 	}
 	var s Scene
-	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name) values($1,$2) returning id::text,campaign_id::text,name,background_url,grid_size`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize)
+	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'hidden') returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode)
 	return s, err
+}
+func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, input Scene) (Scene, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return Scene{}, ErrForbidden
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Scene{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if input.PlayerAccess == "active" {
+		if _, err = tx.Exec(ctx, `update scenes set player_access='available',updated_at=now() where campaign_id=(select campaign_id from scenes where id=$1) and player_access='active'`, sceneID); err != nil {
+			return Scene{}, err
+		}
+	}
+	var scene Scene
+	err = tx.QueryRow(ctx, `update scenes set name=$1,background_url=nullif($2,''),grid_size=$3,player_access=$4,fog_enabled=$5,vision_mode=$6,updated_at=now() where id=$7 returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode`, input.Name, input.BackgroundURL, input.GridSize, input.PlayerAccess, input.FogEnabled, input.VisionMode, sceneID).Scan(&scene.ID, &scene.CampaignID, &scene.Name, &scene.BackgroundURL, &scene.GridSize, &scene.PlayerAccess, &scene.FogEnabled, &scene.VisionMode)
+	if err != nil {
+		return Scene{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Scene{}, err
+	}
+	return scene, nil
 }
 func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
@@ -94,8 +126,11 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		return Scene{}, nil, err
 	}
 	var s Scene
-	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize); err != nil {
+	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode); err != nil {
 		return Scene{}, nil, err
+	}
+	if role != "gm" && s.PlayerAccess == "hidden" {
+		return Scene{}, nil, ErrForbidden
 	}
 	query := `select id::text,actor_id::text,owner_id::text,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility from scene_tokens where scene_id=$1`
 	if role != "gm" {

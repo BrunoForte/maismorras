@@ -39,6 +39,25 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusCreated, s)
 }
+func (h *Handler) UpdateScene(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in Scene
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	in.Name = strings.TrimSpace(in.Name)
+	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || !validSceneSettings(in) {
+		return apperror.BadRequest("INVALID_SCENE", "Confira nome, grid, acesso de jogadores e visão da cena.")
+	}
+	scene, err := h.repo.UpdateScene(r.Context(), r.PathValue("sceneID"), p.UserID, in)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, scene)
+}
+func validSceneSettings(s Scene) bool {
+	return (s.PlayerAccess == "hidden" || s.PlayerAccess == "available" || s.PlayerAccess == "active") && (s.VisionMode == "manual" || s.VisionMode == "shared" || s.VisionMode == "token")
+}
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	scene, tokens, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
