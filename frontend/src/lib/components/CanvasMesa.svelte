@@ -18,6 +18,9 @@
 		type Scene
 	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import { rollDice } from '$lib/services/eventApi';
+	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import { chatMensagens } from '$lib/stores/chatStore';
 
 	let { scene, session, isGM }: { scene: Scene; session: Session; isGM: boolean } = $props();
 
@@ -209,6 +212,10 @@
 			visibility: { ...personagem.visibility, [campo]: marcado }
 		}));
 	}
+	async function rollToken(expression: string) {
+		if (!personagemSelecionado) return;
+		try { const event = await rollDice(session, scene.campaignId, expression); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
+	}
 </script>
 
 <div class="borda-mesa" bind:this={container}>
@@ -231,6 +238,7 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
+			<div class="token-rolls"><span>Rolagens rápidas</span><button onclick={() => rollToken('1d20')}>🎲 d20</button><button onclick={() => rollToken('1d20+2')}>Iniciativa</button><button onclick={() => rollToken('1d4')}>d4</button><button onclick={() => rollToken('1d6')}>d6</button><button onclick={() => rollToken('1d8')}>d8</button><button onclick={() => rollToken('1d10')}>d10</button><button onclick={() => rollToken('1d12')}>d12</button></div>
 			<div class="hp-control">
 				<div>
 					<span>Pontos de vida</span><strong
@@ -378,6 +386,7 @@
 			600 1.2rem Georgia,
 			serif;
 	}
+	.token-rolls { display:flex; flex-wrap:wrap; gap:.35rem; padding:.7rem 1rem; border-top:1px solid #493c39; }.token-rolls>span{width:100%;color:#b9aa9d;font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.token-rolls button{border:1px solid #765d3d;border-radius:6px;padding:.36rem .48rem;color:#f0d29d;background:#2b211c;font-size:.68rem;cursor:pointer}
 	.close-button {
 		border: 0;
 		padding: 0 0.2rem;
