@@ -337,9 +337,14 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	}
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,updated_at=now() where id=$14 and scene_id=$15 returning id::text`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, tokenID, sceneID).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,updated_at=now() where id=$14 and scene_id=$15 returning id::text,actor_id::text`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, tokenID, sceneID).Scan(&t.ID, &t.ActorID)
 	if err != nil {
 		return Token{}, fmt.Errorf("update token: %w", err)
+	}
+	if t.ActorID != nil {
+		if _, err = r.pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{hitPointsCurrent}',to_jsonb($1::int),true) where id=$2 and kind='character'`, t.HPCurrent, *t.ActorID); err != nil {
+			return Token{}, fmt.Errorf("sync token HP to character: %w", err)
+		}
 	}
 	return t, nil
 }
