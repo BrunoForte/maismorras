@@ -31,6 +31,7 @@ type Entry struct {
 	Name        string          `json:"name"`
 	Summary     string          `json:"summary"`
 	Rules       json.RawMessage `json:"rules"`
+	Translations json.RawMessage `json:"translations"`
 	IsPublished bool            `json:"isPublished"`
 }
 type Repository struct{ pool *pgxpool.Pool }
@@ -85,7 +86,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 	if err := srcRows.Err(); err != nil {
 		return nil, nil, err
 	}
-	q := `select id::text,source_id::text,entry_type,name,summary,rules,is_published from compendium_entries where campaign_id=$1`
+	q := `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1`
 	if role != "gm" {
 		q += ` and is_published=true`
 	}
@@ -98,7 +99,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 	entries := []Entry{}
 	for rows.Next() {
 		var e Entry
-		if err := rows.Scan(&e.ID, &e.SourceID, &e.EntryType, &e.Name, &e.Summary, &e.Rules, &e.IsPublished); err != nil {
+		if err := rows.Scan(&e.ID, &e.SourceID, &e.EntryType, &e.Name, &e.Summary, &e.Rules, &e.Translations, &e.IsPublished); err != nil {
 			return nil, nil, err
 		}
 		entries = append(entries, e)
@@ -124,10 +125,9 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 	if readOnly {
 		return Entry{}, ErrForbidden
 	}
-	if len(item.Rules) == 0 {
-		item.Rules = json.RawMessage(`{}`)
-	}
-	err = r.pool.QueryRow(ctx, `insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,$8) returning id::text,source_id::text,entry_type,name,summary,rules,is_published`, campaignID, item.SourceID, item.EntryType, item.Name, item.Summary, item.Rules, item.IsPublished, userID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.IsPublished)
+	if len(item.Rules) == 0 { item.Rules = json.RawMessage(`{}`) }
+	if len(item.Translations) == 0 { item.Translations = json.RawMessage(`{}`) }
+	err = r.pool.QueryRow(ctx, `insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, campaignID, item.SourceID, item.EntryType, item.Name, item.Summary, item.Rules, item.Translations, item.IsPublished, userID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
 	if err != nil {
 		return Entry{}, fmt.Errorf("create compendium entry: %w", err)
 	}

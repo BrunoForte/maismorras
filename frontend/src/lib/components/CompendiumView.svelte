@@ -15,12 +15,15 @@
 	let summary = $state('');
 	let published = $state(true);
 	let sourceId = $state('');
+	let portugueseName = $state('');
+	let locale = $state<'pt-BR' | 'en'>('pt-BR');
 	const types = [['species','Espécie'],['background','Antecedente'],['class','Classe'],['subclass','Subclasse'],['feat','Talento'],['spell','Magia'],['item','Item'],['feature','Característica'],['other','Outro']];
 	const visible = () => entries.filter((entry) =>
 		(filter === 'all' || entry.entryType === filter) &&
 		(sourceFilter === 'all' || entry.sourceId === sourceFilter)
 	);
 	const entryCount = (sourceId: string) => entries.filter((entry) => entry.sourceId === sourceId).length;
+	const displayName = (entry: CompendiumEntry) => locale === 'pt-BR' ? (entry.translations?.['pt-BR'] || entry.name) : entry.name;
 	async function load() {
 		loading = true; message = '';
 		try {
@@ -34,24 +37,25 @@
 		if (!name.trim() || !sourceId) { message = 'Informe ao menos o nome e a fonte.'; return; }
 		saving = true; message = '';
 		try {
-			const entry = await createCompendiumEntry(session, campaignId, { sourceId, entryType, name: name.trim(), summary: summary.trim(), isPublished: published });
+			const entry = await createCompendiumEntry(session, campaignId, { sourceId, entryType, name: name.trim(), summary: summary.trim(), translations: portugueseName.trim() ? { 'pt-BR': portugueseName.trim() } : {}, isPublished: published });
 			entries = [...entries, entry].sort((a,b) => a.name.localeCompare(b.name));
-			name = ''; summary = ''; message = 'Entrada adicionada ao compêndio.';
+			name = ''; portugueseName = ''; summary = ''; message = 'Entrada adicionada ao compêndio.';
 		} catch (error) { message = error instanceof Error ? error.message : 'Não foi possível salvar a entrada.'; }
 		finally { saving = false; }
 	}
-	onMount(() => void load());
+	onMount(() => { locale = localStorage.getItem('maismorras.rulesLocale') === 'en' ? 'en' : 'pt-BR'; void load(); });
+	function setLocale(value: 'pt-BR' | 'en') { locale = value; localStorage.setItem('maismorras.rulesLocale', value); }
 </script>
 
 <main class="compendium">
 	<header>
 		<div><p>REGRAS E REFERÊNCIAS</p><h2>Compêndio</h2><span>Opções da campanha, homebrew e referências licenciadas.</span></div>
-		{#if isGM}<button class="refresh" onclick={load} disabled={loading}>Atualizar</button>{/if}
+		<div class="header-actions"><select aria-label="Idioma das referências" value={locale} onchange={(event) => setLocale(event.currentTarget.value as 'pt-BR' | 'en')}><option value="pt-BR">Português</option><option value="en">English</option></select>{#if isGM}<button class="refresh" onclick={load} disabled={loading}>Atualizar</button>{/if}</div>
 	</header>
 	{#if message}<p class:success={message.includes('adicionada')} class="message">{message}</p>{/if}
 	<section class="sources"><h3>Fontes ativas · clique para filtrar</h3><button class:active={sourceFilter === 'all'} onclick={() => (sourceFilter = 'all')}><strong>Todas as fontes</strong><small>{entries.length} entradas</small></button>{#each sources as source (source.id)}<button class:active={sourceFilter === source.id} onclick={() => (sourceFilter = source.id)}><strong>{source.title}</strong><small>{source.kind === 'srd' ? `SRD ${source.version}` : source.kind === 'homebrew' ? 'Homebrew' : 'Privada'} · {entryCount(source.id)} entradas</small>{#if source.attribution}<span>{source.attribution}</span>{/if}</button>{/each}</section>
-	{#if isGM}<section class="create"><div><h3>Adicionar referência</h3><p>Cadastre nomes, resumos e efeitos práticos. Evite transcrever texto de livros não-SRD.</p></div><div class="form"><select bind:value={sourceId}>{#each sources.filter((source) => !source.readOnly) as source}<option value={source.id}>{source.title}</option>{/each}</select><select bind:value={entryType}>{#each types as type}<option value={type[0]}>{type[1]}</option>{/each}</select><input bind:value={name} maxlength="120" placeholder="Nome da opção"/><textarea bind:value={summary} maxlength="2000" placeholder="Resumo próprio, anotações ou efeito mecânico."></textarea><label class="published"><input type="checkbox" bind:checked={published}/> Visível aos jogadores</label><button onclick={create} disabled={saving}>{saving ? 'Salvando…' : 'Adicionar ao compêndio'}</button></div></section>{/if}
-	<section class="entries"><div class="entry-head"><h3>Entradas</h3><select bind:value={filter}><option value="all">Todos os tipos</option>{#each types as type}<option value={type[0]}>{type[1]}</option>{/each}</select></div>{#if loading}<p class="empty">Carregando compêndio…</p>{:else if visible().length}<div class="entry-grid">{#each visible() as entry (entry.id)}<article><span class="type">{types.find((type) => type[0] === entry.entryType)?.[1] ?? entry.entryType}</span><h4>{entry.name}</h4>{#if entry.summary}<p>{entry.summary}</p>{/if}<small>{entry.isPublished ? 'Visível aos jogadores' : 'Somente narrador'}</small></article>{/each}</div>{:else}<p class="empty">Nenhuma entrada neste filtro.</p>{/if}</section>
+	{#if isGM}<section class="create"><div><h3>Adicionar referência</h3><p>Cadastre nomes, resumos e efeitos práticos. Evite transcrever texto de livros não-SRD.</p></div><div class="form"><select bind:value={sourceId}>{#each sources.filter((source) => !source.readOnly) as source}<option value={source.id}>{source.title}</option>{/each}</select><select bind:value={entryType}>{#each types as type}<option value={type[0]}>{type[1]}</option>{/each}</select><input bind:value={name} maxlength="120" placeholder="Nome canônico (English)"/><input bind:value={portugueseName} maxlength="120" placeholder="Nome em português (opcional)"/><textarea bind:value={summary} maxlength="2000" placeholder="Resumo próprio, anotações ou efeito mecânico."></textarea><label class="published"><input type="checkbox" bind:checked={published}/> Visível aos jogadores</label><button onclick={create} disabled={saving}>{saving ? 'Salvando…' : 'Adicionar ao compêndio'}</button></div></section>{/if}
+	<section class="entries"><div class="entry-head"><h3>Entradas</h3><select bind:value={filter}><option value="all">Todos os tipos</option>{#each types as type}<option value={type[0]}>{type[1]}</option>{/each}</select></div>{#if loading}<p class="empty">Carregando compêndio…</p>{:else if visible().length}<div class="entry-grid">{#each visible() as entry (entry.id)}<article><span class="type">{types.find((type) => type[0] === entry.entryType)?.[1] ?? entry.entryType}</span><h4>{displayName(entry)}</h4>{#if locale === 'pt-BR' && entry.translations?.['pt-BR']}<small class="canonical">{entry.name}</small>{/if}{#if entry.summary}<p>{entry.summary}</p>{/if}<small>{entry.isPublished ? 'Visível aos jogadores' : 'Somente narrador'}</small></article>{/each}</div>{:else}<p class="empty">Nenhuma entrada neste filtro.</p>{/if}</section>
 </main>
 
 <style>

@@ -17,6 +17,7 @@ export type CompendiumEntry = {
 	name: string;
 	summary: string;
 	rules: Record<string, unknown>;
+	translations: Record<string, string>;
 	isPublished: boolean;
 };
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -35,5 +36,5 @@ export const getCompendium = (session: Session, campaignId: string) =>
 	request<{ sources: CompendiumSource[]; entries: CompendiumEntry[] }>(session, `/api/v1/campaigns/${campaignId}/compendium`);
 export const createCompendiumEntry = (
 	session: Session, campaignId: string,
-	entry: Pick<CompendiumEntry, 'sourceId' | 'entryType' | 'name' | 'summary' | 'isPublished'>
+	entry: Pick<CompendiumEntry, 'sourceId' | 'entryType' | 'name' | 'summary' | 'translations' | 'isPublished'>
 ) => request<CompendiumEntry>(session, `/api/v1/campaigns/${campaignId}/compendium/entries`, { method: 'POST', body: JSON.stringify(entry) });

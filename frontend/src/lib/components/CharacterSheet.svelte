@@ -37,6 +37,7 @@
 	let message = $state('');
 	let isNewCharacter = $state(false);
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
+	let rulesLocale = $state<'pt-BR' | 'en'>('pt-BR');
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -50,6 +51,7 @@
 	onMount(async () => {
 		// Lists come from the campaign compendium, so a GM can mix SRD choices,
 		// private references and homebrew without exposing unpublished entries.
+		rulesLocale = localStorage.getItem('maismorras.rulesLocale') === 'en' ? 'en' : 'pt-BR';
 		void getCompendium(session, campaignId)
 			.then((data) => (compendiumEntries = data.entries))
 			.catch(() => undefined);
@@ -67,6 +69,8 @@
 	});
 	const optionsFor = (entryType: string) =>
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
+	const optionLabel = (entry: CompendiumEntry) =>
+		rulesLocale === 'pt-BR' ? (entry.translations?.['pt-BR'] || entry.name) : entry.name;
 	function updateScore(key: keyof Sheet['abilityScores'], value: string) {
 		sheet.abilityScores[key] = Math.max(1, Math.min(30, Number(value) || 1));
 	}
@@ -161,9 +165,9 @@
 					><label>Antecedente<input bind:value={sheet.background} list="background-options" /></label><label
 						>Alinhamento<input bind:value={sheet.alignment} /></label
 					>
-					<datalist id="class-options">{#each optionsFor('class') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
-					<datalist id="species-options">{#each optionsFor('species') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
-					<datalist id="background-options">{#each optionsFor('background') as entry (entry.id)}<option value={entry.name}>{entry.summary}</option>{/each}</datalist>
+					<datalist id="class-options">{#each optionsFor('class') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
+					<datalist id="species-options">{#each optionsFor('species') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
+					<datalist id="background-options">{#each optionsFor('background') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
 				</section>
 				<section>
 					<h3>Atributos</h3>
