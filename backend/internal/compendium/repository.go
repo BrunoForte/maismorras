@@ -25,14 +25,14 @@ type Source struct {
 	ReadOnly    bool   `json:"readOnly"`
 }
 type Entry struct {
-	ID          string          `json:"id"`
-	SourceID    string          `json:"sourceId"`
-	EntryType   string          `json:"entryType"`
-	Name        string          `json:"name"`
-	Summary     string          `json:"summary"`
-	Rules       json.RawMessage `json:"rules"`
+	ID           string          `json:"id"`
+	SourceID     string          `json:"sourceId"`
+	EntryType    string          `json:"entryType"`
+	Name         string          `json:"name"`
+	Summary      string          `json:"summary"`
+	Rules        json.RawMessage `json:"rules"`
 	Translations json.RawMessage `json:"translations"`
-	IsPublished bool            `json:"isPublished"`
+	IsPublished  bool            `json:"isPublished"`
 }
 type Repository struct{ pool *pgxpool.Pool }
 
@@ -49,18 +49,48 @@ func (r *Repository) role(ctx context.Context, campaignID, userID string) (strin
 // This creates a private source and a read-only SRD attribution marker. It never
 // claims that paid-book content is shipped with the VTT.
 func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) error {
-	_, err := r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false),($1,'dnd-srd-5-2-1','D&D System Reference Document','srd','5.2.1','Dungeons & Dragons SRD 5.2.1, disponível sob CC-BY-4.0.','https://www.dndbeyond.com/srd',true) on conflict (campaign_id,slug) do nothing`, campaignID)
+	pack, err := loadSRDPack()
+	if err != nil {
+		return fmt.Errorf("load SRD pack: %w", err)
+	}
+	_, err = r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false),($1,'dnd-srd-5-2-1','D&D System Reference Document','srd',$2,$3,'https://www.dndbeyond.com/srd',true) on conflict (campaign_id,slug) do update set version=excluded.version,attribution=excluded.attribution,license_url=excluded.license_url`, campaignID, pack.Version, pack.Attribution)
 	if err != nil {
 		return err
 	}
-	// The seed contains only names and original short summaries. It is an index,
-	// not a reproduction of rules text or of content from paid books.
-	_, err = r.pool.Exec(ctx, `with starter(entry_type,name,summary) as (values
-		('class','Barbarian','Classe presente no índice inicial do SRD.'),('class','Bard','Classe presente no índice inicial do SRD.'),('class','Cleric','Classe presente no índice inicial do SRD.'),('class','Druid','Classe presente no índice inicial do SRD.'),('class','Fighter','Classe presente no índice inicial do SRD.'),('class','Monk','Classe presente no índice inicial do SRD.'),('class','Paladin','Classe presente no índice inicial do SRD.'),('class','Ranger','Classe presente no índice inicial do SRD.'),('class','Rogue','Classe presente no índice inicial do SRD.'),('class','Sorcerer','Classe presente no índice inicial do SRD.'),('class','Warlock','Classe presente no índice inicial do SRD.'),('class','Wizard','Classe presente no índice inicial do SRD.'),
-		('species','Dragonborn','Espécie presente no índice inicial do SRD.'),('species','Dwarf','Espécie presente no índice inicial do SRD.'),('species','Elf','Espécie presente no índice inicial do SRD.'),('species','Gnome','Espécie presente no índice inicial do SRD.'),('species','Goliath','Espécie presente no índice inicial do SRD.'),('species','Halfling','Espécie presente no índice inicial do SRD.'),('species','Human','Espécie presente no índice inicial do SRD.'),('species','Orc','Espécie presente no índice inicial do SRD.'),('species','Tiefling','Espécie presente no índice inicial do SRD.'))
-		insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,is_published,created_by)
-		select c.id,s.id,starter.entry_type,starter.name,starter.summary,'{}'::jsonb,true,c.owner_id from campaigns c join compendium_sources s on s.campaign_id=c.id and s.slug='dnd-srd-5-2-1' cross join starter where c.id=$1 on conflict (source_id,entry_type,name) do nothing`, campaignID)
-	return err
+	var sourceID, ownerID string
+	if err = r.pool.QueryRow(ctx, `select s.id::text,c.owner_id::text from compendium_sources s join campaigns c on c.id=s.campaign_id where s.campaign_id=$1 and s.slug='dnd-srd-5-2-1'`, campaignID).Scan(&sourceID, &ownerID); err != nil {
+		return err
+	}
+	// Importing the pack is a one-time operation per campaign/version. Once it
+	// exists, listing the compendium is a single normal SELECT rather than a
+	// thousand-row upsert on every page load.
+	indexEntries := srdIndexEntries()
+	var importedCount int
+	if err = r.pool.QueryRow(ctx, `select count(*) from compendium_entries where source_id=$1`, sourceID).Scan(&importedCount); err != nil {
+		return err
+	}
+	if importedCount >= len(pack.Entries)+len(indexEntries) {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	entries := append(append([]srdEntry{}, pack.Entries...), indexEntries...)
+	for _, entry := range entries {
+		if len(entry.Rules) == 0 {
+			entry.Rules = json.RawMessage(`{}`)
+		}
+		if len(entry.Translations) == 0 {
+			entry.Translations = json.RawMessage(`{}`)
+		}
+		batch.Queue(`insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,true,$8) on conflict (source_id,entry_type,name) do update set summary=excluded.summary,translations=excluded.translations,rules=case when compendium_entries.rules='{}'::jsonb then excluded.rules else compendium_entries.rules end,updated_at=now()`, campaignID, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations, ownerID)
+	}
+	br := r.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for range entries {
+		if _, err = br.Exec(); err != nil {
+			return fmt.Errorf("import SRD: %w", err)
+		}
+	}
+	return nil
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Source, []Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
@@ -125,8 +155,12 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 	if readOnly {
 		return Entry{}, ErrForbidden
 	}
-	if len(item.Rules) == 0 { item.Rules = json.RawMessage(`{}`) }
-	if len(item.Translations) == 0 { item.Translations = json.RawMessage(`{}`) }
+	if len(item.Rules) == 0 {
+		item.Rules = json.RawMessage(`{}`)
+	}
+	if len(item.Translations) == 0 {
+		item.Translations = json.RawMessage(`{}`)
+	}
 	err = r.pool.QueryRow(ctx, `insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, campaignID, item.SourceID, item.EntryType, item.Name, item.Summary, item.Rules, item.Translations, item.IsPublished, userID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
 	if err != nil {
 		return Entry{}, fmt.Errorf("create compendium entry: %w", err)
