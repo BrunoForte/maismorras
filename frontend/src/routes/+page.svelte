@@ -3,6 +3,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import CanvasMesa from '$lib/components/CanvasMesa.svelte';
 	import FloatingChat from '$lib/components/FloatingChat.svelte';
+	import ActorDrawer from '$lib/components/ActorDrawer.svelte';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import TableTools from '$lib/components/TableTools.svelte';
 	import CharacterSheet from '$lib/components/CharacterSheet.svelte';
@@ -359,6 +360,7 @@
 								isGM={activeCampaign.role === 'gm'}
 							/>
 							<FloatingChat campaignId={activeCampaign.id} {session} />
+							{#if activeCampaign.role === 'gm'}<ActorDrawer campaignId={activeCampaign.id} sceneId={activeScene.id} {session} onadded={() => reloadActiveScene()} />{/if}
 						{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
 				</main>
 			{:else if workspaceTab === 'sheets'}<CampaignSheets
