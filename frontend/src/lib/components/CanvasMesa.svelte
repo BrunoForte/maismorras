@@ -87,6 +87,7 @@
 			atributos: { for: 10, des: 10, con: 10, int: 10, sab: 10, car: 10 },
 			armas: [],
 			iniciativa: token.initiative,
+			visionRange: token.visionRange,
 			fotoUrl: token.imageUrl ?? undefined,
 			tamanho: token.size,
 			fotoEscala: 1,
@@ -109,6 +110,7 @@
 			hpMax: personagem.hpMax,
 			armorClass: personagem.ca,
 			initiative: personagem.iniciativa,
+			visionRange: personagem.visionRange,
 			statuses: personagem.status ?? [],
 			hidden: false,
 			visibility: personagem.visibility
@@ -363,6 +365,11 @@
 			visibility: { ...personagem.visibility, [campo]: marcado }
 		}));
 	}
+	function alterarVisao(valor: string) {
+		const visionRange = Math.max(0, Math.min(30, Math.round(Number(valor))));
+		if (!Number.isFinite(visionRange)) return;
+		atualizarSelecionado((personagem) => ({ ...personagem, visionRange }));
+	}
 	async function rollToken(expression: string) {
 		if (!personagemSelecionado) return;
 		try { const event = await rollDice(session, scene.campaignId, expression, undefined, 'combat'); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
@@ -393,6 +400,7 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
+			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
 			<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => rollToken(`1d20${personagemSelecionado.iniciativa >= 0 ? '+' : ''}${personagemSelecionado.iniciativa}`)}>Iniciativa {personagemSelecionado.iniciativa >= 0 ? '+' : ''}{personagemSelecionado.iniciativa}</button></div>
 			<div class="hp-control">
@@ -605,6 +613,7 @@
 		font-size: 0.58rem;
 		letter-spacing: 0.07em;
 	}
+	.vision-control { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:.8rem; padding:.55rem .65rem; border:1px solid #423839; border-radius:8px; color:#cdbda9; font-size:.7rem; }.vision-control small { color:#8f8378; font-size:.61rem; }.vision-control input { width:3rem; border:1px solid #5a4841; border-radius:5px; padding:.3rem; color:#f4eee4; background:#282125; text-align:center; }
 	.hp-control,
 	.status-control {
 		padding: 0.75rem 0;

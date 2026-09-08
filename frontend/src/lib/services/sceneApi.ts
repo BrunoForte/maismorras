@@ -25,6 +25,7 @@ export type PersistedToken = {
 	armorClass: number;
 	initiative: number;
 	initiativeBonus?: number;
+	visionRange: number;
 	statuses: string[];
 	hidden: boolean;
 	visibility: {

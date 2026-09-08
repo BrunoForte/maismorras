@@ -324,7 +324,7 @@ func validateToken(t Token) error {
 	if strings.TrimSpace(t.Name) == "" || len([]rune(t.Name)) > 120 {
 		return apperror.BadRequest("INVALID_TOKEN", "Token precisa de um nome válido.")
 	}
-	if t.Size < 1 || t.Size > 6 || t.HPMax < 1 || t.HPCurrent < 0 || t.HPCurrent > t.HPMax || t.Color < 0 || t.Color > 16777215 {
+	if t.Size < 1 || t.Size > 6 || t.HPMax < 1 || t.HPCurrent < 0 || t.HPCurrent > t.HPMax || t.Color < 0 || t.Color > 16777215 || t.VisionRange < 0 || t.VisionRange > 30 {
 		return apperror.BadRequest("INVALID_TOKEN", "Dados de token inválidos.")
 	}
 	return nil
