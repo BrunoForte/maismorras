@@ -321,5 +321,8 @@ func mapError(err error) error {
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não tem permissão para operar esta mesa.")
 	}
+	if errors.Is(err, ErrBlockedMovement) {
+		return apperror.BadRequest("WALL_BLOCKED", "Uma parede bloqueia o caminho deste token.")
+	}
 	return apperror.Internal(err)
 }

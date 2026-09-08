@@ -440,6 +440,23 @@ func segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy float64) bool {
 	return ((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) && ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0))
 }
 
+func wallBlocksMovement(fromX, fromY, size, toX, toY, gridSize int, walls []Wall) bool {
+	if len(walls) == 0 {
+		return false
+	}
+	// Token positions describe their upper-left grid corner. Moving the centre
+	// gives a creature larger than 1x1 the same rule as a regular token.
+	offset := float64(size*gridSize) / 2
+	ax, ay := float64(fromX)+offset, float64(fromY)+offset
+	bx, by := float64(toX)+offset, float64(toY)+offset
+	for _, wall := range walls {
+		if segmentsIntersect(ax, ay, bx, by, float64(wall.StartX), float64(wall.StartY), float64(wall.EndX), float64(wall.EndY)) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Repository) UpdateFog(ctx context.Context, sceneID, userID, mode string, cells [][2]int) error {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil || role != "gm" {
@@ -827,6 +844,19 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	if role != "gm" {
 		return Token{}, ErrForbidden
 	}
+	var previousX, previousY, previousSize, gridSize int
+	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize); err != nil {
+		return Token{}, fmt.Errorf("load current token position: %w", err)
+	}
+	if previousX != t.X || previousY != t.Y {
+		walls, wallErr := r.wallsForVision(ctx, sceneID)
+		if wallErr != nil {
+			return Token{}, wallErr
+		}
+		if wallBlocksMovement(previousX, previousY, previousSize, t.X, t.Y, gridSize, walls) {
+			return Token{}, ErrBlockedMovement
+		}
+	}
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
 	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,updated_at=now() where id=$14 and scene_id=$15 returning id::text,actor_id::text,owner_id::text,vision_range`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange)
@@ -864,8 +894,9 @@ func applyVisibility(t Token, role, userID string) Token {
 }
 
 var (
-	ErrForbidden     = fmt.Errorf("forbidden")
-	ErrAlreadyLinked = fmt.Errorf("character already linked to scene")
+	ErrForbidden       = fmt.Errorf("forbidden")
+	ErrAlreadyLinked   = fmt.Errorf("character already linked to scene")
+	ErrBlockedMovement = fmt.Errorf("movement blocked by wall")
 )
 
 func abilityModifier(score int) int {
