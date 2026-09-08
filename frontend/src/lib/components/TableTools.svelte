@@ -4,7 +4,7 @@
 	import { personagens, turnoAtualId } from '$lib/stores/gameStore';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
-	import { rollDice } from '$lib/services/eventApi';
+	import { loadMessages, rollDice } from '$lib/services/eventApi';
 	import { getCombat, rollSceneInitiative, setCombat } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
@@ -76,11 +76,13 @@
 		if (!next.persistedId) return;
 		const combat = await setCombat(session, sceneId, next.persistedId);
 		activeTokenId = combat.activeTokenId;
+		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
 		sceneSocket?.publishRefresh();
 	}
 	async function endCombat() {
 		const combat = await setCombat(session, sceneId, null);
 		activeTokenId = combat.activeTokenId;
+		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
 		sceneSocket?.publishRefresh();
 }
 	async function rollAllInitiative() {
@@ -94,6 +96,7 @@
 					? { ...token, iniciativa: values.get(token.persistedId)! }
 					: token
 			);
+			$chatMensagens = await loadMessages(session, campaignId);
 			sceneSocket?.publishRefresh();
 		} finally {
 			rollingInitiative = false;
@@ -103,6 +106,7 @@
 		if (!isGM || !tokenId) return;
 		const combat = await setCombat(session, sceneId, tokenId);
 		activeTokenId = combat.activeTokenId;
+		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
 		sceneSocket?.publishRefresh();
 	}
 	function setInitiative(id: number, value: string) {

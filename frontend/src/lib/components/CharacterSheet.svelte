@@ -10,7 +10,7 @@ import {
 		type CharacterSheet as Sheet,
 		type InventoryItem
 	} from '$lib/services/characterApi';
-	import { createTokenFromCharacter } from '$lib/services/sceneApi';
+	import { createTokenFromCharacter, listSceneEffects, loadScene } from '$lib/services/sceneApi';
 	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 	import { rollDice } from '$lib/services/eventApi';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
@@ -55,6 +55,7 @@ import {
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
 	let minimized = $state(false);
+	let activeConditions = $state<string[]>([]);
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -155,6 +156,14 @@ import {
 			sheet.inventory ??= [];
 			sheet.resources ??= [];
 			sheet.spellSlots ??= [];
+			const scene = await loadScene(session, sceneId);
+			const token = characterId
+				? scene.tokens.find((item) => item.actorId === characterId)
+				: scene.tokens.find((item) => item.isOwner);
+			if (token) {
+				const effects = await listSceneEffects(session, sceneId);
+				activeConditions = effects.effects.filter((effect) => effect.tokenId === token.id).map((effect) => effect.name);
+			}
 		} catch (error) {
 			if (!characterId && (error as Error & { status?: number }).status === 404)
 				isNewCharacter = true;
@@ -249,21 +258,26 @@ import {
 		const rules = item.rules;
 		const damageMatch = String(rules.damage ?? '').match(/^(\d+)d(\d+)/i);
 		if (rules.category !== 'weapon' || !damageMatch || rollingWeapon) return;
+		if (activeConditions.some((condition) => ['Incapacitado', 'Paralisado', 'Atordoado', 'Petrificado', 'Inconsciente'].includes(condition))) {
+			message = 'Esta condição impede ações e reações; o ataque não pode ser rolado.';
+			return;
+		}
 		const ability = rules.attackAbility === 'dexterity' ? sheet.abilityScores.dexterity : sheet.abilityScores.strength;
 		const attackBonus = modifier(ability) + sheet.proficiencyBonus;
 		rollingWeapon = item.entryId;
 		message = '';
 		try {
-			const attackEvent = await rollDice(session, campaignId, `1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`);
+			const disadvantage = activeConditions.some((condition) => ['Cego', 'Envenenado', 'Impedido'].includes(condition));
+			const attackEvent = await rollDice(session, campaignId, `1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`, disadvantage ? 'disadvantage' : undefined, 'combat');
 			const attack = attackEvent.payload as { expressao: string; dados: number[]; total: number };
 			const critical = attack.dados[0] === 20;
-			$chatMensagens = [...$chatMensagens, { id: String(attackEvent.id), autor: attackEvent.author, texto: `${item.name} · ataque${critical ? ' · CRÍTICO!' : ''}`, tipo: 'rolagem', detalhesRolagem: { ...attack, modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0) } }];
+			$chatMensagens = [...$chatMensagens, { id: String(attackEvent.id), autor: attackEvent.author, texto: `${item.name} · ataque${critical ? ' · CRÍTICO!' : ''}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...attack, modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0) } }];
 			$diceOverlay = { expression: `${item.name} · ataque`, total: attack.total, dice: attack.dados };
 			const diceCount = Number(damageMatch[1]) * (critical ? 2 : 1);
 			const damageModifier = modifier(ability);
-			const damageEvent = await rollDice(session, campaignId, `${diceCount}d${damageMatch[2]}${damageModifier >= 0 ? '+' : ''}${damageModifier}`);
+			const damageEvent = await rollDice(session, campaignId, `${diceCount}d${damageMatch[2]}${damageModifier >= 0 ? '+' : ''}${damageModifier}`, undefined, 'combat');
 			const damage = damageEvent.payload as { expressao: string; dados: number[]; total: number };
-			$chatMensagens = [...$chatMensagens, { id: String(damageEvent.id), autor: damageEvent.author, texto: `${item.name} · dano${critical ? ' crítico' : ''} (${String(rules.damageType ?? '')})`, tipo: 'rolagem', detalhesRolagem: { ...damage, modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0) } }];
+			$chatMensagens = [...$chatMensagens, { id: String(damageEvent.id), autor: damageEvent.author, texto: `${item.name} · dano${critical ? ' crítico' : ''} (${String(rules.damageType ?? '')})`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...damage, modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0) } }];
 			$diceOverlay = { expression: `${item.name} · dano${critical ? ' crítico' : ''}`, total: damage.total, dice: damage.dados };
 			message = critical ? 'Crítico! Ataque e dano foram registrados no chat.' : 'Ataque e dano foram registrados no chat.';
 		} catch (error) {

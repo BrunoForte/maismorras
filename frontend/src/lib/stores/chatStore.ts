@@ -7,6 +7,7 @@ export type Mensagem = {
     autor: string;
     texto: string;
     tipo: 'texto' | 'rolagem';
+	canal?: 'chat' | 'combat' | 'info';
     detalhesRolagem?: ResultadoRolagem;
 };
 

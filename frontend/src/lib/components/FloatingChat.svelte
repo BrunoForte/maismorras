@@ -9,6 +9,12 @@
 	let open = $state(true);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
+	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
+	let visibleMessages = $derived(
+		channel === 'all'
+			? $chatMensagens
+			: $chatMensagens.filter((message) => (message.canal ?? 'chat') === channel)
+	);
 
 	onMount(async () => {
 		try {
@@ -62,12 +68,18 @@
 	</button>
 	{#if open}
 		<div class="chat-body">
+			<nav class="channel-tabs" aria-label="Canais do chat">
+				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}>Todos</button>
+				<button class:active={channel === 'chat'} onclick={() => (channel = 'chat')}>Chat</button>
+				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}>Combate</button>
+				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}>Info</button>
+			</nav>
 			<div class="messages" aria-live="polite">
-				{#if $chatMensagens.length === 0}<p class="empty">
-						Converse com o grupo ou use <code>/r 1d20+2</code>.
+				{#if visibleMessages.length === 0}<p class="empty">
+						{channel === 'combat' ? 'Ainda não há eventos de combate.' : channel === 'info' ? 'Ainda não há informações do sistema.' : 'Converse com o grupo ou use /r 1d20+2.'}
 					</p>{/if}
-				{#each $chatMensagens as message (message.id)}
-					<article>
+				{#each visibleMessages as message (message.id)}
+					<article class:combat={message.canal === 'combat'} class:info={message.canal === 'info'}>
 						<strong>{message.autor}</strong>
 						{#if message.tipo === 'texto'}<span>{message.texto}</span>{#if message.texto.length > 80}<button class="expand" onclick={() => expanded = { author: message.autor, text: message.texto }}>Ler em destaque</button>{/if}
 						{:else if message.detalhesRolagem}<div class="roll">
@@ -127,9 +139,12 @@
 	}
 	.chat-body {
 		display: grid;
-		grid-template-rows: minmax(0, 1fr) auto;
+		grid-template-rows: auto minmax(0, 1fr) auto;
 		height: 315px;
 	}
+	.channel-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:.2rem; padding:.45rem .45rem 0; border-bottom:1px solid rgba(216,173,103,.15); }
+	.channel-tabs button { border:0; border-radius:5px 5px 0 0; padding:.38rem .15rem; color:#ac9f94; background:transparent; font-size:.62rem; font-weight:700; cursor:pointer; }
+	.channel-tabs button.active { color:#f0cb85; background:rgba(114,76,40,.35); }
 	.messages {
 		display: flex;
 		flex-direction: column;
@@ -143,9 +158,6 @@
 		font-size: 0.78rem;
 		text-align: center;
 		line-height: 1.6;
-	}
-	code {
-		color: #edc77f;
 	}
 	article {
 		display: grid;
@@ -162,6 +174,8 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
+	article.combat { border-left-color:#c86b48; background:rgba(105,45,34,.34); }
+	article.info { border-left-color:#5f9cbd; background:rgba(42,71,91,.34); }
 	article span {
 		color: #e2d7ca;
 		line-height: 1.4;

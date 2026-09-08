@@ -31,17 +31,25 @@ type DiceResult struct {
 	Dice       []int  `json:"dados"`
 	Modifier   int    `json:"modificador"`
 	Total      int    `json:"total"`
+	Channel    string `json:"channel,omitempty"`
 }
 
 func NewHandler(pool *pgxpool.Pool) *Handler { return &Handler{pool: pool} }
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
-	var member bool
-	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, p.UserID).Scan(&member); err != nil || !member {
+	var role string
+	if err := h.pool.QueryRow(r.Context(), `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, p.UserID).Scan(&role); err != nil {
 		return apperror.Forbidden("Você não participa desta campanha.")
 	}
-	rows, err := h.pool.Query(r.Context(), `select e.id,coalesce(pr.display_name,'Aventureiro'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll') order by e.id desc limit 100`, campaignID)
+	query := `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','system.info')`
+	// Combat logs currently contain the private token name. Until combat events
+	// carry per-token visibility metadata, do not send them to players at all.
+	// This conservative server-side rule prevents a hidden enemy leaking via chat.
+	if role == "gm" {
+		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info')`
+	}
+	rows, err := h.pool.Query(r.Context(), query+` order by e.id desc limit 100`, campaignID)
 	if err != nil {
 		return apperror.Internal(err)
 	}
@@ -90,14 +98,23 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		var payload struct {
 			Expression string `json:"expression"`
+			Mode       string `json:"mode"`
+			Channel    string `json:"channel"`
 		}
 		if err := json.Unmarshal(in.Payload, &payload); err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
 		}
-		result, err := roll(strings.TrimSpace(payload.Expression))
+		if payload.Mode != "" && payload.Mode != "disadvantage" && payload.Mode != "advantage" {
+			return apperror.BadRequest("INVALID_ROLL", "Modo de rolagem inválido.")
+		}
+		if payload.Channel != "" && payload.Channel != "chat" && payload.Channel != "combat" {
+			return apperror.BadRequest("INVALID_ROLL", "Canal de rolagem inválido.")
+		}
+		result, err := rollWithMode(strings.TrimSpace(payload.Expression), payload.Mode)
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
 		}
+		result.Channel = payload.Channel
 		in.Payload, _ = json.Marshal(result)
 	}
 	var item Event
@@ -138,6 +155,32 @@ func roll(expression string) (DiceResult, error) {
 	}
 	result.Total += modifier
 	return result, nil
+}
+
+// rollWithMode keeps advantage/disadvantage server-authoritative. The browser
+// cannot choose a favourable die: both faces are generated here and the kept
+// result is stored as the campaign event.
+func rollWithMode(expression, mode string) (DiceResult, error) {
+	first, err := roll(expression)
+	if err != nil || mode == "" {
+		return first, err
+	}
+	match := diceExpression.FindStringSubmatch(strings.ReplaceAll(expression, " ", ""))
+	if match == nil || match[1] != "1" || match[2] != "20" {
+		return DiceResult{}, fmt.Errorf("mode requires 1d20")
+	}
+	second, err := roll(expression)
+	if err != nil {
+		return DiceResult{}, err
+	}
+	firstFace, secondFace := first.Dice[0], second.Dice[0]
+	keepFirst := (mode == "advantage" && firstFace >= secondFace) || (mode == "disadvantage" && firstFace <= secondFace)
+	kept := first
+	if !keepFirst {
+		kept = second
+	}
+	kept.Expression = fmt.Sprintf("%s (%s: %d/%d)", expression, map[string]string{"advantage": "vantagem", "disadvantage": "desvantagem"}[mode], firstFace, secondFace)
+	return kept, nil
 }
 func write(w http.ResponseWriter, status int, v any) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

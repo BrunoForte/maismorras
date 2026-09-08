@@ -11,10 +11,16 @@
 		type TokenVisibility
 	} from '$lib/stores/gameStore';
 	import {
+		addSceneEffect,
 		createToken,
+		listEffectDefinitions,
+		listSceneEffects,
 		loadScene,
+		removeSceneEffect,
 		updateToken,
+		type EffectDefinition,
 		type PersistedToken,
+		type SceneEffect,
 		type Scene
 	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
@@ -28,6 +34,10 @@
 	let container: HTMLDivElement;
 	let tokenSelecionadoId = $state<number | null>(null);
 	let novoStatus = $state<StatusToken>('Envenenado');
+	let definicoesDeEfeito = $state<EffectDefinition[]>([]);
+	let efeitosAtivos = $state<SceneEffect[]>([]);
+	let definicaoSelecionada = $state('');
+	let duracaoEfeito = $state('');
 	let personagemSelecionado = $derived(
 		$personagens.find((personagem) => personagem.id === tokenSelecionadoId)
 	);
@@ -35,6 +45,13 @@
 	const pendingCreates = new Set<number>();
 	const savedSnapshots = new Map<string, string>();
 	let sceneSocket: SceneSocket | null = null;
+	let motor: GameEngine | null = null;
+	let efeitoSelecionado = $derived(definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada));
+	let efeitosDoToken = $derived(
+		personagemSelecionado?.persistedId
+			? efeitosAtivos.filter((item) => item.tokenId === personagemSelecionado.persistedId)
+			: []
+	);
 
 	function asPersonagem(token: PersistedToken, index: number): Personagem {
 		return {
@@ -107,6 +124,7 @@
 		try {
 			const response = await loadScene(session, scene.id);
 			urlMapa.set(response.scene.backgroundUrl);
+			motor?.setFog(response.scene.fogEnabled, isGM, response.fog.visibleCells, response.fog.revealedCells);
 			const carregados = response.tokens.map(asPersonagem);
 			savedSnapshots.clear();
 			carregados.forEach((personagem) => {
@@ -120,26 +138,96 @@
 		}
 	}
 
+	async function carregarEfeitos() {
+		try {
+			const [catalogo, aplicados] = await Promise.all([
+				listEffectDefinitions(session, scene.id),
+				listSceneEffects(session, scene.id)
+			]);
+			definicoesDeEfeito = catalogo.definitions;
+			efeitosAtivos = aplicados.effects;
+			if (!definicaoSelecionada && catalogo.definitions[0])
+				definicaoSelecionada = catalogo.definitions[0].slug;
+		} catch (error) {
+			// The board remains usable while a deployment/migration is in progress.
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível carregar condições.';
+		}
+	}
+
+	async function aplicarCondicaoOficial() {
+		if (!isGM || !personagemSelecionado?.persistedId || !efeitoSelecionado) return;
+		const parsedDuration = Number(duracaoEfeito);
+		const remainingTurns = duracaoEfeito.trim() && Number.isInteger(parsedDuration) && parsedDuration > 0
+			? parsedDuration
+			: null;
+		try {
+			const effect = await addSceneEffect(session, scene.id, {
+				tokenId: personagemSelecionado.persistedId,
+				name: efeitoSelecionado.name,
+				source: efeitoSelecionado.source,
+				remainingTurns,
+				tickAt: 'turn_end'
+			});
+			efeitosAtivos = [...efeitosAtivos, effect];
+			persistenceError = '';
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível aplicar a condição.';
+		}
+	}
+
+	async function removerEfeito(effect: SceneEffect) {
+		if (!isGM) return;
+		try {
+			await removeSceneEffect(session, scene.id, effect.id);
+			efeitosAtivos = efeitosAtivos.filter((item) => item.id !== effect.id);
+			persistenceError = '';
+			sceneSocket?.publishRefresh();
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível remover a condição.';
+		}
+	}
+
+	function impedeMovimento(personagem: Personagem) {
+		const tokenID = personagem.persistedId;
+		if (!tokenID) return false;
+		return efeitosAtivos.some(
+			(effect) =>
+				effect.tokenId === tokenID &&
+				['Agarrado', 'Impedido', 'Paralisado', 'Atordoado', 'Petrificado', 'Inconsciente'].includes(effect.name)
+		);
+	}
+
 	onMount(() => {
-		const motor = new GameEngine(
+		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
 				if (!isGM) return;
+				const personagem = $personagens.find((item) => item.id === tokenId);
+				if (personagem && impedeMovimento(personagem)) {
+					persistenceError = `${personagem.nome} não pode se mover enquanto estiver sob esta condição.`;
+					return false;
+				}
 				personagens.update((lista) =>
 					lista.map((personagem) =>
 						personagem.id === tokenId ? { ...personagem, x, y } : personagem
 					)
 				);
-			}
+				return true;
+			},
+			scene.gridSize
 		);
 		const observer = new ResizeObserver(([entry]) => {
-			motor.resize(entry.contentRect.width, entry.contentRect.height);
+			motor?.resize(entry.contentRect.width, entry.contentRect.height);
 		});
 		void motor.init(canvasMesa).then(async () => {
 			observer.observe(container);
 			await carregarTokens();
+			await carregarEfeitos();
 		});
-		sceneSocket = connectSceneSocket(session, scene.id, () => void carregarTokens());
+		sceneSocket = connectSceneSocket(session, scene.id, () => {
+			void carregarTokens();
+			void carregarEfeitos();
+		});
 
 		const unsubscribe = personagens.subscribe((lista) => {
 			if (!isGM) return;
@@ -173,7 +261,8 @@
 			sceneSocket = null;
 			unsubscribe();
 			observer.disconnect();
-			motor.destroy();
+			motor?.destroy();
+			motor = null;
 		};
 	});
 
@@ -216,12 +305,13 @@
 	}
 	async function rollToken(expression: string) {
 		if (!personagemSelecionado) return;
-		try { const event = await rollDice(session, scene.campaignId, expression); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
+		try { const event = await rollDice(session, scene.campaignId, expression, undefined, 'combat'); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
 	}
 </script>
 
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
+	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
 	{#if personagemSelecionado}
 		<section class="token-inspector" aria-label={`Informações de ${personagemSelecionado.nome}`}>
 			<header>
@@ -282,6 +372,26 @@
 					</div>{/if}
 			</div>
 			{#if isGM}
+				<div class="official-effects">
+					<div class="status-heading"><span>Condições oficiais (SRD)</span></div>
+					{#if definicoesDeEfeito.length}
+						<select bind:value={definicaoSelecionada} aria-label="Condição oficial">
+							{#each definicoesDeEfeito as definition}<option value={definition.slug}>{definition.name}</option>{/each}
+						</select>
+						{#if efeitoSelecionado}<p>{efeitoSelecionado.summary}</p>{/if}
+						<div class="effect-actions">
+							<input bind:value={duracaoEfeito} inputmode="numeric" type="number" min="1" placeholder="Turnos (opcional)" aria-label="Duração em turnos" />
+							<button onclick={aplicarCondicaoOficial}>Aplicar</button>
+						</div>
+					{:else}<p class="effect-empty">Execute a migração 0017 para carregar o catálogo SRD.</p>{/if}
+					{#if efeitosDoToken.length}
+						<div class="official-effect-list">
+							{#each efeitosDoToken as effect}<span title={effect.source}>{effect.name}{effect.remainingTurns ? ` · ${effect.remainingTurns} turnos` : ''}{#if isGM}<button onclick={() => void removerEfeito(effect)} aria-label={`Remover ${effect.name}`}>×</button>{/if}</span>{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+			{#if isGM}
 				<div class="visibility-control">
 					<div>
 						<span class="inspector-eyebrow">VISIBILIDADE PARA OUTROS JOGADORES</span>
@@ -341,6 +451,8 @@
 		width: 100%;
 		height: 100%;
 	}
+	.scene-hud { position:absolute; z-index:2; top:.8rem; left:.9rem; display:grid; gap:.13rem; max-width:calc(100% - 6rem); padding:.45rem .65rem; border:1px solid rgba(216,173,103,.3); border-radius:7px; color:#f2e6d7; background:rgba(25,19,23,.78); box-shadow:0 5px 14px #0004; pointer-events:none; backdrop-filter:blur(8px); }
+	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }
 	@media (max-width: 760px) {
 		.borda-mesa {
 			height: calc(100dvh - 142px);
@@ -523,6 +635,44 @@
 		gap: 0.35rem;
 		margin-top: 0.65rem;
 	}
+	.official-effects {
+		padding: .75rem 0;
+		border-top: 1px solid #423839;
+	}
+	.official-effects select,
+	.effect-actions input {
+		box-sizing: border-box;
+		width: 100%;
+		margin-top: .45rem;
+		border: 1px solid #5a4841;
+		border-radius: 6px;
+		padding: .42rem;
+		color: #e7dacc;
+		background: #282125;
+		font-size: .72rem;
+	}
+	.official-effects p {
+		margin: .45rem 0;
+		color: #b9aa9d;
+		font-size: .7rem;
+		line-height: 1.35;
+	}
+	.effect-actions { display: flex; gap: .4rem; align-items: end; }
+	.effect-actions input { margin: 0; }
+	.effect-actions button {
+		border: 1px solid #725a3b;
+		border-radius: 6px;
+		padding: .45rem .62rem;
+		color: #e8c786;
+		background: #2a211e;
+		font-size: .72rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.official-effect-list { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+	.official-effect-list span { display: inline-flex; align-items: center; gap: .25rem; border: 1px solid #624d42; border-radius: 999px; padding: .23rem .42rem; color: #e9d5ad; font-size: .64rem; }
+	.official-effect-list button { border: 0; padding: 0; color: #e9d5ad; background: transparent; cursor: pointer; font-size: .85rem; line-height: .65rem; }
+	.effect-empty { color: #c69072 !important; }
 	.status-list button {
 		border: 1px solid #5e4964;
 		border-radius: 999px;

@@ -5,6 +5,7 @@ export type ResultadoRolagem = {
 	dados: number[];
 	modificador: number;
 	total: number;
+	channel?: 'chat' | 'combat';
 };
 
 export function rolarDados(expressao: string): ResultadoRolagem | null {

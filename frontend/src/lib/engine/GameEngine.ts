@@ -14,12 +14,15 @@ export class GameEngine {
 	public tamanhoGrid = 70;
 	private tokens: Map<number, Token> = new Map();
 	private unsubscribers: Unsubscriber[] = [];
+	private fogLayer: PIXI.Graphics | null = null;
 
 	constructor(
 		private readonly onTokenClick?: (tokenId: number) => void,
-		private readonly onTokenMove?: (tokenId: number, x: number, y: number) => void
+		private readonly onTokenMove?: (tokenId: number, x: number, y: number) => boolean | void,
+		gridSize = 70
 	) {
 		this.app = new PIXI.Application();
+		this.tamanhoGrid = Math.min(200, Math.max(20, gridSize));
 	}
 
 	async init(canvas: HTMLCanvasElement) {
@@ -95,10 +98,30 @@ export class GameEngine {
 		this.unsubscribers = [];
 		this.tokens.forEach((token) => token.destroy());
 		this.tokens.clear();
+		this.fogLayer?.destroy();
 		this.rulerManager?.destroy();
 		this.mapManager?.destroy();
 		this.camera?.destroy();
 		this.app.destroy(true, { children: true, texture: false, textureSource: false });
+	}
+
+	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[]) {
+		if (!this.fogLayer) {
+			this.fogLayer = new PIXI.Graphics();
+			this.camera.mundo.addChild(this.fogLayer);
+		}
+		this.fogLayer.clear();
+		if (!enabled || isGM) return;
+		const visible = new Set(visibleCells);
+		const explored = new Set(revealedCells);
+		// The existing grid spans ±2520px. Rendering one batched Graphics layer
+		// is inexpensive and keeps the mask aligned while camera zooms/pans.
+		for (let x = -36; x <= 36; x++) for (let y = -36; y <= 36; y++) {
+			const key = `${x}:${y}`;
+			if (visible.has(key)) continue;
+			this.fogLayer.rect(x * this.tamanhoGrid, y * this.tamanhoGrid, this.tamanhoGrid, this.tamanhoGrid)
+				.fill({ color: 0x0a080c, alpha: explored.has(key) ? 0.58 : 0.94 });
+		}
 	}
 
 	private desenharGrid() {

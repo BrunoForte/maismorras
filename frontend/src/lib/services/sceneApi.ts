@@ -24,6 +24,7 @@ export type PersistedToken = {
 	hpMax: number;
 	armorClass: number;
 	initiative: number;
+	initiativeBonus?: number;
 	statuses: string[];
 	hidden: boolean;
 	visibility: {
@@ -33,6 +34,21 @@ export type PersistedToken = {
 		showStatuses: boolean;
 	};
 };
+export type SceneEffect = {
+	id: string;
+	tokenId: string;
+	name: string;
+	source: string;
+	remainingTurns: number | null;
+	tickAt: 'turn_start' | 'turn_end';
+};
+export type EffectDefinition = {
+	slug: string;
+	name: string;
+	summary: string;
+	source: string;
+};
+export type FogState = { visibleCells: string[]; revealedCells: string[] };
 
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 export async function request<T>(
@@ -50,6 +66,7 @@ export async function request<T>(
 	});
 	if (!response.ok)
 		throw new Error((await response.json()).error?.message ?? 'Não foi possível carregar a mesa.');
+	if (response.status === 204) return undefined as T;
 	return response.json() as Promise<T>;
 }
 export const listScenes = (session: Session, campaignId: string) =>
@@ -61,11 +78,11 @@ export const createScene = (session: Session, campaignId: string, name: string) 
 	});
 export const updateScene = (session: Session, scene: Scene) => request<Scene>(session, `/api/v1/scenes/${scene.id}`, { method: 'PATCH', body: JSON.stringify(scene) });
 export const loadScene = (session: Session, sceneId: string) =>
-	request<{ scene: Scene; tokens: PersistedToken[] }>(session, `/api/v1/scenes/${sceneId}`);
+	request<{ scene: Scene; tokens: PersistedToken[]; fog: FogState }>(session, `/api/v1/scenes/${sceneId}`);
 export const getCombat = (session: Session, sceneId: string) =>
 	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>
-	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`, {
+	request<{ activeTokenId: string | null; message?: string }>(session, `/api/v1/scenes/${sceneId}/combat`, {
 		method: 'PATCH',
 		body: JSON.stringify({ activeTokenId: activeTokenId ?? '' })
 	});
@@ -73,6 +90,21 @@ export const rollSceneInitiative = (session: Session, sceneId: string) =>
 	request<{ tokens: { id: string; initiative: number }[] }>(session, `/api/v1/scenes/${sceneId}/combat/roll-initiative`, {
 		method: 'POST'
 	});
+export const listSceneEffects = (session: Session, sceneId: string) =>
+	request<{ effects: SceneEffect[] }>(session, `/api/v1/scenes/${sceneId}/effects`);
+export const listEffectDefinitions = (session: Session, sceneId: string) =>
+	request<{ definitions: EffectDefinition[] }>(session, `/api/v1/scenes/${sceneId}/effect-definitions`);
+export const addSceneEffect = (
+	session: Session,
+	sceneId: string,
+	effect: Omit<SceneEffect, 'id'>
+) =>
+	request<SceneEffect>(session, `/api/v1/scenes/${sceneId}/effects`, {
+		method: 'POST',
+		body: JSON.stringify(effect)
+	});
+export const removeSceneEffect = (session: Session, sceneId: string, effectId: string) =>
+	request<void>(session, `/api/v1/scenes/${sceneId}/effects/${effectId}`, { method: 'DELETE' });
 
 export const createToken = (
 	session: Session,

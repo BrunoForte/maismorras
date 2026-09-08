@@ -20,23 +20,24 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 type StoredEvent = {
 	id: number;
 	author: string;
-	type: 'chat.message' | 'dice.roll';
+	type: 'chat.message' | 'dice.roll' | 'combat.log' | 'system.info';
 	payload: unknown;
 };
 function asMessage(event: StoredEvent): Mensagem | null {
-	if (event.type === 'chat.message') {
+	if (event.type === 'chat.message' || event.type === 'combat.log' || event.type === 'system.info') {
 		const p = event.payload as { text?: string };
 		return p.text
-			? { id: String(event.id), autor: event.author, texto: p.text, tipo: 'texto' }
+			? { id: String(event.id), autor: event.author, texto: p.text, tipo: 'texto', canal: event.type === 'combat.log' ? 'combat' : event.type === 'system.info' ? 'info' : p.text.startsWith('⚔️') ? 'combat' : 'chat' }
 			: null;
 	}
-	const p = event.payload as Mensagem['detalhesRolagem'] & { text?: string };
+	const p = event.payload as Mensagem['detalhesRolagem'] & { text?: string; channel?: 'chat' | 'combat' };
 	return p?.expressao
 		? {
 				id: String(event.id),
 				autor: event.author,
-				texto: p.text ?? '',
-				tipo: 'rolagem',
+			texto: p.text ?? '',
+			tipo: 'rolagem',
+			canal: p.channel ?? 'chat',
 				detalhesRolagem: p
 			}
 		: null;
@@ -64,8 +65,8 @@ export const saveRoll = (
 		body: JSON.stringify({ type: 'dice.roll', payload: { ...details, text } })
 	});
 
-export const rollDice = (session: Session, campaignId: string, expression: string) =>
+export const rollDice = (session: Session, campaignId: string, expression: string, mode?: 'advantage' | 'disadvantage', channel: 'chat' | 'combat' = 'chat') =>
 	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
-		body: JSON.stringify({ type: 'dice.roll', payload: { expression } })
+		body: JSON.stringify({ type: 'dice.roll', payload: { expression, mode, channel } })
 	});

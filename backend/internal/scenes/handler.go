@@ -60,11 +60,11 @@ func validSceneSettings(s Scene) bool {
 }
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	scene, tokens, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
+	scene, tokens, fog, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
 	if err != nil {
 		return mapError(err)
 	}
-	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens})
+	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog})
 }
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
@@ -73,6 +73,48 @@ func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, state)
+}
+func (h *Handler) Effects(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	items, err := h.repo.Effects(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"effects": items})
+}
+func (h *Handler) EffectDefinitions(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	items, err := h.repo.EffectDefinitions(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"definitions": items})
+}
+func (h *Handler) AddEffect(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var e Effect
+	if err := decode(w, r, &e); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.TokenID) == "" || strings.TrimSpace(e.Name) == "" {
+		return apperror.BadRequest("INVALID_EFFECT", "Informe token e efeito.")
+	}
+	if e.TickAt != "turn_start" && e.TickAt != "turn_end" {
+		e.TickAt = "turn_end"
+	}
+	item, err := h.repo.AddEffect(r.Context(), r.PathValue("sceneID"), p.UserID, e)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+func (h *Handler) RemoveEffect(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.RemoveEffect(r.Context(), r.PathValue("sceneID"), r.PathValue("effectID"), p.UserID); err != nil {
+		return mapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 func (h *Handler) SetCombat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
