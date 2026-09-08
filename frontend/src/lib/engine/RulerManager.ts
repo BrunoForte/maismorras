@@ -73,6 +73,8 @@ export class RulerManager {
 			if (!this.medindo) return;
 
 			const pos = this.mundo.toLocal(e.global);
+			this.endX = pos.x;
+			this.endY = pos.y;
 
 			// Linha, círculo e cone compartilham o mesmo ponto inicial, grid e zoom.
 			this.graphics.clear();

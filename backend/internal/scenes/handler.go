@@ -60,11 +60,11 @@ func validSceneSettings(s Scene) bool {
 }
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	scene, tokens, fog, areas, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
+	scene, tokens, fog, areas, walls, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
 	if err != nil {
 		return mapError(err)
 	}
-	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas})
+	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas, "walls": walls})
 }
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
@@ -156,6 +156,29 @@ func (h *Handler) CreateArea(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) DeleteArea(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteArea(r.Context(), r.PathValue("sceneID"), r.PathValue("areaID"), p.UserID); err != nil {
+		return mapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+func (h *Handler) CreateWall(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var wall Wall
+	if err := decode(w, r, &wall); err != nil {
+		return err
+	}
+	if wall.StartX == wall.EndX && wall.StartY == wall.EndY {
+		return apperror.BadRequest("INVALID_WALL", "Uma parede precisa ter comprimento.")
+	}
+	item, err := h.repo.CreateWall(r.Context(), r.PathValue("sceneID"), p.UserID, wall)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+func (h *Handler) DeleteWall(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.DeleteWall(r.Context(), r.PathValue("sceneID"), r.PathValue("wallID"), p.UserID); err != nil {
 		return mapError(err)
 	}
 	w.WriteHeader(http.StatusNoContent)

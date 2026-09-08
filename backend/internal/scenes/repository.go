@@ -43,6 +43,16 @@ type Area struct {
 	Label            string `json:"label"`
 	VisibleToPlayers bool   `json:"visibleToPlayers"`
 }
+
+// Wall is a GM-only line segment. It participates in the server-side line of
+// sight calculation, so a player cannot inspect the map geometry in DevTools.
+type Wall struct {
+	ID     string `json:"id"`
+	StartX int    `json:"startX"`
+	StartY int    `json:"startY"`
+	EndX   int    `json:"endX"`
+	EndY   int    `json:"endY"`
+}
 type Effect struct {
 	ID             string `json:"id"`
 	TokenID        string `json:"tokenId"`
@@ -164,17 +174,17 @@ func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, in
 	}
 	return scene, nil
 }
-func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, FogState, []Area, error) {
+func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, FogState, []Area, []Wall, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	var s Scene
 	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode); err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	if role != "gm" && s.PlayerAccess == "hidden" {
-		return Scene{}, nil, FogState{}, nil, ErrForbidden
+		return Scene{}, nil, FogState{}, nil, nil, ErrForbidden
 	}
 	query := `select id::text,actor_id::text,owner_id::text,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,initiative_bonus,vision_range,statuses,is_hidden,visibility from scene_tokens where scene_id=$1`
 	if role != "gm" {
@@ -182,7 +192,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	}
 	rows, err := r.pool.Query(ctx, query, sceneID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	defer rows.Close()
 	items := []Token{}
@@ -190,23 +200,36 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		var t Token
 		var raw, visibility []byte
 		if err := rows.Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.Name, &t.ImageURL, &t.Color, &t.X, &t.Y, &t.Size, &t.HPCurrent, &t.HPMax, &t.ArmorClass, &t.Initiative, &t.InitiativeBonus, &t.VisionRange, &raw, &t.Hidden, &visibility); err != nil {
-			return Scene{}, nil, FogState{}, nil, err
+			return Scene{}, nil, FogState{}, nil, nil, err
 		}
 		if err := json.Unmarshal(raw, &t.Statuses); err != nil {
-			return Scene{}, nil, FogState{}, nil, err
+			return Scene{}, nil, FogState{}, nil, nil, err
 		}
 		if err := json.Unmarshal(visibility, &t.Visibility); err != nil {
-			return Scene{}, nil, FogState{}, nil, err
+			return Scene{}, nil, FogState{}, nil, nil, err
 		}
 		t.IsOwner = t.OwnerID != nil && *t.OwnerID == userID
 		items = append(items, t)
 	}
 	if err := rows.Err(); err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
-	fog, err := r.fogState(ctx, sceneID, s.GridSize, items)
+	walls, err := r.Walls(ctx, sceneID, userID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
+	}
+	// A player deliberately receives an empty list, while the same server-side
+	// walls still constrain the calculated field of view below.
+	visionWalls := walls
+	if role != "gm" {
+		visionWalls, err = r.wallsForVision(ctx, sceneID)
+		if err != nil {
+			return Scene{}, nil, FogState{}, nil, nil, err
+		}
+	}
+	fog, err := r.fogState(ctx, sceneID, s.GridSize, items, visionWalls)
+	if err != nil {
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	filtered := make([]Token, 0, len(items))
 	visible := make(map[string]bool, len(fog.VisibleCells))
@@ -224,9 +247,61 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	}
 	areas, err := r.Areas(ctx, sceneID, userID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, nil, err
+		return Scene{}, nil, FogState{}, nil, nil, err
 	}
-	return s, filtered, fog, areas, nil
+	return s, filtered, fog, areas, walls, nil
+}
+
+func (r *Repository) wallsForVision(ctx context.Context, sceneID string) ([]Wall, error) {
+	rows, err := r.pool.Query(ctx, `select id::text,start_x,start_y,end_x,end_y from scene_walls where scene_id=$1 order by created_at`, sceneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Wall{}
+	for rows.Next() {
+		var item Wall
+		if err := rows.Scan(&item.ID, &item.StartX, &item.StartY, &item.EndX, &item.EndY); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *Repository) Walls(ctx context.Context, sceneID, userID string) ([]Wall, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return nil, ErrForbidden
+	}
+	if role != "gm" {
+		return []Wall{}, nil
+	}
+	return r.wallsForVision(ctx, sceneID)
+}
+
+func (r *Repository) CreateWall(ctx context.Context, sceneID, userID string, wall Wall) (Wall, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return Wall{}, ErrForbidden
+	}
+	err = r.pool.QueryRow(ctx, `insert into scene_walls(scene_id,start_x,start_y,end_x,end_y) values($1,$2,$3,$4,$5) returning id::text`, sceneID, wall.StartX, wall.StartY, wall.EndX, wall.EndY).Scan(&wall.ID)
+	return wall, err
+}
+
+func (r *Repository) DeleteWall(ctx context.Context, sceneID, wallID, userID string) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	result, err := r.pool.Exec(ctx, `delete from scene_walls where id=$1 and scene_id=$2`, wallID, sceneID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("wall not found")
+	}
+	return nil
 }
 
 func (r *Repository) Areas(ctx context.Context, sceneID, userID string) ([]Area, error) {
@@ -281,7 +356,7 @@ func gridCell(pixel, gridSize int) int { return int(math.Floor(float64(pixel) / 
 func tokenIsVisible(t Token, gridSize int, visible map[string]bool) bool {
 	return visible[cellKey(gridCell(t.X, gridSize), gridCell(t.Y, gridSize))]
 }
-func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int, tokens []Token) (FogState, error) {
+func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int, tokens []Token, walls []Wall) (FogState, error) {
 	state := FogState{VisibleCells: []string{}, RevealedCells: []string{}, HiddenCells: []string{}}
 	visible := map[string]bool{}
 	for _, token := range tokens {
@@ -292,7 +367,9 @@ func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int,
 		for x := cx - token.VisionRange; x <= cx+token.VisionRange; x++ {
 			for y := cy - token.VisionRange; y <= cy+token.VisionRange; y++ {
 				if (x-cx)*(x-cx)+(y-cy)*(y-cy) <= token.VisionRange*token.VisionRange {
-					visible[cellKey(x, y)] = true
+					if hasLineOfSight(cx, cy, x, y, gridSize, walls) {
+						visible[cellKey(x, y)] = true
+					}
 				}
 			}
 		}
@@ -340,6 +417,29 @@ func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int,
 	return state, nil
 }
 
+func hasLineOfSight(fromX, fromY, toX, toY, gridSize int, walls []Wall) bool {
+	if fromX == toX && fromY == toY {
+		return true
+	}
+	ax, ay := float64(fromX*gridSize+gridSize/2), float64(fromY*gridSize+gridSize/2)
+	bx, by := float64(toX*gridSize+gridSize/2), float64(toY*gridSize+gridSize/2)
+	for _, wall := range walls {
+		if segmentsIntersect(ax, ay, bx, by, float64(wall.StartX), float64(wall.StartY), float64(wall.EndX), float64(wall.EndY)) {
+			return false
+		}
+	}
+	return true
+}
+
+func orientation(ax, ay, bx, by, cx, cy float64) float64 { return (bx-ax)*(cy-ay) - (by-ay)*(cx-ax) }
+func segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy float64) bool {
+	o1, o2 := orientation(ax, ay, bx, by, cx, cy), orientation(ax, ay, bx, by, dx, dy)
+	o3, o4 := orientation(cx, cy, dx, dy, ax, ay), orientation(cx, cy, dx, dy, bx, by)
+	// Collinear sight exactly along a wall is kept visible; only a crossing
+	// blocks vision, avoiding flicker when a token stands beside a wall.
+	return ((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) && ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0))
+}
+
 func (r *Repository) UpdateFog(ctx context.Context, sceneID, userID, mode string, cells [][2]int) error {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil || role != "gm" {
@@ -364,10 +464,17 @@ func (r *Repository) revealTokenVision(ctx context.Context, sceneID string, toke
 	if err := r.pool.QueryRow(ctx, `select grid_size from scenes where id=$1`, sceneID).Scan(&gridSize); err != nil {
 		return err
 	}
+	walls, err := r.wallsForVision(ctx, sceneID)
+	if err != nil {
+		return err
+	}
 	cx, cy := gridCell(token.X, gridSize), gridCell(token.Y, gridSize)
 	for x := cx - token.VisionRange; x <= cx+token.VisionRange; x++ {
 		for y := cy - token.VisionRange; y <= cy+token.VisionRange; y++ {
 			if (x-cx)*(x-cx)+(y-cy)*(y-cy) > token.VisionRange*token.VisionRange {
+				continue
+			}
+			if !hasLineOfSight(cx, cy, x, y, gridSize, walls) {
 				continue
 			}
 			if _, err := r.pool.Exec(ctx, `insert into scene_revealed_cells(scene_id,cell_x,cell_y) values($1,$2,$3) on conflict do nothing`, sceneID, x, y); err != nil {

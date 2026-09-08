@@ -4,7 +4,7 @@ import { Token } from './Token';
 import { MapManager } from './MapManager';
 import { RulerManager } from './RulerManager';
 import type { MeasuredArea } from './RulerManager';
-import type { SceneArea } from '$lib/services/sceneApi';
+import type { SceneArea, SceneWall } from '$lib/services/sceneApi';
 import { personagens, urlMapa, type Personagem } from '$lib/stores/gameStore';
 import type { Unsubscriber } from 'svelte/store';
 
@@ -18,12 +18,17 @@ export class GameEngine {
 	private unsubscribers: Unsubscriber[] = [];
 	private fogLayer: PIXI.Graphics | null = null;
 	private areaLayer: PIXI.Graphics | null = null;
+	private wallLayer: PIXI.Graphics | null = null;
+	private wallPreview: PIXI.Graphics | null = null;
+	private drawingWall = false;
+	private wallStart: { x: number; y: number } | null = null;
 
 	constructor(
 		private readonly onTokenClick?: (tokenId: number) => void,
 		private readonly onTokenMove?: (tokenId: number, x: number, y: number) => boolean | void,
 		private readonly onFogPaint?: (x: number, y: number) => void,
 		private readonly onAreaComplete?: (area: MeasuredArea) => void,
+		private readonly onWallComplete?: (wall: Omit<SceneWall, 'id'>) => void,
 		gridSize = 70
 	) {
 		this.app = new PIXI.Application();
@@ -92,6 +97,27 @@ export class GameEngine {
 		);
 
 		this.rulerManager = new RulerManager(this.camera.mundo, this.app.stage, this.tamanhoGrid, this.onAreaComplete);
+		this.wallPreview = new PIXI.Graphics();
+		this.camera.mundo.addChild(this.wallPreview);
+		this.app.stage.on('pointerdown', (event) => {
+			if (!this.drawingWall || event.shiftKey) return;
+			const pos = this.camera.mundo.toLocal(event.global);
+			this.wallStart = { x: pos.x, y: pos.y };
+		});
+		this.app.stage.on('pointermove', (event) => {
+			if (!this.drawingWall || !this.wallStart || !this.wallPreview) return;
+			const pos = this.camera.mundo.toLocal(event.global);
+			this.wallPreview.clear().moveTo(this.wallStart.x, this.wallStart.y).lineTo(pos.x, pos.y).stroke({ width: 7, color: 0xc98e57, alpha: .9 });
+		});
+		const finishWall = (event: PIXI.FederatedPointerEvent) => {
+			if (!this.drawingWall || !this.wallStart) return;
+			const pos = this.camera.mundo.toLocal(event.global);
+			const start = this.wallStart;
+			this.setWallDrawing(false);
+			if (Math.hypot(pos.x - start.x, pos.y - start.y) >= 8) this.onWallComplete?.({ startX: Math.round(start.x), startY: Math.round(start.y), endX: Math.round(pos.x), endY: Math.round(pos.y) });
+		};
+		this.app.stage.on('pointerup', finishWall);
+		this.app.stage.on('pointerupoutside', finishWall);
 		this.app.stage.on('pointertap', (event) => this.onFogPaint?.(this.camera.mundo.toLocal(event.global).x, this.camera.mundo.toLocal(event.global).y));
 	}
 
@@ -106,6 +132,8 @@ export class GameEngine {
 		this.tokens.clear();
 		this.fogLayer?.destroy();
 		this.areaLayer?.destroy();
+		this.wallLayer?.destroy();
+		this.wallPreview?.destroy();
 		this.rulerManager?.destroy();
 		this.mapManager?.destroy();
 		this.camera?.destroy();
@@ -120,6 +148,17 @@ export class GameEngine {
 			else if (area.shape === 'circle') { const radius=Math.hypot(area.endX-area.startX,area.endY-area.startY); this.areaLayer.circle(area.startX,area.startY,radius).fill({color,alpha:.18}).stroke({width:3,color,alpha:.9}); }
 			else { const angle=Math.atan2(area.endY-area.startY,area.endX-area.startX),radius=Math.hypot(area.endX-area.startX,area.endY-area.startY),spread=Math.PI/6; this.areaLayer.moveTo(area.startX,area.startY).arc(area.startX,area.startY,radius,angle-spread,angle+spread).closePath().fill({color,alpha:.2}).stroke({width:3,color,alpha:.9}); }
 		}
+	}
+
+	setWalls(walls: SceneWall[]) {
+		if (!this.wallLayer) { this.wallLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.wallLayer); }
+		this.wallLayer.clear();
+		for (const wall of walls) this.wallLayer.moveTo(wall.startX, wall.startY).lineTo(wall.endX, wall.endY).stroke({ width: 7, color: 0x5b3a2a, alpha: .95 });
+	}
+
+	setWallDrawing(active: boolean) {
+		this.drawingWall = active;
+		if (!active) { this.wallStart = null; this.wallPreview?.clear(); }
 	}
 
 	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[], hiddenCells: string[] = []) {
