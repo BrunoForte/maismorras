@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 import type { Unsubscriber } from 'svelte/store';
+export type MeasuredArea = { shape: RulerMode; startX: number; startY: number; endX: number; endY: number };
 
 export class RulerManager {
 	private graphics: PIXI.Graphics;
@@ -10,11 +11,14 @@ export class RulerManager {
 	private startY = 0;
 	private mode: RulerMode = 'line';
 	private unsubscribe: Unsubscriber;
+	private endX = 0;
+	private endY = 0;
 
 	constructor(
 		private mundo: PIXI.Container,
 		private stage: PIXI.Container,
-		private tamanhoGrid: number
+		private tamanhoGrid: number,
+		private readonly onComplete?: (area: MeasuredArea) => void
 	) {
 		// 1. Criamos a linha da régua
 		this.graphics = new PIXI.Graphics();
@@ -53,6 +57,8 @@ export class RulerManager {
 
 			// Converte a posição do mouse na tela para a posição exata dentro do mundo (lidando com zoom)
 			const pos = this.mundo.toLocal(e.global);
+			this.endX = pos.x;
+			this.endY = pos.y;
 			this.startX = pos.x;
 			this.startY = pos.y;
 
@@ -114,6 +120,7 @@ export class RulerManager {
 		const pararMedicao = () => {
 			if (this.medindo) {
 				this.medindo = false;
+				this.onComplete?.({ shape: this.mode, startX: this.startX, startY: this.startY, endX: this.endX, endY: this.endY });
 				this.graphics.clear();
 				this.texto.visible = false;
 			}

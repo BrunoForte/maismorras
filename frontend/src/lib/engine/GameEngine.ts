@@ -3,6 +3,8 @@ import { Camera } from './Camera';
 import { Token } from './Token';
 import { MapManager } from './MapManager';
 import { RulerManager } from './RulerManager';
+import type { MeasuredArea } from './RulerManager';
+import type { SceneArea } from '$lib/services/sceneApi';
 import { personagens, urlMapa, type Personagem } from '$lib/stores/gameStore';
 import type { Unsubscriber } from 'svelte/store';
 
@@ -15,10 +17,13 @@ export class GameEngine {
 	private tokens: Map<number, Token> = new Map();
 	private unsubscribers: Unsubscriber[] = [];
 	private fogLayer: PIXI.Graphics | null = null;
+	private areaLayer: PIXI.Graphics | null = null;
 
 	constructor(
 		private readonly onTokenClick?: (tokenId: number) => void,
 		private readonly onTokenMove?: (tokenId: number, x: number, y: number) => boolean | void,
+		private readonly onFogPaint?: (x: number, y: number) => void,
+		private readonly onAreaComplete?: (area: MeasuredArea) => void,
 		gridSize = 70
 	) {
 		this.app = new PIXI.Application();
@@ -86,7 +91,8 @@ export class GameEngine {
 			})
 		);
 
-		this.rulerManager = new RulerManager(this.camera.mundo, this.app.stage, this.tamanhoGrid);
+		this.rulerManager = new RulerManager(this.camera.mundo, this.app.stage, this.tamanhoGrid, this.onAreaComplete);
+		this.app.stage.on('pointertap', (event) => this.onFogPaint?.(this.camera.mundo.toLocal(event.global).x, this.camera.mundo.toLocal(event.global).y));
 	}
 
 	resize(width: number, height: number) {
@@ -99,13 +105,24 @@ export class GameEngine {
 		this.tokens.forEach((token) => token.destroy());
 		this.tokens.clear();
 		this.fogLayer?.destroy();
+		this.areaLayer?.destroy();
 		this.rulerManager?.destroy();
 		this.mapManager?.destroy();
 		this.camera?.destroy();
 		this.app.destroy(true, { children: true, texture: false, textureSource: false });
 	}
+	setAreas(areas: SceneArea[]) {
+		if (!this.areaLayer) { this.areaLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.areaLayer); }
+		this.areaLayer.clear();
+		for (const area of areas) {
+			const color = area.color;
+			if (area.shape === 'line') this.areaLayer.moveTo(area.startX,area.startY).lineTo(area.endX,area.endY).stroke({width:5,color,alpha:.85});
+			else if (area.shape === 'circle') { const radius=Math.hypot(area.endX-area.startX,area.endY-area.startY); this.areaLayer.circle(area.startX,area.startY,radius).fill({color,alpha:.18}).stroke({width:3,color,alpha:.9}); }
+			else { const angle=Math.atan2(area.endY-area.startY,area.endX-area.startX),radius=Math.hypot(area.endX-area.startX,area.endY-area.startY),spread=Math.PI/6; this.areaLayer.moveTo(area.startX,area.startY).arc(area.startX,area.startY,radius,angle-spread,angle+spread).closePath().fill({color,alpha:.2}).stroke({width:3,color,alpha:.9}); }
+		}
+	}
 
-	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[]) {
+	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[], hiddenCells: string[] = []) {
 		if (!this.fogLayer) {
 			this.fogLayer = new PIXI.Graphics();
 			this.camera.mundo.addChild(this.fogLayer);
@@ -114,11 +131,12 @@ export class GameEngine {
 		if (!enabled || isGM) return;
 		const visible = new Set(visibleCells);
 		const explored = new Set(revealedCells);
+		const hidden = new Set(hiddenCells);
 		// The existing grid spans ±2520px. Rendering one batched Graphics layer
 		// is inexpensive and keeps the mask aligned while camera zooms/pans.
 		for (let x = -36; x <= 36; x++) for (let y = -36; y <= 36; y++) {
 			const key = `${x}:${y}`;
-			if (visible.has(key)) continue;
+			if (visible.has(key) && !hidden.has(key)) continue;
 			this.fogLayer.rect(x * this.tamanhoGrid, y * this.tamanhoGrid, this.tamanhoGrid, this.tamanhoGrid)
 				.fill({ color: 0x0a080c, alpha: explored.has(key) ? 0.58 : 0.94 });
 		}

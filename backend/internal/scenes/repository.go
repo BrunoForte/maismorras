@@ -30,6 +30,18 @@ type CombatState struct {
 type FogState struct {
 	VisibleCells  []string `json:"visibleCells"`
 	RevealedCells []string `json:"revealedCells"`
+	HiddenCells   []string `json:"hiddenCells"`
+}
+type Area struct {
+	ID               string `json:"id"`
+	Shape            string `json:"shape"`
+	StartX           int    `json:"startX"`
+	StartY           int    `json:"startY"`
+	EndX             int    `json:"endX"`
+	EndY             int    `json:"endY"`
+	Color            int    `json:"color"`
+	Label            string `json:"label"`
+	VisibleToPlayers bool   `json:"visibleToPlayers"`
 }
 type Effect struct {
 	ID             string `json:"id"`
@@ -152,17 +164,17 @@ func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, in
 	}
 	return scene, nil
 }
-func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, FogState, error) {
+func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, FogState, []Area, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, err
+		return Scene{}, nil, FogState{}, nil, err
 	}
 	var s Scene
 	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode); err != nil {
-		return Scene{}, nil, FogState{}, err
+		return Scene{}, nil, FogState{}, nil, err
 	}
 	if role != "gm" && s.PlayerAccess == "hidden" {
-		return Scene{}, nil, FogState{}, ErrForbidden
+		return Scene{}, nil, FogState{}, nil, ErrForbidden
 	}
 	query := `select id::text,actor_id::text,owner_id::text,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,initiative_bonus,vision_range,statuses,is_hidden,visibility from scene_tokens where scene_id=$1`
 	if role != "gm" {
@@ -170,7 +182,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	}
 	rows, err := r.pool.Query(ctx, query, sceneID)
 	if err != nil {
-		return Scene{}, nil, FogState{}, err
+		return Scene{}, nil, FogState{}, nil, err
 	}
 	defer rows.Close()
 	items := []Token{}
@@ -178,23 +190,23 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		var t Token
 		var raw, visibility []byte
 		if err := rows.Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.Name, &t.ImageURL, &t.Color, &t.X, &t.Y, &t.Size, &t.HPCurrent, &t.HPMax, &t.ArmorClass, &t.Initiative, &t.InitiativeBonus, &t.VisionRange, &raw, &t.Hidden, &visibility); err != nil {
-			return Scene{}, nil, FogState{}, err
+			return Scene{}, nil, FogState{}, nil, err
 		}
 		if err := json.Unmarshal(raw, &t.Statuses); err != nil {
-			return Scene{}, nil, FogState{}, err
+			return Scene{}, nil, FogState{}, nil, err
 		}
 		if err := json.Unmarshal(visibility, &t.Visibility); err != nil {
-			return Scene{}, nil, FogState{}, err
+			return Scene{}, nil, FogState{}, nil, err
 		}
 		t.IsOwner = t.OwnerID != nil && *t.OwnerID == userID
 		items = append(items, t)
 	}
 	if err := rows.Err(); err != nil {
-		return Scene{}, nil, FogState{}, err
+		return Scene{}, nil, FogState{}, nil, err
 	}
 	fog, err := r.fogState(ctx, sceneID, s.GridSize, items)
 	if err != nil {
-		return Scene{}, nil, FogState{}, err
+		return Scene{}, nil, FogState{}, nil, err
 	}
 	filtered := make([]Token, 0, len(items))
 	visible := make(map[string]bool, len(fog.VisibleCells))
@@ -210,7 +222,58 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	if role == "gm" {
 		fog = FogState{}
 	}
-	return s, filtered, fog, nil
+	areas, err := r.Areas(ctx, sceneID, userID)
+	if err != nil {
+		return Scene{}, nil, FogState{}, nil, err
+	}
+	return s, filtered, fog, areas, nil
+}
+
+func (r *Repository) Areas(ctx context.Context, sceneID, userID string) ([]Area, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return nil, ErrForbidden
+	}
+	query := `select id::text,shape,start_x,start_y,end_x,end_y,color,label,visible_to_players from scene_areas where scene_id=$1`
+	if role != "gm" {
+		query += ` and visible_to_players=true`
+	}
+	rows, err := r.pool.Query(ctx, query+` order by created_at`, sceneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Area{}
+	for rows.Next() {
+		var item Area
+		if err := rows.Scan(&item.ID, &item.Shape, &item.StartX, &item.StartY, &item.EndX, &item.EndY, &item.Color, &item.Label, &item.VisibleToPlayers); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+func (r *Repository) CreateArea(ctx context.Context, sceneID, userID string, area Area) (Area, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return Area{}, ErrForbidden
+	}
+	err = r.pool.QueryRow(ctx, `insert into scene_areas(scene_id,shape,start_x,start_y,end_x,end_y,color,label,visible_to_players) values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id::text`, sceneID, area.Shape, area.StartX, area.StartY, area.EndX, area.EndY, area.Color, area.Label, area.VisibleToPlayers).Scan(&area.ID)
+	return area, err
+}
+func (r *Repository) DeleteArea(ctx context.Context, sceneID, areaID, userID string) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	result, err := r.pool.Exec(ctx, `delete from scene_areas where id=$1 and scene_id=$2`, areaID, sceneID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("area not found")
+	}
+	return nil
 }
 
 func cellKey(x, y int) string          { return fmt.Sprintf("%d:%d", x, y) }
@@ -219,7 +282,7 @@ func tokenIsVisible(t Token, gridSize int, visible map[string]bool) bool {
 	return visible[cellKey(gridCell(t.X, gridSize), gridCell(t.Y, gridSize))]
 }
 func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int, tokens []Token) (FogState, error) {
-	state := FogState{VisibleCells: []string{}, RevealedCells: []string{}}
+	state := FogState{VisibleCells: []string{}, RevealedCells: []string{}, HiddenCells: []string{}}
 	visible := map[string]bool{}
 	for _, token := range tokens {
 		if token.OwnerID == nil || token.Hidden || token.VisionRange <= 0 {
@@ -234,9 +297,6 @@ func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int,
 			}
 		}
 	}
-	for key := range visible {
-		state.VisibleCells = append(state.VisibleCells, key)
-	}
 	rows, err := r.pool.Query(ctx, `select cell_x,cell_y from scene_revealed_cells where scene_id=$1`, sceneID)
 	if err != nil {
 		return state, err
@@ -249,7 +309,51 @@ func (r *Repository) fogState(ctx context.Context, sceneID string, gridSize int,
 		}
 		state.RevealedCells = append(state.RevealedCells, cellKey(x, y))
 	}
-	return state, rows.Err()
+	if err := rows.Err(); err != nil {
+		return state, err
+	}
+	overrides, err := r.pool.Query(ctx, `select cell_x,cell_y,mode from scene_fog_overrides where scene_id=$1`, sceneID)
+	if err != nil {
+		return state, err
+	}
+	defer overrides.Close()
+	for overrides.Next() {
+		var x, y int
+		var mode string
+		if err := overrides.Scan(&x, &y, &mode); err != nil {
+			return state, err
+		}
+		key := cellKey(x, y)
+		if mode == "reveal" {
+			visible[key] = true
+		} else {
+			delete(visible, key)
+			state.HiddenCells = append(state.HiddenCells, key)
+		}
+	}
+	if err := overrides.Err(); err != nil {
+		return state, err
+	}
+	for key := range visible {
+		state.VisibleCells = append(state.VisibleCells, key)
+	}
+	return state, nil
+}
+
+func (r *Repository) UpdateFog(ctx context.Context, sceneID, userID, mode string, cells [][2]int) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	if (mode != "reveal" && mode != "hide") || len(cells) == 0 || len(cells) > 121 {
+		return fmt.Errorf("invalid fog update")
+	}
+	for _, cell := range cells {
+		if _, err := r.pool.Exec(ctx, `insert into scene_fog_overrides(scene_id,cell_x,cell_y,mode) values($1,$2,$3,$4) on conflict(scene_id,cell_x,cell_y) do update set mode=excluded.mode,updated_at=now()`, sceneID, cell[0], cell[1], mode); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Repository) revealTokenVision(ctx context.Context, sceneID string, token Token) error {

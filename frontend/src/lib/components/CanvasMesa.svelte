@@ -13,14 +13,18 @@
 	import {
 		addSceneEffect,
 		createToken,
+		createSceneArea,
+		deleteSceneArea,
 		listEffectDefinitions,
 		listSceneEffects,
 		loadScene,
 		removeSceneEffect,
+		updateFog,
 		updateToken,
 		type EffectDefinition,
 		type PersistedToken,
 		type SceneEffect,
+		type SceneArea,
 		type Scene
 	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
@@ -46,6 +50,12 @@
 	const savedSnapshots = new Map<string, string>();
 	let sceneSocket: SceneSocket | null = null;
 	let motor: GameEngine | null = null;
+	let fogMode = $state<'reveal' | 'hide' | null>(null);
+	let fogBrush = $state(1);
+	let areas = $state<SceneArea[]>([]);
+	let saveAreaArmed = $state(false);
+	let areaLabel = $state('Área de efeito');
+	let areaVisible = $state(true);
 	let efeitoSelecionado = $derived(definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada));
 	let efeitosDoToken = $derived(
 		personagemSelecionado?.persistedId
@@ -124,7 +134,9 @@
 		try {
 			const response = await loadScene(session, scene.id);
 			urlMapa.set(response.scene.backgroundUrl);
-			motor?.setFog(response.scene.fogEnabled, isGM, response.fog.visibleCells, response.fog.revealedCells);
+			motor?.setFog(response.scene.fogEnabled, isGM, response.fog.visibleCells, response.fog.revealedCells, response.fog.hiddenCells);
+			areas = response.areas;
+			motor?.setAreas(response.areas);
 			const carregados = response.tokens.map(asPersonagem);
 			savedSnapshots.clear();
 			carregados.forEach((personagem) => {
@@ -196,6 +208,20 @@
 				['Agarrado', 'Impedido', 'Paralisado', 'Atordoado', 'Petrificado', 'Inconsciente'].includes(effect.name)
 		);
 	}
+	async function paintFog(worldX: number, worldY: number) {
+		if (!isGM || !fogMode || !scene.fogEnabled) return;
+		const centerX = Math.floor(worldX / scene.gridSize), centerY = Math.floor(worldY / scene.gridSize);
+		const radius = Math.floor(fogBrush / 2);
+		const cells: [number, number][] = [];
+		for (let x = centerX - radius; x <= centerX + radius; x++) for (let y = centerY - radius; y <= centerY + radius; y++) cells.push([x, y]);
+		try { await updateFog(session, scene.id, fogMode, cells); sceneSocket?.publishRefresh(); await carregarTokens(); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível pintar a névoa.'; }
+	}
+	async function saveMeasuredArea(area: { shape: 'line' | 'circle' | 'cone'; startX: number; startY: number; endX: number; endY: number }) {
+		if (!isGM || !saveAreaArmed) return;
+		saveAreaArmed = false;
+		try { const created = await createSceneArea(session, scene.id, { ...area, startX: Math.round(area.startX), startY: Math.round(area.startY), endX: Math.round(area.endX), endY: Math.round(area.endY), color: area.shape === 'circle' ? 0x8bc4ff : area.shape === 'cone' ? 0xf0a8e1 : 0xffaa00, label: areaLabel.trim() || 'Área de efeito', visibleToPlayers: areaVisible }); areas = [...areas,created]; motor?.setAreas(areas); sceneSocket?.publishRefresh(); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível salvar a área.'; }
+	}
+	async function removeArea(area: SceneArea) { try { await deleteSceneArea(session,scene.id,area.id); areas=areas.filter((item)=>item.id!==area.id);motor?.setAreas(areas);sceneSocket?.publishRefresh(); } catch(error){persistenceError=error instanceof Error?error.message:'Não foi possível remover a área.';} }
 
 	onMount(() => {
 		motor = new GameEngine(
@@ -214,6 +240,8 @@
 				);
 				return true;
 			},
+			(x, y) => void paintFog(x, y),
+			(area) => void saveMeasuredArea(area),
 			scene.gridSize
 		);
 		const observer = new ResizeObserver(([entry]) => {
@@ -312,6 +340,8 @@
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
 	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
+	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
+	{#if isGM}<div class="area-tools"><strong>✦ Área persistente</strong><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}
 	{#if personagemSelecionado}
 		<section class="token-inspector" aria-label={`Informações de ${personagemSelecionado.nome}`}>
 			<header>
@@ -453,6 +483,8 @@
 	}
 	.scene-hud { position:absolute; z-index:2; top:.8rem; left:.9rem; display:grid; gap:.13rem; max-width:calc(100% - 6rem); padding:.45rem .65rem; border:1px solid rgba(216,173,103,.3); border-radius:7px; color:#f2e6d7; background:rgba(25,19,23,.78); box-shadow:0 5px 14px #0004; pointer-events:none; backdrop-filter:blur(8px); }
 	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }
+	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
+	.area-tools{position:absolute;z-index:4;top:8.6rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
 	@media (max-width: 760px) {
 		.borda-mesa {
 			height: calc(100dvh - 142px);

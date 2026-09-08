@@ -60,11 +60,11 @@ func validSceneSettings(s Scene) bool {
 }
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	scene, tokens, fog, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
+	scene, tokens, fog, areas, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
 	if err != nil {
 		return mapError(err)
 	}
-	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog})
+	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas})
 }
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
@@ -111,6 +111,51 @@ func (h *Handler) AddEffect(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) RemoveEffect(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.RemoveEffect(r.Context(), r.PathValue("sceneID"), r.PathValue("effectID"), p.UserID); err != nil {
+		return mapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+func (h *Handler) UpdateFog(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Mode  string  `json:"mode"`
+		Cells [][]int `json:"cells"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	cells := make([][2]int, 0, len(in.Cells))
+	for _, cell := range in.Cells {
+		if len(cell) != 2 {
+			return apperror.BadRequest("INVALID_FOG", "Cada célula precisa ter coordenadas X e Y.")
+		}
+		cells = append(cells, [2]int{cell[0], cell[1]})
+	}
+	if err := h.repo.UpdateFog(r.Context(), r.PathValue("sceneID"), p.UserID, in.Mode, cells); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]bool{"ok": true})
+}
+func (h *Handler) CreateArea(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var area Area
+	if err := decode(w, r, &area); err != nil {
+		return err
+	}
+	if (area.Shape != "line" && area.Shape != "circle" && area.Shape != "cone") || len([]rune(strings.TrimSpace(area.Label))) == 0 || len([]rune(area.Label)) > 80 || area.Color < 0 || area.Color > 16777215 {
+		return apperror.BadRequest("INVALID_AREA", "Confira formato, rótulo e cor da área.")
+	}
+	area.Label = strings.TrimSpace(area.Label)
+	item, err := h.repo.CreateArea(r.Context(), r.PathValue("sceneID"), p.UserID, area)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+func (h *Handler) DeleteArea(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.DeleteArea(r.Context(), r.PathValue("sceneID"), r.PathValue("areaID"), p.UserID); err != nil {
 		return mapError(err)
 	}
 	w.WriteHeader(http.StatusNoContent)

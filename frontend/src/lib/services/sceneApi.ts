@@ -48,7 +48,8 @@ export type EffectDefinition = {
 	summary: string;
 	source: string;
 };
-export type FogState = { visibleCells: string[]; revealedCells: string[] };
+export type FogState = { visibleCells: string[]; revealedCells: string[]; hiddenCells: string[] };
+export type SceneArea = { id: string; shape: 'line' | 'circle' | 'cone'; startX: number; startY: number; endX: number; endY: number; color: number; label: string; visibleToPlayers: boolean };
 
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 export async function request<T>(
@@ -77,8 +78,12 @@ export const createScene = (session: Session, campaignId: string, name: string) 
 		body: JSON.stringify({ name })
 	});
 export const updateScene = (session: Session, scene: Scene) => request<Scene>(session, `/api/v1/scenes/${scene.id}`, { method: 'PATCH', body: JSON.stringify(scene) });
+export const updateFog = (session: Session, sceneId: string, mode: 'reveal' | 'hide', cells: [number, number][]) =>
+	request<{ ok: boolean }>(session, `/api/v1/scenes/${sceneId}/fog`, { method: 'PATCH', body: JSON.stringify({ mode, cells }) });
 export const loadScene = (session: Session, sceneId: string) =>
-	request<{ scene: Scene; tokens: PersistedToken[]; fog: FogState }>(session, `/api/v1/scenes/${sceneId}`);
+	request<{ scene: Scene; tokens: PersistedToken[]; fog: FogState; areas: SceneArea[] }>(session, `/api/v1/scenes/${sceneId}`);
+export const createSceneArea = (session: Session, sceneId: string, area: Omit<SceneArea, 'id'>) => request<SceneArea>(session, `/api/v1/scenes/${sceneId}/areas`, { method: 'POST', body: JSON.stringify(area) });
+export const deleteSceneArea = (session: Session, sceneId: string, areaId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/areas/${areaId}`, { method: 'DELETE' });
 export const getCombat = (session: Session, sceneId: string) =>
 	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>
