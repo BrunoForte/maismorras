@@ -64,6 +64,7 @@
 	let walls = $state<SceneWall[]>([]);
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
+	let pingArmed = $state(false);
 	let efeitoSelecionado = $derived(definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada));
 	let efeitosDoToken = $derived(
 		personagemSelecionado?.persistedId
@@ -239,6 +240,15 @@
 		for (let x = centerX - radius; x <= centerX + radius; x++) for (let y = centerY - radius; y <= centerY + radius; y++) cells.push([x, y]);
 		try { await updateFog(session, scene.id, fogMode, cells); sceneSocket?.publishRefresh(); await carregarTokens(); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível pintar a névoa.'; }
 	}
+	function handleMapTap(worldX: number, worldY: number) {
+		if (pingArmed) {
+			pingArmed = false;
+			motor?.showPing(worldX, worldY);
+			sceneSocket?.publishPing(worldX, worldY);
+			return;
+		}
+		void paintFog(worldX, worldY);
+	}
 	async function saveMeasuredArea(area: { shape: 'line' | 'circle' | 'cone'; startX: number; startY: number; endX: number; endY: number }) {
 		if (!isGM || !saveAreaArmed) return;
 		saveAreaArmed = false;
@@ -286,7 +296,7 @@
 				if (!isGM) void persistirMovimentoDoJogador(personagem, x, y);
 				return true;
 			},
-			(x, y) => void paintFog(x, y),
+			(x, y) => handleMapTap(x, y),
 			(area) => void saveMeasuredArea(area),
 			(wall) => void saveWall(wall),
 			scene.gridSize
@@ -302,7 +312,7 @@
 		sceneSocket = connectSceneSocket(session, scene.id, () => {
 			void carregarTokens();
 			void carregarEfeitos();
-		});
+		}, (ping) => motor?.showPing(ping.x, ping.y, ping.color));
 
 		const unsubscribe = personagens.subscribe((lista) => {
 			if (!isGM) return;
@@ -392,6 +402,7 @@
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
 	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
+	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
 	{#if isGM}<div class="area-tools"><strong>✦ Área persistente</strong><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}
 	{#if isGM && scene.fogEnabled}<div class="wall-tools"><strong>▰ Barreiras</strong><select bind:value={wallKind} aria-label="Tipo de barreira"><option value="wall">Parede</option><option value="door">Porta</option></select><button class:active={wallDrawing} onclick={toggleWallDrawing}>{wallDrawing ? 'Arraste no mapa…' : `Desenhar ${wallKind === 'door' ? 'porta' : 'parede'}`}</button><small>Fechadas bloqueiam visão e movimento.</small>{#if walls.length}<div class="wall-list">{#each walls as wall}<span>{wall.kind === 'door' ? (wall.open ? 'Porta aberta' : 'Porta fechada') : 'Parede'}<span>{#if wall.kind === 'door'}<button onclick={() => void toggleDoor(wall)}>{wall.open ? 'Fechar' : 'Abrir'}</button>{/if}<button onclick={() => void removeWall(wall)} aria-label="Remover barreira">×</button></span></span>{/each}</div>{/if}</div>{/if}
@@ -537,6 +548,7 @@
 	}
 	.scene-hud { position:absolute; z-index:2; top:.8rem; left:.9rem; display:grid; gap:.13rem; max-width:calc(100% - 6rem); padding:.45rem .65rem; border:1px solid rgba(216,173,103,.3); border-radius:7px; color:#f2e6d7; background:rgba(25,19,23,.78); box-shadow:0 5px 14px #0004; pointer-events:none; backdrop-filter:blur(8px); }
 	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }
+	.ping-tool{position:absolute;z-index:4;bottom:.9rem;left:.9rem}.ping-tool button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.ping-tool button.active{color:#291b10;background:#e0b86f}
 	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
 	.area-tools{position:absolute;z-index:4;top:8.6rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
 	.wall-tools{position:absolute;z-index:4;top:19.6rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.wall-tools button,.wall-tools select{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.wall-tools button.active{color:#281a0f;background:#e0b86f}.wall-tools small{color:#b9aa9d;font-size:.58rem}.wall-list{display:grid;gap:.2rem;max-height:70px;overflow:auto}.wall-list>span,.wall-list>span>span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.wall-list button{border:0;padding:0;color:#dfa797;background:transparent}

@@ -22,6 +22,7 @@ export class GameEngine {
 	private wallPreview: PIXI.Graphics | null = null;
 	private drawingWall = false;
 	private wallStart: { x: number; y: number } | null = null;
+	private pings = new Set<PIXI.Graphics>();
 
 	constructor(
 		private readonly onTokenClick?: (tokenId: number) => void,
@@ -134,6 +135,8 @@ export class GameEngine {
 		this.areaLayer?.destroy();
 		this.wallLayer?.destroy();
 		this.wallPreview?.destroy();
+		this.pings.forEach((ping) => ping.destroy());
+		this.pings.clear();
 		this.rulerManager?.destroy();
 		this.mapManager?.destroy();
 		this.camera?.destroy();
@@ -162,6 +165,22 @@ export class GameEngine {
 	setWallDrawing(active: boolean) {
 		this.drawingWall = active;
 		if (!active) { this.wallStart = null; this.wallPreview?.clear(); }
+	}
+
+	showPing(x: number, y: number, color = 0xf2cf77) {
+		const ping = new PIXI.Graphics();
+		this.pings.add(ping);
+		this.camera.mundo.addChild(ping);
+		let elapsed = 0;
+		const animate = (ticker: PIXI.Ticker) => {
+			elapsed += ticker.deltaMS;
+			const progress = Math.min(1, elapsed / 1100);
+			const radius = this.tamanhoGrid * (0.16 + progress * 0.72);
+			ping.clear().circle(x, y, radius).stroke({ width: Math.max(2, 6 * (1 - progress)), color, alpha: 1 - progress });
+			ping.circle(x, y, 5).fill({ color, alpha: 1 - progress });
+			if (progress >= 1) { this.app.ticker.remove(animate); this.pings.delete(ping); ping.destroy(); }
+		};
+		this.app.ticker.add(animate);
 	}
 
 	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[], hiddenCells: string[] = []) {

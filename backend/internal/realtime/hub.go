@@ -3,6 +3,7 @@ package realtime
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -75,12 +76,31 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			continue
 		}
 		var event struct {
-			Type string `json:"type"`
+			Type  string  `json:"type"`
+			X     float64 `json:"x"`
+			Y     float64 `json:"y"`
+			Color int     `json:"color"`
 		}
-		if json.Unmarshal(raw, &event) != nil || event.Type != "scene.refresh" {
+		if json.Unmarshal(raw, &event) != nil {
 			continue
 		}
-		h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+		switch event.Type {
+		case "scene.refresh":
+			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+		case "map.ping":
+			// Pings are transient UI hints, never database commands. Keep their
+			// payload strictly numeric and bounded before relaying to the room.
+			if math.IsNaN(event.X) || math.IsNaN(event.Y) || math.IsInf(event.X, 0) || math.IsInf(event.Y, 0) || math.Abs(event.X) > 100000 || math.Abs(event.Y) > 100000 || event.Color < 0 || event.Color > 16777215 {
+				continue
+			}
+			payload, _ := json.Marshal(struct {
+				Type  string  `json:"type"`
+				X     float64 `json:"x"`
+				Y     float64 `json:"y"`
+				Color int     `json:"color"`
+			}{Type: "map.ping", X: event.X, Y: event.Y, Color: event.Color})
+			h.hub.broadcast(sceneID, payload)
+		}
 	}
 }
 func (h *Hub) join(room string, p *peer) {
