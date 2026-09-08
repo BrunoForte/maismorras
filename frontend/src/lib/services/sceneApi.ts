@@ -10,6 +10,7 @@ export type Scene = {
 	fogEnabled: boolean;
 	visionMode: 'manual' | 'shared' | 'token';
 	allowPlayerMovement: boolean;
+	allowPlayerDoorInteraction: boolean;
 };
 export type PersistedToken = {
 	id: string;
@@ -27,6 +28,7 @@ export type PersistedToken = {
 	initiative: number;
 	initiativeBonus?: number;
 	visionRange: number;
+	lightRange: number;
 	statuses: string[];
 	hidden: boolean;
 	visibility: {
@@ -90,6 +92,7 @@ export const deleteSceneArea = (session: Session, sceneId: string, areaId: strin
 export const createSceneWall = (session: Session, sceneId: string, wall: Omit<SceneWall, 'id'>) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls`, { method: 'POST', body: JSON.stringify(wall) });
 export const deleteSceneWall = (session: Session, sceneId: string, wallId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'DELETE' });
 export const setSceneDoorOpen = (session: Session, sceneId: string, wallId: string, open: boolean) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'PATCH', body: JSON.stringify({ open }) });
+export const interactWithNearbyDoor = (session: Session, sceneId: string) => request<{ open: boolean }>(session, `/api/v1/scenes/${sceneId}/doors/interact`, { method: 'POST' });
 export const getCombat = (session: Session, sceneId: string) =>
 	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>

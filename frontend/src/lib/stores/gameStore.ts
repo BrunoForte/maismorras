@@ -55,6 +55,7 @@ export type Personagem = {
 	// Alcance em quadrados usado pela névoa de guerra. Zero representa uma
 	// criatura que não contribui para a visão compartilhada do grupo.
 	visionRange: number;
+	lightRange: number;
 	fotoUrl?: string;
 	// --- NOVOS ATRIBUTOS DE ESCALA E APARÊNCIA ---
 	tamanho: number; // 1 = 1x1 quadrado, 2 = 2x2 quadrados, etc.

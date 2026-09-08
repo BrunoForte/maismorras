@@ -17,6 +17,7 @@
 		createSceneWall,
 		deleteSceneArea,
 		deleteSceneWall,
+		interactWithNearbyDoor,
 		setSceneDoorOpen,
 		listEffectDefinitions,
 		listSceneEffects,
@@ -90,6 +91,7 @@
 			armas: [],
 			iniciativa: token.initiative,
 			visionRange: token.visionRange,
+			lightRange: token.lightRange,
 			fotoUrl: token.imageUrl ?? undefined,
 			tamanho: token.size,
 			fotoEscala: 1,
@@ -113,6 +115,7 @@
 			armorClass: personagem.ca,
 			initiative: personagem.iniciativa,
 			visionRange: personagem.visionRange,
+			lightRange: personagem.lightRange,
 			statuses: personagem.status ?? [],
 			hidden: false,
 			visibility: personagem.visibility
@@ -393,6 +396,19 @@
 		if (!Number.isFinite(visionRange)) return;
 		atualizarSelecionado((personagem) => ({ ...personagem, visionRange }));
 	}
+	function alterarLuz(valor: string) {
+		const lightRange = Math.max(0, Math.min(30, Math.round(Number(valor))));
+		if (!Number.isFinite(lightRange)) return;
+		atualizarSelecionado((personagem) => ({ ...personagem, lightRange }));
+	}
+	async function interagirComPorta() {
+		try {
+			const result = await interactWithNearbyDoor(session, scene.id);
+			persistenceError = result.open ? 'Você abriu uma porta próxima.' : 'Você fechou uma porta próxima.';
+			sceneSocket?.publishRefresh();
+			await carregarTokens();
+		} catch (error) { persistenceError = error instanceof Error ? error.message : 'Não há porta próxima para interagir.'; }
+	}
 	async function rollToken(expression: string) {
 		if (!personagemSelecionado) return;
 		try { const event = await rollDice(session, scene.campaignId, expression, undefined, 'combat'); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
@@ -424,7 +440,8 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
-			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div>{/if}
+			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div><div class="vision-control"><span>Fonte de luz <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.lightRange} onchange={(event) => alterarLuz(event.currentTarget.value)} aria-label="Raio de luz em quadrados"/></div>{/if}
+			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 Interagir com porta próxima</button>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
 			<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => rollToken(`1d20${personagemSelecionado.iniciativa >= 0 ? '+' : ''}${personagemSelecionado.iniciativa}`)}>Iniciativa {personagemSelecionado.iniciativa >= 0 ? '+' : ''}{personagemSelecionado.iniciativa}</button></div>
 			<div class="hp-control">
@@ -639,6 +656,7 @@
 		letter-spacing: 0.07em;
 	}
 	.vision-control { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:.8rem; padding:.55rem .65rem; border:1px solid #423839; border-radius:8px; color:#cdbda9; font-size:.7rem; }.vision-control small { color:#8f8378; font-size:.61rem; }.vision-control input { width:3rem; border:1px solid #5a4841; border-radius:5px; padding:.3rem; color:#f4eee4; background:#282125; text-align:center; }
+	.door-interaction { width:calc(100% - 2rem); margin:0 1rem .7rem; border:1px solid #927449; border-radius:6px; padding:.46rem .55rem; color:#f0d29d; background:#2b211c; font-size:.7rem; cursor:pointer; }
 	.hp-control,
 	.status-control {
 		padding: 0.75rem 0;

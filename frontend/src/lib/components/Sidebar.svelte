@@ -129,6 +129,7 @@
 				armas: [],
 				iniciativa: 0,
 				visionRange: 6,
+				lightRange: 0,
 				tamanho: 1,
 				fotoEscala: 1.0,
 				fotoOffsetX: 0,

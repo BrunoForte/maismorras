@@ -193,6 +193,14 @@ func (h *Handler) SetWallOpen(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, wall)
 }
+func (h *Handler) InteractDoor(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	wall, err := h.repo.InteractDoor(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"open": wall.Open})
+}
 func (h *Handler) DeleteWall(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteWall(r.Context(), r.PathValue("sceneID"), r.PathValue("wallID"), p.UserID); err != nil {
@@ -339,7 +347,7 @@ func validateToken(t Token) error {
 	if strings.TrimSpace(t.Name) == "" || len([]rune(t.Name)) > 120 {
 		return apperror.BadRequest("INVALID_TOKEN", "Token precisa de um nome válido.")
 	}
-	if t.Size < 1 || t.Size > 6 || t.HPMax < 1 || t.HPCurrent < 0 || t.HPCurrent > t.HPMax || t.Color < 0 || t.Color > 16777215 || t.VisionRange < 0 || t.VisionRange > 30 {
+	if t.Size < 1 || t.Size > 6 || t.HPMax < 1 || t.HPCurrent < 0 || t.HPCurrent > t.HPMax || t.Color < 0 || t.Color > 16777215 || t.VisionRange < 0 || t.VisionRange > 30 || t.LightRange < 0 || t.LightRange > 30 {
 		return apperror.BadRequest("INVALID_TOKEN", "Dados de token inválidos.")
 	}
 	return nil
