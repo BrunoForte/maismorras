@@ -28,7 +28,7 @@ export class GameEngine {
 		private readonly onTokenMove?: (tokenId: number, x: number, y: number) => boolean | void,
 		private readonly onFogPaint?: (x: number, y: number) => void,
 		private readonly onAreaComplete?: (area: MeasuredArea) => void,
-		private readonly onWallComplete?: (wall: Omit<SceneWall, 'id'>) => void,
+		private readonly onWallComplete?: (wall: Omit<SceneWall, 'id' | 'kind' | 'open'>) => void,
 		gridSize = 70
 	) {
 		this.app = new PIXI.Application();
@@ -153,7 +153,10 @@ export class GameEngine {
 	setWalls(walls: SceneWall[]) {
 		if (!this.wallLayer) { this.wallLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.wallLayer); }
 		this.wallLayer.clear();
-		for (const wall of walls) this.wallLayer.moveTo(wall.startX, wall.startY).lineTo(wall.endX, wall.endY).stroke({ width: 7, color: 0x5b3a2a, alpha: .95 });
+		for (const wall of walls) {
+			const color = wall.kind === 'door' ? (wall.open ? 0x6da96c : 0xb97b43) : 0x5b3a2a;
+			this.wallLayer.moveTo(wall.startX, wall.startY).lineTo(wall.endX, wall.endY).stroke({ width: 7, color, alpha: wall.open ? .48 : .95 });
+		}
 	}
 
 	setWallDrawing(active: boolean) {

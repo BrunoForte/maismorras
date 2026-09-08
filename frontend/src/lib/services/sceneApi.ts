@@ -50,7 +50,7 @@ export type EffectDefinition = {
 };
 export type FogState = { visibleCells: string[]; revealedCells: string[]; hiddenCells: string[] };
 export type SceneArea = { id: string; shape: 'line' | 'circle' | 'cone'; startX: number; startY: number; endX: number; endY: number; color: number; label: string; visibleToPlayers: boolean };
-export type SceneWall = { id: string; startX: number; startY: number; endX: number; endY: number };
+export type SceneWall = { id: string; startX: number; startY: number; endX: number; endY: number; kind: 'wall' | 'door'; open: boolean };
 
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 export async function request<T>(
@@ -87,6 +87,7 @@ export const createSceneArea = (session: Session, sceneId: string, area: Omit<Sc
 export const deleteSceneArea = (session: Session, sceneId: string, areaId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/areas/${areaId}`, { method: 'DELETE' });
 export const createSceneWall = (session: Session, sceneId: string, wall: Omit<SceneWall, 'id'>) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls`, { method: 'POST', body: JSON.stringify(wall) });
 export const deleteSceneWall = (session: Session, sceneId: string, wallId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'DELETE' });
+export const setSceneDoorOpen = (session: Session, sceneId: string, wallId: string, open: boolean) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'PATCH', body: JSON.stringify({ open }) });
 export const getCombat = (session: Session, sceneId: string) =>
 	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>

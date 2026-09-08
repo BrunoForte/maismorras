@@ -55,6 +55,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/scenes/{sceneID}/areas", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateArea))
 	mux.Handle("DELETE /api/v1/scenes/{sceneID}/areas/{areaID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.DeleteArea))
 	mux.Handle("POST /api/v1/scenes/{sceneID}/walls", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateWall))
+	mux.Handle("PATCH /api/v1/scenes/{sceneID}/walls/{wallID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SetWallOpen))
 	mux.Handle("DELETE /api/v1/scenes/{sceneID}/walls/{wallID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.DeleteWall))
 	mux.Handle("POST /api/v1/scenes/{sceneID}/effects", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.AddEffect))
 	mux.Handle("DELETE /api/v1/scenes/{sceneID}/effects/{effectID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.RemoveEffect))

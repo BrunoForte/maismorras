@@ -170,11 +170,28 @@ func (h *Handler) CreateWall(w http.ResponseWriter, r *http.Request) error {
 	if wall.StartX == wall.EndX && wall.StartY == wall.EndY {
 		return apperror.BadRequest("INVALID_WALL", "Uma parede precisa ter comprimento.")
 	}
+	if wall.Kind != "" && wall.Kind != "wall" && wall.Kind != "door" {
+		return apperror.BadRequest("INVALID_WALL", "Tipo de barreira inválido.")
+	}
 	item, err := h.repo.CreateWall(r.Context(), r.PathValue("sceneID"), p.UserID, wall)
 	if err != nil {
 		return mapError(err)
 	}
 	return write(w, http.StatusCreated, item)
+}
+func (h *Handler) SetWallOpen(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Open bool `json:"open"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	wall, err := h.repo.SetWallOpen(r.Context(), r.PathValue("sceneID"), r.PathValue("wallID"), p.UserID, in.Open)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, wall)
 }
 func (h *Handler) DeleteWall(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())

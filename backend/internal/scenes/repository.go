@@ -52,6 +52,8 @@ type Wall struct {
 	StartY int    `json:"startY"`
 	EndX   int    `json:"endX"`
 	EndY   int    `json:"endY"`
+	Kind   string `json:"kind"`
+	Open   bool   `json:"open"`
 }
 type Effect struct {
 	ID             string `json:"id"`
@@ -253,7 +255,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 }
 
 func (r *Repository) wallsForVision(ctx context.Context, sceneID string) ([]Wall, error) {
-	rows, err := r.pool.Query(ctx, `select id::text,start_x,start_y,end_x,end_y from scene_walls where scene_id=$1 order by created_at`, sceneID)
+	rows, err := r.pool.Query(ctx, `select id::text,start_x,start_y,end_x,end_y,kind,is_open from scene_walls where scene_id=$1 order by created_at`, sceneID)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +263,7 @@ func (r *Repository) wallsForVision(ctx context.Context, sceneID string) ([]Wall
 	items := []Wall{}
 	for rows.Next() {
 		var item Wall
-		if err := rows.Scan(&item.ID, &item.StartX, &item.StartY, &item.EndX, &item.EndY); err != nil {
+		if err := rows.Scan(&item.ID, &item.StartX, &item.StartY, &item.EndX, &item.EndY, &item.Kind, &item.Open); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -285,7 +287,24 @@ func (r *Repository) CreateWall(ctx context.Context, sceneID, userID string, wal
 	if err != nil || role != "gm" {
 		return Wall{}, ErrForbidden
 	}
-	err = r.pool.QueryRow(ctx, `insert into scene_walls(scene_id,start_x,start_y,end_x,end_y) values($1,$2,$3,$4,$5) returning id::text`, sceneID, wall.StartX, wall.StartY, wall.EndX, wall.EndY).Scan(&wall.ID)
+	if wall.Kind != "door" {
+		wall.Kind = "wall"
+		wall.Open = false
+	}
+	err = r.pool.QueryRow(ctx, `insert into scene_walls(scene_id,start_x,start_y,end_x,end_y,kind,is_open) values($1,$2,$3,$4,$5,$6,$7) returning id::text`, sceneID, wall.StartX, wall.StartY, wall.EndX, wall.EndY, wall.Kind, wall.Open).Scan(&wall.ID)
+	return wall, err
+}
+
+func (r *Repository) SetWallOpen(ctx context.Context, sceneID, wallID, userID string, open bool) (Wall, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return Wall{}, ErrForbidden
+	}
+	var wall Wall
+	err = r.pool.QueryRow(ctx, `update scene_walls set is_open=$1 where id=$2 and scene_id=$3 and kind='door' returning id::text,start_x,start_y,end_x,end_y,kind,is_open`, open, wallID, sceneID).Scan(&wall.ID, &wall.StartX, &wall.StartY, &wall.EndX, &wall.EndY, &wall.Kind, &wall.Open)
+	if err == pgx.ErrNoRows {
+		return Wall{}, fmt.Errorf("door not found")
+	}
 	return wall, err
 }
 
@@ -424,6 +443,9 @@ func hasLineOfSight(fromX, fromY, toX, toY, gridSize int, walls []Wall) bool {
 	ax, ay := float64(fromX*gridSize+gridSize/2), float64(fromY*gridSize+gridSize/2)
 	bx, by := float64(toX*gridSize+gridSize/2), float64(toY*gridSize+gridSize/2)
 	for _, wall := range walls {
+		if wall.Kind == "door" && wall.Open {
+			continue
+		}
 		if segmentsIntersect(ax, ay, bx, by, float64(wall.StartX), float64(wall.StartY), float64(wall.EndX), float64(wall.EndY)) {
 			return false
 		}
@@ -450,6 +472,9 @@ func wallBlocksMovement(fromX, fromY, size, toX, toY, gridSize int, walls []Wall
 	ax, ay := float64(fromX)+offset, float64(fromY)+offset
 	bx, by := float64(toX)+offset, float64(toY)+offset
 	for _, wall := range walls {
+		if wall.Kind == "door" && wall.Open {
+			continue
+		}
 		if segmentsIntersect(ax, ay, bx, by, float64(wall.StartX), float64(wall.StartY), float64(wall.EndX), float64(wall.EndY)) {
 			return true
 		}
