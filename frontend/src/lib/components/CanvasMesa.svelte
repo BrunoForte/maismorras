@@ -21,6 +21,7 @@
 		listEffectDefinitions,
 		listSceneEffects,
 		loadScene,
+		moveToken,
 		removeSceneEffect,
 		updateFog,
 		updateToken,
@@ -130,6 +131,17 @@
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível salvar o token.';
+		}
+	}
+	async function persistirMovimentoDoJogador(personagem: Personagem, x: number, y: number) {
+		if (!personagem.persistedId) return;
+		try {
+			await moveToken(session, scene.id, personagem.persistedId, x, y);
+			sceneSocket?.publishRefresh();
+			persistenceError = '';
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível mover o token.';
+			await carregarTokens();
 		}
 	}
 
@@ -260,9 +272,9 @@
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
-				if (!isGM) return;
 				const personagem = $personagens.find((item) => item.id === tokenId);
-				if (personagem && impedeMovimento(personagem)) {
+				if (!personagem || (!isGM && (!scene.allowPlayerMovement || !personagem.isOwned))) return false;
+				if (impedeMovimento(personagem)) {
 					persistenceError = `${personagem.nome} não pode se mover enquanto estiver sob esta condição.`;
 					return false;
 				}
@@ -271,6 +283,7 @@
 						personagem.id === tokenId ? { ...personagem, x, y } : personagem
 					)
 				);
+				if (!isGM) void persistirMovimentoDoJogador(personagem, x, y);
 				return true;
 			},
 			(x, y) => void paintFog(x, y),

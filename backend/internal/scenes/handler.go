@@ -253,6 +253,21 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, token)
 }
+func (h *Handler) MoveToken(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	token, err := h.repo.MoveToken(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, in.X, in.Y)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]int{"x": token.X, "y": token.Y})
+}
 func (h *Handler) CreateTokenFromCharacter(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {

@@ -66,6 +66,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-npc", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromNPC))
 	mux.Handle("POST /api/v1/scenes/{sceneID}/tokens/from-compendium-monster", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.CreateTokenFromCompendiumMonster))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}/tokens/{tokenID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateToken))
+	mux.Handle("PATCH /api/v1/scenes/{sceneID}/tokens/{tokenID}/position", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.MoveToken))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))

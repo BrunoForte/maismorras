@@ -9,6 +9,7 @@ export type Scene = {
 	playerAccess: 'hidden' | 'available' | 'active';
 	fogEnabled: boolean;
 	visionMode: 'manual' | 'shared' | 'token';
+	allowPlayerMovement: boolean;
 };
 export type PersistedToken = {
 	id: string;
@@ -135,6 +136,9 @@ export const updateToken = (
 		method: 'PATCH',
 		body: JSON.stringify(token)
 	});
+
+export const moveToken = (session: Session, sceneId: string, tokenId: string, x: number, y: number) =>
+	request<{ x: number; y: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/position`, { method: 'PATCH', body: JSON.stringify({ x, y }) });
 
 export const createTokenFromCharacter = (session: Session, sceneId: string, actorId: string) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/from-character`, {
