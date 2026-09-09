@@ -3,4 +3,5 @@ bin/
 coverage.out
 work/go-runtime/
 work/go-build-cache/
+work/go-path/
 work/*.zip

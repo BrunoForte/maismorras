@@ -24,6 +24,7 @@ type Scene struct {
 	VisionMode                 string  `json:"visionMode"`
 	AllowPlayerMovement        bool    `json:"allowPlayerMovement"`
 	AllowPlayerDoorInteraction bool    `json:"allowPlayerDoorInteraction"`
+	EnforceTurnOrder           bool    `json:"enforceTurnOrder"`
 }
 type CombatState struct {
 	ActiveTokenID *string `json:"activeTokenId"`
@@ -95,6 +96,8 @@ type Token struct {
 	InitiativeBonus int        `json:"initiativeBonus"`
 	VisionRange     int        `json:"visionRange"`
 	LightRange      int        `json:"lightRange"`
+	MovementLimit   int        `json:"movementLimit"`
+	MovementSpent   float64    `json:"movementSpent"`
 	Statuses        []string   `json:"statuses"`
 	Hidden          bool       `json:"hidden"`
 	Visibility      Visibility `json:"visibility"`
@@ -123,7 +126,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sce
 	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil {
 		return nil, ErrForbidden
 	}
-	query := `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction from scenes where campaign_id=$1`
+	query := `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where campaign_id=$1`
 	if role != "gm" {
 		query += ` and player_access <> 'hidden'`
 	}
@@ -135,7 +138,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sce
 	items := []Scene{}
 	for rows.Next() {
 		var s Scene
-		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction); err != nil {
+		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
 			return nil, err
 		}
 		items = append(items, s)
@@ -151,7 +154,7 @@ func (r *Repository) Create(ctx context.Context, campaignID, userID, name string
 		return Scene{}, ErrForbidden
 	}
 	var s Scene
-	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'hidden') returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction)
+	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'hidden') returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder)
 	return s, err
 }
 func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, input Scene) (Scene, error) {
@@ -170,7 +173,7 @@ func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, in
 		}
 	}
 	var scene Scene
-	err = tx.QueryRow(ctx, `update scenes set name=$1,background_url=nullif($2,''),grid_size=$3,player_access=$4,fog_enabled=$5,vision_mode=$6,allow_player_movement=$7,allow_player_door_interaction=$8,updated_at=now() where id=$9 returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction`, input.Name, input.BackgroundURL, input.GridSize, input.PlayerAccess, input.FogEnabled, input.VisionMode, input.AllowPlayerMovement, input.AllowPlayerDoorInteraction, sceneID).Scan(&scene.ID, &scene.CampaignID, &scene.Name, &scene.BackgroundURL, &scene.GridSize, &scene.PlayerAccess, &scene.FogEnabled, &scene.VisionMode, &scene.AllowPlayerMovement, &scene.AllowPlayerDoorInteraction)
+	err = tx.QueryRow(ctx, `update scenes set name=$1,background_url=nullif($2,''),grid_size=$3,player_access=$4,fog_enabled=$5,vision_mode=$6,allow_player_movement=$7,allow_player_door_interaction=$8,enforce_turn_order=$9,updated_at=now() where id=$10 returning id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, input.Name, input.BackgroundURL, input.GridSize, input.PlayerAccess, input.FogEnabled, input.VisionMode, input.AllowPlayerMovement, input.AllowPlayerDoorInteraction, input.EnforceTurnOrder, sceneID).Scan(&scene.ID, &scene.CampaignID, &scene.Name, &scene.BackgroundURL, &scene.GridSize, &scene.PlayerAccess, &scene.FogEnabled, &scene.VisionMode, &scene.AllowPlayerMovement, &scene.AllowPlayerDoorInteraction, &scene.EnforceTurnOrder)
 	if err != nil {
 		return Scene{}, err
 	}
@@ -185,13 +188,13 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	var s Scene
-	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction); err != nil {
+	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
 		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	if role != "gm" && s.PlayerAccess == "hidden" {
 		return Scene{}, nil, FogState{}, nil, nil, ErrForbidden
 	}
-	query := `select id::text,actor_id::text,owner_id::text,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,initiative_bonus,vision_range,light_range,statuses,is_hidden,visibility from scene_tokens where scene_id=$1`
+	query := `select st.id::text,st.actor_id::text,st.owner_id::text,st.name,st.image_url,st.color,st.position_x,st.position_y,st.size,st.hp_current,st.hp_max,st.armor_class,st.initiative,st.initiative_bonus,st.vision_range,st.light_range,st.movement_limit,coalesce(tm.spent_squares,0),st.statuses,st.is_hidden,st.visibility from scene_tokens st left join scene_token_turn_movement tm on tm.scene_id=st.scene_id and tm.token_id=st.id where st.scene_id=$1`
 	if role != "gm" {
 		query += ` and is_hidden=false`
 	}
@@ -204,7 +207,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	for rows.Next() {
 		var t Token
 		var raw, visibility []byte
-		if err := rows.Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.Name, &t.ImageURL, &t.Color, &t.X, &t.Y, &t.Size, &t.HPCurrent, &t.HPMax, &t.ArmorClass, &t.Initiative, &t.InitiativeBonus, &t.VisionRange, &t.LightRange, &raw, &t.Hidden, &visibility); err != nil {
+		if err := rows.Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.Name, &t.ImageURL, &t.Color, &t.X, &t.Y, &t.Size, &t.HPCurrent, &t.HPMax, &t.ArmorClass, &t.Initiative, &t.InitiativeBonus, &t.VisionRange, &t.LightRange, &t.MovementLimit, &t.MovementSpent, &raw, &t.Hidden, &visibility); err != nil {
 			return Scene{}, nil, FogState{}, nil, nil, err
 		}
 		if err := json.Unmarshal(raw, &t.Statuses); err != nil {
@@ -745,6 +748,12 @@ func (r *Repository) SetCombat(ctx context.Context, sceneID, tokenID, userID str
 		return CombatState{}, err
 	}
 	if state.ActiveTokenID != nil && (previousID == nil || *previousID != *state.ActiveTokenID) {
+		// A budget belongs to a turn, not to a token forever. Reset it only when
+		// this actor becomes active; the previous actor's spent value remains
+		// visible in the tracker until its next turn.
+		if _, err := tx.Exec(ctx, `insert into scene_token_turn_movement(scene_id,token_id,spent_squares) values($1,$2,0) on conflict(scene_id,token_id) do update set spent_squares=0,updated_at=now()`, sceneID, *state.ActiveTokenID); err != nil {
+			return CombatState{}, err
+		}
 		if err := tickEffects(ctx, tx, sceneID, *state.ActiveTokenID, "turn_start"); err != nil {
 			return CombatState{}, err
 		}
@@ -806,6 +815,9 @@ func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string)
 		return nil, err
 	}
 	rows.Close()
+	if _, err := r.pool.Exec(ctx, `delete from scene_token_turn_movement where scene_id=$1`, sceneID); err != nil {
+		return nil, err
+	}
 	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada para %d combatentes.", len(items))})
 	if _, err := r.pool.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
 		return nil, err
@@ -822,7 +834,7 @@ func (r *Repository) CreateToken(ctx context.Context, sceneID, userID string, t 
 	}
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,vision_range,light_range) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,vision_range,light_range,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, t.MovementLimit).Scan(&t.ID)
 	return t, err
 }
 
@@ -859,10 +871,10 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 		name = actorName
 	}
 	owner := ownerID
-	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, Color: 3381504, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, Color: 3381504, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, actorID, ownerID, name, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id::text`, sceneID, actorID, ownerID, name, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
 	if err == nil {
 		t.InitiativeBonus = abilityModifier(sheet.AbilityScores.Dexterity)
 		_, err = r.pool.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID)
@@ -909,10 +921,10 @@ func (r *Repository) CreateTokenFromNPC(ctx context.Context, sceneID, actorID, u
 		return Token{}, ErrAlreadyLinked
 	}
 	imageURL := sheet.ImageURL
-	t := Token{ActorID: &actorID, Name: actorName, ImageURL: &imageURL, Color: sheet.Color, X: 70, Y: 70, Size: sheet.Size, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, InitiativeBonus: sheet.Initiative, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	t := Token{ActorID: &actorID, Name: actorName, ImageURL: &imageURL, Color: sheet.Color, X: 70, Y: 70, Size: sheet.Size, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, InitiativeBonus: sheet.Initiative, MovementLimit: 6, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id::text`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
 	if err == nil {
 		_, err = r.pool.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID)
 	}
@@ -953,13 +965,13 @@ func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, scene
 	if stats.Color < 0 || stats.Color > 16777215 {
 		stats.Color = 4921830
 	}
-	t := Token{Name: name, Color: stats.Color, X: 70, Y: 70, Size: stats.Size, HPCurrent: stats.HPMax, HPMax: stats.HPMax, ArmorClass: stats.ArmorClass, Initiative: stats.Initiative, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	t := Token{Name: name, Color: stats.Color, X: 70, Y: 70, Size: stats.Size, HPCurrent: stats.HPMax, HPMax: stats.HPMax, ArmorClass: stats.ArmorClass, Initiative: stats.Initiative, MovementLimit: 6, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	if stats.ImageURL != "" {
 		t.ImageURL = &stats.ImageURL
 	}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
 	return t, err
 }
 func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID string, t Token) (Token, error) {
@@ -971,7 +983,8 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 		return Token{}, ErrForbidden
 	}
 	var previousX, previousY, previousSize, gridSize int
-	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize); err != nil {
+	var activeTokenID *string
+	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size,s.active_token_id::text from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize, &activeTokenID); err != nil {
 		return Token{}, fmt.Errorf("load current token position: %w", err)
 	}
 	if previousX != t.X || previousY != t.Y {
@@ -985,7 +998,7 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	}
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,vision_range=$14,light_range=$15,updated_at=now() where id=$16 and scene_id=$17 returning id::text,actor_id::text,owner_id::text,vision_range,light_range`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange, &t.LightRange)
+	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,vision_range=$14,light_range=$15,movement_limit=$16,updated_at=now() where id=$17 and scene_id=$18 returning id::text,actor_id::text,owner_id::text,vision_range,light_range,movement_limit`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, t.MovementLimit, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange, &t.LightRange, &t.MovementLimit)
 	if err != nil {
 		return Token{}, fmt.Errorf("update token: %w", err)
 	}
@@ -996,6 +1009,11 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	}
 	if err = r.revealTokenVision(ctx, sceneID, t); err != nil {
 		return Token{}, fmt.Errorf("reveal token vision: %w", err)
+	}
+	if activeTokenID != nil && *activeTokenID == tokenID {
+		if err = r.recordTurnMovement(ctx, sceneID, tokenID, previousX, previousY, t.X, t.Y, gridSize); err != nil {
+			return Token{}, err
+		}
 	}
 	return t, nil
 }
@@ -1008,9 +1026,10 @@ func (r *Repository) MoveToken(ctx context.Context, sceneID, tokenID, userID str
 	if err != nil {
 		return Token{}, err
 	}
-	var allowed bool
+	var allowed, enforceTurnOrder bool
+	var activeTokenID *string
 	var t Token
-	err = r.pool.QueryRow(ctx, `select st.owner_id::text,st.position_x,st.position_y,st.size,st.is_hidden,st.vision_range,st.light_range,s.allow_player_movement from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&t.OwnerID, &t.X, &t.Y, &t.Size, &t.Hidden, &t.VisionRange, &t.LightRange, &allowed)
+	err = r.pool.QueryRow(ctx, `select st.owner_id::text,st.position_x,st.position_y,st.size,st.is_hidden,st.vision_range,st.light_range,st.movement_limit,s.allow_player_movement,s.enforce_turn_order,s.active_token_id::text,s.grid_size from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&t.OwnerID, &t.X, &t.Y, &t.Size, &t.Hidden, &t.VisionRange, &t.LightRange, &t.MovementLimit, &allowed, &enforceTurnOrder, &activeTokenID, new(int))
 	if err != nil {
 		return Token{}, fmt.Errorf("load token movement: %w", err)
 	}
@@ -1068,4 +1087,31 @@ func abilityModifier(score int) int {
 		return (score - 10) / 2
 	}
 	return (score - 11) / 2
+}
+
+// movementSquares converts the speed stored by a character sheet in feet into
+// grid squares. A missing speed keeps the table's safe default of 6.
+func movementSquares(speed int) int {
+	if speed <= 0 {
+		return 6
+	}
+	// A speed that is not a multiple of five remains usable on the grid.
+	return int(math.Ceil(float64(speed) / 5))
+}
+
+// recordTurnMovement keeps the combat budget in a dedicated table, so moving
+// a token never mutates the actor's base speed. Diagonals use the VTT's
+// existing one-square diagonal rule (the greater axis determines distance).
+func (r *Repository) recordTurnMovement(ctx context.Context, sceneID, tokenID string, fromX, fromY, toX, toY, gridSize int) error {
+	if gridSize <= 0 {
+		return fmt.Errorf("invalid scene grid size")
+	}
+	dx := math.Abs(float64(toX - fromX))
+	dy := math.Abs(float64(toY - fromY))
+	spent := math.Max(dx, dy) / float64(gridSize)
+	if spent == 0 {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `insert into scene_token_turn_movement(scene_id,token_id,spent_squares) values($1,$2,$3) on conflict(scene_id,token_id) do update set spent_squares=scene_token_turn_movement.spent_squares + excluded.spent_squares,updated_at=now()`, sceneID, tokenID, spent)
+	return err
 }
