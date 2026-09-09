@@ -104,6 +104,10 @@ export const rollSceneInitiative = (session: Session, sceneId: string) =>
 	request<{ tokens: { id: string; initiative: number }[] }>(session, `/api/v1/scenes/${sceneId}/combat/roll-initiative`, {
 		method: 'POST'
 	});
+export const rollTokenInitiative = (session: Session, sceneId: string, tokenId: string) =>
+	request<{ tokenId: string; roll: number; bonus: number; initiative: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`, {
+		method: 'POST'
+	});
 export const listSceneEffects = (session: Session, sceneId: string) =>
 	request<{ effects: SceneEffect[] }>(session, `/api/v1/scenes/${sceneId}/effects`);
 export const listEffectDefinitions = (session: Session, sceneId: string) =>

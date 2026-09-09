@@ -30,6 +30,16 @@ type CombatState struct {
 	ActiveTokenID *string `json:"activeTokenId"`
 	Message       string  `json:"message,omitempty"`
 }
+
+// InitiativeResult is the authoritative result of an individual initiative
+// roll. The die is returned so the client can show the same result without
+// performing a second, client-side random roll.
+type InitiativeResult struct {
+	TokenID    string `json:"tokenId"`
+	Roll       int    `json:"roll"`
+	Bonus      int    `json:"bonus"`
+	Initiative int    `json:"initiative"`
+}
 type FogState struct {
 	VisibleCells  []string `json:"visibleCells"`
 	RevealedCells []string `json:"revealedCells"`
@@ -823,6 +833,41 @@ func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string)
 		return nil, err
 	}
 	return items, nil
+}
+
+// RollTokenInitiative lets a player roll only the initiative of a token they
+// own. The ownership check lives here (rather than in the browser) so a
+// modified request cannot roll an ally's or NPC's initiative.
+func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, userID string) (InitiativeResult, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return InitiativeResult{}, ErrForbidden
+	}
+	var ownerID *string
+	var bonus int
+	if err := r.pool.QueryRow(ctx, `select owner_id::text,initiative_bonus from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&ownerID, &bonus); err != nil {
+		if err == pgx.ErrNoRows {
+			return InitiativeResult{}, ErrForbidden
+		}
+		return InitiativeResult{}, err
+	}
+	if role != "gm" && (ownerID == nil || *ownerID != userID) {
+		return InitiativeResult{}, ErrForbidden
+	}
+	rolled, err := rand.Int(rand.Reader, big.NewInt(20))
+	if err != nil {
+		return InitiativeResult{}, fmt.Errorf("roll token initiative: %w", err)
+	}
+	result := InitiativeResult{TokenID: tokenID, Roll: int(rolled.Int64()) + 1, Bonus: bonus}
+	result.Initiative = result.Roll + result.Bonus
+	if _, err := r.pool.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, result.Initiative, tokenID, sceneID); err != nil {
+		return InitiativeResult{}, err
+	}
+	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada: %d %+d = %d.", result.Roll, result.Bonus, result.Initiative)})
+	if _, err := r.pool.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
+		return InitiativeResult{}, err
+	}
+	return result, nil
 }
 func (r *Repository) CreateToken(ctx context.Context, sceneID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)

@@ -4,7 +4,6 @@
 	import { GameEngine } from '$lib/engine/GameEngine';
 	import {
 		personagens,
-		statusDisponiveis,
 		urlMapa,
 		type Personagem,
 		type StatusToken,
@@ -24,6 +23,7 @@
 		loadScene,
 		moveToken,
 		removeSceneEffect,
+		rollTokenInitiative,
 		updateFog,
 		updateToken,
 		type EffectDefinition,
@@ -34,7 +34,6 @@
 		type Scene
 	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
-	import { rollDice } from '$lib/services/eventApi';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 
@@ -43,7 +42,6 @@
 	let canvasMesa: HTMLCanvasElement;
 	let container: HTMLDivElement;
 	let tokenSelecionadoId = $state<number | null>(null);
-	let novoStatus = $state<StatusToken>('Envenenado');
 	let definicoesDeEfeito = $state<EffectDefinition[]>([]);
 	let efeitosAtivos = $state<SceneEffect[]>([]);
 	let definicaoSelecionada = $state('');
@@ -62,6 +60,7 @@
 	let saveAreaArmed = $state(false);
 	let areaLabel = $state('Área de efeito');
 	let areaVisible = $state(true);
+	let areaToolsOpen = $state(false);
 	let walls = $state<SceneWall[]>([]);
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
@@ -372,19 +371,6 @@
 		}));
 	}
 
-	function alternarStatus(status: StatusToken) {
-		if (!personagemSelecionado) return;
-		atualizarSelecionado((personagem) => {
-			const atuais = personagem.status ?? [];
-			return {
-				...personagem,
-				status: atuais.includes(status)
-					? atuais.filter((item) => item !== status)
-					: [...atuais, status]
-			};
-		});
-	}
-
 	function alterarVisibilidade(campo: keyof TokenVisibility, marcado: boolean) {
 		atualizarSelecionado((personagem) => ({
 			...personagem,
@@ -409,9 +395,17 @@
 			await carregarTokens();
 		} catch (error) { persistenceError = error instanceof Error ? error.message : 'Não há porta próxima para interagir.'; }
 	}
-	async function rollToken(expression: string) {
-		if (!personagemSelecionado) return;
-		try { const event = await rollDice(session, scene.campaignId, expression, undefined, 'combat'); const result = event.payload as { expressao: string; total: number; dados: number[] }; $diceOverlay = { expression: `${personagemSelecionado.nome} · ${result.expressao}`, total: result.total, dice: result.dados }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: event.author, texto: `${personagemSelecionado.nome} · ${result.expressao}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: result.total - result.dados.reduce((sum, die) => sum + die, 0) } }]; } catch { persistenceError = 'Não foi possível rolar o dado.'; }
+	async function rollSelectedInitiative() {
+		if (!personagemSelecionado?.persistedId || (!isGM && !personagemSelecionado.isOwned)) return;
+		try {
+			const result = await rollTokenInitiative(session, scene.id, personagemSelecionado.persistedId);
+			personagens.update((tokens) => tokens.map((token) => token.persistedId === result.tokenId ? { ...token, iniciativa: result.initiative } : token));
+			$diceOverlay = { expression: `${personagemSelecionado.nome} · iniciativa`, total: result.initiative, dice: [result.roll] };
+			$chatMensagens = [...$chatMensagens, { id: crypto.randomUUID(), autor: personagemSelecionado.nome, texto: `Iniciativa: ${result.roll} ${result.bonus >= 0 ? '+' : ''}${result.bonus} = ${result.initiative}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { expressao: `1d20${result.bonus >= 0 ? '+' : ''}${result.bonus}`, dados: [result.roll], modificador: result.bonus, total: result.initiative } }];
+			sceneSocket?.publishRefresh();
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
+		}
 	}
 </script>
 
@@ -420,7 +414,7 @@
 	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
-	{#if isGM}<div class="area-tools"><strong>✦ Área persistente</strong><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}
+	{#if isGM}<div class="area-tool-trigger"><button class:active={areaToolsOpen || saveAreaArmed} onclick={() => areaToolsOpen = !areaToolsOpen}>✦ Áreas</button>{#if areaToolsOpen}<div class="area-tools"><strong>Área persistente</strong><small>Escolha a régua e arraste com Shift para salvar a área.</small><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}</div>{/if}
 	{#if isGM && scene.fogEnabled}<div class="wall-tools"><strong>▰ Barreiras</strong><select bind:value={wallKind} aria-label="Tipo de barreira"><option value="wall">Parede</option><option value="door">Porta</option></select><button class:active={wallDrawing} onclick={toggleWallDrawing}>{wallDrawing ? 'Arraste no mapa…' : `Desenhar ${wallKind === 'door' ? 'porta' : 'parede'}`}</button><small>Fechadas bloqueiam visão e movimento.</small>{#if walls.length}<div class="wall-list">{#each walls as wall}<span>{wall.kind === 'door' ? (wall.open ? 'Porta aberta' : 'Porta fechada') : 'Parede'}<span>{#if wall.kind === 'door'}<button onclick={() => void toggleDoor(wall)}>{wall.open ? 'Fechar' : 'Abrir'}</button>{/if}<button onclick={() => void removeWall(wall)} aria-label="Remover barreira">×</button></span></span>{/each}</div>{/if}</div>{/if}
 	{#if personagemSelecionado}
 		<section class="token-inspector" aria-label={`Informações de ${personagemSelecionado.nome}`}>
@@ -443,7 +437,7 @@
 			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div><div class="vision-control"><span>Fonte de luz <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.lightRange} onchange={(event) => alterarLuz(event.currentTarget.value)} aria-label="Raio de luz em quadrados"/></div>{/if}
 			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 Interagir com porta próxima</button>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
-			<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => rollToken(`1d20${personagemSelecionado.iniciativa >= 0 ? '+' : ''}${personagemSelecionado.iniciativa}`)}>Iniciativa {personagemSelecionado.iniciativa >= 0 ? '+' : ''}{personagemSelecionado.iniciativa}</button></div>
+			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => void rollSelectedInitiative()}>⚔️ Rolar iniciativa</button></div>{/if}
 			<div class="hp-control">
 				<div>
 					<span>Pontos de vida</span><strong
@@ -461,27 +455,6 @@
 						onchange={(event) => definirHp(event.currentTarget.value)}
 					/><button onclick={() => alterarHp(1)} aria-label="Aumentar 1 ponto de vida">+</button>
 				</div>
-			</div>
-			<div class="status-control">
-				<div class="status-heading">
-					<span>Condições</span><select bind:value={novoStatus} aria-label="Condição para alternar"
-						>{#each statusDisponiveis as status}<option value={status}>{status}</option
-							>{/each}</select
-					>
-				</div>
-				<button
-					class:active={personagemSelecionado.status?.includes(novoStatus)}
-					class="status-toggle"
-					onclick={() => alternarStatus(novoStatus)}
-					>{personagemSelecionado.status?.includes(novoStatus)
-						? `Remover ${novoStatus}`
-						: `Aplicar ${novoStatus}`}</button
-				>{#if personagemSelecionado.status?.length}<div class="status-list">
-						{#each personagemSelecionado.status as status}<button
-								onclick={() => alternarStatus(status)}
-								title="Remover condição">{status} ×</button
-							>{/each}
-					</div>{/if}
 			</div>
 			{#if isGM}
 				<div class="official-effects">
@@ -567,8 +540,8 @@
 	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }
 	.ping-tool{position:absolute;z-index:4;bottom:.9rem;left:.9rem}.ping-tool button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.ping-tool button.active{color:#291b10;background:#e0b86f}
 	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
-	.area-tools{position:absolute;z-index:4;top:8.6rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
-	.wall-tools{position:absolute;z-index:4;top:19.6rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.wall-tools button,.wall-tools select{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.wall-tools button.active{color:#281a0f;background:#e0b86f}.wall-tools small{color:#b9aa9d;font-size:.58rem}.wall-list{display:grid;gap:.2rem;max-height:70px;overflow:auto}.wall-list>span,.wall-list>span>span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.wall-list button{border:0;padding:0;color:#dfa797;background:transparent}
+	.area-tool-trigger{position:absolute;z-index:4;top:8.6rem;right:.8rem}.area-tool-trigger>button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.area-tool-trigger>button.active{color:#291b10;background:#e0b86f}.area-tools{position:absolute;z-index:1;top:0;right:2.8rem;display:grid;gap:.3rem;width:180px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.96);font-size:.62rem;box-shadow:0 10px 24px #0006}.area-tools small{color:#b9aa9d;line-height:1.35}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
+	.wall-tools{position:absolute;z-index:4;top:12rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.wall-tools button,.wall-tools select{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.wall-tools button.active{color:#281a0f;background:#e0b86f}.wall-tools small{color:#b9aa9d;font-size:.58rem}.wall-list{display:grid;gap:.2rem;max-height:70px;overflow:auto}.wall-list>span,.wall-list>span>span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.wall-list button{border:0;padding:0;color:#dfa797;background:transparent}
 	@media (max-width: 760px) {
 		.borda-mesa {
 			height: calc(100dvh - 142px);
@@ -657,8 +630,7 @@
 	}
 	.vision-control { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:.8rem; padding:.55rem .65rem; border:1px solid #423839; border-radius:8px; color:#cdbda9; font-size:.7rem; }.vision-control small { color:#8f8378; font-size:.61rem; }.vision-control input { width:3rem; border:1px solid #5a4841; border-radius:5px; padding:.3rem; color:#f4eee4; background:#282125; text-align:center; }
 	.door-interaction { width:calc(100% - 2rem); margin:0 1rem .7rem; border:1px solid #927449; border-radius:6px; padding:.46rem .55rem; color:#f0d29d; background:#2b211c; font-size:.7rem; cursor:pointer; }
-	.hp-control,
-	.status-control {
+	.hp-control {
 		padding: 0.75rem 0;
 		border-top: 1px solid #423839;
 	}
@@ -710,9 +682,6 @@
 	.hp-actions input::-webkit-inner-spin-button {
 		appearance: none;
 	}
-	.status-control {
-		padding-bottom: 0;
-	}
 	.status-heading {
 		display: flex;
 		align-items: center;
@@ -720,38 +689,6 @@
 		gap: 0.7rem;
 		color: #a99c91;
 		font-size: 0.72rem;
-	}
-	.status-heading select {
-		max-width: 150px;
-		border: 1px solid #5a4841;
-		border-radius: 6px;
-		padding: 0.32rem;
-		color: #e7dacc;
-		background: #282125;
-		font-size: 0.72rem;
-	}
-	.status-toggle {
-		width: 100%;
-		margin-top: 0.55rem;
-		border: 1px solid #725a3b;
-		border-radius: 6px;
-		padding: 0.45rem;
-		color: #e8c786;
-		background: #2a211e;
-		font-size: 0.76rem;
-		font-weight: 700;
-	}
-	.status-toggle:hover,
-	.status-toggle.active {
-		color: #ffe3a8;
-		border-color: #c29754;
-		background: #493323;
-	}
-	.status-list {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-		margin-top: 0.65rem;
 	}
 	.official-effects {
 		padding: .75rem 0;
@@ -791,14 +728,6 @@
 	.official-effect-list span { display: inline-flex; align-items: center; gap: .25rem; border: 1px solid #624d42; border-radius: 999px; padding: .23rem .42rem; color: #e9d5ad; font-size: .64rem; }
 	.official-effect-list button { border: 0; padding: 0; color: #e9d5ad; background: transparent; cursor: pointer; font-size: .85rem; line-height: .65rem; }
 	.effect-empty { color: #c69072 !important; }
-	.status-list button {
-		border: 1px solid #5e4964;
-		border-radius: 999px;
-		padding: 0.22rem 0.45rem;
-		color: #d7c0e6;
-		background: #2c2233;
-		font-size: 0.67rem;
-	}
 	.visibility-control {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);

@@ -231,6 +231,14 @@ func (h *Handler) RollInitiative(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"tokens": tokens})
 }
+func (h *Handler) RollTokenInitiative(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	result, err := h.repo.RollTokenInitiative(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, result)
+}
 func (h *Handler) CreateToken(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var t Token

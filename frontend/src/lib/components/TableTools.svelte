@@ -5,7 +5,7 @@
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice } from '$lib/services/eventApi';
-	import { getCombat, rollSceneInitiative, setCombat } from '$lib/services/sceneApi';
+	import { getCombat, rollSceneInitiative, rollTokenInitiative, setCombat } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 
@@ -102,6 +102,20 @@
 			rollingInitiative = false;
 		}
 	}
+	async function rollOwnInitiative(token: (typeof combatants)[number]) {
+		if (isGM || !token.isOwned || !token.persistedId || rollingInitiative) return;
+		rollingInitiative = true;
+		try {
+			const result = await rollTokenInitiative(session, sceneId, token.persistedId);
+			$personagens = $personagens.map((item) =>
+				item.persistedId === result.tokenId ? { ...item, iniciativa: result.initiative } : item
+			);
+			$chatMensagens = await loadMessages(session, campaignId);
+			sceneSocket?.publishRefresh();
+		} finally {
+			rollingInitiative = false;
+		}
+	}
 	async function selectTurn(tokenId: string | undefined) {
 		if (!isGM || !tokenId) return;
 		const combat = await setCombat(session, sceneId, tokenId);
@@ -179,7 +193,7 @@
 								type="number"
 								value={token.iniciativa}
 								onchange={(event) => setInitiative(token.id, event.currentTarget.value)}
-							/>{:else}<span>{token.iniciativa}</span>{/if}
+							/>{:else}{#if token.isOwned}<button class="turn-select" onclick={() => void rollOwnInitiative(token)} disabled={rollingInitiative}>Rolar</button>{/if}<span>{token.iniciativa}</span>{/if}
 					</article>{/each}{/if}
 		</section>{/if}
 </div>
@@ -188,7 +202,7 @@
 	.table-tools {
 		position: absolute;
 		z-index: 8;
-		top: 2rem;
+		top: 5rem;
 		left: calc(clamp(1.25rem, 5vw, 5rem) + 1rem);
 	}
 	.tool-group {
