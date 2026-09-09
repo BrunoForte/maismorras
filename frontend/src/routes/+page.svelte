@@ -70,9 +70,11 @@
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
-			// Preserve ?invite=... across OAuth. Using origin here used to lose the
-			// invitation code before the authenticated session could accept it.
-			options: { redirectTo: window.location.href }
+			// Preserve ?invite=... across OAuth, but never reuse location.href: it
+			// may already contain Supabase's #access_token fragment after a prior
+			// callback. Reusing it produces ##access_token and prevents getSession
+			// from recovering the authenticated session.
+			options: { redirectTo: `${window.location.origin}${window.location.pathname}${window.location.search}` }
 		});
 		if (authError) error = authError.message;
 	}
