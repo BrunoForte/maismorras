@@ -36,6 +36,8 @@
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
+	import { listNPCs, type NPC } from '$lib/services/npcApi';
+	import { rollDice } from '$lib/services/eventApi';
 
 	let { scene, session, isGM, onopensheet = (_actorId: string) => {} }: { scene: Scene; session: Session; isGM: boolean; onopensheet?: (actorId: string) => void } = $props();
 
@@ -48,6 +50,12 @@
 	let duracaoEfeito = $state('');
 	let personagemSelecionado = $derived(
 		$personagens.find((personagem) => personagem.id === tokenSelecionadoId)
+	);
+	let atoresNPC = $state<NPC[]>([]);
+	let npcSelecionado = $derived(
+		personagemSelecionado?.actorId
+			? atoresNPC.find((npc) => npc.id === personagemSelecionado.actorId)
+			: undefined
 	);
 	let persistenceError = $state('');
 	const pendingCreates = new Set<number>();
@@ -192,6 +200,17 @@
 		}
 	}
 
+	async function carregarNPCs() {
+		if (!isGM) return;
+		try {
+			atoresNPC = (await listNPCs(session, scene.campaignId)).npcs;
+		} catch (error) {
+			// NPC action cards are supplemental; the map continues usable if a
+			// deployment is temporarily behind the current frontend revision.
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível carregar ações do NPC.';
+		}
+	}
+
 	async function aplicarCondicaoOficial() {
 		if (!isGM || !personagemSelecionado?.persistedId || !efeitoSelecionado) return;
 		const parsedDuration = Number(duracaoEfeito);
@@ -310,6 +329,7 @@
 			observer.observe(container);
 			await carregarTokens();
 			await carregarEfeitos();
+			await carregarNPCs();
 		});
 		sceneSocket = connectSceneSocket(session, scene.id, () => {
 			void carregarTokens();
@@ -407,6 +427,35 @@
 			persistenceError = error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
 		}
 	}
+	async function rolarAcaoDeNPC(action: NPC['sheet']['actions'][number]) {
+		if (!isGM || !npcSelecionado || action.toHit === undefined) return;
+		try {
+			const attackEvent = await rollDice(session, scene.campaignId, `1d20${action.toHit >= 0 ? '+' : ''}${action.toHit}`, undefined, 'combat');
+			const attack = attackEvent.payload as { expressao: string; dados: number[]; total: number };
+			const critical = attack.dados[0] === 20;
+			$chatMensagens = [...$chatMensagens, {
+				id: String(attackEvent.id), autor: npcSelecionado.name,
+				texto: `${action.name} · ataque${critical ? ' · CRÍTICO!' : ''}`, tipo: 'rolagem', canal: 'combat',
+				detalhesRolagem: { ...attack, modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0) }
+			}];
+			$diceOverlay = { expression: `${npcSelecionado.name} · ${action.name}`, total: attack.total, dice: attack.dados };
+			const match = action.damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
+			if (!match) return;
+			const count = Number(match[1]) * (critical ? 2 : 1);
+			const modifier = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
+			const expression = `${count}d${match[2]}${modifier ? `${modifier >= 0 ? '+' : ''}${modifier}` : ''}`;
+			const damageEvent = await rollDice(session, scene.campaignId, expression, undefined, 'combat');
+			const damage = damageEvent.payload as { expressao: string; dados: number[]; total: number };
+			$chatMensagens = [...$chatMensagens, {
+				id: String(damageEvent.id), autor: npcSelecionado.name,
+				texto: `${action.name} · dano${critical ? ' crítico' : ''}`, tipo: 'rolagem', canal: 'combat',
+				detalhesRolagem: { ...damage, modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0) }
+			}];
+			$diceOverlay = { expression: `${npcSelecionado.name} · ${action.name} · dano`, total: damage.total, dice: damage.dados };
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível rolar a ação do NPC.';
+		}
+	}
 </script>
 
 <div class="borda-mesa" bind:this={container}>
@@ -438,6 +487,17 @@
 			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 Interagir com porta próxima</button>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
 			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => void rollSelectedInitiative()}>⚔️ Rolar iniciativa</button></div>{/if}
+			{#if isGM && npcSelecionado?.sheet.actions.length}
+				<div class="npc-actions">
+					<span>Ações da criatura</span>
+					{#each npcSelecionado.sheet.actions as action (action.name)}
+						<button onclick={() => void rolarAcaoDeNPC(action)} title={action.description || action.damage}>
+							<strong>{action.name}</strong>
+							<small>{action.toHit >= 0 ? `+${action.toHit}` : action.toHit} · {action.damage || action.range || 'Ação'}</small>
+						</button>
+					{/each}
+				</div>
+			{/if}
 			<div class="hp-control">
 				<div>
 					<span>Pontos de vida</span><strong
@@ -591,6 +651,7 @@
 			serif;
 	}
 	.token-rolls { display:flex; flex-wrap:wrap; gap:.35rem; padding:.7rem 1rem; border-top:1px solid #493c39; }.token-rolls>span{width:100%;color:#b9aa9d;font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}.token-rolls button{border:1px solid #765d3d;border-radius:6px;padding:.36rem .48rem;color:#f0d29d;background:#2b211c;font-size:.68rem;cursor:pointer}
+	.npc-actions { display:grid; gap:.38rem; padding:.7rem 1rem; border-top:1px solid #493c39; }.npc-actions>span { color:#b9aa9d; font-size:.66rem; text-transform:uppercase; letter-spacing:.08em; }.npc-actions button { display:flex; align-items:center; justify-content:space-between; gap:.55rem; border:1px solid #765d3d; border-radius:7px; padding:.48rem .55rem; color:#f1dfbd; background:#2b211c; text-align:left; cursor:pointer; }.npc-actions button:hover { background:#403027; }.npc-actions button strong { font-size:.73rem; }.npc-actions button small { color:#bba994; font-size:.65rem; }
 	.open-sheet{margin:0 1rem .5rem;border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#f0d29d;background:#2b211c;font-size:.7rem;cursor:pointer}
 	.close-button {
 		border: 0;
