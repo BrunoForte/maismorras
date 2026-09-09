@@ -10,7 +10,7 @@ func TestSRDPackHasCompleteSpellIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadSRDPack() error = %v", err)
 	}
-	if pack.Version != "5.2.1" || pack.Attribution == "" {
+	if pack.Version != "5.2.1" || pack.Revision == "" || pack.Attribution == "" {
 		t.Fatalf("SRD attribution/version missing: %#v", pack)
 	}
 	spells := 0
@@ -54,6 +54,7 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	monsters, magicItems := 0, 0
+	usableMonsters := 0
 	for _, entry := range pack.Entries {
 		if entry.EntryType != "other" {
 			continue
@@ -67,11 +68,22 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 		switch rules.Catalog {
 		case "monster":
 			monsters++
+			var stats struct {
+				HPMax      int `json:"hpMax"`
+				ArmorClass int `json:"armorClass"`
+				Initiative int `json:"initiative"`
+			}
+			if err := json.Unmarshal(entry.Rules, &stats); err != nil {
+				t.Fatal(err)
+			}
+			if stats.HPMax > 0 && stats.ArmorClass >= 0 {
+				usableMonsters++
+			}
 		case "magic-item":
 			magicItems++
 		}
 	}
-	if monsters != 330 || magicItems != 248 {
-		t.Fatalf("unexpected SRD index: monsters=%d magicItems=%d", monsters, magicItems)
+	if monsters != 330 || usableMonsters != monsters || magicItems != 248 {
+		t.Fatalf("unexpected SRD index: monsters=%d usable=%d magicItems=%d", monsters, usableMonsters, magicItems)
 	}
 }

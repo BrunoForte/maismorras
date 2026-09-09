@@ -53,27 +53,30 @@ func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) erro
 	if err != nil {
 		return fmt.Errorf("load SRD pack: %w", err)
 	}
-	_, err = r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false),($1,'dnd-srd-5-2-1','D&D System Reference Document','srd',$2,$3,'https://www.dndbeyond.com/srd',true) on conflict (campaign_id,slug) do update set version=excluded.version,attribution=excluded.attribution,license_url=excluded.license_url`, campaignID, pack.Version, pack.Attribution)
+	sourceVersion := pack.Version
+	if pack.Revision != "" {
+		sourceVersion += " · " + pack.Revision
+	}
+	_, err = r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false),($1,'dnd-srd-5-2-1','D&D System Reference Document','srd',$2,$3,'https://www.dndbeyond.com/srd',true) on conflict (campaign_id,slug) do nothing`, campaignID, sourceVersion, pack.Attribution)
 	if err != nil {
 		return err
 	}
-	var sourceID, ownerID string
-	if err = r.pool.QueryRow(ctx, `select s.id::text,c.owner_id::text from compendium_sources s join campaigns c on c.id=s.campaign_id where s.campaign_id=$1 and s.slug='dnd-srd-5-2-1'`, campaignID).Scan(&sourceID, &ownerID); err != nil {
+	var sourceID, ownerID, storedVersion string
+	if err = r.pool.QueryRow(ctx, `select s.id::text,c.owner_id::text,s.version from compendium_sources s join campaigns c on c.id=s.campaign_id where s.campaign_id=$1 and s.slug='dnd-srd-5-2-1'`, campaignID).Scan(&sourceID, &ownerID, &storedVersion); err != nil {
 		return err
 	}
-	// Importing the pack is a one-time operation per campaign/version. Once it
-	// exists, listing the compendium is a single normal SELECT rather than a
-	// thousand-row upsert on every page load.
-	indexEntries := srdIndexEntries()
+	entries := uniqueEntries(pack.Entries)
+	// Importing the pack is a one-time operation for a given data revision. A
+	// changed revision deliberately replays the idempotent upsert once, allowing
+	// existing campaigns to replace index-only SRD cards with usable stat blocks.
 	var importedCount int
 	if err = r.pool.QueryRow(ctx, `select count(*) from compendium_entries where source_id=$1`, sourceID).Scan(&importedCount); err != nil {
 		return err
 	}
-	if importedCount >= len(pack.Entries)+len(indexEntries) {
+	if storedVersion == sourceVersion && importedCount >= len(entries) {
 		return nil
 	}
 	batch := &pgx.Batch{}
-	entries := append(append([]srdEntry{}, pack.Entries...), indexEntries...)
 	for _, entry := range entries {
 		if len(entry.Rules) == 0 {
 			entry.Rules = json.RawMessage(`{}`)
@@ -81,7 +84,7 @@ func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) erro
 		if len(entry.Translations) == 0 {
 			entry.Translations = json.RawMessage(`{}`)
 		}
-		batch.Queue(`insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,true,$8) on conflict (source_id,entry_type,name) do update set summary=excluded.summary,translations=excluded.translations,rules=case when compendium_entries.rules='{}'::jsonb then excluded.rules else compendium_entries.rules end,updated_at=now()`, campaignID, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations, ownerID)
+		batch.Queue(`insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,true,$8) on conflict (source_id,entry_type,name) do update set summary=excluded.summary,translations=excluded.translations,rules=case when compendium_entries.rules='{}'::jsonb or (excluded.rules->>'catalog'='monster' and not (compendium_entries.rules ? 'hpMax')) then excluded.rules else compendium_entries.rules end,updated_at=now()`, campaignID, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations, ownerID)
 	}
 	br := r.pool.SendBatch(ctx, batch)
 	defer br.Close()
@@ -90,7 +93,8 @@ func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) erro
 			return fmt.Errorf("import SRD: %w", err)
 		}
 	}
-	return nil
+	_, err = r.pool.Exec(ctx, `update compendium_sources set version=$1,attribution=$2,license_url='https://www.dndbeyond.com/srd' where id=$3`, sourceVersion, pack.Attribution, sourceID)
+	return err
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Source, []Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)

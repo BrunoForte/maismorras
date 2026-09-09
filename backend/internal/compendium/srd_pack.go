@@ -17,8 +17,23 @@ var srdPackJSON []byte
 
 type srdPack struct {
 	Version     string     `json:"version"`
+	Revision    string     `json:"revision"`
 	Attribution string     `json:"attribution"`
 	Entries     []srdEntry `json:"entries"`
+}
+
+func uniqueEntries(entries []srdEntry) []srdEntry {
+	seen := make(map[string]struct{}, len(entries))
+	unique := make([]srdEntry, 0, len(entries))
+	for _, entry := range entries {
+		key := entry.EntryType + "\x00" + entry.Name
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		unique = append(unique, entry)
+	}
+	return unique
 }
 
 type srdEntry struct {
