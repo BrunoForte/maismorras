@@ -54,7 +54,7 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	monsters, magicItems := 0, 0
-	usableMonsters := 0
+	usableMonsters, monstersWithActions := 0, 0
 	for _, entry := range pack.Entries {
 		if entry.EntryType != "other" {
 			continue
@@ -72,6 +72,10 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 				HPMax      int `json:"hpMax"`
 				ArmorClass int `json:"armorClass"`
 				Initiative int `json:"initiative"`
+				Actions    []struct {
+					Name  string `json:"name"`
+					ToHit int    `json:"toHit"`
+				} `json:"actions"`
 			}
 			if err := json.Unmarshal(entry.Rules, &stats); err != nil {
 				t.Fatal(err)
@@ -79,11 +83,14 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 			if stats.HPMax > 0 && stats.ArmorClass >= 0 {
 				usableMonsters++
 			}
+			if len(stats.Actions) > 0 && stats.Actions[0].Name != "" {
+				monstersWithActions++
+			}
 		case "magic-item":
 			magicItems++
 		}
 	}
-	if monsters != 330 || usableMonsters != monsters || magicItems != 248 {
-		t.Fatalf("unexpected SRD index: monsters=%d usable=%d magicItems=%d", monsters, usableMonsters, magicItems)
+	if monsters != 330 || usableMonsters != monsters || monstersWithActions < 290 || magicItems != 248 {
+		t.Fatalf("unexpected SRD index: monsters=%d usable=%d withActions=%d magicItems=%d", monsters, usableMonsters, monstersWithActions, magicItems)
 	}
 }

@@ -56,6 +56,44 @@ def ability(block: str, label: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def attacks(block: str) -> list[dict]:
+    """Extract compact, rollable attack cards without copying the full PDF text.
+
+    The SRD stat blocks consistently label weapon attacks with an ``Attack
+    Roll`` and ``Hit`` sentence.  Keeping those structured fields lets a
+    monster cloned into a campaign NPC retain the same attack mechanics while
+    the long prose remains available in the original CC-BY SRD.
+    """
+    cards: list[dict] = []
+    pattern = re.compile(
+        r"(?m)^([^\n.]{1,90})\.\s+"
+        r"((?:Melee|Ranged|Melee or Ranged) Attack Roll:\s*([+−-]?\d+),\s*([^\.\n]+)\.\s*Hit:\s*"
+        r"([^\n]+(?:\n\([^)]*\)[^.\n]*(?:damage|Damage)[^.\n]*\.)?))"
+    )
+    for match in pattern.finditer(block):
+        name, description, to_hit, attack_range, damage = match.groups()
+        name = re.sub(r"\s+", " ", name).strip()
+        # Section labels may precede a name in PDFs with unusual text order.
+        if name in {"Actions", "Bonus Actions", "Reactions", "Legendary Actions"}:
+            continue
+        cards.append(
+            {
+                "name": name,
+                "kind": "action",
+                "toHit": int(to_hit.replace("−", "-")),
+                "range": re.sub(r"\s+", " ", attack_range).strip(),
+                "damage": re.sub(r"\s+", " ", damage).strip(),
+                "description": re.sub(r"\s+", " ", description).strip(),
+            }
+        )
+    # PDF extraction can repeat a column heading on page breaks. Preserve a
+    # single actionable card for each name/range pair.
+    unique: dict[tuple[str, str], dict] = {}
+    for card in cards:
+        unique[(card["name"], card["range"])] = card
+    return list(unique.values())
+
+
 def parse_monsters(pdf_path: Path) -> list[dict]:
     pages = PdfReader(pdf_path).pages
     # The Monsters chapter starts at PDF page 258 and ends with Animals at 364.
@@ -98,6 +136,7 @@ def parse_monsters(pdf_path: Path) -> list[dict]:
                     "immunities": find_line(block, "Immunities"),
                     "senses": find_line(block, "Senses"),
                     "languages": find_line(block, "Languages"),
+                    "actions": attacks(block),
                 },
             }
         )

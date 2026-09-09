@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/characters"
+	"vtt-backend/internal/npcs"
 )
 
 type Scene struct {
@@ -976,9 +977,9 @@ func (r *Repository) CreateTokenFromNPC(ctx context.Context, sceneID, actorID, u
 	return t, err
 }
 
-// CreateTokenFromCompendiumMonster only accepts a fully-described monster card.
-// This keeps the hundreds of SRD index references searchable without presenting
-// invented statistics when the GM has not yet registered a usable stat block.
+// CreateTokenFromCompendiumMonster snapshots an SRD monster into a campaign NPC
+// before placing it. The compendium remains immutable, while every placement
+// receives its own independently editable combat instance and action list.
 func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, sceneID, entryID, userID string) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil || role != "gm" {
@@ -990,18 +991,11 @@ func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, scene
 	if err != nil {
 		return Token{}, fmt.Errorf("load compendium monster: %w", err)
 	}
-	var stats struct {
-		HPMax      int    `json:"hpMax"`
-		ArmorClass int    `json:"armorClass"`
-		Initiative int    `json:"initiative"`
-		Size       int    `json:"size"`
-		Color      int    `json:"color"`
-		ImageURL   string `json:"imageUrl"`
-	}
+	var stats npcs.Sheet
 	if err := json.Unmarshal(raw, &stats); err != nil {
 		return Token{}, fmt.Errorf("decode compendium monster: %w", err)
 	}
-	if stats.HPMax < 1 || stats.ArmorClass < 0 || stats.ArmorClass > 99 {
+	if stats.HitPointsMax < 1 || stats.ArmorClass < 0 || stats.ArmorClass > 99 {
 		return Token{}, fmt.Errorf("monster has no usable stat block")
 	}
 	if stats.Size < 1 || stats.Size > 6 {
@@ -1010,14 +1004,35 @@ func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, scene
 	if stats.Color < 0 || stats.Color > 16777215 {
 		stats.Color = 4921830
 	}
-	t := Token{Name: name, Color: stats.Color, X: 70, Y: 70, Size: stats.Size, HPCurrent: stats.HPMax, HPMax: stats.HPMax, ArmorClass: stats.ArmorClass, Initiative: stats.Initiative, MovementLimit: 6, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	stats.HitPointsCurrent = stats.HitPointsMax
+	t := Token{Name: name, Color: stats.Color, X: 70, Y: 70, Size: stats.Size, HPCurrent: stats.HitPointsCurrent, HPMax: stats.HitPointsMax, ArmorClass: stats.ArmorClass, Initiative: stats.Initiative, InitiativeBonus: stats.Initiative, MovementLimit: 6, Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	if stats.ImageURL != "" {
 		t.ImageURL = &stats.ImageURL
 	}
+	actorSheet, err := json.Marshal(stats)
+	if err != nil {
+		return Token{}, fmt.Errorf("encode monster actor: %w", err)
+	}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id::text`, sceneID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
-	return t, err
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Token{}, err
+	}
+	defer tx.Rollback(ctx)
+	var actorID string
+	if err = tx.QueryRow(ctx, `insert into actors(campaign_id,kind,name,sheet) select campaign_id,'npc',$1,$2 from scenes where id=$3 returning id::text`, name, actorSheet, sceneID).Scan(&actorID); err != nil {
+		return Token{}, fmt.Errorf("create monster actor: %w", err)
+	}
+	t.ActorID = &actorID
+	err = tx.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,initiative_bonus,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, t.InitiativeBonus, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
+	if err != nil {
+		return Token{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Token{}, err
+	}
+	return t, nil
 }
 func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
