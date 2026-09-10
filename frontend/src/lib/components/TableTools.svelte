@@ -202,8 +202,10 @@
 	.table-tools {
 		position: absolute;
 		z-index: 8;
-		top: 5rem;
-		left: calc(clamp(1.25rem, 5vw, 5rem) + 1rem);
+		/* Keep this vertical strip below the scene heading, even when a GM
+		 * gives the scene a longer name that wraps across multiple lines. */
+		top: clamp(7rem, 13vh, 8.5rem);
+		left: 0.9rem;
 	}
 	.tool-group {
 		display: grid;
