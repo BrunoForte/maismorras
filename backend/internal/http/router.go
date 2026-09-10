@@ -23,6 +23,7 @@ type errorHandler func(http.ResponseWriter, *http.Request) error
 func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/tokens/gerar", withError(tokenHandler.Generate))
+	mux.Handle("GET /api/v1/scenes/generate-background", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.GenerateMap))
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
 	mux.Handle("GET /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.List))
 	mux.Handle("POST /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Create))

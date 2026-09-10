@@ -9,14 +9,22 @@ import (
 )
 
 type stubGenerator struct {
-	photoURL string
-	prompt   string
-	err      error
+	photoURL  string
+	prompt    string
+	err       error
+	mapURL    string
+	mapPrompt string
+	mapErr    error
 }
 
 func (s *stubGenerator) Generate(_ context.Context, prompt string) (string, error) {
 	s.prompt = prompt
 	return s.photoURL, s.err
+}
+
+func (s *stubGenerator) GenerateMap(_ context.Context, prompt string) (string, error) {
+	s.mapPrompt = prompt
+	return s.mapURL, s.mapErr
 }
 
 func TestHandlerGenerateReturnsPhotoURL(t *testing.T) {
@@ -52,5 +60,29 @@ func TestHandlerGenerateRejectsMissingPrompt(t *testing.T) {
 	err := handler.Generate(response, req)
 	if err == nil {
 		t.Fatal("Generate() error = nil, want validation error")
+	}
+}
+
+func TestHandlerGenerateMapReturnsPhotoURL(t *testing.T) {
+	t.Parallel()
+	service := &stubGenerator{mapURL: "data:image/png;base64,mapa"}
+	handler := NewHandler(service)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/scenes/generate-background?prompt=masmorra", nil)
+	response := httptest.NewRecorder()
+
+	err := handler.GenerateMap(response, req)
+	if err != nil {
+		t.Fatalf("GenerateMap() error = %v", err)
+	}
+	if got, want := service.mapPrompt, "masmorra"; got != want {
+		t.Errorf("map prompt = %q, want %q", got, want)
+	}
+
+	var body map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := body["fotoUrl"], service.mapURL; got != want {
+		t.Errorf("fotoUrl = %q, want %q", got, want)
 	}
 }

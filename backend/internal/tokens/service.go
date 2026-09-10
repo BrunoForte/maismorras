@@ -30,9 +30,16 @@ func NewPollinationsService(client *http.Client, baseURL string, maxImageSize in
 }
 
 func (s *PollinationsService) Generate(ctx context.Context, prompt string) (string, error) {
-	fullPrompt := prompt + promptSuffix
+	return s.generate(ctx, prompt+promptSuffix, 256, 256)
+}
+
+func (s *PollinationsService) GenerateMap(ctx context.Context, prompt string) (string, error) {
+	return s.generate(ctx, prompt+", top-down fantasy battle map, gridless, no text, no labels, highly detailed", 1024, 1024)
+}
+
+func (s *PollinationsService) generate(ctx context.Context, fullPrompt string, width, height int) (string, error) {
 	seed := rand.IntN(100001) // intervalo inclusivo: 0 a 100000
-	endpoint := fmt.Sprintf("%s/prompt/%s?width=256&height=256&nologo=true&seed=%d", s.baseURL, url.PathEscape(fullPrompt), seed)
+	endpoint := fmt.Sprintf("%s/prompt/%s?width=%d&height=%d&nologo=true&seed=%d", s.baseURL, url.PathEscape(fullPrompt), width, height, seed)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
