@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -920,10 +921,14 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 		name = actorName
 	}
 	owner := ownerID
-	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, Color: 3381504, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	var portrait *string
+	if value := strings.TrimSpace(sheet.PortraitPath); value != "" {
+		portrait = &value
+	}
+	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: 3381504, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id::text`, sceneID, actorID, ownerID, name, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
+	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, ownerID, name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
 	if err == nil {
 		t.InitiativeBonus = abilityModifier(sheet.AbilityScores.Dexterity)
 		_, err = r.pool.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID)

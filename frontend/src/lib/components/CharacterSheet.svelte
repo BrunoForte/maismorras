@@ -15,6 +15,8 @@ import {
 	import { rollDice } from '$lib/services/eventApi';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
+	import { gerarImagemToken } from '$lib/services/tokenImageApi';
+	import { supabase } from '$lib/services/supabase';
 	import { classData, classFeatures, canonicalClass as progressionClass, defaultResources, spellSlots } from '$lib/data/classProgression';
 
 	let {
@@ -59,6 +61,9 @@ import {
 	let activeConditions = $state<string[]>([]);
 	let previousLevel = $state(1);
 	let levelChoiceOpen = $state(false);
+	let portraitPrompt = $state('');
+	let portraitPreview = $state<string | null>(null);
+	let portraitBusy = $state(false);
 	const skills = [
 		['Acrobacia','dexterity'],['Adestrar Animais','wisdom'],['Arcanismo','intelligence'],['Atletismo','strength'],['Atuação','charisma'],['Enganação','charisma'],['Furtividade','dexterity'],['História','intelligence'],['Intimidação','charisma'],['Intuição','wisdom'],['Investigação','intelligence'],['Medicina','wisdom'],['Natureza','intelligence'],['Percepção','wisdom'],['Persuasão','charisma'],['Prestidigitação','dexterity'],['Religião','intelligence'],['Sobrevivência','wisdom']
 	] as const;
@@ -164,6 +169,7 @@ import {
 			 sheet.spellSlots ??= [];
 			sheet.skillExpertise ??= [];
 			previousLevel = sheet.level;
+			if (sheet.portraitPath) void refreshPortraitPreview();
 			const scene = await loadScene(session, sceneId);
 			const token = characterId
 				? scene.tokens.find((item) => item.actorId === characterId)
@@ -180,6 +186,45 @@ import {
 			loading = false;
 		}
 	});
+	async function refreshPortraitPreview() {
+		if (!sheet.portraitPath || !supabase) { portraitPreview = null; return; }
+		const { data, error } = await supabase.storage.from('campaign-assets').createSignedUrl(sheet.portraitPath, 3600);
+		if (error) { message = error.message; return; }
+		portraitPreview = data.signedUrl;
+	}
+	async function savePortrait(blob: Blob, filename: string) {
+		if (!supabase) throw new Error('Supabase não está configurado.');
+		if (blob.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
+		const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
+		const path = `campaigns/${campaignId}/portraits/${session.user.id}/${crypto.randomUUID()}-${safeName}`;
+		const { error } = await supabase.storage.from('campaign-assets').upload(path, blob, {
+			contentType: blob.type || 'image/png'
+		});
+		if (error) throw error;
+		sheet.portraitPath = path;
+		await refreshPortraitPreview();
+		message = 'Retrato selecionado. Salve a ficha para atualizar o token.';
+	}
+	async function uploadPortrait(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { message = 'Envie uma imagem JPG, PNG ou WebP.'; input.value = ''; return; }
+		portraitBusy = true;
+		try { await savePortrait(file, file.name); }
+		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível enviar o retrato.'; }
+		finally { portraitBusy = false; input.value = ''; }
+	}
+	async function generatePortrait() {
+		if (portraitBusy || portraitPrompt.trim().length < 3) return;
+		portraitBusy = true;
+		try {
+			const dataUrl = await gerarImagemToken(portraitPrompt.trim());
+			const blob = await (await fetch(dataUrl)).blob();
+			await savePortrait(blob, 'retrato-gerado.png');
+		} catch (error) { message = error instanceof Error ? error.message : 'Não foi possível gerar o retrato.'; }
+		finally { portraitBusy = false; }
+	}
 	const optionsFor = (entryType: string) =>
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	const optionLabel = (entry: CompendiumEntry) =>
@@ -414,6 +459,18 @@ import {
 					</aside>
 				{/if}
 				{#if activeTab === 'profile'}
+				<section class="portrait-editor" aria-label="Retrato do personagem">
+					<div class="portrait-preview">
+						{#if portraitPreview}<img src={portraitPreview} alt={`Retrato de ${sheet.name || 'personagem'}`} />{:else}<span>◈</span>{/if}
+					</div>
+					<div>
+						<h3>Retrato e token</h3>
+						<p>Use uma imagem própria ou crie um retrato por IA. Ao salvar a ficha, o token vinculado recebe a nova imagem.</p>
+						<label class="portrait-upload">{portraitBusy ? 'Processando…' : 'Enviar imagem'}<input type="file" accept="image/jpeg,image/png,image/webp" onchange={uploadPortrait} disabled={portraitBusy}/></label>
+						<div class="portrait-ai"><input bind:value={portraitPrompt} maxlength="600" placeholder="Ex.: elfa drow feiticeira, cabelos brancos, olhos violeta" /><button onclick={() => void generatePortrait()} disabled={portraitBusy || portraitPrompt.trim().length < 3}>{portraitBusy ? 'Gerando…' : 'Gerar com IA'}</button></div>
+						<small>JPG, PNG ou WebP de até 5 MB. O retrato é privado no armazenamento e exibido somente para membros da campanha.</small>
+					</div>
+				</section>
 				<section class="identity">
 					<label>Nome<input bind:value={sheet.name} maxlength="120" placeholder="Nome do personagem" /></label>
 					<label>Classe<input bind:value={sheet.class} onchange={onClassChanged} list="class-options" placeholder="Ex.: Guerreiro" /></label>
@@ -547,6 +604,7 @@ import {
 {#if levelChoiceOpen}<div class="level-modal" role="presentation"><section><h3>Subida para o nível {sheet.level}</h3><p>Como deseja ajustar os PV dos níveis ganhos?</p><div><button onclick={() => void resolveLevelHP('max')}>Usar valor máximo</button><button onclick={() => void resolveLevelHP('roll')}>Rolar dados de vida</button><button onclick={() => void resolveLevelHP('keep')}>Manter PV atuais</button></div></section></div>{/if}
 
 <style>
+	.portrait-editor{display:grid;grid-template-columns:auto 1fr;gap:.85rem;align-items:start;border:1px solid #493c39;border-radius:10px;padding:.8rem;background:#211b1e}.portrait-preview{display:grid;place-items:center;width:92px;height:92px;overflow:hidden;border:1px solid #765d3d;border-radius:50%;color:#e0b86f;background:#171216;font-size:2rem}.portrait-preview img{width:100%;height:100%;object-fit:cover}.portrait-editor h3{margin:0 0 .3rem;color:#f0d29d;font:600 1rem Georgia,serif}.portrait-editor p,.portrait-editor small{margin:0;color:#aa9d91;font-size:.68rem;line-height:1.4}.portrait-upload{display:inline-flex;margin:.55rem .4rem .55rem 0;border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#f0d29d;background:#2b211c;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-upload input{display:none}.portrait-ai{display:flex;gap:.35rem;margin-bottom:.45rem}.portrait-ai input{min-width:0;flex:1;border:1px solid #5a493b;border-radius:6px;padding:.42rem;color:#eee4d6;background:#161216;font:inherit;font-size:.68rem}.portrait-ai button{border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#291b10;background:#e0b86f;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-ai button:disabled,.portrait-upload:has(input:disabled){opacity:.6;cursor:wait}
 	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:.35rem;border:1px solid #493c39;border-radius:7px;padding:.45rem;color:#cbbbab}.skill-roll{border:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.skill-row strong{color:#f0d29d}.skill-row small{font-size:.6rem;color:#a99c91}.skill-row label{font-size:.62rem}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
 	.saving-throws>div{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem}.saving-throws article{display:grid;grid-template-columns:1fr auto;gap:.25rem;align-items:center;border:1px solid #493c39;border-radius:7px;padding:.45rem}.saving-throws button{border:0;padding:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.saving-throws strong{color:#f0d29d}.saving-throws label{grid-column:1/-1;color:#a99c91;font-size:.62rem}.roll-custom{border:1px solid #765d3d!important;border-radius:5px!important;color:#f0d29d!important;background:#2b211c!important}
 	.sheet-backdrop {

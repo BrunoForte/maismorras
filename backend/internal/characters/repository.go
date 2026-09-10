@@ -20,6 +20,7 @@ var (
 // compact while still retaining the practical information used at the table.
 type Sheet struct {
 	Name               string          `json:"name"`
+	PortraitPath       string          `json:"portraitPath"`
 	Class              string          `json:"class"`
 	Subclass           string          `json:"subclass"`
 	Level              int             `json:"level"`
@@ -221,7 +222,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 // Tokens linked to a character are instances for position and conditions, but
 // their sheet-derived combat numbers must follow the character sheet.
 func (r *Repository) syncSceneTokens(ctx context.Context, actorID string, sheet Sheet) error {
-	_, err := r.pool.Exec(ctx, `update scene_tokens set hp_current=$1,hp_max=$2,armor_class=$3,updated_at=now() where actor_id=$4`, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, actorID)
+	_, err := r.pool.Exec(ctx, `update scene_tokens set hp_current=$1,hp_max=$2,armor_class=$3,image_url=nullif($4,''),updated_at=now() where actor_id=$5`, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.PortraitPath, actorID)
 	if err != nil {
 		return fmt.Errorf("sync character tokens: %w", err)
 	}

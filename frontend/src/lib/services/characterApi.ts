@@ -15,6 +15,7 @@ export type SpellSlot = { level: number; current: number; max: number };
 export type InventoryItem = { entryId: string; name: string; quantity: number; equipped: boolean; rules: Record<string, unknown> };
 export type CharacterSheet = {
 	name: string;
+	portraitPath: string;
 	class: string;
 	subclass: string;
 	level: number;
@@ -86,6 +87,8 @@ function normalizeCharacter(character: Character): Character {
 		speciesLineage: character.sheet.speciesLineage ?? '',
 		feats: character.sheet.feats ?? ''
 		,
+		portraitPath: character.sheet.portraitPath ?? ''
+		,
 		resources: character.sheet.resources ?? [],
 		spellSlots: character.sheet.spellSlots ?? []
 		,
@@ -123,6 +126,7 @@ export const createCharacterForGM = (session: Session, campaignId: string, owner
 export function createEmptySheet(): CharacterSheet {
 	return {
 		name: '',
+		portraitPath: '',
 		class: '',
 		subclass: '',
 		level: 1,

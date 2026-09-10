@@ -92,7 +92,7 @@
 			: []
 	);
 
-	function asPersonagem(token: PersistedToken, index: number): Personagem {
+	function asPersonagem(token: PersistedToken, index: number, imageUrl = token.imageUrl): Personagem {
 		return {
 			id: index + 1,
 			persistedId: token.id,
@@ -111,7 +111,7 @@
 			iniciativa: token.initiative,
 			visionRange: token.visionRange,
 			lightRange: token.lightRange,
-			fotoUrl: token.imageUrl ?? undefined,
+			fotoUrl: imageUrl ?? undefined,
 			tamanho: token.size,
 			fotoEscala: 1,
 			fotoOffsetX: 0,
@@ -183,7 +183,9 @@
 			motor?.setAreas(response.areas);
 			walls = response.walls;
 			motor?.setWalls(response.walls);
-			const carregados = response.tokens.map(asPersonagem);
+			const carregados = await Promise.all(response.tokens.map(async (token, index) =>
+				asPersonagem(token, index, await resolverImagemToken(token.imageUrl))
+			));
 			savedSnapshots.clear();
 			carregados.forEach((personagem) => {
 				if (personagem.persistedId)
@@ -197,6 +199,11 @@
 	}
 	async function resolverImagemDeFundo(value: string | null) {
 		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`) || !supabase) return value;
+		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(value, 3600);
+		return data?.signedUrl ?? null;
+	}
+	async function resolverImagemToken(value: string | null) {
+		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/`) || !supabase) return value;
 		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(value, 3600);
 		return data?.signedUrl ?? null;
 	}
