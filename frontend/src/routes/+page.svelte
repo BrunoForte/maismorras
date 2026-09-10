@@ -361,7 +361,7 @@
 								{session}
 								isGM={activeCampaign.role === 'gm'}
 							/>
-							<FloatingChat campaignId={activeCampaign.id} {session} />
+							<FloatingChat campaignId={activeCampaign.id} sceneId={activeScene.id} {session} />
 							{#if activeCampaign.role === 'gm'}<ActorDrawer campaignId={activeCampaign.id} sceneId={activeScene.id} {session} onadded={() => reloadActiveScene()} />{/if}
 						{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
 				</main>

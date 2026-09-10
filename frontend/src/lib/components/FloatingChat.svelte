@@ -4,24 +4,35 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 
-	let { campaignId, session }: { campaignId: string; session: Session } = $props();
+	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } = $props();
 	let open = $state(true);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
+	let sceneSocket: SceneSocket | null = null;
 	let visibleMessages = $derived(
 		channel === 'all'
 			? $chatMensagens
 			: $chatMensagens.filter((message) => (message.canal ?? 'chat') === channel)
 	);
 
-	onMount(async () => {
+	async function reloadMessages() {
 		try {
 			$chatMensagens = await loadMessages(session, campaignId);
 		} catch (error) {
 			console.error('Falha ao carregar histórico do chat:', error);
 		}
+	}
+
+	onMount(() => {
+		void reloadMessages();
+		sceneSocket = connectSceneSocket(session, sceneId, () => void reloadMessages());
+		return () => {
+			sceneSocket?.close();
+			sceneSocket = null;
+		};
 	});
 
 	async function send(event: SubmitEvent) {
@@ -55,6 +66,7 @@
 					{ id: crypto.randomUUID(), autor: 'Você', texto: input, tipo: 'texto' }
 				];
 			}
+			sceneSocket?.publishRefresh();
 			form.reset();
 		} finally {
 			sending = false;
