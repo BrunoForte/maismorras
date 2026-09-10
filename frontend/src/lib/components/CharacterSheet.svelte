@@ -268,7 +268,25 @@ import {
 	}
 	const skillBonus = (name: string, ability: keyof Sheet['abilityScores']) => modifier(sheet.abilityScores[ability]) + (sheet.skillProficiencies.includes(name) ? sheet.proficiencyBonus : 0) + (sheet.skillExpertise.includes(name) ? sheet.proficiencyBonus : 0);
 	const passivePerception = () => 10 + skillBonus('Percepção', 'wisdom');
-	function toggleSkill(list: 'skillProficiencies' | 'skillExpertise', name: string) { const current = sheet[list]; sheet[list] = current.includes(name) ? current.filter((item) => item !== name) : [...current, name]; if (list === 'skillExpertise' && !sheet.skillProficiencies.includes(name)) sheet.skillProficiencies = [...sheet.skillProficiencies, name]; }
+	function toggleSkill(name: string) {
+		sheet.skillProficiencies = sheet.skillProficiencies.includes(name)
+			? sheet.skillProficiencies.filter((item) => item !== name)
+			: [...sheet.skillProficiencies, name];
+		if (!sheet.skillProficiencies.includes(name)) sheet.skillExpertise = sheet.skillExpertise.filter((item) => item !== name);
+	}
+	const expertiseChoices = () => {
+		const key = canonicalClass(sheet.class);
+		if (key === 'bard') return sheet.level >= 9 ? 4 : sheet.level >= 2 ? 2 : 0;
+		if (key === 'rogue') return sheet.level >= 6 ? 4 : sheet.level >= 1 ? 2 : 0;
+		return 0;
+	};
+	function setExpertiseChoice(index: number, value: string) {
+		const next = [...sheet.skillExpertise];
+		if (value && next.some((skill, itemIndex) => itemIndex !== index && skill === value)) return;
+		next[index] = value;
+		sheet.skillExpertise = next.filter(Boolean);
+		if (value && !sheet.skillProficiencies.includes(value)) sheet.skillProficiencies = [...sheet.skillProficiencies, value];
+	}
 	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) { try { const bonus = skillBonus(name, ability); const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`); const result = event.payload as { dados: number[]; total: number; expressao: string }; $diceOverlay = { expression: `${name} · ${result.expressao}`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: sheet.name || 'Personagem', texto: `Teste de ${name}`, tipo: 'rolagem', canal: 'chat', detalhesRolagem: { ...result, modificador: bonus } }]; } catch { message = `Não foi possível rolar ${name}.`; } }
 	function onLevelChanged() { if (sheet.level > previousLevel) levelChoiceOpen = true; else { previousLevel = sheet.level; syncProgression(); } }
 	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') { const gained = Math.max(0, sheet.level - previousLevel); const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8); let gainedHP = 0; if (choice === 'max') gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution)); if (choice === 'roll') { for (let i = 0; i < gained; i++) { const event = await rollDice(session, campaignId, `1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`); gainedHP += (event.payload as { total:number }).total; } } if (choice !== 'keep') { sheet.hitPointsMax += gainedHP; sheet.hitPointsCurrent += gainedHP; } previousLevel = sheet.level; levelChoiceOpen = false; syncProgression(); }
@@ -297,6 +315,10 @@ import {
 		const classes = Array.isArray(rules.classes) ? rules.classes.map(String) : [];
 		return (spellCircle === 'all' || level === Number(spellCircle)) && (!canonicalClass(sheet.class) || classes.length === 0 || classes.includes(canonicalClass(sheet.class)));
 	});
+	const availableSpellCircles = () => [0, ...sheet.spellSlots.filter((slot) => slot.max > 0).map((slot) => slot.level)];
+	const spellSlotForCircle = (circle: number) => sheet.spellSlots.find((slot) => slot.level === circle);
+	const spellsForCircle = (circle: number) => sheet.spells.map((spell, index) => ({ spell, index })).filter((item) => item.spell.level === circle);
+	const circleLabel = (circle: number) => circle === 0 ? 'Truques' : `Círculo ${circle}`;
 	function addInventoryItem() {
 		const entry = itemEntries().find((item) => item.id === selectedItemId);
 		if (!entry) return;
@@ -436,11 +458,7 @@ import {
 >
 	<section class="sheet" class:minimized aria-label="Ficha de personagem D&D 2024">
 		<header>
-			<div>
-				<p>FICHA D&D 2024 · MVP</p>
-				<h2>{sheet.name || 'Nova ficha'}</h2>
-				{#if characterOwnerName}<small>Personagem de {characterOwnerName}</small>{/if}
-			</div>
+			<div class="sheet-heading"><h2>{sheet.name || 'Nova ficha'}</h2><div><p>FICHA D&D 2024 · MVP</p>{#if characterOwnerName}<small>Personagem de {characterOwnerName}</small>{/if}</div></div>
 			<div class="sheet-actions">{#if docked}<button onclick={() => minimized = !minimized} aria-label="Minimizar ficha">{minimized ? '▸' : '▾'}</button>{/if}<button onclick={onclose} aria-label="Fechar ficha">×</button></div>
 		</header>
 		{#if !loading && !minimized}<nav class="sheet-tabs" aria-label="Seções da ficha">
@@ -511,8 +529,9 @@ import {
 							>{/each}
 					</div>
 				</section>
-				<section class="saving-throws"><h3>Testes de resistência</h3><div>{#each attributes as attribute}<article><button onclick={() => void rollSheet(`Resistência de ${attribute.label}`, saveBonus(attribute.key))}>🎲 {attribute.label}</button><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><label><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/> prof.</label></article>{/each}</div></section>
-				{#if derivedFeatures().length}<section class="progression"><h3>Progressão de classe</h3><ul>{#each derivedFeatures() as feature}<li><span>Nível {feature.level}</span>{feature.name}</li>{/each}</ul></section>{/if}
+				<section class="saving-throws"><h3>Testes de resistência</h3><div>{#each attributes as attribute}<article><label title={`Proficiência em resistência de ${attribute.label}`}><span>{attribute.label}</span><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/></label><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><button onclick={() => void rollSheet(`Resistência de ${attribute.label}`, saveBonus(attribute.key))} aria-label={`Rolar resistência de ${attribute.label}`}>🎲</button></article>{/each}</div></section>
+				<div class="passive-perception"><span>Percepção passiva</span><strong class="derived-value">{passivePerception()}</strong><small>10 + Sabedoria + proficiência em Percepção</small></div>
+				{#if derivedFeatures().length}<section class="progression"><h3>Progressão de classe</h3><ul>{#each derivedFeatures() as feature}<li><span>Nível {feature.level}</span>{feature.name}</li>{/each}</ul>{#if expertiseChoices() > 0}<div class="expertise-choices"><strong>Especialização de classe</strong><p>Escolha {expertiseChoices()} perícia{expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.</p><div>{#each Array(expertiseChoices()) as _, index}<label>Especialização {index + 1}<select value={sheet.skillExpertise[index] ?? ''} onchange={(event) => setExpertiseChoice(index, event.currentTarget.value)}><option value="">Escolha uma perícia…</option>{#each skills as [name]}<option value={name}>{name}</option>{/each}</select></label>{/each}</div></div>{/if}</section>{/if}
 				{/if}
 				{#if activeTab === 'combat'}
 				<section class="combat">
@@ -532,9 +551,7 @@ import {
 					><label>PV máximos<input type="number" min="1" bind:value={sheet.hitPointsMax} oninput={syncTokenSoon} /></label
 					><label
 						>PV temporários<input type="number" min="0" bind:value={sheet.temporaryHP} /></label
-					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label><div class="passive-perception"
-						><span>Percepção passiva</span><strong class="derived-value">{passivePerception()}</strong><small>10 + Sabedoria + proficiência</small></div
-					>
+					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label>
 				</section>
 				{#if sheet.resources.length}<section class="resources"><h3>Recursos</h3>{#each sheet.resources as resource, index}<div><strong>{resource.name}</strong><span>{resource.current}/{resource.max} · {resource.restoreOn === 'short' ? 'descanso curto' : 'descanso longo'}</span><button onclick={() => spendResource(index)} disabled={resource.current === 0}>Usar</button></div>{/each}</section>{/if}
 				<section class="combat-attacks">
@@ -548,7 +565,7 @@ import {
 				</section>
 				{/if}
 				{#if activeTab === 'skills'}
-				<section class="skills"><div class="section-title"><h3>Perícias</h3><span>Proficiência e especialização são aplicadas automaticamente.</span></div><div class="skills-grid">{#each skills as [name, ability]}<div class="skill-row"><button class="skill-roll" onclick={() => void rollSkill(name, ability)} aria-label={`Rolar ${name}`}>🎲 {name}</button><strong>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong><small>{attributes.find((item) => item.key === ability)?.label}</small><label title="Proficiência"><input type="checkbox" checked={sheet.skillProficiencies.includes(name)} onchange={() => toggleSkill('skillProficiencies', name)}/> P</label><label title="Especialização"><input type="checkbox" checked={sheet.skillExpertise.includes(name)} onchange={() => toggleSkill('skillExpertise', name)}/> E</label></div>{/each}</div><p>Percepção passiva: <b>{passivePerception()}</b></p></section>
+				<section class="skills"><div class="section-title"><h3>Perícias</h3><span>Marque as perícias proficientes. Especializações vêm da Progressão de classe.</span></div><div class="skills-grid">{#each skills as [name, ability]}<div class="skill-row"><label title={`Proficiência em ${name}`}><input type="checkbox" checked={sheet.skillProficiencies.includes(name)} onchange={() => toggleSkill(name)}/></label><span>{name}{#if sheet.skillExpertise.includes(name)}<small>especialização</small>{/if}</span><strong>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong><button class="skill-roll" onclick={() => void rollSkill(name, ability)} aria-label={`Rolar ${name}`}>🎲</button></div>{/each}</div></section>
 				{/if}
 				{#if activeTab === 'inventory'}
 				<section class="inventory-section">
@@ -562,27 +579,16 @@ import {
 				<section>
 					<div class="section-title">
 						<h3>Magias</h3>
-						<button onclick={addSpell}>+ Magia</button>
+						<button onclick={addSpell}>+ Magia manual</button>
 					</div>
-					{#if sheet.spellSlots.length}<div class="spell-slots">{#each sheet.spellSlots as slot}<label>Círculo {slot.level}<input type="number" min="0" max={slot.max} bind:value={slot.current} /> <small>/ {slot.max}</small></label>{/each}</div>{/if}
-					<div class="compendium-picker spell-picker"><select bind:value={spellCircle}><option value="all">Todos os círculos</option><option value="0">Truques</option>{#each [1,2,3,4,5,6,7,8,9] as circle}<option value={String(circle)}>Círculo {circle}</option>{/each}</select><select bind:value={selectedSpellId}><option value="">{sheet.class ? 'Magia disponível para a classe…' : 'Defina a classe para filtrar magias…'}</option>{#each spellEntries() as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)} · círculo {Number(entryRules(entry).level ?? 0)}</option>{/each}</select><button onclick={addCompendiumSpell} disabled={!selectedSpellId}>Adicionar</button></div>
-					{#each sheet.spells as spell, index}<div class="line-item">
-							<input bind:value={spell.name} placeholder="Nome" /><input
-								type="number"
-								min="0"
-								max="9"
-								bind:value={spell.level}
-								aria-label="Círculo"
-							/><input bind:value={spell.notes} placeholder="Notas" /><button
-								onclick={() => removeSpell(index)}>×</button
-							>
-						</div>{/each}
+					<div class="compendium-picker spell-picker"><select bind:value={spellCircle}>{#each availableSpellCircles() as circle}<option value={String(circle)}>{circleLabel(circle)}</option>{/each}</select><select bind:value={selectedSpellId}><option value="">{sheet.class ? 'Magia disponível para a classe…' : 'Defina a classe para filtrar magias…'}</option>{#each spellEntries() as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)}</option>{/each}</select><button onclick={addCompendiumSpell} disabled={!selectedSpellId}>Adicionar</button></div>
+					{#each availableSpellCircles() as circle}<section class="spell-circle"><header><div><h4>{circleLabel(circle)}</h4><small>{#if circle > 0}<input type="number" min="0" max={spellSlotForCircle(circle)?.max ?? 0} value={spellSlotForCircle(circle)?.current ?? 0} onchange={(event) => { const slotIndex = sheet.spellSlots.findIndex((item) => item.level === circle); if (slotIndex >= 0) sheet.spellSlots[slotIndex].current = Math.max(0, Math.min(sheet.spellSlots[slotIndex].max, Number(event.currentTarget.value) || 0)); }} /> / {spellSlotForCircle(circle)?.max ?? 0} espaços{:else}Sempre disponíveis{/if}</small></div></header>{#if spellsForCircle(circle).length}{#each spellsForCircle(circle) as { spell, index } (index)}<div class="line-item"><input bind:value={spell.name} placeholder="Nome" /><input bind:value={spell.notes} placeholder="Notas" /><button onclick={() => removeSpell(index)}>×</button></div>{/each}{:else}<p>Nenhuma {circle === 0 ? 'magia' : 'magia deste círculo'} adicionada.</p>{/if}</section>{/each}
 				</section>
 				{/if}
 				{#if activeTab === 'details'}
 				<section class="notes">
-					<label>Características<textarea bind:value={sheet.features} placeholder="Habilidades raciais, de classe e observações."></textarea></label>
 					<div class="feat-manager"><div><h3>Talentos</h3><div class="feat-add"><input bind:value={newFeat} list="feat-options" placeholder="Adicionar talento"/><button onclick={addFeat}>Adicionar</button></div><datalist id="feat-options">{#each optionsFor('feat') as feat (feat.id)}<option value={optionLabel(feat)}>{feat.summary}</option>{/each}</datalist><div class="feat-list">{#each featList() as feat}<div class="feat-row"><button class:active={selectedFeat === feat} onclick={() => selectedFeat = feat}>{feat}</button><button class="remove-feat" aria-label={`Remover ${feat}`} onclick={() => removeFeat(feat)}>×</button></div>{/each}{#if !featList().length}<small>Nenhum talento cadastrado.</small>{/if}</div></div><aside><strong>{selectedFeat || 'Selecione um talento'}</strong><p>{selectedFeat ? featDescription(selectedFeat) : 'A descrição do talento aparece aqui sem ocupar a ficha inteira.'}</p></aside></div>
+					<label>Características<textarea bind:value={sheet.features} placeholder="Habilidades raciais, de classe e observações."></textarea></label>
 					<label class="legacy-equipment">Anotações de equipamento<textarea bind:value={sheet.equipment} placeholder="Moedas, cargas, conteúdo de mochilas e observações."></textarea></label>
 				</section>
 				{/if}
@@ -605,8 +611,8 @@ import {
 
 <style>
 	.portrait-editor{display:grid;grid-template-columns:auto 1fr;gap:.85rem;align-items:start;border:1px solid #493c39;border-radius:10px;padding:.8rem;background:#211b1e}.portrait-preview{display:grid;place-items:center;width:92px;height:92px;overflow:hidden;border:1px solid #765d3d;border-radius:50%;color:#e0b86f;background:#171216;font-size:2rem}.portrait-preview img{width:100%;height:100%;object-fit:cover}.portrait-editor h3{margin:0 0 .3rem;color:#f0d29d;font:600 1rem Georgia,serif}.portrait-editor p,.portrait-editor small{margin:0;color:#aa9d91;font-size:.68rem;line-height:1.4}.portrait-upload{display:inline-flex;margin:.55rem .4rem .55rem 0;border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#f0d29d;background:#2b211c;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-upload input{display:none}.portrait-ai{display:flex;gap:.35rem;margin-bottom:.45rem}.portrait-ai input{min-width:0;flex:1;border:1px solid #5a493b;border-radius:6px;padding:.42rem;color:#eee4d6;background:#161216;font:inherit;font-size:.68rem}.portrait-ai button{border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#291b10;background:#e0b86f;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-ai button:disabled,.portrait-upload:has(input:disabled){opacity:.6;cursor:wait}
-	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:.35rem;border:1px solid #493c39;border-radius:7px;padding:.45rem;color:#cbbbab}.skill-roll{border:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.skill-row strong{color:#f0d29d}.skill-row small{font-size:.6rem;color:#a99c91}.skill-row label{font-size:.62rem}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
-	.saving-throws>div{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem}.saving-throws article{display:grid;grid-template-columns:1fr auto;gap:.25rem;align-items:center;border:1px solid #493c39;border-radius:7px;padding:.45rem}.saving-throws button{border:0;padding:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.saving-throws strong{color:#f0d29d}.saving-throws label{grid-column:1/-1;color:#a99c91;font-size:.62rem}.roll-custom{border:1px solid #765d3d!important;border-radius:5px!important;color:#f0d29d!important;background:#2b211c!important}
+	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:.55rem;border:1px solid #493c39;border-radius:7px;padding:.55rem;color:#cbbbab}.skill-row label,.saving-throws label{display:grid;place-items:center}.skill-row input,.saving-throws input{appearance:none;width:1rem;height:1rem;margin:0;border:1px solid #806444;border-radius:50%;padding:0;background:#171216}.skill-row input:checked,.saving-throws input:checked{border-color:#e0b86f;background:#e0b86f;box-shadow:inset 0 0 0 3px #211914}.skill-row>span{overflow:hidden;color:#eee4d6;font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}.skill-row>span small{display:block;color:#d8ad67;font-size:.58rem}.skill-row strong{min-width:2.1rem;color:#f0d29d;font-size:1rem;text-align:center}.skill-roll{border:1px solid #765d3d;border-radius:6px;padding:.32rem .4rem;color:#f0d29d;background:#2b211c;cursor:pointer}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
+	.saving-throws>div{display:grid;grid-template-columns:repeat(6,1fr);gap:.45rem}.saving-throws article{display:grid;grid-template-rows:auto 1fr auto;place-items:center;gap:.3rem;border:1px solid #493c39;border-radius:7px;padding:.5rem;color:#cbbbab}.saving-throws label{display:flex;align-items:center;gap:.28rem;color:#d8c5aa;font-size:.68rem;font-weight:800}.saving-throws strong{display:grid;place-items:center;min-height:1.8rem;color:#f0d29d;font-size:1.05rem}.saving-throws button{border:1px solid #765d3d;border-radius:6px;padding:.28rem .4rem;color:#f0d29d;background:#2b211c;cursor:pointer}.passive-perception{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:.55rem;border:1px solid rgba(116,151,179,.48);border-radius:8px;padding:.6rem .75rem;color:#c9dced;background:rgba(33,54,74,.28);font-size:.74rem}.passive-perception small{color:#9eb3c6;font-size:.65rem}.expertise-choices{display:grid;gap:.45rem;margin-top:.65rem;border-top:1px solid #493c39;padding-top:.65rem}.expertise-choices>strong{color:#f0cb85;font-size:.8rem}.expertise-choices p{margin:0;color:#a99c91;font-size:.7rem;line-height:1.4}.expertise-choices>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.expertise-choices label{font-size:.63rem}.roll-custom{border:1px solid #765d3d!important;border-radius:5px!important;color:#f0d29d!important;background:#2b211c!important}
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;
@@ -632,24 +638,25 @@ import {
 		background: #1b171a;
 		box-shadow: 0 30px 90px #000;
 	}
-	header,
-	footer {
+	.sheet > header,
+	.sheet > footer {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 1rem 1.25rem;
 		border-bottom: 1px solid #403536;
 	}
-	header p {
+	.sheet-heading { display:grid; gap:.42rem; min-width:0; }
+	.sheet-heading h2 { overflow:hidden; color:#f2e6d7; font:600 1.42rem Georgia,serif; text-overflow:ellipsis; white-space:nowrap; }
+	.sheet-heading > div { display:flex; align-items:center; flex-wrap:wrap; gap:.45rem .7rem; }
+	.sheet-heading p {
 		margin: 0 0 0.25rem;
 		color: #d8ad67;
 		font-size: 0.65rem;
 		font-weight: 800;
 		letter-spacing: 0.12em;
 	}
-	header small {
-		display: block;
-		margin-top: 0.25rem;
+	.sheet-heading small {
 		color: #a99c91;
 		font-size: 0.75rem;
 	}
@@ -658,7 +665,7 @@ import {
 		margin: 0;
 		font-family: Georgia, serif;
 	}
-	header button,
+	.sheet > header button,
 	.line-item button {
 		border: 0;
 		color: #cbb9a7;
@@ -723,9 +730,7 @@ import {
 	.progression li span { display: inline-block; width: 4.1rem; color: #d8ad67; font-size: 0.68rem; }
 	.resources > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.5rem; border-top: 1px solid #393034; padding-top: 0.45rem; }
 	.resources span { color: #a99c91; font-size: 0.7rem; }
-	.spell-slots { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.55rem; }
-	.spell-slots label { display: flex; align-items: center; gap: 0.25rem; border: 1px solid #4a3d38; border-radius: 6px; padding: 0.35rem; }
-	.spell-slots input { width: 3rem; padding: 0.25rem; text-align: center; }
+	.spell-circle{display:grid;gap:.45rem;margin-top:.75rem;border:1px solid #493c39;border-radius:8px;padding:.75rem;background:#171417}.spell-circle header{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.spell-circle h4{margin:0;color:#f0cb85;font:600 .9rem Georgia,serif}.spell-circle small{display:flex;align-items:center;gap:.25rem;color:#a99c91;font-size:.68rem}.spell-circle small input{width:2.5rem;padding:.22rem;text-align:center}.spell-circle p{margin:0;color:#8f8378;font-size:.72rem;font-style:italic}
 	.identity label:first-child {
 		grid-column: span 2;
 	}
@@ -945,6 +950,12 @@ import {
 		}
 		.abilities {
 			grid-template-columns: repeat(3, 1fr);
+		}
+		.saving-throws > div {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.expertise-choices > div {
+			grid-template-columns: 1fr;
 		}
 		.notes {
 			grid-template-columns: 1fr;
