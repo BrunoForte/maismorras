@@ -1,0 +1,19 @@
+{
+  "name": "MaisMorras",
+  "short_name": "MaisMorras",
+  "description": "Mesa virtual para aventuras de RPG.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#141114",
+  "theme_color": "#141114",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
