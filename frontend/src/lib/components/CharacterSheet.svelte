@@ -48,7 +48,7 @@ import {
 	let selectedItemId = $state('');
 	let selectedSpellId = $state('');
 	let spellCircle = $state('all');
-	let activeTab = $state<'profile' | 'combat' | 'inventory' | 'spells' | 'details'>('profile');
+	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>('profile');
 	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
 	let rollingWeapon = $state<string | null>(null);
 	let newFeat = $state('');
@@ -56,6 +56,11 @@ import {
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
 	let minimized = $state(false);
 	let activeConditions = $state<string[]>([]);
+	let previousLevel = $state(1);
+	let levelChoiceOpen = $state(false);
+	const skills = [
+		['Acrobacia','dexterity'],['Adestrar Animais','wisdom'],['Arcanismo','intelligence'],['Atletismo','strength'],['Atuação','charisma'],['Enganação','charisma'],['Furtividade','dexterity'],['História','intelligence'],['Intimidação','charisma'],['Intuição','wisdom'],['Investigação','intelligence'],['Medicina','wisdom'],['Natureza','intelligence'],['Percepção','wisdom'],['Persuasão','charisma'],['Prestidigitação','dexterity'],['Religião','intelligence'],['Sobrevivência','wisdom']
+	] as const;
 	const attributes: { key: keyof Sheet['abilityScores']; label: string }[] = [
 		{ key: 'strength', label: 'FOR' },
 		{ key: 'dexterity', label: 'DES' },
@@ -155,7 +160,9 @@ import {
 				: (await getMyCharacter(session, campaignId)).sheet;
 			sheet.inventory ??= [];
 			sheet.resources ??= [];
-			sheet.spellSlots ??= [];
+			 sheet.spellSlots ??= [];
+			sheet.skillExpertise ??= [];
+			previousLevel = sheet.level;
 			const scene = await loadScene(session, sceneId);
 			const token = characterId
 				? scene.tokens.find((item) => item.actorId === characterId)
@@ -213,7 +220,12 @@ import {
 		const slots = spellSlots(sheet.class, sheet.level);
 		sheet.spellSlots = slots.map((slot) => ({ ...slot, current: sheet.spellSlots.find((old) => old.level === slot.level)?.current ?? slot.max }));
 	}
-	function onLevelChanged() { syncProgression(); }
+	const skillBonus = (name: string, ability: keyof Sheet['abilityScores']) => modifier(sheet.abilityScores[ability]) + (sheet.skillProficiencies.includes(name) ? sheet.proficiencyBonus : 0) + (sheet.skillExpertise.includes(name) ? sheet.proficiencyBonus : 0);
+	const passivePerception = () => 10 + skillBonus('Percepção', 'wisdom');
+	function toggleSkill(list: 'skillProficiencies' | 'skillExpertise', name: string) { const current = sheet[list]; sheet[list] = current.includes(name) ? current.filter((item) => item !== name) : [...current, name]; if (list === 'skillExpertise' && !sheet.skillProficiencies.includes(name)) sheet.skillProficiencies = [...sheet.skillProficiencies, name]; }
+	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) { try { const bonus = skillBonus(name, ability); const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`); const result = event.payload as { dados: number[]; total: number; expressao: string }; $diceOverlay = { expression: `${name} · ${result.expressao}`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: sheet.name || 'Personagem', texto: `Teste de ${name}`, tipo: 'rolagem', canal: 'chat', detalhesRolagem: { ...result, modificador: bonus } }]; } catch { message = `Não foi possível rolar ${name}.`; } }
+	function onLevelChanged() { if (sheet.level > previousLevel) levelChoiceOpen = true; else { previousLevel = sheet.level; syncProgression(); } }
+	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') { const gained = Math.max(0, sheet.level - previousLevel); const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8); let gainedHP = 0; if (choice === 'max') gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution)); if (choice === 'roll') { for (let i = 0; i < gained; i++) { const event = await rollDice(session, campaignId, `1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`); gainedHP += (event.payload as { total:number }).total; } } if (choice !== 'keep') { sheet.hitPointsMax += gainedHP; sheet.hitPointsCurrent += gainedHP; } previousLevel = sheet.level; levelChoiceOpen = false; syncProgression(); }
 	function spendResource(index: number) { sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1); }
 	async function rest(kind: 'short' | 'long') {
 		if (kind === 'short') {
@@ -369,7 +381,7 @@ import {
 			<div class="sheet-actions">{#if docked}<button onclick={() => minimized = !minimized} aria-label="Minimizar ficha">{minimized ? '▸' : '▾'}</button>{/if}<button onclick={onclose} aria-label="Fechar ficha">×</button></div>
 		</header>
 		{#if !loading && !minimized}<nav class="sheet-tabs" aria-label="Seções da ficha">
-			{#each [['profile', 'Perfil'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
+			{#each [['profile', 'Perfil'], ['skills', 'Perícias'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
 				<button class:active={activeTab === tab} onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button>
 			{/each}
 		</nav>{/if}
@@ -444,12 +456,8 @@ import {
 					><label>PV máximos<input type="number" min="1" bind:value={sheet.hitPointsMax} oninput={syncTokenSoon} /></label
 					><label
 						>PV temporários<input type="number" min="0" bind:value={sheet.temporaryHP} /></label
-					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label><label
-						>Percepção passiva<input
-							type="number"
-							min="0"
-							bind:value={sheet.passivePerception}
-						/></label
+					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label><div class="passive-perception"
+						><span>Percepção passiva</span><strong class="derived-value">{passivePerception()}</strong><small>10 + Sabedoria + proficiência</small></div
 					>
 				</section>
 				{#if sheet.resources.length}<section class="resources"><h3>Recursos</h3>{#each sheet.resources as resource, index}<div><strong>{resource.name}</strong><span>{resource.current}/{resource.max} · {resource.restoreOn === 'short' ? 'descanso curto' : 'descanso longo'}</span><button onclick={() => spendResource(index)} disabled={resource.current === 0}>Usar</button></div>{/each}</section>{/if}
@@ -462,6 +470,9 @@ import {
 							<input bind:value={attack.name} placeholder="Nome" /><input type="number" bind:value={attack.attackBonus} aria-label="Bônus de ataque" /><input bind:value={attack.damage} placeholder="Dano" /><button onclick={() => removeAttack(index)}>×</button>
 						</div>{/each}
 				</section>
+				{/if}
+				{#if activeTab === 'skills'}
+				<section class="skills"><div class="section-title"><h3>Perícias</h3><span>Proficiência e especialização são aplicadas automaticamente.</span></div><div class="skills-grid">{#each skills as [name, ability]}<div class="skill-row"><button class="skill-roll" onclick={() => void rollSkill(name, ability)} aria-label={`Rolar ${name}`}>🎲 {name}</button><strong>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong><small>{attributes.find((item) => item.key === ability)?.label}</small><label title="Proficiência"><input type="checkbox" checked={sheet.skillProficiencies.includes(name)} onchange={() => toggleSkill('skillProficiencies', name)}/> P</label><label title="Especialização"><input type="checkbox" checked={sheet.skillExpertise.includes(name)} onchange={() => toggleSkill('skillExpertise', name)}/> E</label></div>{/each}</div><p>Percepção passiva: <b>{passivePerception()}</b></p></section>
 				{/if}
 				{#if activeTab === 'inventory'}
 				<section class="inventory-section">
@@ -514,8 +525,10 @@ import {
 		{/if}
 	</section>
 </div>
+{#if levelChoiceOpen}<div class="level-modal" role="presentation"><section><h3>Subida para o nível {sheet.level}</h3><p>Como deseja ajustar os PV dos níveis ganhos?</p><div><button onclick={() => void resolveLevelHP('max')}>Usar valor máximo</button><button onclick={() => void resolveLevelHP('roll')}>Rolar dados de vida</button><button onclick={() => void resolveLevelHP('keep')}>Manter PV atuais</button></div></section></div>{/if}
 
 <style>
+	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:.35rem;border:1px solid #493c39;border-radius:7px;padding:.45rem;color:#cbbbab}.skill-roll{border:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.skill-row strong{color:#f0d29d}.skill-row small{font-size:.6rem;color:#a99c91}.skill-row label{font-size:.62rem}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;

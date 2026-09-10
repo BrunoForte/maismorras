@@ -46,7 +46,7 @@ func (h *Handler) UpdateScene(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	in.Name = strings.TrimSpace(in.Name)
-	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || !validSceneSettings(in) {
+	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || in.AmbientAudioVolume < 0 || in.AmbientAudioVolume > 100 || !validSceneSettings(in) {
 		return apperror.BadRequest("INVALID_SCENE", "Confira nome, grid, acesso de jogadores e visão da cena.")
 	}
 	scene, err := h.repo.UpdateScene(r.Context(), r.PathValue("sceneID"), p.UserID, in)

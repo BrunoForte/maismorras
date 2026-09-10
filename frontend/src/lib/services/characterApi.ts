@@ -26,6 +26,7 @@ export type CharacterSheet = {
 	proficiencyBonus: number;
 	savingThrows: string[];
 	skillProficiencies: string[];
+	skillExpertise: string[];
 	armorClass: number;
 	speed: number;
 	hitPointsCurrent: number;
@@ -81,6 +82,7 @@ function normalizeCharacter(character: Character): Character {
 		inventory: character.sheet.inventory ?? [],
 		savingThrows: character.sheet.savingThrows ?? [],
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
+		skillExpertise: character.sheet.skillExpertise ?? [],
 		speciesLineage: character.sheet.speciesLineage ?? '',
 		feats: character.sheet.feats ?? ''
 		,
@@ -139,6 +141,7 @@ export function createEmptySheet(): CharacterSheet {
 		proficiencyBonus: 2,
 		savingThrows: [],
 		skillProficiencies: [],
+		skillExpertise: [],
 		armorClass: 10,
 		speed: 9,
 		hitPointsCurrent: 10,

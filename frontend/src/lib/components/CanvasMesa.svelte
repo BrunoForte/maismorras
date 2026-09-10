@@ -38,6 +38,7 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
+	import { supabase } from '$lib/services/supabase';
 
 	let { scene, session, isGM, onopensheet = (_actorId: string) => {} }: { scene: Scene; session: Session; isGM: boolean; onopensheet?: (actorId: string) => void } = $props();
 
@@ -73,6 +74,9 @@
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
 	let pingArmed = $state(false);
+	let ambientAudio = $state<HTMLAudioElement>();
+	let ambientAudioURL = $state<string | null>(null);
+	let ambientPlaying = $state(false);
 	let efeitoSelecionado = $derived(definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada));
 	let efeitosDoToken = $derived(
 		personagemSelecionado?.persistedId
@@ -210,6 +214,17 @@
 			persistenceError = error instanceof Error ? error.message : 'Não foi possível carregar ações do NPC.';
 		}
 	}
+	async function carregarTrilha() {
+		if (!scene.ambientAudioEnabled || !scene.ambientAudioPath || !supabase) return;
+		const { data, error } = await supabase.storage.from('campaign-assets').createSignedUrl(scene.ambientAudioPath, 3600);
+		if (error || !data?.signedUrl) { persistenceError = error?.message ?? 'Não foi possível carregar a trilha da cena.'; return; }
+		ambientAudioURL = data.signedUrl;
+	}
+	async function toggleTrilha() {
+		if (!ambientAudio) return;
+		try { if (ambientAudio.paused) { await ambientAudio.play(); ambientPlaying = true; } else { ambientAudio.pause(); ambientPlaying = false; } }
+		catch { persistenceError = 'O navegador bloqueou a reprodução automática. Clique novamente para iniciar a trilha.'; }
+	}
 
 	async function aplicarCondicaoOficial() {
 		if (!isGM || !personagemSelecionado?.persistedId || !efeitoSelecionado) return;
@@ -330,6 +345,7 @@
 			await carregarTokens();
 			await carregarEfeitos();
 			await carregarNPCs();
+			await carregarTrilha();
 		});
 		sceneSocket = connectSceneSocket(session, scene.id, () => {
 			void carregarTokens();
@@ -460,6 +476,7 @@
 
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
+	{#if ambientAudioURL}<audio bind:this={ambientAudio} src={ambientAudioURL} loop volume={scene.ambientAudioVolume / 100} onplay={() => ambientPlaying = true} onpause={() => ambientPlaying = false}></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
 	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
@@ -631,6 +648,7 @@
 		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
 		backdrop-filter: blur(12px);
 	}
+	.ambient-audio { position:absolute; z-index:3; bottom:1rem; left:1rem; display:flex; align-items:center; gap:.45rem; border:1px solid rgba(216,173,103,.42); border-radius:8px; padding:.42rem .55rem; color:#d6c0a0; background:rgba(27,22,27,.92); backdrop-filter:blur(8px); font-size:.65rem; }.ambient-audio button { border:0; padding:0; color:#f0d29d; background:transparent; font:inherit; font-weight:750; cursor:pointer; }.ambient-audio span { border-left:1px solid #5c4b40; padding-left:.45rem; color:#a99c91; }
 	.token-inspector header {
 		display: flex;
 		justify-content: space-between;

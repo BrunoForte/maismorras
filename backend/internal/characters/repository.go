@@ -31,6 +31,7 @@ type Sheet struct {
 	ProficiencyBonus   int             `json:"proficiencyBonus"`
 	SavingThrows       []string        `json:"savingThrows"`
 	SkillProficiencies []string        `json:"skillProficiencies"`
+	SkillExpertise     []string        `json:"skillExpertise"`
 	ArmorClass         int             `json:"armorClass"`
 	Speed              int             `json:"speed"`
 	HitPointsCurrent   int             `json:"hitPointsCurrent"`

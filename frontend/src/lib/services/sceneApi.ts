@@ -5,6 +5,9 @@ export type Scene = {
 	campaignId: string;
 	name: string;
 	backgroundUrl: string | null;
+	ambientAudioPath: string | null;
+	ambientAudioEnabled: boolean;
+	ambientAudioVolume: number;
 	gridSize: number;
 	playerAccess: 'hidden' | 'available' | 'active';
 	fogEnabled: boolean;
