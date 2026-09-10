@@ -33,7 +33,7 @@
 		type SceneWall,
 		type Scene
 	} from '$lib/services/sceneApi';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import { connectSceneSocket, type RealtimeStatus, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
@@ -62,6 +62,7 @@
 	const pendingCreates = new Set<number>();
 	const savedSnapshots = new Map<string, string>();
 	let sceneSocket: SceneSocket | null = null;
+	let realtimeStatus = $state<RealtimeStatus>('connecting');
 	let motor: GameEngine | null = null;
 	let fogMode = $state<'reveal' | 'hide' | null>(null);
 	let fogBrush = $state(1);
@@ -377,7 +378,7 @@
 		sceneSocket = connectSceneSocket(session, scene.id, () => {
 			void carregarTokens();
 			void carregarEfeitos();
-		}, (ping) => motor?.showPing(ping.x, ping.y, ping.color));
+		}, (ping) => motor?.showPing(ping.x, ping.y, ping.color), (status) => realtimeStatus = status);
 
 		const unsubscribe = personagens.subscribe((lista) => {
 			if (!isGM) return;
@@ -504,7 +505,7 @@
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
 	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => ambientPlaying = true}></audio><audio bind:this={ambientAudioB} loop></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
-	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
+	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}<small class:online={realtimeStatus === 'connected'} class="realtime-status">{realtimeStatus === 'connected' ? '● Sincronizado' : realtimeStatus === 'reconnecting' ? '◌ Reconectando…' : '◌ Conectando…'}</small></div>
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
 	{#if isGM}<div class="area-tool-trigger"><button class:active={areaToolsOpen || saveAreaArmed} onclick={() => areaToolsOpen = !areaToolsOpen}>✦ Áreas</button>{#if areaToolsOpen}<div class="area-tools"><strong>Área persistente</strong><small>Escolha a régua e arraste com Shift para salvar a área.</small><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}</div>{/if}
@@ -641,7 +642,7 @@
 		height: 100%;
 	}
 	.scene-hud { position:absolute; z-index:2; top:.8rem; left:.9rem; display:grid; gap:.13rem; max-width:calc(100% - 6rem); padding:.45rem .65rem; border:1px solid rgba(216,173,103,.3); border-radius:7px; color:#f2e6d7; background:rgba(25,19,23,.78); box-shadow:0 5px 14px #0004; pointer-events:none; backdrop-filter:blur(8px); }
-	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }
+	.scene-hud strong { font:600 .8rem Georgia,serif; }.scene-hud span,.scene-hud small { color:#d8b779; font-size:.59rem; letter-spacing:.04em; }.scene-hud .realtime-status{color:#b9aa9d}.scene-hud .realtime-status.online{color:#98d6ae}
 	.ping-tool{position:absolute;z-index:4;bottom:.9rem;left:.9rem}.ping-tool button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.ping-tool button.active{color:#291b10;background:#e0b86f}
 	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
 	.area-tool-trigger{position:absolute;z-index:4;top:8.6rem;right:.8rem}.area-tool-trigger>button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.area-tool-trigger>button.active{color:#291b10;background:#e0b86f}.area-tools{position:absolute;z-index:1;top:0;right:2.8rem;display:grid;gap:.3rem;width:180px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.96);font-size:.62rem;box-shadow:0 10px 24px #0006}.area-tools small{color:#b9aa9d;line-height:1.35}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
