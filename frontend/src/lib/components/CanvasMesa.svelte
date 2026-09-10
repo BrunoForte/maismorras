@@ -176,7 +176,7 @@
 	async function carregarTokens() {
 		try {
 			const response = await loadScene(session, scene.id);
-			urlMapa.set(response.scene.backgroundUrl);
+			urlMapa.set(await resolverImagemDeFundo(response.scene.backgroundUrl));
 			motor?.setFog(response.scene.fogEnabled, isGM, response.fog.visibleCells, response.fog.revealedCells, response.fog.hiddenCells);
 			areas = response.areas;
 			motor?.setAreas(response.areas);
@@ -193,6 +193,11 @@
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível carregar os tokens.';
 		}
+	}
+	async function resolverImagemDeFundo(value: string | null) {
+		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`) || !supabase) return value;
+		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(value, 3600);
+		return data?.signedUrl ?? null;
 	}
 
 	async function carregarEfeitos() {
