@@ -74,9 +74,16 @@
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
 	let pingArmed = $state(false);
-	let ambientAudio = $state<HTMLAudioElement>();
+	let ambientAudioA = $state<HTMLAudioElement>();
+	let ambientAudioB = $state<HTMLAudioElement>();
 	let ambientAudioURL = $state<string | null>(null);
 	let ambientPlaying = $state(false);
+	let activeDeck = $state<'a' | 'b'>('a');
+	const fadeDuration = 900;
+	const activeAudio = () => activeDeck === 'a' ? ambientAudioA : ambientAudioB;
+	const inactiveAudio = () => activeDeck === 'a' ? ambientAudioB : ambientAudioA;
+	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
+	$effect(() => { if (scene.ambientAudioEnabled && scene.ambientAudioPath) void carregarTrilha(); });
 	let efeitoSelecionado = $derived(definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada));
 	let efeitosDoToken = $derived(
 		personagemSelecionado?.persistedId
@@ -218,11 +225,26 @@
 		if (!scene.ambientAudioEnabled || !scene.ambientAudioPath || !supabase) return;
 		const { data, error } = await supabase.storage.from('campaign-assets').createSignedUrl(scene.ambientAudioPath, 3600);
 		if (error || !data?.signedUrl) { persistenceError = error?.message ?? 'Não foi possível carregar a trilha da cena.'; return; }
-		ambientAudioURL = data.signedUrl;
+		const nextURL = data.signedUrl;
+		if (!ambientAudioURL) { ambientAudioURL = nextURL; return; }
+		if (ambientAudioURL !== nextURL && ambientPlaying) await crossfade(nextURL);
+		ambientAudioURL = nextURL;
+	}
+	function fade(audio: HTMLAudioElement, to: number, duration = fadeDuration) {
+		const from = audio.volume, started = performance.now();
+		return new Promise<void>((resolve) => { const step = (now: number) => { const progress = Math.min(1, (now - started) / duration); audio.volume = from + (to - from) * progress; if (progress < 1) requestAnimationFrame(step); else resolve(); }; requestAnimationFrame(step); });
+	}
+	async function crossfade(nextURL: string) {
+		const outgoing = activeAudio(), incoming = inactiveAudio();
+		if (!outgoing || !incoming) return;
+		incoming.src = nextURL; incoming.currentTime = 0; incoming.volume = 0;
+		try { await incoming.play(); await Promise.all([fade(outgoing, 0), fade(incoming, targetVolume())]); outgoing.pause(); outgoing.currentTime = 0; activeDeck = activeDeck === 'a' ? 'b' : 'a'; }
+		catch { persistenceError = 'Clique em tocar trilha para autorizar áudio neste navegador.'; }
 	}
 	async function toggleTrilha() {
-		if (!ambientAudio) return;
-		try { if (ambientAudio.paused) { await ambientAudio.play(); ambientPlaying = true; } else { ambientAudio.pause(); ambientPlaying = false; } }
+		const audio = activeAudio();
+		if (!audio || !ambientAudioURL) return;
+		try { if (audio.paused) { if (!audio.src) audio.src = ambientAudioURL; audio.volume = 0; await audio.play(); await fade(audio, targetVolume()); ambientPlaying = true; } else { await fade(audio, 0); audio.pause(); ambientPlaying = false; } }
 		catch { persistenceError = 'O navegador bloqueou a reprodução automática. Clique novamente para iniciar a trilha.'; }
 	}
 
@@ -476,7 +498,7 @@
 
 <div class="borda-mesa" bind:this={container}>
 	<canvas bind:this={canvasMesa}></canvas>
-	{#if ambientAudioURL}<audio bind:this={ambientAudio} src={ambientAudioURL} loop volume={scene.ambientAudioVolume / 100} onplay={() => ambientPlaying = true} onpause={() => ambientPlaying = false}></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
+	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => ambientPlaying = true}></audio><audio bind:this={ambientAudioB} loop></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
 	<div class="scene-hud"><strong>{scene.name}</strong>{#if scene.fogEnabled}<span>◒ Névoa de guerra ativa</span>{/if}{#if isGM}<small>{scene.playerAccess === 'active' ? 'Visível para jogadores' : scene.playerAccess === 'available' ? 'Disponível para jogadores' : 'Oculta para jogadores'}</small>{/if}</div>
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
