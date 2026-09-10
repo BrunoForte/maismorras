@@ -269,6 +269,14 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, token)
 }
+func (h *Handler) DeleteToken(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.DeleteToken(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID); err != nil {
+		return mapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 func (h *Handler) MoveToken(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {

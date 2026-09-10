@@ -1086,6 +1086,23 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	return t, nil
 }
 
+// DeleteToken removes only the scene placement. The linked actor (character or
+// NPC) remains available in the campaign and can be placed again later.
+func (r *Repository) DeleteToken(ctx context.Context, sceneID, tokenID, userID string) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	result, err := r.pool.Exec(ctx, `delete from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID)
+	if err != nil {
+		return fmt.Errorf("delete token: %w", err)
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("token not found")
+	}
+	return nil
+}
+
 // MoveToken is intentionally narrower than UpdateToken. A player may only
 // request a position for their own character token; all combat statistics and
 // visibility fields remain under the GM's control.

@@ -147,6 +147,9 @@ export const updateToken = (
 		body: JSON.stringify(token)
 	});
 
+export const deleteSceneToken = (session: Session, sceneId: string, tokenId: string) =>
+	request<void>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}`, { method: 'DELETE' });
+
 export const moveToken = (session: Session, sceneId: string, tokenId: string, x: number, y: number) =>
 	request<{ x: number; y: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/position`, { method: 'PATCH', body: JSON.stringify({ x, y }) });
 

@@ -15,6 +15,7 @@
 		createSceneArea,
 		createSceneWall,
 		deleteSceneArea,
+		deleteSceneToken,
 		deleteSceneWall,
 		interactWithNearbyDoor,
 		setSceneDoorOpen,
@@ -172,6 +173,24 @@
 		if (!personagemSelecionado || !isGM) return;
 		const atualizado = transform(personagemSelecionado);
 		personagens.update((lista) => lista.map((p) => (p.id === atualizado.id ? atualizado : p)));
+	}
+
+	async function removerTokenSelecionado() {
+		if (!isGM || !personagemSelecionado?.persistedId) return;
+		const token = personagemSelecionado;
+		const persistedId = token.persistedId!;
+		if (!confirm(`Remover ${token.nome} desta cena? A ficha ou NPC continuará na campanha.`)) return;
+		try {
+			await deleteSceneToken(session, scene.id, persistedId);
+			personagens.update((lista) => lista.filter((item) => item.persistedId !== persistedId));
+			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
+			savedSnapshots.delete(persistedId);
+			tokenSelecionadoId = null;
+			persistenceError = '';
+			sceneSocket?.publishRefresh();
+		} catch (error) {
+			persistenceError = error instanceof Error ? error.message : 'Não foi possível remover o token.';
+		}
 	}
 
 	async function carregarTokens() {
@@ -538,6 +557,7 @@
 			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div><div class="vision-control"><span>Fonte de luz <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.lightRange} onchange={(event) => alterarLuz(event.currentTarget.value)} aria-label="Raio de luz em quadrados"/></div>{/if}
 			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 Interagir com porta próxima</button>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
+			{#if isGM && personagemSelecionado.persistedId}<button class="remove-token" onclick={() => void removerTokenSelecionado()}>Remover token da cena</button>{/if}
 			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => void rollSelectedInitiative()}>⚔️ Rolar iniciativa</button></div>{/if}
 			{#if isGM && npcSelecionado?.sheet.actions.length}
 				<div class="npc-actions">
@@ -654,6 +674,7 @@
 	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
 	.area-tool-trigger{position:absolute;z-index:4;top:8.6rem;right:.8rem}.area-tool-trigger>button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.area-tool-trigger>button.active{color:#291b10;background:#e0b86f}.area-tools{position:absolute;z-index:1;top:0;right:2.8rem;display:grid;gap:.3rem;width:180px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.96);font-size:.62rem;box-shadow:0 10px 24px #0006}.area-tools small{color:#b9aa9d;line-height:1.35}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
 	.wall-tools{position:absolute;z-index:4;top:12rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.wall-tools button,.wall-tools select{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.wall-tools button.active{color:#281a0f;background:#e0b86f}.wall-tools small{color:#b9aa9d;font-size:.58rem}.wall-list{display:grid;gap:.2rem;max-height:70px;overflow:auto}.wall-list>span,.wall-list>span>span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.wall-list button{border:0;padding:0;color:#dfa797;background:transparent}
+	.remove-token{border:1px solid #9b5b4d;border-radius:6px;padding:.5rem .65rem;color:#ffd5ca;background:#3b211f;font-size:.7rem;cursor:pointer}.remove-token:hover{background:#572923}
 	@media (max-width: 760px) {
 		.borda-mesa {
 			height: calc(100dvh - 142px);
