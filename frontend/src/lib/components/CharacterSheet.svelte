@@ -51,6 +51,7 @@ import {
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>('profile');
 	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
 	let rollingWeapon = $state<string | null>(null);
+	let rollingAttack = $state<number | null>(null);
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
@@ -309,6 +310,23 @@ import {
 	function updateScore(key: keyof Sheet['abilityScores'], value: string) {
 		sheet.abilityScores[key] = Math.max(1, Math.min(30, Number(value) || 1));
 	}
+	const saveBonus = (key: keyof Sheet['abilityScores']) => modifier(sheet.abilityScores[key]) + (sheet.savingThrows.includes(key) ? sheet.proficiencyBonus : 0);
+	function toggleSavingThrow(key: keyof Sheet['abilityScores']) { sheet.savingThrows = sheet.savingThrows.includes(key) ? sheet.savingThrows.filter((item) => item !== key) : [...sheet.savingThrows, key]; }
+	async function rollSheet(label: string, bonus: number, damage = '') {
+		const attackEvent = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`, undefined, 'combat');
+		const attack = attackEvent.payload as { dados: number[]; total: number; expressao: string };
+		const critical = attack.dados[0] === 20;
+		$chatMensagens = [...$chatMensagens, { id: String(attackEvent.id), autor: sheet.name || 'Personagem', texto: `${label}${critical ? ' · CRÍTICO!' : ''}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...attack, modificador: bonus } }];
+		$diceOverlay = { expression: label, total: attack.total, dice: attack.dados, nonce: crypto.randomUUID() };
+		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
+		if (!match) return;
+		const count = Number(match[1]) * (critical ? 2 : 1), mod = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
+		const damageEvent = await rollDice(session, campaignId, `${count}d${match[2]}${mod ? `${mod >= 0 ? '+' : ''}${mod}` : ''}`, undefined, 'combat');
+		const result = damageEvent.payload as { dados: number[]; total: number; expressao: string };
+		$chatMensagens = [...$chatMensagens, { id: String(damageEvent.id), autor: sheet.name || 'Personagem', texto: `${label} · dano${critical ? ' crítico' : ''}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: mod } }];
+		$diceOverlay = { expression: `${label} · dano`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() };
+	}
+	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) { if (rollingAttack !== null) return; rollingAttack = index; try { await rollSheet(attack.name || 'Ataque', attack.attackBonus, attack.damage); } catch { message = 'Não foi possível rolar o ataque.'; } finally { rollingAttack = null; } }
 	function addAttack() {
 		sheet.attacks = [
 			...sheet.attacks,
@@ -436,6 +454,7 @@ import {
 							>{/each}
 					</div>
 				</section>
+				<section class="saving-throws"><h3>Testes de resistência</h3><div>{#each attributes as attribute}<article><button onclick={() => void rollSheet(`Resistência de ${attribute.label}`, saveBonus(attribute.key))}>🎲 {attribute.label}</button><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><label><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/> prof.</label></article>{/each}</div></section>
 				{#if derivedFeatures().length}<section class="progression"><h3>Progressão de classe</h3><ul>{#each derivedFeatures() as feature}<li><span>Nível {feature.level}</span>{feature.name}</li>{/each}</ul></section>{/if}
 				{/if}
 				{#if activeTab === 'combat'}
@@ -467,7 +486,7 @@ import {
 						<button onclick={addAttack}>+ Ataque</button>
 					</div>
 					{#each sheet.attacks as attack, index}<div class="line-item">
-							<input bind:value={attack.name} placeholder="Nome" /><input type="number" bind:value={attack.attackBonus} aria-label="Bônus de ataque" /><input bind:value={attack.damage} placeholder="Dano" /><button onclick={() => removeAttack(index)}>×</button>
+							<input bind:value={attack.name} placeholder="Nome" /><input type="number" bind:value={attack.attackBonus} aria-label="Bônus de ataque" /><input bind:value={attack.damage} placeholder="Dano" /><button class="roll-custom" onclick={() => void rollCustomAttack(attack,index)} disabled={rollingAttack === index}>{rollingAttack === index ? '…' : '🎲'}</button><button onclick={() => removeAttack(index)}>×</button>
 						</div>{/each}
 				</section>
 				{/if}
@@ -529,6 +548,7 @@ import {
 
 <style>
 	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:.35rem;border:1px solid #493c39;border-radius:7px;padding:.45rem;color:#cbbbab}.skill-roll{border:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.skill-row strong{color:#f0d29d}.skill-row small{font-size:.6rem;color:#a99c91}.skill-row label{font-size:.62rem}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
+	.saving-throws>div{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem}.saving-throws article{display:grid;grid-template-columns:1fr auto;gap:.25rem;align-items:center;border:1px solid #493c39;border-radius:7px;padding:.45rem}.saving-throws button{border:0;padding:0;color:#eee4d6;background:transparent;text-align:left;cursor:pointer}.saving-throws strong{color:#f0d29d}.saving-throws label{grid-column:1/-1;color:#a99c91;font-size:.62rem}.roll-custom{border:1px solid #765d3d!important;border-radius:5px!important;color:#f0d29d!important;background:#2b211c!important}
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;
