@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 )
 
 var (
@@ -170,6 +171,119 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 		return Entry{}, fmt.Errorf("create compendium entry: %w", err)
 	}
 	return item, nil
+}
+
+func (r *Repository) Entry(ctx context.Context, campaignID, entryID, userID string) (Entry, error) {
+	role, err := r.role(ctx, campaignID, userID)
+	if err != nil {
+		return Entry{}, err
+	}
+	var item Entry
+	query := `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2`
+	if role != "gm" {
+		query += ` and is_published=true`
+	}
+	err = r.pool.QueryRow(ctx, query, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID, userID string) (map[string]string, error) {
+	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return nil, err
+	}
+	item, err := r.entryForGM(ctx, campaignID, entryID)
+	if err != nil {
+		return nil, err
+	}
+	translations := map[string]string{}
+	_ = json.Unmarshal(item.Translations, &translations)
+	fields := map[string]string{}
+	if strings.TrimSpace(translations["pt-BR"]) == "" {
+		fields["pt-BR"] = item.Name
+	}
+	if strings.TrimSpace(item.Summary) != "" && strings.TrimSpace(translations["pt-BR.summary"]) == "" {
+		fields["pt-BR.summary"] = item.Summary
+	}
+	var ruleData any
+	if json.Unmarshal(item.Rules, &ruleData) == nil {
+		collectMissingTranslationFields(fields, translations, "pt-BR.rules", ruleData)
+	}
+	return fields, nil
+}
+
+func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID, userID string, translated map[string]string) (Entry, error) {
+	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Entry{}, err
+	}
+	item, err := r.entryForGM(ctx, campaignID, entryID)
+	if err != nil {
+		return Entry{}, err
+	}
+	translations := map[string]string{}
+	_ = json.Unmarshal(item.Translations, &translations)
+	allowed, err := r.TranslationFields(ctx, campaignID, entryID, userID)
+	if err != nil {
+		return Entry{}, err
+	}
+	for key := range allowed {
+		if value := strings.TrimSpace(translated[key]); value != "" {
+			translations[key] = value
+			if key == "pt-BR" {
+				translations["pt-BR.source"] = "ai"
+			} else {
+				translations[key+".source"] = "ai"
+			}
+		}
+	}
+	encoded, err := json.Marshal(translations)
+	if err != nil {
+		return Entry{}, fmt.Errorf("encode translations: %w", err)
+	}
+	err = r.pool.QueryRow(ctx, `update compendium_entries set translations=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *Repository) requireGM(ctx context.Context, campaignID, userID string) (string, error) {
+	role, err := r.role(ctx, campaignID, userID)
+	if err != nil {
+		return "", err
+	}
+	if role != "gm" {
+		return "", ErrForbidden
+	}
+	return role, nil
+}
+
+func (r *Repository) entryForGM(ctx context.Context, campaignID, entryID string) (Entry, error) {
+	var item Entry
+	err := r.pool.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	}
+	return item, err
+}
+
+func collectMissingTranslationFields(result, translations map[string]string, key string, value any) {
+	switch current := value.(type) {
+	case string:
+		if strings.TrimSpace(current) != "" && strings.TrimSpace(translations[key]) == "" {
+			result[key] = current
+		}
+	case map[string]any:
+		for childKey, child := range current {
+			collectMissingTranslationFields(result, translations, key+"."+childKey, child)
+		}
+	case []any:
+		for index, child := range current {
+			collectMissingTranslationFields(result, translations, fmt.Sprintf("%s.%d", key, index), child)
+		}
+	}
 }
 
 // UpsertEntries is an idempotent importer for a single entry type. Re-importing a

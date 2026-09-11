@@ -38,6 +38,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/compendium", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.CreateEntry))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/import", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.ImportEntries))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries/{entryID}/translate", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.TranslateMissing))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.List))

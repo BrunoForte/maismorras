@@ -1,6 +1,7 @@
 package compendium
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,9 +10,23 @@ import (
 	"vtt-backend/internal/auth"
 )
 
-type Handler struct{ repo *Repository }
+type Translator interface {
+	Enabled() bool
+	Translate(context.Context, map[string]string) (map[string]string, error)
+}
 
-func NewHandler(repo *Repository) *Handler { return &Handler{repo} }
+type Handler struct {
+	repo       *Repository
+	translator Translator
+}
+
+func NewHandler(repo *Repository, translators ...Translator) *Handler {
+	h := &Handler{repo: repo}
+	if len(translators) > 0 {
+		h.translator = translators[0]
+	}
+	return h
+}
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	s, e, err := h.repo.List(r.Context(), r.PathValue("campaignID"), p.UserID)
@@ -64,6 +79,35 @@ func (h *Handler) ImportEntries(w http.ResponseWriter, r *http.Request) error {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, map[string]any{"imported": count})
+}
+
+// TranslateMissing translates only fields that have no Portuguese version. It
+// preserves canonical SRD text and records an explicit AI provenance marker.
+func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error {
+	if h.translator == nil || !h.translator.Enabled() {
+		return apperror.ServiceUnavailable("A tradução por IA ainda não está configurada no servidor.")
+	}
+	p, _ := auth.FromContext(r.Context())
+	fields, err := h.repo.TranslationFields(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	if len(fields) == 0 {
+		entry, err := h.repo.Entry(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID)
+		if err != nil {
+			return mapError(err)
+		}
+		return write(w, http.StatusOK, entry)
+	}
+	translated, err := h.translator.Translate(r.Context(), fields)
+	if err != nil {
+		return apperror.TranslationProvider(err)
+	}
+	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, translated)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, entry)
 }
 
 func normalizeEntry(item *Entry) error {

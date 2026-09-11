@@ -22,6 +22,7 @@ import (
 	"vtt-backend/internal/realtime"
 	"vtt-backend/internal/scenes"
 	"vtt-backend/internal/tokens"
+	"vtt-backend/internal/translation"
 )
 
 func main() {
@@ -39,8 +40,9 @@ func main() {
 
 	client := &http.Client{Timeout: cfg.UpstreamTimeout}
 	imageService := tokens.NewPollinationsService(client, cfg.PollinationsBaseURL, cfg.MaxImageBytes)
+	translationService := translation.NewService(client, cfg.PollinationsTextURL, cfg.PollinationsAPIKey, cfg.TranslationModel)
 	hub := realtime.NewHub()
-	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool)), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), realtime.NewHandler(cfg, pool, hub))
+	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), realtime.NewHandler(cfg, pool, hub))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

@@ -20,12 +20,19 @@ export type CompendiumEntry = {
 	translations: Record<string, string>;
 	isPublished: boolean;
 };
-export type CompendiumDraft = Pick<CompendiumEntry, 'name' | 'summary' | 'rules' | 'translations' | 'isPublished'>;
+export type CompendiumDraft = Pick<
+	CompendiumEntry,
+	'name' | 'summary' | 'rules' | 'translations' | 'isPublished'
+>;
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
 	const response = await fetch(`${base}${path}`, {
 		...init,
-		headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json', ...init.headers }
+		headers: {
+			Authorization: `Bearer ${session.access_token}`,
+			'Content-Type': 'application/json',
+			...init.headers
+		}
 	});
 	if (!response.ok) {
 		const body = await response.json().catch(() => null);
@@ -34,10 +41,36 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 	return response.json() as Promise<T>;
 }
 export const getCompendium = (session: Session, campaignId: string) =>
-	request<{ sources: CompendiumSource[]; entries: CompendiumEntry[] }>(session, `/api/v1/campaigns/${campaignId}/compendium`);
+	request<{ sources: CompendiumSource[]; entries: CompendiumEntry[] }>(
+		session,
+		`/api/v1/campaigns/${campaignId}/compendium`
+	);
 export const createCompendiumEntry = (
-	session: Session, campaignId: string,
-	entry: Pick<CompendiumEntry, 'sourceId' | 'entryType' | 'name' | 'summary' | 'rules' | 'translations' | 'isPublished'>
-) => request<CompendiumEntry>(session, `/api/v1/campaigns/${campaignId}/compendium/entries`, { method: 'POST', body: JSON.stringify(entry) });
-export const importCompendiumEntries = (session: Session, campaignId: string, sourceId: string, entryType: string, entries: CompendiumDraft[]) =>
-	request<{ imported: number }>(session, `/api/v1/campaigns/${campaignId}/compendium/import`, { method: 'POST', body: JSON.stringify({ sourceId, entryType, entries }) });
+	session: Session,
+	campaignId: string,
+	entry: Pick<
+		CompendiumEntry,
+		'sourceId' | 'entryType' | 'name' | 'summary' | 'rules' | 'translations' | 'isPublished'
+	>
+) =>
+	request<CompendiumEntry>(session, `/api/v1/campaigns/${campaignId}/compendium/entries`, {
+		method: 'POST',
+		body: JSON.stringify(entry)
+	});
+export const importCompendiumEntries = (
+	session: Session,
+	campaignId: string,
+	sourceId: string,
+	entryType: string,
+	entries: CompendiumDraft[]
+) =>
+	request<{ imported: number }>(session, `/api/v1/campaigns/${campaignId}/compendium/import`, {
+		method: 'POST',
+		body: JSON.stringify({ sourceId, entryType, entries })
+	});
+export const translateCompendiumEntry = (session: Session, campaignId: string, entryId: string) =>
+	request<CompendiumEntry>(
+		session,
+		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}/translate`,
+		{ method: 'POST' }
+	);

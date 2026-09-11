@@ -41,6 +41,10 @@ func BadGateway(err error) *Error {
 	return &Error{Status: http.StatusBadGateway, Code: "UPSTREAM_IMAGE_ERROR", Message: "Não foi possível gerar a imagem no provedor externo.", Err: err}
 }
 
+func TranslationProvider(err error) *Error {
+	return &Error{Status: http.StatusBadGateway, Code: "TRANSLATION_PROVIDER_ERROR", Message: "Não foi possível gerar a tradução no provedor externo.", Err: err}
+}
+
 func Internal(err error) *Error {
 	return &Error{Status: http.StatusInternalServerError, Code: "INTERNAL_ERROR", Message: "Ocorreu um erro interno.", Err: err}
 }

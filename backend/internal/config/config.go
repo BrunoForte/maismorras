@@ -14,6 +14,9 @@ type Config struct {
 	Port                string
 	CORSOrigin          string
 	PollinationsBaseURL string
+	PollinationsTextURL string
+	PollinationsAPIKey  string
+	TranslationModel    string
 	UpstreamTimeout     time.Duration
 	MaxImageBytes       int64
 	DatabaseURL         string
@@ -28,6 +31,9 @@ func Load() Config {
 		Port:                env("PORT", "8080"),
 		CORSOrigin:          env("CORS_ORIGIN", "http://localhost:5173"),
 		PollinationsBaseURL: env("POLLINATIONS_BASE_URL", "https://image.pollinations.ai"),
+		PollinationsTextURL: env("POLLINATIONS_TEXT_URL", "https://gen.pollinations.ai/v1/chat/completions"),
+		PollinationsAPIKey:  os.Getenv("POLLINATIONS_API_KEY"),
+		TranslationModel:    env("TRANSLATION_MODEL", "openai-fast"),
 		UpstreamTimeout:     durationEnv("UPSTREAM_TIMEOUT", 20*time.Second),
 		MaxImageBytes:       intEnv("MAX_IMAGE_BYTES", 5*1024*1024),
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
