@@ -60,6 +60,18 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, item)
 }
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.Delete(r.Context(), r.PathValue("campaignID"), r.PathValue("npcID"), p.UserID); errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode excluir NPCs.")
+	} else if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("NPC_NOT_FOUND", "NPC não encontrado.")
+	} else if err != nil {
+		return apperror.Internal(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 func validate(name string, sheet Sheet) error {
 	if name == "" || len([]rune(name)) > 120 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Size < 1 || sheet.Size > 6 || sheet.Color < 0 || sheet.Color > 16777215 || len(sheet.Traits) > 20 || len(sheet.Actions) > 30 || !validStatBlock(sheet) {
 		return apperror.BadRequest("INVALID_NPC", "Confira nome, PV, CA, tamanho e cor do NPC.")
@@ -92,6 +104,9 @@ func write(w http.ResponseWriter, status int, value any) error {
 func mapError(err error) error {
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Apenas o narrador pode gerenciar NPCs.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("NPC_NOT_FOUND", "NPC não encontrado.")
 	}
 	return apperror.Internal(err)
 }

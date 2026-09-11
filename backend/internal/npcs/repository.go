@@ -10,7 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrForbidden = errors.New("forbidden")
+var (
+	ErrForbidden = errors.New("forbidden")
+	ErrNotFound  = errors.New("not found")
+)
 
 // Sheet holds only the combat data that is useful to create and run an NPC token.
 // Narrative detail remains in the NPC's notes, avoiding a second full character-sheet format.
@@ -133,4 +136,21 @@ func (r *Repository) Update(ctx context.Context, campaignID, npcID, userID, name
 		return NPC{}, err
 	}
 	return item, nil
+}
+func (r *Repository) Delete(ctx context.Context, campaignID, npcID, userID string) error {
+	var role string
+	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	if _, err := r.pool.Exec(ctx, `delete from scene_tokens where actor_id=$1`, npcID); err != nil {
+		return err
+	}
+	result, err := r.pool.Exec(ctx, `delete from actors where id=$1 and campaign_id=$2 and kind='npc'`, npcID, campaignID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

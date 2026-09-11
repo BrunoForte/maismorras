@@ -52,3 +52,5 @@ export const createNPC = (
 	});
 export const updateNPC = (session: Session, campaignId: string, npcId: string, input: Omit<NPC, 'id' | 'campaignId'>) =>
 	request<NPC>(session, `/api/v1/campaigns/${campaignId}/npcs/${npcId}`, { method: 'PUT', body: JSON.stringify(input) });
+export const deleteNPC = (session: Session, campaignId: string, npcId: string) =>
+	request<void>(session, `/api/v1/campaigns/${campaignId}/npcs/${npcId}`, { method: 'DELETE' });

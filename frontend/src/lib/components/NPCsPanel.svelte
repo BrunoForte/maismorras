@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { createNPC, listNPCs, type NPC } from '$lib/services/npcApi';
+	import { createNPC, deleteNPC, listNPCs, type NPC } from '$lib/services/npcApi';
 	import { request } from '$lib/services/sceneApi';
 	import { appLocale } from '$lib/stores/locale';
 
@@ -78,6 +78,13 @@
 			placing = null;
 		}
 	}
+	async function removeNPC(npc: NPC) {
+		if (!confirm($appLocale === 'en' ? `Delete ${npc.name} and its scene tokens?` : `Excluir ${npc.name} e seus tokens das cenas?`)) return;
+		placing = npc.id; message = '';
+		try { await deleteNPC(session, campaignId, npc.id); npcs = npcs.filter((item) => item.id !== npc.id); message = $appLocale === 'en' ? 'NPC deleted.' : 'NPC excluído.'; }
+		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível excluir o NPC.'; }
+		finally { placing = null; }
+	}
 </script>
 
 <div
@@ -115,7 +122,7 @@
 							>
 						</div>
 						<button onclick={() => placeNPC(npc)} disabled={placing === npc.id}
-							>{placing === npc.id ? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…') : ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button
+									>{placing === npc.id ? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…') : ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button><button class="danger" onclick={() => void removeNPC(npc)} disabled={placing === npc.id}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
 						>
 					</article>{/each}{/if}
 		</div>
@@ -240,6 +247,7 @@
 		color: #b6a89b;
 		font-size: 0.72rem;
 	}
+	.danger { border: 1px solid #945348; border-radius: 7px; padding: .5rem .65rem; color: #ffd0c4; background: #3a211f; font-size: .72rem; font-weight: 800; white-space: nowrap; }
 	footer {
 		border-top: 1px solid #403536;
 		padding: 0.7rem 1rem;
