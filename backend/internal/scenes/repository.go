@@ -1086,6 +1086,23 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	return t, nil
 }
 
+// SetTokenInitiative stores a GM's manual initiative edit without requiring
+// the client to send the complete token snapshot.
+func (r *Repository) SetTokenInitiative(ctx context.Context, sceneID, tokenID, userID string, initiative int) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	result, err := r.pool.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, initiative, tokenID, sceneID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() != 1 {
+		return fmt.Errorf("token not found")
+	}
+	return nil
+}
+
 // DeleteToken removes only the scene placement. The linked actor (character or
 // NPC) remains available in the campaign and can be placed again later.
 func (r *Repository) DeleteToken(ctx context.Context, sceneID, tokenID, userID string) error {

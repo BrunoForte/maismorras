@@ -5,7 +5,7 @@
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice } from '$lib/services/eventApi';
-	import { getCombat, rollSceneInitiative, rollTokenInitiative, setCombat } from '$lib/services/sceneApi';
+	import { getCombat, rollSceneInitiative, rollTokenInitiative, setCombat, setTokenInitiative } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 	import { appLocale } from '$lib/stores/locale';
@@ -124,12 +124,14 @@
 		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
 		sceneSocket?.publishRefresh();
 	}
-	function setInitiative(id: number, value: string) {
+	async function setInitiative(id: number, tokenId: string | undefined, value: string) {
 		const initiative = Number(value);
-		if (!Number.isFinite(initiative)) return;
+		if (!Number.isFinite(initiative) || !tokenId || !isGM) return;
 		$personagens = $personagens.map((token) =>
 			token.id === id ? { ...token, iniciativa: initiative } : token
 		);
+		try { await setTokenInitiative(session, sceneId, tokenId, initiative); sceneSocket?.publishRefresh(); }
+		catch (error) { console.error('Falha ao salvar iniciativa:', error); }
 	}
 	function setRulerMode(mode: RulerMode) {
 		rulerMode.set(mode);
@@ -193,7 +195,7 @@
 						>{#if isGM}<button class="turn-select" onclick={() => void selectTurn(token.persistedId)}>{token.persistedId === activeTokenId ? 'Ativo' : 'Ativar'}</button><input
 								type="number"
 								value={token.iniciativa}
-								onchange={(event) => setInitiative(token.id, event.currentTarget.value)}
+								onchange={(event) => void setInitiative(token.id, token.persistedId, event.currentTarget.value)}
 							/>{:else}{#if token.isOwned}<button class="turn-select" onclick={() => void rollOwnInitiative(token)} disabled={rollingInitiative}>Rolar</button>{/if}<span>{token.iniciativa}</span>{/if}
 					</article>{/each}{/if}
 		</section>{/if}

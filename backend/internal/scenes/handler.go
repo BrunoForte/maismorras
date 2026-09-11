@@ -269,6 +269,22 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, token)
 }
+func (h *Handler) SetTokenInitiative(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		Initiative int `json:"initiative"`
+	}
+	if err := decode(w, r, &input); err != nil {
+		return err
+	}
+	if input.Initiative < -100 || input.Initiative > 100 {
+		return apperror.BadRequest("INVALID_INITIATIVE", "Iniciativa deve estar entre -100 e 100.")
+	}
+	if err := h.repo.SetTokenInitiative(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, input.Initiative); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"initiative": input.Initiative})
+}
 func (h *Handler) DeleteToken(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteToken(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID); err != nil {

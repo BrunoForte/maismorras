@@ -111,6 +111,8 @@ export const rollTokenInitiative = (session: Session, sceneId: string, tokenId: 
 	request<{ tokenId: string; roll: number; bonus: number; initiative: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`, {
 		method: 'POST'
 	});
+export const setTokenInitiative = (session: Session, sceneId: string, tokenId: string, initiative: number) =>
+	request<{ initiative: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/initiative`, { method: 'PATCH', body: JSON.stringify({ initiative }) });
 export const listSceneEffects = (session: Session, sceneId: string) =>
 	request<{ effects: SceneEffect[] }>(session, `/api/v1/scenes/${sceneId}/effects`);
 export const listEffectDefinitions = (session: Session, sceneId: string) =>
