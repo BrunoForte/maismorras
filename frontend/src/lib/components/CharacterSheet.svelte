@@ -194,6 +194,7 @@ import {
 			 sheet.spellSlots ??= [];
 			sheet.skillExpertise ??= [];
 			previousLevel = sheet.level;
+			syncProgression();
 			if (sheet.portraitPath) void refreshPortraitPreview();
 			const scene = await loadScene(session, sceneId);
 			const token = characterId
@@ -286,10 +287,16 @@ import {
 	function addFeat() { const feat = newFeat.trim(); if (!feat || featList().some((item) => item.toLowerCase() === feat.toLowerCase())) return; sheet.feats = [...featList(), feat].join('\n'); selectedFeat = feat; newFeat = ''; }
 	function removeFeat(feat: string) { sheet.feats = featList().filter((item) => item !== feat).join('\n'); if (selectedFeat === feat) selectedFeat = ''; }
 	function syncProgression() {
+		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
+		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
+		sheet.proficiencyBonus = Math.ceil(Math.max(1, sheet.level) / 4) + 1;
+		const hitDie = classHitDice[canonicalClass(sheet.class)];
+		if (hitDie) sheet.hitDice = hitDie;
 		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);
 		sheet.resources = defaults.map((resource) => ({ ...resource, current: sheet.resources.find((old) => old.id === resource.id)?.current ?? resource.max }));
 		const slots = spellSlots(sheet.class, sheet.level);
 		sheet.spellSlots = slots.map((slot) => ({ ...slot, current: sheet.spellSlots.find((old) => old.level === slot.level)?.current ?? slot.max }));
+		sheet.passivePerception = passivePerception();
 	}
 	const skillBonus = (name: string, ability: keyof Sheet['abilityScores']) => modifier(sheet.abilityScores[ability]) + (sheet.skillProficiencies.includes(name) ? sheet.proficiencyBonus : 0) + (sheet.skillExpertise.includes(name) ? sheet.proficiencyBonus : 0);
 	const passivePerception = () => 10 + skillBonus('Percepção', 'wisdom');

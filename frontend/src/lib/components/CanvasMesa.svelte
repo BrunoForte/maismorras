@@ -78,6 +78,7 @@
 	let wallKind = $state<'wall' | 'door'>('wall');
 	let pingArmed = $state(false);
 	let cameraZoom = $state(1);
+	let gridVisible = $state(true);
 	let ambientAudioA = $state<HTMLAudioElement>();
 	let ambientAudioB = $state<HTMLAudioElement>();
 	let ambientAudioURL = $state<string | null>(null);
@@ -379,6 +380,10 @@
 		cameraZoom = motor?.camera?.zoom ?? 1;
 		persistirVisaoDaCamera();
 	}
+	function alternarGrade() {
+		gridVisible = !gridVisible;
+		motor?.setGridVisible(gridVisible);
+	}
 	function persistirVisaoDaCamera() {
 		if (!motor?.camera) return;
 		cameraZoom = motor.camera.zoom;
@@ -561,6 +566,7 @@
 		<span>{`${Math.round(cameraZoom * 100)}%`}</span>
 		<button onclick={() => ajustarZoom(0.1)} aria-label={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'} title={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'}>+</button>
 		<button class="camera-reset" onclick={recentralizarMapa} aria-label={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'} title={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'}>⌖</button>
+		<button class:active={!gridVisible} onclick={alternarGrade} aria-label={$appLocale === 'en' ? 'Toggle grid' : 'Alternar grade'} title={$appLocale === 'en' ? 'Toggle grid' : 'Alternar grade'}>#</button>
 	</div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
 	{#if isGM}<div class="area-tool-trigger"><button class:active={areaToolsOpen || saveAreaArmed} onclick={() => areaToolsOpen = !areaToolsOpen} aria-label="Áreas persistentes" title="Áreas persistentes">⬡</button>{#if areaToolsOpen}<div class="area-tools"><strong>Área persistente</strong><small>Escolha a régua e arraste com Shift para salvar a área.</small><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}</div>{/if}

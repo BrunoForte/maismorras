@@ -20,6 +20,7 @@ export class GameEngine {
 	private areaLayer: PIXI.Graphics | null = null;
 	private wallLayer: PIXI.Graphics | null = null;
 	private wallPreview: PIXI.Graphics | null = null;
+	private gridLayer: PIXI.Graphics | null = null;
 	private drawingWall = false;
 	private wallStart: { x: number; y: number } | null = null;
 	private pings = new Set<PIXI.Graphics>();
@@ -135,6 +136,7 @@ export class GameEngine {
 		this.areaLayer?.destroy();
 		this.wallLayer?.destroy();
 		this.wallPreview?.destroy();
+		this.gridLayer?.destroy();
 		this.pings.forEach((ping) => ping.destroy());
 		this.pings.clear();
 		this.rulerManager?.destroy();
@@ -151,6 +153,10 @@ export class GameEngine {
 			else if (area.shape === 'circle') { const radius=Math.hypot(area.endX-area.startX,area.endY-area.startY); this.areaLayer.circle(area.startX,area.startY,radius).fill({color,alpha:.18}).stroke({width:3,color,alpha:.9}); }
 			else { const angle=Math.atan2(area.endY-area.startY,area.endX-area.startX),radius=Math.hypot(area.endX-area.startX,area.endY-area.startY),spread=Math.PI/6; this.areaLayer.moveTo(area.startX,area.startY).arc(area.startX,area.startY,radius,angle-spread,angle+spread).closePath().fill({color,alpha:.2}).stroke({width:3,color,alpha:.9}); }
 		}
+	}
+
+	setGridVisible(visible: boolean) {
+		if (this.gridLayer) this.gridLayer.visible = visible;
 	}
 
 	setWalls(walls: SceneWall[]) {
@@ -205,6 +211,7 @@ export class GameEngine {
 
 	private desenharGrid() {
 		const grid = new PIXI.Graphics();
+		this.gridLayer = grid;
 		const LIMITE = 2520;
 		for (let i = -LIMITE; i <= LIMITE; i += this.tamanhoGrid) {
 			grid.moveTo(i, -LIMITE);
