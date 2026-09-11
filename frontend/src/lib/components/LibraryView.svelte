@@ -9,13 +9,15 @@
 		isGM,
 		onnotes
 	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
-	type Asset = { name: string; url: string; type: 'image' | 'audio' };
+	type Asset = { name: string; url: string; type: 'image' | 'audio' | 'document' | 'map' };
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
 	let handouts = $state<Handout[]>([]);
 	let uploading = $state(false);
 	let savingHandout = $state(false);
 	let handoutOpen = $state(false);
+	let editingHandoutId = $state<string | null>(null);
+	let assetFilter = $state<'all' | 'image' | 'map' | 'audio' | 'document'>('all');
 	let handoutTitle = $state('');
 	let handoutBody = $state('');
 	let handoutVisibility = $state<'gm' | 'players'>('players');
@@ -43,10 +45,16 @@
 		if (!handoutTitle.trim() || savingHandout) return;
 		savingHandout = true; message = '';
 		try {
-			const handout = await notesRequest<Handout>(`/api/v1/campaigns/${campaignId}/notes`, { method: 'POST', body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: handoutVisibility }) });
-			handouts = [handout, ...handouts]; handoutTitle = ''; handoutBody = ''; handoutVisibility = 'players'; handoutOpen = false;
+			const handout = await notesRequest<Handout>(editingHandoutId ? `/api/v1/campaigns/${campaignId}/notes/${editingHandoutId}` : `/api/v1/campaigns/${campaignId}/notes`, { method: editingHandoutId ? 'PUT' : 'POST', body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: handoutVisibility }) });
+			handouts = editingHandoutId ? handouts.map((item) => item.id === handout.id ? handout : item) : [handout, ...handouts];
+			handoutTitle = ''; handoutBody = ''; handoutVisibility = 'players'; editingHandoutId = null; handoutOpen = false;
 		} catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the handout.' : 'Não foi possível salvar o handout.'); }
 		finally { savingHandout = false; }
+	}
+	function editHandout(handout: Handout) { editingHandoutId = handout.id; handoutTitle = handout.title; handoutBody = handout.body; handoutVisibility = handout.visibility; handoutOpen = true; }
+	async function deleteHandout(handout: Handout) {
+		try { await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, { method: 'DELETE' }); handouts = handouts.filter((item) => item.id !== handout.id); }
+		catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not delete the handout.' : 'Não foi possível excluir o handout.'); }
 	}
 	async function loadAssets() {
 		if (!supabase) return;
@@ -67,9 +75,7 @@
 					? {
 							name: file.name.replace(/^[a-f0-9-]+-/, ''),
 							url: signed.data.signedUrl,
-							type: file.metadata?.mimetype?.startsWith('audio/')
-								? ('audio' as const)
-								: ('image' as const)
+							type: file.metadata?.mimetype?.startsWith('audio/') ? ('audio' as const) : file.metadata?.mimetype === 'application/pdf' || file.metadata?.mimetype?.startsWith('text/') ? ('document' as const) : /map|scene|battle|mapa|cena/i.test(file.name) ? ('map' as const) : ('image' as const)
 						}
 					: null;
 			})
@@ -81,10 +87,10 @@
 		const file = input.files?.[0];
 		if (!file || !supabase) return;
 		if (
-			(!file.type.startsWith('image/') && !file.type.startsWith('audio/')) ||
+			(!file.type.startsWith('image/') && !file.type.startsWith('audio/') && file.type !== 'application/pdf' && !file.type.startsWith('text/')) ||
 			file.size > 20 * 1024 * 1024
 		) {
-			message = $appLocale === 'en' ? 'Upload an image or audio file up to 20 MB.' : 'Envie imagem ou áudio de até 20 MB.';
+			message = $appLocale === 'en' ? 'Upload an image, audio, or document up to 20 MB.' : 'Envie imagem, áudio ou documento de até 20 MB.';
 			return;
 		}
 		uploading = true;
@@ -116,11 +122,11 @@
 				<label
 					>{uploading ? ($appLocale === 'en' ? 'Uploading…' : 'Enviando…') : ($appLocale === 'en' ? 'Add media' : 'Adicionar mídia')}<input
 						type="file"
-						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav"
+					accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav,application/pdf,text/plain"
 						onchange={upload}
 						disabled={uploading}
 					/></label
-				><button onclick={() => (handoutOpen = !handoutOpen)}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button><button onclick={onnotes}>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button>
+			><button onclick={() => { editingHandoutId = null; handoutTitle = ''; handoutBody = ''; handoutOpen = !handoutOpen; }}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button><button onclick={onnotes}>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button>
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
@@ -129,13 +135,14 @@
 		<textarea bind:value={handoutBody} maxlength="32000" placeholder={$appLocale === 'en' ? 'Text, links, and guidance for the table' : 'Texto, links e orientações para a mesa'}></textarea>
 		<div><select bind:value={handoutVisibility}><option value="players">{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option><option value="gm">{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</option></select><button disabled={savingHandout}>{savingHandout ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Save handout' : 'Salvar handout')}</button></div>
 	</form>{/if}
-	<section class="handouts" aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? ($appLocale === 'en' ? 'Shared' : 'Compartilhado') : ($appLocale === 'en' ? 'Private' : 'Privado')}</small><h4>{handout.title}</h4><p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p></article>{/each}</div>{:else}<p class="empty-handouts">{$appLocale === 'en' ? 'No handouts have been saved for this campaign.' : 'Nenhum handout salvo nesta campanha.'}</p>{/if}</section>
+	<section class="handouts" aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? ($appLocale === 'en' ? 'Shared' : 'Compartilhado') : ($appLocale === 'en' ? 'Private' : 'Privado')}</small><h4>{handout.title}</h4><p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p>{#if isGM}<div class="handout-actions"><button onclick={() => editHandout(handout)}>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button><button onclick={() => void deleteHandout(handout)}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button></div>{/if}</article>{/each}</div>{:else}<p class="empty-handouts">{$appLocale === 'en' ? 'No handouts have been saved for this campaign.' : 'Nenhum handout salvo nesta campanha.'}</p>{/if}</section>
+	{#if assets.length}<nav class="asset-filters" aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}>{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'],['image', $appLocale === 'en' ? 'Images' : 'Imagens'],['map', $appLocale === 'en' ? 'Maps' : 'Mapas'],['audio', $appLocale === 'en' ? 'Music' : 'Músicas'],['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value,label]}<button class:active={assetFilter === value} onclick={() => assetFilter = value as typeof assetFilter}>{label}</button>{/each}</nav>{/if}
 	{#if assets.length}<section class="asset-grid">
-			{#each assets as asset (asset.url)}<article>
-					{#if asset.type === 'image'}<button class="asset-image" onclick={() => (preview = asset)}
-							><img src={asset.url} alt={asset.name} /></button
-						>{:else}<span class="audio-mark">♫</span><audio controls src={asset.url}
-						></audio>{/if}<small>{asset.name}</small>
+			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.url)}<article>
+					{#if asset.type === 'image' || asset.type === 'map'}<button class="asset-image" onclick={() => (preview = asset)}><img src={asset.url} alt={asset.name} /></button>
+					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio controls src={asset.url}></audio>
+					{:else}<span class="document-mark">▤</span><a class="document-link" href={asset.url} target="_blank" rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a>{/if}
+					<small>{asset.name}</small>
 				</article>{/each}
 		</section>{:else}<div class="empty">
 			<strong>{isGM ? ($appLocale === 'en' ? 'Add the first media item.' : 'Adicione a primeira mídia.') : ($appLocale === 'en' ? 'The library is still empty.' : 'A biblioteca ainda está vazia.')}</strong><span
@@ -244,7 +251,9 @@
 	.handout-grid small { color: #d8ad67; font-size: 0.65rem; text-transform: uppercase; }
 	.handout-grid h4 { margin: 0.35rem 0; color: #eee4d6; font: 600 1rem Georgia, serif; }
 	.handout-grid p { color: #b9aa9d; white-space: pre-wrap; font-size: 0.82rem; line-height: 1.45; }
+	.handout-actions { display:flex; gap:.4rem; margin-top:.7rem; }.handout-actions button { border:1px solid #5a493b; border-radius:5px; padding:.35rem .5rem; color:#edc77f; background:#2b211e; font-size:.68rem; cursor:pointer; }
 	.empty-handouts { padding: 0.9rem; border: 1px dashed #5a493b; border-radius: 8px; color: #a99c91; font-size: 0.82rem; }
+	.asset-filters { display:flex; flex-wrap:wrap; gap:.35rem; margin:0 0 .75rem; }.asset-filters button { border:1px solid #5a493b; border-radius:6px; padding:.35rem .55rem; color:#b9aa9d; background:#211b1e; font-size:.68rem; cursor:pointer; }.asset-filters button.active { border-color:#c89655; color:#26190e; background:#e0b86f; }.document-mark { display:grid; place-items:center; height:125px; color:#d8ad67; background:#120f11; font-size:2rem; }.document-link { color:#edc77f; font-size:.75rem; text-decoration:none; }
 	.message {
 		margin: 0 0 1rem;
 		color: #f0cb85;
