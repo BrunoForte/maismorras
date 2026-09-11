@@ -372,10 +372,16 @@
 	function ajustarZoom(delta: number) {
 		motor?.camera?.zoomBy(delta);
 		cameraZoom = motor?.camera?.zoom ?? cameraZoom;
+		persistirVisaoDaCamera();
 	}
 	function recentralizarMapa() {
 		motor?.camera?.resetView();
 		cameraZoom = motor?.camera?.zoom ?? 1;
+		persistirVisaoDaCamera();
+	}
+	function persistirVisaoDaCamera() {
+		if (!motor?.camera) return;
+		try { sessionStorage.setItem(`maismorras:camera:${scene.id}`, JSON.stringify(motor.camera.view)); } catch { /* storage may be unavailable in private mode */ }
 	}
 
 	onMount(() => {
@@ -404,13 +410,19 @@
 		const observer = new ResizeObserver(([entry]) => {
 			motor?.resize(entry.contentRect.width, entry.contentRect.height);
 		});
-		void motor.init(canvasMesa).then(async () => {
+	void motor.init(canvasMesa).then(async () => {
 			observer.observe(container);
+			try {
+				const saved = sessionStorage.getItem(`maismorras:camera:${scene.id}`);
+				if (saved) motor?.camera.setView(JSON.parse(saved));
+				cameraZoom = motor?.camera.zoom ?? 1;
+			} catch { /* ignore malformed or unavailable local state */ }
 			await carregarTokens();
 			await carregarEfeitos();
 			await carregarNPCs();
 			await carregarTrilha();
 		});
+		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
 		sceneSocket = connectSceneSocket(session, scene.id, () => {
 			void carregarTokens();
 			void carregarEfeitos();
@@ -448,6 +460,7 @@
 			sceneSocket = null;
 			unsubscribe();
 			observer.disconnect();
+			window.clearInterval(cameraPersistenceTimer);
 			motor?.destroy();
 			motor = null;
 		};

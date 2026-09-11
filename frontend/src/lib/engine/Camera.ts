@@ -79,6 +79,16 @@ export class Camera {
 		return this.mundo.scale.x;
 	}
 
+	public get view() {
+		return { x: this.mundo.x, y: this.mundo.y, zoom: this.mundo.scale.x };
+	}
+
+	public setView(view: { x: number; y: number; zoom: number }) {
+		if (![view.x, view.y, view.zoom].every(Number.isFinite)) return;
+		this.mundo.position.set(view.x, view.y);
+		this.mundo.scale.set(Math.max(0.3, Math.min(3, view.zoom)));
+	}
+
 	private zoomAt(factor: number, x: number, y: number) {
 		const oldScale = this.mundo.scale.x;
 		const newScale = Math.max(0.3, Math.min(3, oldScale * factor));
