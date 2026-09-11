@@ -104,7 +104,7 @@
 				void save();
 			}}
 		>
-			<label>Nome<input bind:value={draft.name} maxlength="120" /></label><label
+			<label>{$appLocale === 'en' ? 'Name' : 'Nome'}<input bind:value={draft.name} maxlength="120" /></label><label
 				>{$appLocale === 'en' ? 'Background image' : 'Imagem de fundo'}<input
 					bind:value={draft.backgroundUrl}
 					placeholder={$appLocale === 'en' ? 'Public image URL' : 'URL pública da imagem'}
