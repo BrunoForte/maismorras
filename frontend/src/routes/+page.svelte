@@ -48,7 +48,9 @@
 	onMount(() => {
 		restoreAppLocale();
 		if (!supabase) {
-			error = 'Configure PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_PUBLISHABLE_KEY no arquivo .env.';
+			error = $appLocale === 'en'
+				? 'Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY in the .env file.'
+				: 'Configure PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_PUBLISHABLE_KEY no arquivo .env.';
 			loading = false;
 			return;
 		}
@@ -84,7 +86,7 @@
 		await supabase?.auth.signOut();
 	}
 	async function api(path: string, init: RequestInit = {}, currentSession = session) {
-		if (!currentSession) throw new Error('Sessão indisponível.');
+		if (!currentSession) throw new Error($appLocale === 'en' ? 'Session unavailable.' : 'Sessão indisponível.');
 		const response = await fetch(
 			`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
 			{
@@ -98,7 +100,7 @@
 		);
 		if (!response.ok)
 			throw new Error(
-				(await response.json()).error?.message ?? 'Erro ao comunicar com o servidor.'
+				(await response.json()).error?.message ?? ($appLocale === 'en' ? 'Could not communicate with the server.' : 'Erro ao comunicar com o servidor.')
 			);
 		return response.json();
 	}
@@ -115,7 +117,7 @@
 				})
 			);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Não foi possível carregar as mesas.';
+			error = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not load your tables.' : 'Não foi possível carregar as mesas.');
 		} finally {
 			loadingCampaigns = false;
 		}
@@ -134,7 +136,7 @@
 			window.history.replaceState({}, '', window.location.pathname);
 			return campaign;
 		} catch (err) {
-			inviteStatus = err instanceof Error ? err.message : 'Não foi possível aceitar o convite.';
+				inviteStatus = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not accept the invite.' : 'Não foi possível aceitar o convite.');
 			return null;
 		}
 	}
@@ -151,9 +153,9 @@
 			});
 			const link = `${window.location.origin}/?invite=${invite.code}`;
 			await navigator.clipboard.writeText(link);
-			inviteStatus = 'Link de convite copiado. Ele expira em 14 dias e pode ser usado uma vez.';
+			inviteStatus = $appLocale === 'en' ? 'Invite link copied. It expires in 14 days and can be used once.' : 'Link de convite copiado. Ele expira em 14 dias e pode ser usado uma vez.';
 		} catch (err) {
-			inviteStatus = err instanceof Error ? err.message : 'Não foi possível criar o convite.';
+			inviteStatus = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not create the invite.' : 'Não foi possível criar o convite.');
 		}
 	}
 	async function createCampaign() {
@@ -172,7 +174,7 @@
 			campaignName = '';
 			await openCampaign(campaign);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Não foi possível criar a mesa.';
+			error = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not create the table.' : 'Não foi possível criar a mesa.');
 		}
 	}
 	async function openCampaign(campaign: Campaign) {
@@ -186,12 +188,12 @@
 			const response = await listScenes(session, campaign.id);
 			availableScenes = response.scenes;
 			if (availableScenes.length === 0 && campaign.role === 'gm') {
-				availableScenes = [await createScene(session, campaign.id, 'Cena principal')];
+				availableScenes = [await createScene(session, campaign.id, $appLocale === 'en' ? 'Main scene' : 'Cena principal')];
 			}
 			activeScene = availableScenes[0] ?? null;
-			if (!activeScene) error = 'O narrador ainda não criou uma cena para esta campanha.';
+			if (!activeScene) error = $appLocale === 'en' ? 'The Game Master has not created a scene for this campaign yet.' : 'O narrador ainda não criou uma cena para esta campanha.';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Não foi possível abrir a cena.';
+			error = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not open the scene.' : 'Não foi possível abrir a cena.');
 		}
 	}
 	function openMySheet() {
@@ -220,7 +222,7 @@
 			sceneDraft = '';
 			sceneCreatorOpen = false;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Não foi possível criar a cena.';
+			error = err instanceof Error ? err.message : ($appLocale === 'en' ? 'Could not create the scene.' : 'Não foi possível criar a cena.');
 		} finally {
 			creatingScene = false;
 		}
@@ -335,7 +337,7 @@
 					>
 				</div>
 			</section>
-			<nav class="workspace-tabs" aria-label="Áreas da mesa">
+			<nav class="workspace-tabs" aria-label={$appLocale === 'en' ? 'Table areas' : 'Áreas da mesa'}>
 				<button class:active={workspaceTab === 'map'} onclick={() => (workspaceTab = 'map')}
 					>{$appLocale === 'en' ? 'Table' : 'Mesa'}</button
 				>
@@ -356,8 +358,8 @@
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
 					{#if activeScene}{#key `${activeScene.id}:${sceneRevision}`}
-							<div class="scene-board-heading" aria-label="Cena atual">
-								<span>Cena</span><strong>{activeScene.name}</strong>
+							<div class="scene-board-heading" aria-label={$appLocale === 'en' ? 'Current scene' : 'Cena atual'}>
+								<span>{$appLocale === 'en' ? 'Scene' : 'Cena'}</span><strong>{activeScene.name}</strong>
 							</div>
 							<div class="scene-board">
 							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} onopensheet={(actorId) => activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()} />
@@ -398,15 +400,15 @@
 					class="campaign-settings"
 				>
 					<section>
-						<p class="eyebrow">GESTÃO DA CAMPANHA</p>
-						<h2>Convites e configurações</h2>
-						<p>Gerencie quem entra na campanha e as opções que afetam toda a mesa.</p>
+						<p class="eyebrow">{$appLocale === 'en' ? 'CAMPAIGN MANAGEMENT' : 'GESTÃO DA CAMPANHA'}</p>
+						<h2>{$appLocale === 'en' ? 'Invites and settings' : 'Convites e configurações'}</h2>
+						<p>{$appLocale === 'en' ? 'Manage who joins the campaign and the options that affect the whole table.' : 'Gerencie quem entra na campanha e as opções que afetam toda a mesa.'}</p>
 					</section>
 					<div class="settings-actions">
-						<button class="primary-button" onclick={createInvite}>Copiar convite de jogador</button
+						<button class="primary-button" onclick={createInvite}>{$appLocale === 'en' ? 'Copy player invite' : 'Copiar convite de jogador'}</button
 						><button class="secondary-button" onclick={() => (participantsOpen = true)}
-							>Participantes</button
-						><button class="secondary-button" onclick={() => (npcsOpen = true)}>NPCs</button>
+							>{$appLocale === 'en' ? 'Participants' : 'Participantes'}</button
+						><button class="secondary-button" onclick={() => (npcsOpen = true)}>{$appLocale === 'en' ? 'NPCs' : 'NPCs'}</button>
 					</div>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
@@ -446,9 +448,9 @@
 			<main class="campaign-hub">
 				<section class="hub-hero">
 					<div>
-						<p class="eyebrow">SUAS AVENTURAS</p>
-						<h1>Escolha um portal.</h1>
-						<p>Retome uma história ou abra uma nova mesa para sua próxima aventura.</p>
+						<p class="eyebrow">{$appLocale === 'en' ? 'YOUR ADVENTURES' : 'SUAS AVENTURAS'}</p>
+						<h1>{$appLocale === 'en' ? 'Choose a portal.' : 'Escolha um portal.'}</h1>
+						<p>{$appLocale === 'en' ? 'Resume a story or open a new table for your next adventure.' : 'Retome uma história ou abra uma nova mesa para sua próxima aventura.'}</p>
 					</div>
 					<div class="hero-die" aria-hidden="true">⌘</div>
 				</section>
@@ -460,27 +462,27 @@
 						void createCampaign();
 					}}
 				>
-					<label for="campaign-name">Criar uma nova mesa</label>
+					<label for="campaign-name">{$appLocale === 'en' ? 'Create a new table' : 'Criar uma nova mesa'}</label>
 					<div>
 						<input
 							id="campaign-name"
 							bind:value={campaignName}
 							maxlength="120"
-							placeholder="Ex.: A Cidade das Aranhas"
-						/><button class="primary-button">Criar mesa <span aria-hidden="true">→</span></button>
+							placeholder={$appLocale === 'en' ? 'E.g. The Spider City' : 'Ex.: A Cidade das Aranhas'}
+						/><button class="primary-button">{$appLocale === 'en' ? 'Create table' : 'Criar mesa'} <span aria-hidden="true">→</span></button>
 					</div>
 				</form>
 				<section class="campaign-section">
 					<div class="section-heading">
-						<h2>Suas mesas</h2>
-						<span>{campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span>
+						<h2>{$appLocale === 'en' ? 'Your tables' : 'Suas mesas'}</h2>
+						<span>{campaigns.length} {campaigns.length === 1 ? ($appLocale === 'en' ? 'campaign' : 'campanha') : ($appLocale === 'en' ? 'campaigns' : 'campanhas')}</span>
 					</div>
 					{#if loadingCampaigns}<p class="status-message">
-							Consultando os pergaminhos…
+							{$appLocale === 'en' ? 'Consulting the scrolls…' : 'Consultando os pergaminhos…'}
 						</p>{:else if campaigns.length === 0}<div class="empty-state">
 							<div>◇</div>
-							<h3>Sua primeira aventura começa aqui.</h3>
-							<p>Crie uma mesa acima para convidar seu grupo.</p>
+							<h3>{$appLocale === 'en' ? 'Your first adventure starts here.' : 'Sua primeira aventura começa aqui.'}</h3>
+							<p>{$appLocale === 'en' ? 'Create a table above to invite your group.' : 'Crie uma mesa acima para convidar seu grupo.'}</p>
 						</div>{:else}<div class="campaign-list">
 							{#each campaigns as campaign (campaign.id)}<button
 									class="campaign"
@@ -489,11 +491,11 @@
 									><span class="campaign-info"
 										><strong>{campaign.name}</strong><small
 											>{campaign.role === 'gm'
-												? 'Você narra esta campanha'
-												: 'Você participa desta campanha'}</small
+													? ($appLocale === 'en' ? 'You run this campaign' : 'Você narra esta campanha')
+													: ($appLocale === 'en' ? 'You play in this campaign' : 'Você participa desta campanha')}</small
 										></span
 									><span class="role-badge {campaign.role}"
-										>{campaign.role === 'gm' ? 'Narrador' : 'Jogador'}</span
+										>{campaign.role === 'gm' ? ($appLocale === 'en' ? 'Game Master' : 'Narrador') : ($appLocale === 'en' ? 'Player' : 'Jogador')}</span
 									><span class="campaign-arrow" aria-hidden="true">→</span></button
 								>{/each}
 						</div>{/if}
