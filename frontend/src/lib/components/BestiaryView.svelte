@@ -249,7 +249,7 @@
 					(entry.rules.kind === 'monster' || entry.rules.catalog === 'monster')
 			);
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível carregar o bestiário.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load the bestiary.' : 'Não foi possível carregar o bestiário.');
 		} finally {
 			loading = false;
 		}
@@ -273,7 +273,7 @@
 			edit(npc);
 			message = selected ? 'Criatura atualizada.' : 'Criatura adicionada ao bestiário.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível salvar a criatura.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the creature.' : 'Não foi possível salvar a criatura.');
 		} finally {
 			saving = false;
 		}
@@ -293,7 +293,7 @@
 			await ontokencreated();
 			message = `${npc.name} foi adicionado à cena.`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível adicionar a criatura.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the creature.' : 'Não foi possível adicionar a criatura.');
 		} finally {
 			placing = null;
 		}

@@ -169,7 +169,7 @@
 			entries = data.entries;
 			sourceId = privateSources()[0]?.id ?? '';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível carregar o compêndio.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load the compendium.' : 'Não foi possível carregar o compêndio.');
 		} finally {
 			loading = false;
 		}
@@ -195,7 +195,7 @@
 			clearForm();
 			message = 'Entrada privada adicionada.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível salvar a entrada.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the entry.' : 'Não foi possível salvar a entrada.');
 		} finally {
 			saving = false;
 		}
@@ -243,7 +243,7 @@
 			message = `${result.imported} entrada(s) importada(s) ou atualizada(s).`;
 			await load();
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível importar o arquivo.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not import the file.' : 'Não foi possível importar o arquivo.');
 		} finally {
 			importing = false;
 		}
@@ -260,7 +260,7 @@
 			message = `${displayName(entry)} foi adicionado à cena.`;
 			ontokencreated();
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível adicionar o monstro.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the monster.' : 'Não foi possível adicionar o monstro.');
 		} finally {
 			placing = null;
 		}
@@ -273,7 +273,7 @@
 			entries = entries.map((item) => (item.id === updated.id ? updated : item));
 			message = 'Tradução por IA gerada e identificada.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível gerar a tradução.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not generate the translation.' : 'Não foi possível gerar a tradução.');
 		} finally {
 			translating = null;
 		}
@@ -398,7 +398,7 @@
 					bind:value={summary}
 					maxlength="2000"
 					placeholder="Resumo autoral e objetivo do funcionamento."></textarea><label
-					><input type="checkbox" bind:checked={published} /> Visível aos jogadores</label
+					><input type="checkbox" bind:checked={published} /> {$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</label
 				>
 				<div class="form-actions">
 					<button class="ghost" onclick={downloadTemplate}>Baixar modelo JSON</button><label
