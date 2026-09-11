@@ -18,6 +18,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
+	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
 
 	let session = $state<Session | null>(null);
 	let loading = $state(true);
@@ -45,6 +46,7 @@
 	let sceneSettingsOpen = $state(false);
 
 	onMount(() => {
+		restoreAppLocale();
 		if (!supabase) {
 			error = 'Configure PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_PUBLISHABLE_KEY no arquivo .env.';
 			loading = false;
@@ -234,7 +236,7 @@
 {#if loading}
 	<main class="loading-screen" aria-live="polite">
 		<div class="brand-mark">M</div>
-		<p>Preparando os portais…</p>
+		<p>{$appLocale === 'en' ? 'Preparing the portals…' : 'Preparando os portais…'}</p>
 	</main>
 {:else if !session}
 	<main class="auth-shell">
@@ -243,27 +245,27 @@
 				<div class="brand-mark" aria-hidden="true">M</div>
 				<span>MaisMorras</span>
 			</div>
-			<p class="eyebrow">SEU MUNDO. SUA MESA.</p>
-			<h1>Onde histórias<br />ganham vida.</h1>
+			<p class="eyebrow">{$appLocale === 'en' ? 'YOUR WORLD. YOUR TABLE.' : 'SEU MUNDO. SUA MESA.'}</p>
+			<h1>{$appLocale === 'en' ? 'Where stories\ncome alive.' : 'Onde histórias\nganham vida.'}</h1>
 			<p class="auth-copy">
-				Uma mesa virtual rápida, feita para aventuras que seus jogadores não vão esquecer.
+				{$appLocale === 'en' ? 'A fast virtual tabletop made for adventures your players will never forget.' : 'Uma mesa virtual rápida, feita para aventuras que seus jogadores não vão esquecer.'}
 			</p>
-			<div class="feature-list" aria-label="Recursos da plataforma">
-				<span>⌘ Mesa em tempo real</span>
-				<span>✦ Campanhas persistentes</span>
-				<span>◈ Ferramentas para narrar</span>
+			<div class="feature-list" aria-label={$appLocale === 'en' ? 'Platform features' : 'Recursos da plataforma'}>
+				<span>⌘ {$appLocale === 'en' ? 'Real-time table' : 'Mesa em tempo real'}</span>
+				<span>✦ {$appLocale === 'en' ? 'Persistent campaigns' : 'Campanhas persistentes'}</span>
+				<span>◈ {$appLocale === 'en' ? 'Game-master tools' : 'Ferramentas para narrar'}</span>
 			</div>
 		</section>
 
 		<section class="auth-card">
-			<p class="eyebrow">BEM-VINDO</p>
-			<h2>Entre na aventura</h2>
-			<p>Use sua conta Google para acessar suas mesas e continuar de onde parou.</p>
+			<p class="eyebrow">{$appLocale === 'en' ? 'WELCOME' : 'BEM-VINDO'}</p>
+			<h2>{$appLocale === 'en' ? 'Enter the adventure' : 'Entre na aventura'}</h2>
+			<p>{$appLocale === 'en' ? 'Use your Google account to access your tables and continue where you left off.' : 'Use sua conta Google para acessar suas mesas e continuar de onde parou.'}</p>
 			{#if error}<p class="error">{error}</p>{/if}
 			<button class="google-button" onclick={login} disabled={!supabase}>
-				<span class="google-g" aria-hidden="true">G</span> Continuar com Google
+				<span class="google-g" aria-hidden="true">G</span> {$appLocale === 'en' ? 'Continue with Google' : 'Continuar com Google'}
 			</button>
-			<p class="auth-note">Ao entrar, você concorda em jogar com respeito à sua mesa.</p>
+			<p class="auth-note">{$appLocale === 'en' ? 'By signing in, you agree to play respectfully at your table.' : 'Ao entrar, você concorda em jogar com respeito à sua mesa.'}</p>
 		</section>
 	</main>
 {:else}
@@ -272,35 +274,36 @@
 			<button
 				class="brand-lockup brand-button"
 				onclick={() => (activeCampaign = null)}
-				aria-label="Ir para suas mesas"
+				aria-label={$appLocale === 'en' ? 'Go to your tables' : 'Ir para suas mesas'}
 			>
 				<span class="brand-mark" aria-hidden="true">M</span><span>MaisMorras</span>
 			</button>
 			{#if activeCampaign}
 				<div class="breadcrumb">
-					<button onclick={() => (activeCampaign = null)}>Mesas</button><span>/</span><strong
+					<button onclick={() => (activeCampaign = null)}>{$appLocale === 'en' ? 'Tables' : 'Mesas'}</button><span>/</span><strong
 						>{activeCampaign.name}</strong
 					>
 				</div>
 			{:else}
-				<p class="header-context">Central de campanhas</p>
+				<p class="header-context">{$appLocale === 'en' ? 'Campaign hub' : 'Central de campanhas'}</p>
 			{/if}
 			<div class="account">
+				<select class="locale-select" aria-label={$appLocale === 'en' ? 'Language' : 'Idioma'} value={$appLocale} onchange={(event) => setAppLocale(event.currentTarget.value === 'en' ? 'en' : 'pt-BR')}><option value="pt-BR">PT</option><option value="en">EN</option></select>
 				<span class="avatar">{session.user.email?.slice(0, 1).toUpperCase()}</span><span
 					class="account-email">{session.user.email}</span
-				><button class="text-button" onclick={logout}>Sair</button>
+				><button class="text-button" onclick={logout}>{$appLocale === 'en' ? 'Sign out' : 'Sair'}</button>
 			</div>
 		</header>
 
 		{#if activeCampaign}
 			<section class="game-header">
 				<div>
-					<p class="eyebrow">MESA ATIVA</p>
+					<p class="eyebrow">{$appLocale === 'en' ? 'ACTIVE TABLE' : 'MESA ATIVA'}</p>
 					<h1>{activeCampaign.name}</h1>
 				</div>
 				<div class="game-meta">
 					<div class="scene-control">
-						<label for="scene-select">Cena</label><select
+						<label for="scene-select">{$appLocale === 'en' ? 'Scene' : 'Cena'}</label><select
 							id="scene-select"
 							value={activeScene?.id ?? ''}
 							onchange={(event) => selectScene(event.currentTarget.value)}
@@ -324,31 +327,31 @@
 							<input
 								bind:value={sceneDraft}
 								maxlength="120"
-								placeholder="Nome da nova cena"
-							/><button disabled={creatingScene}>{creatingScene ? 'Criando…' : 'Criar'}</button>
+								placeholder={$appLocale === 'en' ? 'New scene name' : 'Nome da nova cena'}
+							/><button disabled={creatingScene}>{creatingScene ? ($appLocale === 'en' ? 'Creating…' : 'Criando…') : ($appLocale === 'en' ? 'Create' : 'Criar')}</button>
 						</form>{/if}
 					<span class="role-badge {activeCampaign.role}"
-						>{activeCampaign.role === 'gm' ? '✦ Narrador' : '◈ Jogador'}</span
+						>{activeCampaign.role === 'gm' ? ($appLocale === 'en' ? '✦ Game Master' : '✦ Narrador') : ($appLocale === 'en' ? '◈ Player' : '◈ Jogador')}</span
 					>
 				</div>
 			</section>
 			<nav class="workspace-tabs" aria-label="Áreas da mesa">
 				<button class:active={workspaceTab === 'map'} onclick={() => (workspaceTab = 'map')}
-					>Mesa</button
+					>{$appLocale === 'en' ? 'Table' : 'Mesa'}</button
 				>
 				<button class:active={workspaceTab === 'sheets'} onclick={() => (workspaceTab = 'sheets')}
-					>Fichas</button
+					>{$appLocale === 'en' ? 'Sheets' : 'Fichas'}</button
 				>
 				<button class:active={workspaceTab === 'library'} onclick={() => (workspaceTab = 'library')}
-					>Biblioteca</button
+					>{$appLocale === 'en' ? 'Library' : 'Biblioteca'}</button
 				>
 				<button class:active={workspaceTab === 'compendium'} onclick={() => (workspaceTab = 'compendium')}
-					>Compêndio</button
+					>{$appLocale === 'en' ? 'Compendium' : 'Compêndio'}</button
 				>
-				{#if activeCampaign.role === 'gm'}<button class:active={workspaceTab === 'bestiary'} onclick={() => (workspaceTab = 'bestiary')}>Bestiário</button>{/if}
+				{#if activeCampaign.role === 'gm'}<button class:active={workspaceTab === 'bestiary'} onclick={() => (workspaceTab = 'bestiary')}>{$appLocale === 'en' ? 'Bestiary' : 'Bestiário'}</button>{/if}
 				{#if activeCampaign.role === 'gm'}<button
 						class:active={workspaceTab === 'campaign'}
-						onclick={() => (workspaceTab = 'campaign')}>Campanha</button
+						onclick={() => (workspaceTab = 'campaign')}>{$appLocale === 'en' ? 'Campaign' : 'Campanha'}</button
 					>{/if}
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
@@ -744,6 +747,15 @@
 		align-items: center;
 		gap: 0.7rem;
 		margin-left: auto;
+	}
+	.locale-select {
+		border: 1px solid #5f4c3c;
+		border-radius: 6px;
+		padding: .35rem .4rem;
+		color: #eadfce;
+		background: #211a1d;
+		font: 700 .68rem/1 system-ui, sans-serif;
+		letter-spacing: .06em;
 	}
 	.avatar {
 		display: grid;
