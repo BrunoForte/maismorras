@@ -30,7 +30,7 @@
 		try {
 			npcs = (await listNPCs(session, campaignId)).npcs;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível carregar os NPCs.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load NPCs.' : 'Não foi possível carregar os NPCs.');
 		} finally {
 			loading = false;
 		}
@@ -57,7 +57,7 @@
 			npcs = [...npcs, npc];
 			name = '';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível criar o NPC.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not create the NPC.' : 'Não foi possível criar o NPC.');
 		} finally {
 			saving = false;
 		}
@@ -71,9 +71,9 @@
 				body: JSON.stringify({ actorId: npc.id })
 			});
 			await ontokencreated();
-			message = `${npc.name} foi adicionado à cena.`;
+			message = $appLocale === 'en' ? `${npc.name} was added to the scene.` : `${npc.name} foi adicionado à cena.`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível adicionar o NPC.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the NPC.' : 'Não foi possível adicionar o NPC.');
 		} finally {
 			placing = null;
 		}
@@ -115,7 +115,7 @@
 							>
 						</div>
 						<button onclick={() => placeNPC(npc)} disabled={placing === npc.id}
-							>{placing === npc.id ? 'Adicionando…' : 'Criar token'}</button
+							>{placing === npc.id ? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…') : ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button
 						>
 					</article>{/each}{/if}
 		</div>

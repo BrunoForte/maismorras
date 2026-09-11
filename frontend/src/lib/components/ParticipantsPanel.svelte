@@ -26,7 +26,7 @@
 		try {
 			participants = (await listParticipants(session, campaignId)).participants;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível carregar participantes.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load participants.' : 'Não foi possível carregar participantes.');
 		} finally {
 			loading = false;
 		}
@@ -37,10 +37,10 @@
 		message = '';
 		try {
 			await createTokenFromCharacter(session, sceneId, participant.character.id);
-			message = `${participant.character.sheet.name} foi adicionado à cena.`;
+			message = $appLocale === 'en' ? `${participant.character.sheet.name} was added to the scene.` : `${participant.character.sheet.name} foi adicionado à cena.`;
 			ontokencreated();
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível criar o token.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not create the token.' : 'Não foi possível criar o token.');
 		} finally {
 			creatingActorId = null;
 		}
@@ -69,7 +69,7 @@
 						<div class="avatar">{participant.displayName.slice(0, 1).toUpperCase()}</div>
 						<div class="details">
 							<strong>{participant.displayName}</strong><small
-								>{participant.role === 'gm' ? 'Narrador' : 'Jogador'}</small
+				>{participant.role === 'gm' ? ($appLocale === 'en' ? 'Game Master' : 'Narrador') : ($appLocale === 'en' ? 'Player' : 'Jogador')}</small
 							>{#if participant.character}<span
 									>{participant.character.sheet.name} · {participant.character.sheet.class ||
 										'Sem classe'} nível {participant.character.sheet.level}</span
@@ -80,8 +80,8 @@
 								onclick={() => placeCharacter(participant)}
 								disabled={creatingActorId === participant.character.id}
 								>{creatingActorId === participant.character.id
-									? 'Adicionando…'
-									: 'Criar token'}</button
+									? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…')
+									: ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button
 							>{/if}
 					</article>{/each}{/if}
 		</div>
