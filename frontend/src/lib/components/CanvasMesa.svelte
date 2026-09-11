@@ -40,6 +40,7 @@
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
 	import { supabase } from '$lib/services/supabase';
+	import { appLocale } from '$lib/stores/locale';
 
 	let { scene, session, isGM, onopensheet = (_actorId: string) => {} }: { scene: Scene; session: Session; isGM: boolean; onopensheet?: (actorId: string) => void } = $props();
 
@@ -539,13 +540,13 @@
 		<section class="token-inspector" aria-label={`Informações de ${personagemSelecionado.nome}`}>
 			<header>
 				<div>
-					<span class="inspector-eyebrow">TOKEN SELECIONADO</span>
+					<span class="inspector-eyebrow">{$appLocale === 'en' ? 'SELECTED TOKEN' : 'TOKEN SELECIONADO'}</span>
 					<h2>{personagemSelecionado.nome}</h2>
 				</div>
 				<button
 					class="close-button"
 					onclick={() => (tokenSelecionadoId = null)}
-					aria-label="Fechar inspector">×</button
+					aria-label={$appLocale === 'en' ? 'Close inspector' : 'Fechar inspector'}>×</button
 				>
 			</header>
 			<div class="quick-stats">
@@ -553,10 +554,10 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
-			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>Visão na névoa <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label="Raio de visão em quadrados"/></div><div class="vision-control"><span>Fonte de luz <small>(quadrados)</small></span><input type="number" min="0" max="30" value={personagemSelecionado.lightRange} onchange={(event) => alterarLuz(event.currentTarget.value)} aria-label="Raio de luz em quadrados"/></div>{/if}
-			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 Interagir com porta próxima</button>{/if}
-			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>Abrir ficha vinculada</button>{/if}
-			{#if isGM && personagemSelecionado.persistedId}<button class="remove-token" onclick={() => void removerTokenSelecionado()}>Remover token da cena</button>{/if}
+			{#if isGM && scene.fogEnabled}<div class="vision-control"><span>{$appLocale === 'en' ? 'Fog vision' : 'Visão na névoa'} <small>({$appLocale === 'en' ? 'squares' : 'quadrados'})</small></span><input type="number" min="0" max="30" value={personagemSelecionado.visionRange} onchange={(event) => alterarVisao(event.currentTarget.value)} aria-label={$appLocale === 'en' ? 'Vision range in squares' : 'Raio de visão em quadrados'}/></div><div class="vision-control"><span>{$appLocale === 'en' ? 'Light source' : 'Fonte de luz'} <small>({$appLocale === 'en' ? 'squares' : 'quadrados'})</small></span><input type="number" min="0" max="30" value={personagemSelecionado.lightRange} onchange={(event) => alterarLuz(event.currentTarget.value)} aria-label={$appLocale === 'en' ? 'Light range in squares' : 'Raio de luz em quadrados'}/></div>{/if}
+			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 {$appLocale === 'en' ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button>{/if}
+			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>{$appLocale === 'en' ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button>{/if}
+			{#if isGM && personagemSelecionado.persistedId}<button class="remove-token" onclick={() => void removerTokenSelecionado()}>{$appLocale === 'en' ? 'Remove token from scene' : 'Remover token da cena'}</button>{/if}
 			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => void rollSelectedInitiative()}>⚔️ Rolar iniciativa</button></div>{/if}
 			{#if isGM && npcSelecionado?.sheet.actions.length}
 				<div class="npc-actions">
