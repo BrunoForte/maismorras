@@ -173,6 +173,55 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 	return item, nil
 }
 
+func (r *Repository) UpdateEntry(ctx context.Context, campaignID, userID string, item Entry) (Entry, error) {
+	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Entry{}, err
+	}
+	var readOnly bool
+	if err := r.pool.QueryRow(ctx, `select s.is_read_only from compendium_entries e join compendium_sources s on s.id=e.source_id where e.id=$1 and e.campaign_id=$2`, item.ID, campaignID).Scan(&readOnly); errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	} else if err != nil {
+		return Entry{}, err
+	}
+	if readOnly {
+		return Entry{}, ErrForbidden
+	}
+	if len(item.Rules) == 0 {
+		item.Rules = json.RawMessage(`{}`)
+	}
+	if len(item.Translations) == 0 {
+		item.Translations = json.RawMessage(`{}`)
+	}
+	err := r.pool.QueryRow(ctx, `update compendium_entries set entry_type=$1,name=$2,summary=$3,rules=$4,translations=$5,is_published=$6,updated_at=now() where id=$7 and campaign_id=$8 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, item.EntryType, item.Name, item.Summary, item.Rules, item.Translations, item.IsPublished, item.ID, campaignID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	}
+	return item, err
+}
+
+func (r *Repository) DeleteEntry(ctx context.Context, campaignID, userID, entryID string) error {
+	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return err
+	}
+	var readOnly bool
+	if err := r.pool.QueryRow(ctx, `select s.is_read_only from compendium_entries e join compendium_sources s on s.id=e.source_id where e.id=$1 and e.campaign_id=$2`, entryID, campaignID).Scan(&readOnly); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if readOnly {
+		return ErrForbidden
+	}
+	result, err := r.pool.Exec(ctx, `delete from compendium_entries where id=$1 and campaign_id=$2`, entryID, campaignID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) Entry(ctx context.Context, campaignID, entryID, userID string) (Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
 	if err != nil {

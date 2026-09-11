@@ -73,4 +73,8 @@ export const translateCompendiumEntry = (session: Session, campaignId: string, e
 		session,
 		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}/translate`,
 		{ method: 'POST' }
-	);
+);
+export const updateCompendiumEntry = (session: Session, campaignId: string, entryId: string, entry: Pick<CompendiumEntry, 'entryType' | 'name' | 'summary' | 'rules' | 'translations' | 'isPublished'>) =>
+	request<CompendiumEntry>(session, `/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}`, { method: 'PUT', body: JSON.stringify(entry) });
+export const deleteCompendiumEntry = (session: Session, campaignId: string, entryId: string) =>
+	request<void>(session, `/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}`, { method: 'DELETE' });

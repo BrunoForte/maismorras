@@ -51,6 +51,32 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusCreated, created)
 }
 
+func (h *Handler) UpdateEntry(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var item Entry
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 24<<10)).Decode(&item); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	item.ID = r.PathValue("entryID")
+	if err := normalizeEntry(&item); err != nil {
+		return err
+	}
+	updated, err := h.repo.UpdateEntry(r.Context(), r.PathValue("campaignID"), p.UserID, item)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, updated)
+}
+
+func (h *Handler) DeleteEntry(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.DeleteEntry(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("entryID")); err != nil {
+		return mapError(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 // ImportEntries is deliberately file-first: the server never fetches a third-party
 // catalogue.  The GM supplies a JSON file that has already been checked for a
 // compatible licence or written as their own campaign material.

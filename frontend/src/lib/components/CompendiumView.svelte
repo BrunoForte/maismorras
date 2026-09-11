@@ -3,9 +3,11 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		createCompendiumEntry,
+		deleteCompendiumEntry,
 		getCompendium,
 		importCompendiumEntries,
 		translateCompendiumEntry,
+		updateCompendiumEntry,
 		type CompendiumDraft,
 		type CompendiumEntry,
 		type CompendiumSource
@@ -41,6 +43,7 @@
 		entries = $state<CompendiumEntry[]>([]);
 	let filter = $state('all'),
 		sourceFilter = $state('all'),
+		sortMode = $state<'name' | 'category' | 'challenge' | 'source'>('name'),
 		query = $state(''),
 		loading = $state(true),
 		saving = $state(false),
@@ -49,6 +52,7 @@
 		translating = $state<string | null>(null),
 		message = $state('');
 	let selectedEntryId = $state<string | null>(null);
+	let editingEntryId = $state<string | null>(null);
 	let entryType = $state<EntryType>('other'),
 		name = $state(''),
 		portugueseName = $state(''),
@@ -79,7 +83,12 @@
 					`${entry.name} ${entry.translations?.['pt-BR'] ?? ''}`
 						.toLocaleLowerCase()
 						.includes(query.trim().toLocaleLowerCase()))
-		);
+		).sort((a, b) => {
+			if (sortMode === 'challenge') return Number(rules(a).challenge ?? 999) - Number(rules(b).challenge ?? 999) || a.name.localeCompare(b.name);
+			if (sortMode === 'category') return a.entryType.localeCompare(b.entryType) || a.name.localeCompare(b.name);
+			if (sortMode === 'source') return (sources.find((s) => s.id === a.sourceId)?.title ?? '').localeCompare(sources.find((s) => s.id === b.sourceId)?.title ?? '') || a.name.localeCompare(b.name);
+			return displayName(a).localeCompare(displayName(b));
+		});
 	const entryCount = (id: string) => entries.filter((entry) => entry.sourceId === id).length;
 	// The SRD pack keeps English as the canonical text. Localized fields use a
 	// stable flat key (for example `pt-BR.summary` or `pt-BR.rules.school`) so
@@ -182,23 +191,48 @@
 		saving = true;
 		message = '';
 		try {
-			const entry = await createCompendiumEntry(session, campaignId, {
+			const payload: CompendiumDraft & { sourceId: string; entryType: string } = {
 				sourceId,
 				entryType,
 				name: name.trim(),
 				summary: summary.trim(),
 				rules: formRules(),
-				translations: portugueseName.trim() ? { 'pt-BR': portugueseName.trim() } : {},
+				translations: portugueseName.trim() ? { 'pt-BR': portugueseName.trim() } : {} as Record<string, string>,
 				isPublished: published
-			});
-			entries = [...entries, entry].sort((a, b) => a.name.localeCompare(b.name));
+			};
+			const wasEditing = Boolean(editingEntryId);
+			const entry = editingEntryId
+				? await updateCompendiumEntry(session, campaignId, editingEntryId, payload)
+				: await createCompendiumEntry(session, campaignId, payload);
+			entries = editingEntryId
+				? entries.map((item) => (item.id === entry.id ? entry : item))
+				: [...entries, entry].sort((a, b) => a.name.localeCompare(b.name));
 			clearForm();
-			message = $appLocale === 'en' ? 'Private entry added.' : 'Entrada privada adicionada.';
+			editingEntryId = null;
+			message = $appLocale === 'en' ? (wasEditing ? 'Private entry updated.' : 'Private entry added.') : (wasEditing ? 'Entrada privada atualizada.' : 'Entrada privada adicionada.');
 		} catch (error) {
 			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the entry.' : 'Não foi possível salvar a entrada.');
 		} finally {
 			saving = false;
 		}
+	}
+	function editEntry(entry: CompendiumEntry) {
+		if (sources.find((source) => source.id === entry.sourceId)?.readOnly) return;
+		editingEntryId = entry.id;
+		sourceId = entry.sourceId;
+		entryType = entry.entryType as EntryType;
+		name = entry.name;
+		summary = entry.summary;
+		published = entry.isPublished;
+		const value = entry.rules ?? {};
+		category = String(value.kind ?? value.category ?? 'monster') as typeof category;
+		hpMax = Number(value.hpMax ?? 10); armorClass = Number(value.armorClass ?? 10); size = Number(value.size ?? 1); initiative = Number(value.initiative ?? 0); imageUrl = String(value.imageUrl ?? '');
+		itemDamage = String(value.damage ?? ''); itemDefense = Number(value.armorClass ?? 0); spellLevel = Number(value.level ?? 1); spellClasses = Array.isArray(value.classes) ? value.classes.join(', ') : ''; classHitDie = Number(value.hitDie ?? 8); parentClass = String(value.className ?? ''); speed = Number(value.speed ?? 9);
+	}
+	async function removeEntry(entry: CompendiumEntry) {
+		if (sources.find((source) => source.id === entry.sourceId)?.readOnly || !confirm($appLocale === 'en' ? 'Delete this private entry?' : 'Excluir esta entrada privada?')) return;
+		try { await deleteCompendiumEntry(session, campaignId, entry.id); entries = entries.filter((item) => item.id !== entry.id); selectedEntryId = null; message = $appLocale === 'en' ? 'Private entry deleted.' : 'Entrada privada excluída.'; }
+		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível excluir.'; }
 	}
 	function sample(): CompendiumDraft {
 		const label = types.find(([value]) => value === entryType)?.[1] ?? 'Entrada';
@@ -412,8 +446,8 @@
 						{importing
 							? ($appLocale === 'en' ? 'Importing…' : 'Importando…')
 							: ($appLocale === 'en' ? `Import ${types.find(([value]) => value === entryType)?.[1]}` : `Importar ${types.find(([value]) => value === entryType)?.[1]}`)}</label
-					><button class="primary" onclick={create} disabled={saving}
-						>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Add' : 'Adicionar')}</button
+					>{#if editingEntryId}<button class="ghost" onclick={() => { editingEntryId = null; clearForm(); }}>{$appLocale === 'en' ? 'Cancel edit' : 'Cancelar edição'}</button>{/if}<button class="primary" onclick={create} disabled={saving}
+						>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : (editingEntryId ? ($appLocale === 'en' ? 'Save changes' : 'Salvar alterações') : ($appLocale === 'en' ? 'Add' : 'Adicionar'))}</button
 					>
 				</div>
 			</div>
@@ -428,6 +462,12 @@
 				><option value="all">{$appLocale === 'en' ? 'All types' : 'Todos os tipos'}</option
 				>{#each types as [value, label]}<option {value}>{label}</option>{/each}</select
 			>
+			<select bind:value={sortMode} aria-label={$appLocale === 'en' ? 'Sort entries' : 'Ordenar entradas'}>
+				<option value="name">{$appLocale === 'en' ? 'Sort: name' : 'Ordenar: nome'}</option>
+				<option value="category">{$appLocale === 'en' ? 'Sort: category' : 'Ordenar: categoria'}</option>
+				<option value="challenge">{$appLocale === 'en' ? 'Sort: challenge rating' : 'Ordenar: nível de desafio'}</option>
+				<option value="source">{$appLocale === 'en' ? 'Sort: source' : 'Ordenar: fonte'}</option>
+			</select>
 		</div>
 		{#if loading}<p class="empty">
 				{$appLocale === 'en' ? 'Loading compendium…' : 'Carregando compêndio…'}
@@ -467,6 +507,12 @@
 						<button class="close-detail" onclick={() => (selectedEntryId = null)}>×</button><span
 							class="type">{typeLabel(entry)}</span
 						>
+						{#if isGM && !sources.find((source) => source.id === entry.sourceId)?.readOnly}
+							<div class="entry-actions">
+								<button class="ghost" onclick={() => editEntry(entry)}>{$appLocale === 'en' ? 'Edit private entry' : 'Editar entrada privada'}</button>
+								<button class="danger" onclick={() => void removeEntry(entry)}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button>
+							</div>
+						{/if}
 						<h3>{displayName(entry)}</h3>
 						{#if $appLocale === 'pt-BR' && entry.translations?.['pt-BR']}<small class="canonical"
 								>{entry.name}</small
@@ -770,6 +816,9 @@
 	.form .ghost {
 		background: transparent;
 	}
+	.entry-actions { display: flex; gap: .4rem; margin: .45rem 0 .7rem; }
+	.entry-actions button { font-size: .7rem; padding: .35rem .55rem; border-radius: 5px; border: 1px solid #765d3d; color: #f0d5a3; background: transparent; }
+	.entry-actions .danger { border-color: #9c5c54; color: #f0aaa0; }
 	.file {
 		cursor: pointer;
 	}
