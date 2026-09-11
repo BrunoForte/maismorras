@@ -1,6 +1,8 @@
 package apphttp
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log/slog"
 	"net/http"
 	"time"
@@ -127,8 +129,36 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			started := time.Now()
-			next.ServeHTTP(w, r)
-			logger.Info("request completed", "method", r.Method, "path", r.URL.Path, "duration", time.Since(started).String())
+			requestID := r.Header.Get("X-Request-ID")
+			if requestID == "" {
+				requestID = newRequestID()
+			}
+			w.Header().Set("X-Request-ID", requestID)
+			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(recorder, r)
+			logger.Info("request completed", "request_id", requestID, "method", r.Method, "path", r.URL.Path, "status", recorder.status, "bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds())
 		})
 	}
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status, bytes int
+}
+
+func (w *statusRecorder) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *statusRecorder) Write(body []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(body)
+	w.bytes += n
+	return n, err
+}
+func newRequestID() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return hex.EncodeToString([]byte(time.Now().Format("150405.000000")))
+	}
+	return hex.EncodeToString(b[:])
 }
