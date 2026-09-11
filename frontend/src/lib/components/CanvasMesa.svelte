@@ -77,6 +77,7 @@
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
 	let pingArmed = $state(false);
+	let cameraZoom = $state(1);
 	let ambientAudioA = $state<HTMLAudioElement>();
 	let ambientAudioB = $state<HTMLAudioElement>();
 	let ambientAudioURL = $state<string | null>(null);
@@ -368,6 +369,14 @@
 		wallDrawing = !wallDrawing;
 		motor?.setWallDrawing(wallDrawing);
 	}
+	function ajustarZoom(delta: number) {
+		motor?.camera?.zoomBy(delta);
+		cameraZoom = motor?.camera?.zoom ?? cameraZoom;
+	}
+	function recentralizarMapa() {
+		motor?.camera?.resetView();
+		cameraZoom = motor?.camera?.zoom ?? 1;
+	}
 
 	onMount(() => {
 		motor = new GameEngine(
@@ -533,6 +542,12 @@
 	<canvas bind:this={canvasMesa}></canvas>
 	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => ambientPlaying = true}></audio><audio bind:this={ambientAudioB} loop></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
+	<div class="camera-tools" aria-label={$appLocale === 'en' ? 'Map camera' : 'Câmera do mapa'}>
+		<button onclick={() => ajustarZoom(-0.1)} aria-label={$appLocale === 'en' ? 'Zoom out' : 'Diminuir zoom'} title={$appLocale === 'en' ? 'Zoom out' : 'Diminuir zoom'}>−</button>
+		<span>{`${Math.round(cameraZoom * 100)}%`}</span>
+		<button onclick={() => ajustarZoom(0.1)} aria-label={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'} title={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'}>+</button>
+		<button class="camera-reset" onclick={recentralizarMapa} aria-label={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'} title={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'}>⌖</button>
+	</div>
 	{#if isGM && scene.fogEnabled}<div class="fog-tools"><strong>🌫 Névoa</strong><div><button class:active={fogMode === 'reveal'} onclick={() => fogMode = fogMode === 'reveal' ? null : 'reveal'}>Revelar</button><button class:active={fogMode === 'hide'} onclick={() => fogMode = fogMode === 'hide' ? null : 'hide'}>Ocultar</button></div><select bind:value={fogBrush} aria-label="Tamanho do pincel"><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option></select>{#if fogMode}<small>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small>{/if}</div>{/if}
 	{#if isGM}<div class="area-tool-trigger"><button class:active={areaToolsOpen || saveAreaArmed} onclick={() => areaToolsOpen = !areaToolsOpen} aria-label="Áreas persistentes" title="Áreas persistentes">⬡</button>{#if areaToolsOpen}<div class="area-tools"><strong>Área persistente</strong><small>Escolha a régua e arraste com Shift para salvar a área.</small><input bind:value={areaLabel} maxlength="80" aria-label="Rótulo da área"/><label><input type="checkbox" bind:checked={areaVisible}/> jogadores veem</label><button class:active={saveAreaArmed} onclick={() => saveAreaArmed=!saveAreaArmed}>{saveAreaArmed ? 'Desenhe com Shift' : 'Salvar próxima régua'}</button>{#if areas.length}<div class="area-list">{#each areas as area}<span>{area.label}<button onclick={() => void removeArea(area)}>×</button></span>{/each}</div>{/if}</div>{/if}</div>{/if}
 	{#if isGM && scene.fogEnabled}<div class="wall-tools"><strong>▰ Barreiras</strong><select bind:value={wallKind} aria-label="Tipo de barreira"><option value="wall">Parede</option><option value="door">Porta</option></select><button class:active={wallDrawing} onclick={toggleWallDrawing}>{wallDrawing ? 'Arraste no mapa…' : `Desenhar ${wallKind === 'door' ? 'porta' : 'parede'}`}</button><small>Fechadas bloqueiam visão e movimento.</small>{#if walls.length}<div class="wall-list">{#each walls as wall}<span>{wall.kind === 'door' ? (wall.open ? 'Porta aberta' : 'Porta fechada') : 'Parede'}<span>{#if wall.kind === 'door'}<button onclick={() => void toggleDoor(wall)}>{wall.open ? 'Fechar' : 'Abrir'}</button>{/if}<button onclick={() => void removeWall(wall)} aria-label="Remover barreira">×</button></span></span>{/each}</div>{/if}</div>{/if}
@@ -669,6 +684,7 @@
 		height: 100%;
 	}
 	.ping-tool{position:absolute;z-index:4;bottom:.9rem;left:.9rem}.ping-tool button{border:1px solid #765d3d;border-radius:7px;padding:.42rem .6rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:.67rem;cursor:pointer}.ping-tool button.active{color:#291b10;background:#e0b86f}
+	.camera-tools{position:absolute;z-index:4;top:.8rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.2rem;padding:.25rem;border:1px solid rgba(216,173,103,.45);border-radius:8px;color:#ead8b7;background:rgba(25,19,23,.92);box-shadow:0 8px 18px #0004;backdrop-filter:blur(8px)}.camera-tools button{display:grid;place-items:center;width:1.8rem;height:1.8rem;border:0;border-radius:5px;color:#f0cb85;background:transparent;font-size:1rem;cursor:pointer}.camera-tools button:hover{background:#453329}.camera-tools span{min-width:3.1rem;text-align:center;font-size:.63rem;font-variant-numeric:tabular-nums}.camera-tools .camera-reset{border-left:1px solid #5c4b40;border-radius:0 5px 5px 0;margin-left:.1rem;padding-left:.35rem}
 	.fog-tools { position:absolute; z-index:4; top:.8rem; right:.8rem; display:grid; gap:.35rem; padding:.55rem; border:1px solid #765d3d; border-radius:8px; color:#ebddca; background:rgba(25,19,23,.92); font-size:.65rem; }.fog-tools div{display:flex;gap:.25rem}.fog-tools button,.fog-tools select{border:1px solid #5d493b;border-radius:5px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.63rem}.fog-tools button.active{color:#271b10;background:#e0b86f}.fog-tools small{color:#baaa98;font-size:.58rem}
 	.area-tool-trigger{position:absolute;z-index:5;top:8.8rem;left:.9rem}.area-tool-trigger>button{display:grid;place-items:center;width:3rem;height:3rem;border:1px solid #765d3d;border-radius:7px;padding:.2rem;color:#ecd8a8;background:rgba(25,19,23,.92);font-size:1.05rem;cursor:pointer}.area-tool-trigger>button.active{color:#291b10;background:#e0b86f}.area-tools{position:absolute;z-index:1;top:0;left:3.45rem;display:grid;gap:.3rem;width:180px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.96);font-size:.62rem;box-shadow:0 10px 24px #0006}.area-tools small{color:#b9aa9d;line-height:1.35}.area-tools input{min-width:0;border:1px solid #5d493b;border-radius:4px;padding:.3rem;color:#e8d3aa;background:#241c1e;font-size:.62rem}.area-tools label{color:#b9aa9d}.area-tools button{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.area-tools button.active{color:#281a0f;background:#e0b86f}.area-list{display:grid;gap:.2rem;max-height:92px;overflow:auto}.area-list span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.area-list button{border:0;padding:0;color:#dfa797;background:transparent}
 	.wall-tools{position:absolute;z-index:4;top:12rem;right:.8rem;display:grid;gap:.3rem;width:145px;padding:.55rem;border:1px solid #765d3d;border-radius:8px;color:#ebddca;background:rgba(25,19,23,.92);font-size:.62rem}.wall-tools button,.wall-tools select{border:1px solid #765d3d;border-radius:5px;padding:.35rem;color:#e8d3aa;background:#2b211e;font-size:.62rem}.wall-tools button.active{color:#281a0f;background:#e0b86f}.wall-tools small{color:#b9aa9d;font-size:.58rem}.wall-list{display:grid;gap:.2rem;max-height:70px;overflow:auto}.wall-list>span,.wall-list>span>span{display:flex;justify-content:space-between;gap:.25rem;color:#d8c5aa}.wall-list button{border:0;padding:0;color:#dfa797;background:transparent}
@@ -691,6 +707,7 @@
 		.area-tool-trigger { top: .75rem; left: calc(50% + 5.3rem); transform: none; }
 		.area-tool-trigger > button { width:3rem; height:3rem; font-size:1.05rem; }
 		.area-tools { top: 3.45rem; right: 0; left: auto; transform: none; }
+		.camera-tools { top: .65rem; }
 	}
 	.token-inspector {
 		position: absolute;

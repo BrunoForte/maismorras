@@ -9,10 +9,8 @@ export class Camera {
 	private readonly onWheel = (e: WheelEvent) => {
 		e.preventDefault();
 		const direcao = e.deltaY < 0 ? 1 : -1;
-		const novoScale = this.mundo.scale.x + direcao * 0.1;
-		if (novoScale >= 0.3 && novoScale <= 3.0) {
-			this.mundo.scale.set(novoScale);
-		}
+		const rect = this.app.canvas.getBoundingClientRect();
+		this.zoomAt(1 + direcao * 0.1, e.clientX - rect.left, e.clientY - rect.top);
 	};
 
 	constructor(private app: PIXI.Application) {
@@ -68,6 +66,19 @@ export class Camera {
 	};
 	private onTouchEnd = (event: TouchEvent) => { if (event.touches.length < 2) this.pinchDistance = 0; };
 	private distance(a: Touch, b: Touch) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+	public zoomBy(delta: number) {
+		this.zoomAt(1 + delta, this.app.renderer.width / 2, this.app.renderer.height / 2);
+	}
+
+	public resetView() {
+		this.mundo.scale.set(1);
+		this.mundo.position.set(this.app.renderer.width / 2, this.app.renderer.height / 2);
+	}
+
+	public get zoom() {
+		return this.mundo.scale.x;
+	}
+
 	private zoomAt(factor: number, x: number, y: number) {
 		const oldScale = this.mundo.scale.x;
 		const newScale = Math.max(0.3, Math.min(3, oldScale * factor));
