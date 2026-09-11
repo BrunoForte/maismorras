@@ -176,7 +176,7 @@
 	}
 	async function create() {
 		if (!name.trim() || !sourceId) {
-			message = 'Informe nome e uma fonte privada.';
+			message = $appLocale === 'en' ? 'Enter a name and a private source.' : 'Informe nome e uma fonte privada.';
 			return;
 		}
 		saving = true;
@@ -193,7 +193,7 @@
 			});
 			entries = [...entries, entry].sort((a, b) => a.name.localeCompare(b.name));
 			clearForm();
-			message = 'Entrada privada adicionada.';
+			message = $appLocale === 'en' ? 'Private entry added.' : 'Entrada privada adicionada.';
 		} catch (error) {
 			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the entry.' : 'Não foi possível salvar a entrada.');
 		} finally {
@@ -240,7 +240,7 @@
 				entryType,
 				imported
 			);
-			message = `${result.imported} entrada(s) importada(s) ou atualizada(s).`;
+			message = $appLocale === 'en' ? `${result.imported} entr${result.imported === 1 ? 'y' : 'ies'} imported or updated.` : `${result.imported} entrada(s) importada(s) ou atualizada(s).`;
 			await load();
 		} catch (error) {
 			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not import the file.' : 'Não foi possível importar o arquivo.');
@@ -250,7 +250,7 @@
 	}
 	async function placeMonster(entry: CompendiumEntry) {
 		if (!sceneId) {
-			message = 'Abra uma cena na aba Mesa antes de posicionar o monstro.';
+			message = $appLocale === 'en' ? 'Open a scene in the Table tab before placing the monster.' : 'Abra uma cena na aba Mesa antes de posicionar o monstro.';
 			return;
 		}
 		placing = entry.id;
@@ -271,7 +271,7 @@
 		try {
 			const updated = await translateCompendiumEntry(session, campaignId, entry.id);
 			entries = entries.map((item) => (item.id === updated.id ? updated : item));
-			message = 'Tradução por IA gerada e identificada.';
+			message = $appLocale === 'en' ? 'AI translation generated and marked.' : 'Tradução por IA gerada e identificada.';
 		} catch (error) {
 			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not generate the translation.' : 'Não foi possível gerar a tradução.');
 		} finally {
@@ -307,9 +307,9 @@
 			{message}
 		</p>{/if}
 	<section class="sources">
-		<h3>Fontes ativas</h3>
+		<h3>{$appLocale === 'en' ? 'Active sources' : 'Fontes ativas'}</h3>
 		<button class:active={sourceFilter === 'all'} onclick={() => (sourceFilter = 'all')}
-			><strong>Todas as fontes</strong><small>{entries.length} entradas</small></button
+			><strong>{$appLocale === 'en' ? 'All sources' : 'Todas as fontes'}</strong><small>{entries.length} {$appLocale === 'en' ? 'entries' : 'entradas'}</small></button
 		>{#each sources as source (source.id)}<button
 				class:active={sourceFilter === source.id}
 				onclick={() => (sourceFilter = source.id)}
@@ -333,10 +333,10 @@
 						>{/each}</select
 				><select bind:value={entryType}
 					>{#each types as [value, label]}<option {value}>{label}</option>{/each}</select
-				><input bind:value={name} maxlength="120" placeholder="Nome" /><input
+								><input bind:value={name} maxlength="120" placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><input
 					bind:value={portugueseName}
 					maxlength="120"
-					placeholder="Nome em português (opcional)"
+									placeholder={$appLocale === 'en' ? 'Portuguese name (optional)' : 'Nome em português (opcional)'}
 				/>
 				{#if entryType === 'other'}<select bind:value={category}
 						><option value="monster">Monstro</option><option value="vehicle">Veículo</option><option
@@ -397,7 +397,7 @@
 				<textarea
 					bind:value={summary}
 					maxlength="2000"
-					placeholder="Resumo autoral e objetivo do funcionamento."></textarea><label
+					placeholder={$appLocale === 'en' ? 'Original, objective summary of how it works.' : 'Resumo autoral e objetivo do funcionamento.'}></textarea><label
 					><input type="checkbox" bind:checked={published} /> {$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</label
 				>
 				<div class="form-actions">
@@ -410,10 +410,10 @@
 							disabled={importing}
 						/>
 						{importing
-							? 'Importando…'
-							: `Importar ${types.find(([value]) => value === entryType)?.[1]}`}</label
+							? ($appLocale === 'en' ? 'Importing…' : 'Importando…')
+							: ($appLocale === 'en' ? `Import ${types.find(([value]) => value === entryType)?.[1]}` : `Importar ${types.find(([value]) => value === entryType)?.[1]}`)}</label
 					><button class="primary" onclick={create} disabled={saving}
-						>{saving ? 'Salvando…' : 'Adicionar'}</button
+						>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Add' : 'Adicionar')}</button
 					>
 				</div>
 			</div>
