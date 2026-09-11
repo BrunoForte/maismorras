@@ -1138,6 +1138,24 @@
 	.scene-board-heading strong { overflow:hidden; max-width:min(72vw,720px); color:#f1d4a0; font:600 clamp(1rem,2vw,1.35rem) Georgia,serif; text-overflow:ellipsis; white-space:nowrap; }
 	.scene-board { position:relative; }
 	@media (max-width: 760px) {
+		.app-shell {
+			padding-bottom: env(safe-area-inset-bottom);
+		}
+		.app-header {
+			position: sticky;
+			top: 0;
+			z-index: 40;
+			min-height: 3.5rem;
+			padding: 0.65rem 0.9rem;
+			background: rgba(20, 17, 20, 0.96);
+			backdrop-filter: blur(12px);
+		}
+		.account {
+			gap: 0.45rem;
+		}
+		.locale-select {
+			min-height: 2rem;
+		}
 		.auth-shell {
 			grid-template-columns: 1fr;
 			gap: 3rem;
@@ -1178,8 +1196,17 @@
 			flex-direction: column;
 		}
 		.workspace-tabs {
+			position: sticky;
+			top: 3.5rem;
+			z-index: 35;
 			overflow-x: auto;
+			scrollbar-width: none;
 			padding: 0 1.25rem;
+			background: rgba(20, 17, 20, 0.94);
+			backdrop-filter: blur(10px);
+		}
+		.workspace-tabs::-webkit-scrollbar {
+			display: none;
 		}
 		.workspace-tabs button {
 			white-space: nowrap;
@@ -1199,5 +1226,17 @@
 		}
 		.scene-board-heading { min-height:1.8rem; padding:.2rem .75rem .45rem; }
 		.scene-board-heading strong { max-width:78vw; font-size:1rem; }
+		.campaign-settings,
+		.campaign-hub {
+			padding-left: 1rem;
+			padding-right: 1rem;
+		}
+		.settings-actions {
+			display: grid;
+			grid-template-columns: 1fr;
+		}
+		.settings-actions button {
+			width: 100%;
+		}
 	}
 </style>
