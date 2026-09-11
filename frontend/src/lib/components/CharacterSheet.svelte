@@ -319,14 +319,14 @@ import {
 	async function rest(kind: 'short' | 'long') {
 		if (kind === 'short') {
 			const hitDie = sheet.hitDice.match(/^1d(\d+)$/i);
-			if (!hitDie || sheet.hitDiceSpent >= sheet.level) { message = 'Não há dados de vida disponíveis para recuperar PV neste descanso.'; return; }
+			if (!hitDie || sheet.hitDiceSpent >= sheet.level) { message = $appLocale === 'en' ? 'No hit dice available to recover HP during this rest.' : 'Não há dados de vida disponíveis para recuperar PV neste descanso.'; return; }
 			try {
 				const event = await rollDice(session, campaignId, `1d${hitDie[1]}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`);
 				const result = event.payload as { dados: number[]; total: number };
 				sheet.hitDiceSpent += 1;
 				sheet.hitPointsCurrent = Math.min(sheet.hitPointsMax, sheet.hitPointsCurrent + result.total);
-				$diceOverlay = { expression: 'Dado de vida', total: result.total, dice: result.dados };
-			} catch { message = 'Não foi possível rolar o dado de vida.'; return; }
+				$diceOverlay = { expression: $appLocale === 'en' ? 'Hit die' : 'Dado de vida', total: result.total, dice: result.dados };
+			} catch { message = $appLocale === 'en' ? 'Could not roll the hit die.' : 'Não foi possível rolar o dado de vida.'; return; }
 		}
 		sheet.resources = sheet.resources.map((resource) => resource.restoreOn === kind || kind === 'long' ? { ...resource, current: resource.max } : resource);
 		if (kind === 'short') sheet.spellSlots = sheet.spellSlots.map((slot) => canonicalClass(sheet.class) === 'warlock' ? { ...slot, current: slot.max } : slot);
@@ -386,7 +386,7 @@ import {
 			$diceOverlay = { expression: `${item.name} · dano${critical ? ' crítico' : ''}`, total: damage.total, dice: damage.dados };
 			message = critical ? 'Crítico! Ataque e dano foram registrados no chat.' : 'Ataque e dano foram registrados no chat.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível rolar a arma.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not roll the weapon.' : 'Não foi possível rolar a arma.');
 		} finally {
 			rollingWeapon = null;
 		}
@@ -418,7 +418,7 @@ import {
 		$chatMensagens = [...$chatMensagens, { id: String(damageEvent.id), autor: sheet.name || 'Personagem', texto: `${label} · dano${critical ? ' crítico' : ''}`, tipo: 'rolagem', canal: 'combat', detalhesRolagem: { ...result, modificador: mod } }];
 		$diceOverlay = { expression: `${label} · dano`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() };
 	}
-	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) { if (rollingAttack !== null) return; rollingAttack = index; try { await rollSheet(attack.name || 'Ataque', attack.attackBonus, attack.damage); } catch { message = 'Não foi possível rolar o ataque.'; } finally { rollingAttack = null; } }
+	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) { if (rollingAttack !== null) return; rollingAttack = index; try { await rollSheet(attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'), attack.attackBonus, attack.damage); } catch { message = $appLocale === 'en' ? 'Could not roll the attack.' : 'Não foi possível rolar o ataque.'; } finally { rollingAttack = null; } }
 	function addAttack() {
 		sheet.attacks = [
 			...sheet.attacks,
@@ -556,7 +556,7 @@ import {
 				</section>
 				<section class="saving-throws"><h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3><div>{#each attributes as attribute}<article><label title={$appLocale === 'en' ? `${abilityLabel(attribute.key)} saving throw proficiency` : `Proficiência em resistência de ${abilityLabel(attribute.key)}`}><span>{abilityLabel(attribute.key)}</span><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/></label><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><button onclick={() => void rollSheet($appLocale === 'en' ? `${abilityLabel(attribute.key)} saving throw` : `Resistência de ${abilityLabel(attribute.key)}`, saveBonus(attribute.key))} aria-label={$appLocale === 'en' ? `Roll ${abilityLabel(attribute.key)} saving throw` : `Rolar resistência de ${abilityLabel(attribute.key)}`}>🎲</button></article>{/each}</div></section>
 				<div class="passive-perception"><span>{$appLocale === 'en' ? 'Passive Perception' : 'Percepção passiva'}</span><strong class="derived-value">{passivePerception()}</strong><small>{$appLocale === 'en' ? '10 + Wisdom + Perception proficiency' : '10 + Sabedoria + proficiência em Percepção'}</small></div>
-				{#if derivedFeatures().length}<section class="progression"><h3>Progressão de classe</h3><ul>{#each derivedFeatures() as feature}<li><span>Nível {feature.level}</span>{feature.name}</li>{/each}</ul>{#if expertiseChoices() > 0}<div class="expertise-choices"><strong>Especialização de classe</strong><p>Escolha {expertiseChoices()} perícia{expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.</p><div>{#each Array(expertiseChoices()) as _, index}<label>Especialização {index + 1}<select value={sheet.skillExpertise[index] ?? ''} onchange={(event) => setExpertiseChoice(index, event.currentTarget.value)}><option value="">Escolha uma perícia…</option>{#each skills as [name]}<option value={name}>{name}</option>{/each}</select></label>{/each}</div></div>{/if}</section>{/if}
+				{#if derivedFeatures().length}<section class="progression"><h3>{$appLocale === 'en' ? 'Class progression' : 'Progressão de classe'}</h3><ul>{#each derivedFeatures() as feature}<li><span>{$appLocale === 'en' ? 'Level' : 'Nível'} {feature.level}</span>{feature.name}</li>{/each}</ul>{#if expertiseChoices() > 0}<div class="expertise-choices"><strong>{$appLocale === 'en' ? 'Class expertise' : 'Especialização de classe'}</strong><p>{$appLocale === 'en' ? `Choose ${expertiseChoices()} skill${expertiseChoices() > 1 ? 's' : ''}; they automatically gain double proficiency bonus.` : `Escolha ${expertiseChoices()} perícia${expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.`}</p><div>{#each Array(expertiseChoices()) as _, index}<label>{$appLocale === 'en' ? `Expertise ${index + 1}` : `Especialização ${index + 1}`}<select value={sheet.skillExpertise[index] ?? ''} onchange={(event) => setExpertiseChoice(index, event.currentTarget.value)}><option value="">{$appLocale === 'en' ? 'Choose a skill…' : 'Escolha uma perícia…'}</option>{#each skills as [name]}<option value={name}>{name}</option>{/each}</select></label>{/each}</div></div>{/if}</section>{/if}
 				{/if}
 				{#if activeTab === 'combat'}
 				<section class="combat">
