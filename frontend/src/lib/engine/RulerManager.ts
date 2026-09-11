@@ -82,8 +82,13 @@ export class RulerManager {
 			const dx = pos.x - this.startX;
 			const dy = pos.y - this.startY;
 			const distanciaPixels = Math.sqrt(dx * dx + dy * dy);
-			const quadrados = distanciaPixels / this.tamanhoGrid;
-			const metros = Math.floor(quadrados) * 1.5;
+			const deltaX = Math.abs(Math.round(dx / this.tamanhoGrid));
+			const deltaY = Math.abs(Math.round(dy / this.tamanhoGrid));
+			// Regra de diagonais 5-10-5: cada segundo quadrado diagonal custa dois.
+			const diagonais = Math.min(deltaX, deltaY);
+			const retas = Math.max(deltaX, deltaY) - diagonais;
+			const quadrados = diagonais + Math.floor(diagonais / 2) + retas;
+			const metros = quadrados * 1.5;
 			if (this.mode === 'line') {
 				this.graphics
 					.moveTo(this.startX, this.startY)
