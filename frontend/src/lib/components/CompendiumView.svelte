@@ -339,7 +339,7 @@
 									placeholder={$appLocale === 'en' ? 'Portuguese name (optional)' : 'Nome em português (opcional)'}
 				/>
 				{#if entryType === 'other'}<select bind:value={category}
-						><option value="monster">Monstro</option><option value="vehicle">Veículo</option><option
+						><option value="monster">{$appLocale === 'en' ? 'Monster' : 'Monstro'}</option><option value="vehicle">{$appLocale === 'en' ? 'Vehicle' : 'Veículo'}</option><option
 							value="hazard">Perigo</option
 						><option value="other">Outro</option></select
 					>{#if category === 'monster'}<input
@@ -479,7 +479,7 @@
 							{displaySummary(entry) ||
 								($appLocale === 'en'
 									? 'No summary is available for this entry.'
-									: 'Sem resumo cadastrado para esta entrada.')}
+					: 'Sem resumo cadastrado para esta entrada.')}
 						</p>
 						{#if isGM && $appLocale === 'pt-BR'}
 							<button
@@ -489,8 +489,8 @@
 								>{translating === entry.id
 									? 'Traduzindo…'
 									: entry.translations?.['pt-BR.summary']
-										? 'Completar tradução com IA'
-										: 'Traduzir com IA'}</button
+									? 'Completar tradução com IA'
+									: 'Traduzir com IA'}</button
 							>
 						{/if}
 						{#if isMonster(entry)}<div class="rules">
@@ -537,7 +537,7 @@
 											: 'Adicionando…'
 										: $appLocale === 'en'
 											? 'Add to scene'
-											: 'Adicionar à cena'}</button
+										: 'Adicionar à cena'}</button
 								>{/if}{:else if entry.entryType === 'spell'}<div class="rules">
 								<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b><b
 									>{Array.isArray(detail.classes) ? (detail.classes as string[]).join(', ') : ''}</b
@@ -583,7 +583,7 @@
 									: 'Visível aos jogadores'
 								: $appLocale === 'en'
 									? 'Game master only'
-									: 'Somente narrador'}</small
+					: 'Somente narrador'}</small
 						>
 					</aside>{/if}
 			</div>{:else}<p class="empty">
