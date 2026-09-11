@@ -32,12 +32,12 @@
 			headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json', ...init.headers }
 		});
 		const data = await response.json();
-		if (!response.ok) throw new Error(data.error?.message ?? 'Não foi possível salvar o handout.');
+		if (!response.ok) throw new Error(data.error?.message ?? ($appLocale === 'en' ? 'Could not save the handout.' : 'Não foi possível salvar o handout.'));
 		return data as T;
 	}
 	async function loadHandouts() {
 		try { handouts = (await notesRequest<{ notes: Handout[] }>(`/api/v1/campaigns/${campaignId}/notes`)).notes; }
-		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível carregar os handouts.'; }
+		catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load handouts.' : 'Não foi possível carregar os handouts.'); }
 	}
 	async function saveHandout() {
 		if (!handoutTitle.trim() || savingHandout) return;
@@ -45,7 +45,7 @@
 		try {
 			const handout = await notesRequest<Handout>(`/api/v1/campaigns/${campaignId}/notes`, { method: 'POST', body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: handoutVisibility }) });
 			handouts = [handout, ...handouts]; handoutTitle = ''; handoutBody = ''; handoutVisibility = 'players'; handoutOpen = false;
-		} catch (error) { message = error instanceof Error ? error.message : 'Não foi possível salvar o handout.'; }
+		} catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the handout.' : 'Não foi possível salvar o handout.'); }
 		finally { savingHandout = false; }
 	}
 	async function loadAssets() {
@@ -84,7 +84,7 @@
 			(!file.type.startsWith('image/') && !file.type.startsWith('audio/')) ||
 			file.size > 20 * 1024 * 1024
 		) {
-			message = 'Envie imagem ou áudio de até 20 MB.';
+			message = $appLocale === 'en' ? 'Upload an image or audio file up to 20 MB.' : 'Envie imagem ou áudio de até 20 MB.';
 			return;
 		}
 		uploading = true;
