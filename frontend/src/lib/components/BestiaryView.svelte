@@ -256,7 +256,7 @@
 	}
 	async function save() {
 		if (!monsterName.trim()) {
-			message = 'Informe o nome da criatura.';
+			message = $appLocale === 'en' ? 'Enter the creature name.' : 'Informe o nome da criatura.';
 			return;
 		}
 		saving = true;
@@ -271,7 +271,7 @@
 				: await createNPC(session, campaignId, payload);
 			npcs = selected ? npcs.map((item) => (item.id === npc.id ? npc : item)) : [...npcs, npc];
 			edit(npc);
-			message = selected ? 'Criatura atualizada.' : 'Criatura adicionada ao bestiário.';
+			message = selected ? ($appLocale === 'en' ? 'Creature updated.' : 'Criatura atualizada.') : ($appLocale === 'en' ? 'Creature added to the bestiary.' : 'Criatura adicionada ao bestiário.');
 		} catch (error) {
 			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the creature.' : 'Não foi possível salvar a criatura.');
 		} finally {
@@ -280,7 +280,7 @@
 	}
 	async function place(npc: NPC) {
 		if (!sceneId) {
-			message = 'Abra uma cena na aba Mesa antes de colocar uma criatura.';
+			message = $appLocale === 'en' ? 'Open a scene in the Table tab before placing a creature.' : 'Abra uma cena na aba Mesa antes de colocar uma criatura.';
 			return;
 		}
 		placing = npc.id;
@@ -301,7 +301,7 @@
 	async function placeSRD(entry: CompendiumEntry | null) {
 		if (!entry) return;
 		if (!sceneId) {
-			message = 'Abra uma cena na aba Mesa antes de colocar uma criatura.';
+			message = $appLocale === 'en' ? 'Open a scene in the Table tab before placing a creature.' : 'Abra uma cena na aba Mesa antes de colocar uma criatura.';
 			return;
 		}
 		placing = entry.id;
@@ -311,7 +311,7 @@
 			await ontokencreated();
 			message = `${label(entry)} foi adicionado à cena.`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível adicionar a criatura.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the creature.' : 'Não foi possível adicionar a criatura.');
 		} finally {
 			placing = null;
 		}
@@ -452,11 +452,11 @@
 								><span>SAB <b>{rules.abilities.wisdom ?? '—'}</b></span><span
 									>CAR <b>{rules.abilities.charisma ?? '—'}</b></span
 								>
-							</div>{/if}{#if rules.traits?.length}<h4>Traços</h4>
+							</div>{/if}{#if rules.traits?.length}<h4>{$appLocale === 'en' ? 'Traits' : 'Traços'}</h4>
 							{#each rules.traits as trait}<p>
 									<b>{trait.name}</b>{#if trait.description}
 										— {trait.description}{/if}
-								</p>{/each}{/if}{#if rules.actions?.length}<h4>Ações</h4>
+				</p>{/each}{/if}{#if rules.actions?.length}<h4>{$appLocale === 'en' ? 'Actions' : 'Ações'}</h4>
 							{#each rules.actions as action}<p>
 									<b>{action.name}</b>{#if action.toHit !== undefined}
 										· +{action.toHit} para acertar{/if}{#if action.damage}
@@ -483,7 +483,7 @@
 						aqui.</small
 					>
 				</article>{:else}<div class="editor-head">
-					<h3>{selected ? 'Editar criatura' : 'Nova criatura privada'}</h3>
+					<h3>{selected ? ($appLocale === 'en' ? 'Edit creature' : 'Editar criatura') : ($appLocale === 'en' ? 'New private creature' : 'Nova criatura privada')}</h3>
 					<span
 						>{selected
 							? 'As mudanças afetam novos tokens; tokens já na mesa mantêm o estado atual.'
@@ -603,15 +603,15 @@
 							/></label
 						><label
 							>Senses<input bind:value={sheet.senses} placeholder="visão no escuro 18 m" /></label
-						><label>Idiomas<input bind:value={sheet.languages} placeholder="Subcomum" /></label>
+						><label>{$appLocale === 'en' ? 'Languages' : 'Idiomas'}<input bind:value={sheet.languages} placeholder={$appLocale === 'en' ? 'Undercommon' : 'Subcomum'} /></label>
 					</div>
 					<div class="block">
 						<div>
-							<h4>Traços</h4>
+							<h4>{$appLocale === 'en' ? 'Traits' : 'Traços'}</h4>
 							<button type="button" onclick={addTrait}>+ Traço</button>
 						</div>
 						{#each sheet.traits as trait, index}<article>
-								<input bind:value={trait.name} placeholder="Nome do traço" /><textarea
+								<input bind:value={trait.name} placeholder={$appLocale === 'en' ? 'Trait name' : 'Nome do traço'} /><textarea
 									bind:value={trait.description}
 									placeholder="Resumo próprio do efeito"></textarea><button
 									type="button"
@@ -621,11 +621,11 @@
 					</div>
 					<div class="block">
 						<div>
-							<h4>Ações</h4>
+							<h4>{$appLocale === 'en' ? 'Actions' : 'Ações'}</h4>
 							<button type="button" onclick={addAction}>+ Ação</button>
 						</div>
 						{#each sheet.actions as action, index}<article class="action">
-								<input bind:value={action.name} placeholder="Nome" /><select
+								<input bind:value={action.name} placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><select
 									bind:value={action.kind}
 									><option value="action">Ação</option><option value="bonus">Ação bônus</option
 									><option value="reaction">Reação</option></select
@@ -646,14 +646,14 @@
 							>{saving
 								? 'Salvando…'
 								: selected
-									? 'Salvar alterações'
-									: 'Adicionar ao bestiário'}</button
+									? ($appLocale === 'en' ? 'Save changes' : 'Salvar alterações')
+									: ($appLocale === 'en' ? 'Add to bestiary' : 'Adicionar ao bestiário')}</button
 						>{#if selected}<button
 								type="button"
 								class="place"
 								onclick={placeSelected}
 								disabled={placing === selected.id}
-								>{placing === selected.id ? 'Adicionando…' : 'Adicionar à cena'}</button
+								>{placing === selected.id ? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…') : ($appLocale === 'en' ? 'Add to scene' : 'Adicionar à cena')}</button
 							>{/if}
 					</div>
 				</form>{/if}
