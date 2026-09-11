@@ -35,7 +35,11 @@ export function distance(valueInMeters: number, locale: AppLocale): string {
 // "30 ft., fly 60 ft.") only at render time. The canonical rule data remains
 // untouched, which prevents round-trip precision loss.
 export function distanceText(value: string, locale: AppLocale): string {
-	if (locale === 'en') return value;
+	if (locale === 'en') {
+		return value.replace(/(\d+(?:[.,]\d+)?)\s*\bm\b/gi, (_, raw: string) =>
+			distance(Number(raw.replace(',', '.')), 'en')
+		);
+	}
 	return value.replace(/(\d+(?:\.\d+)?)\s*\b(?:ft|feet)\b\.?/gi, (_, raw: string) =>
 		distance(Number(raw) * 0.3048, 'pt-BR')
 	);

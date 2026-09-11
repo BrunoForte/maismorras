@@ -18,6 +18,7 @@ import {
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { supabase } from '$lib/services/supabase';
 	import { classData, classFeatures, canonicalClass as progressionClass, defaultResources, spellSlots } from '$lib/data/classProgression';
+	import { appLocale, distance, distanceText } from '$lib/stores/locale';
 
 	let {
 		campaignId,
@@ -46,7 +47,6 @@ import {
 	let message = $state('');
 	let isNewCharacter = $state(false);
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
-	let rulesLocale = $state<'pt-BR' | 'en'>('pt-BR');
 	let selectedItemId = $state('');
 	let selectedSpellId = $state('');
 	let spellCircle = $state('all');
@@ -75,6 +75,24 @@ import {
 		{ key: 'wisdom', label: 'SAB' },
 		{ key: 'charisma', label: 'CAR' }
 	];
+	const abilityLabel = (key: keyof Sheet['abilityScores']) => {
+		const labels = $appLocale === 'en'
+			? { strength: 'STR', dexterity: 'DEX', constitution: 'CON', intelligence: 'INT', wisdom: 'WIS', charisma: 'CHA' }
+			: { strength: 'FOR', dexterity: 'DES', constitution: 'CON', intelligence: 'INT', wisdom: 'SAB', charisma: 'CAR' };
+		return labels[key];
+	};
+	const skillLabel = (name: string) => {
+		if ($appLocale === 'pt-BR') return name;
+		return ({
+			Acrobacia: 'Acrobatics', 'Adestrar Animais': 'Animal Handling', Arcanismo: 'Arcana', Atletismo: 'Athletics', Atuação: 'Performance',
+			Enganação: 'Deception', Furtividade: 'Stealth', História: 'History', Intimidação: 'Intimidation', Intuição: 'Insight',
+			Investigação: 'Investigation', Medicina: 'Medicine', Natureza: 'Nature', Percepção: 'Perception', Persuasão: 'Persuasion',
+			Prestidigitação: 'Sleight of Hand', Religião: 'Religion', Sobrevivência: 'Survival'
+		} as Record<string, string>)[name] ?? name;
+	};
+	const sheetTabs = () => $appLocale === 'en'
+		? [['profile', 'Profile'], ['skills', 'Skills'], ['combat', 'Combat'], ['inventory', 'Inventory'], ['spells', 'Spells'], ['details', 'Details']]
+		: [['profile', 'Perfil'], ['skills', 'Perícias'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']];
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	const classHitDice: Record<string, string> = Object.fromEntries(Object.entries(classData).map(([name, data]) => [name, data.hitDice]));
 	type SpeciesProfile = {
@@ -146,6 +164,14 @@ import {
 		normalizedSpecies(sheet.species) === 'elf' && sheet.speciesLineage === 'Elfo da Floresta'
 			? 10.5
 			: speciesProfile()?.speed ?? sheet.speed;
+	const displayedSpeed = () => $appLocale === 'en' ? Math.round(sheet.speed * 3.28084) : sheet.speed;
+	function updateDisplayedSpeed(value: string) {
+		const parsed = Number(value);
+		if (!Number.isFinite(parsed) || parsed < 0) return;
+		// The sheet persists metric values. Conversion is only a presentation concern,
+		// which keeps token ranges and scene geometry on the same canonical scale.
+		sheet.speed = $appLocale === 'en' ? Math.round((parsed / 3.28084) * 10) / 10 : parsed;
+	}
 	function onSpeciesChanged() {
 		const profile = speciesProfile();
 		if (!profile?.lineages?.[sheet.speciesLineage]) sheet.speciesLineage = '';
@@ -156,7 +182,6 @@ import {
 	onMount(async () => {
 		// Lists come from the campaign compendium, so a GM can mix SRD choices,
 		// private references and homebrew without exposing unpublished entries.
-		rulesLocale = localStorage.getItem('maismorras.rulesLocale') === 'en' ? 'en' : 'pt-BR';
 		void getCompendium(session, campaignId)
 			.then((data) => (compendiumEntries = data.entries))
 			.catch(() => undefined);
@@ -228,7 +253,7 @@ import {
 	const optionsFor = (entryType: string) =>
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	const optionLabel = (entry: CompendiumEntry) =>
-		rulesLocale === 'pt-BR' ? (entry.translations?.['pt-BR'] || entry.name) : entry.name;
+		$appLocale === 'pt-BR' ? (entry.translations?.['pt-BR'] || entry.name) : entry.name;
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
 	function equipmentCategory(item: { name: string; rules: Record<string, unknown> }) {
 		const category = String(item.rules.category ?? '');
@@ -287,7 +312,7 @@ import {
 		sheet.skillExpertise = next.filter(Boolean);
 		if (value && !sheet.skillProficiencies.includes(value)) sheet.skillProficiencies = [...sheet.skillProficiencies, value];
 	}
-	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) { try { const bonus = skillBonus(name, ability); const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`); const result = event.payload as { dados: number[]; total: number; expressao: string }; $diceOverlay = { expression: `${name} · ${result.expressao}`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: sheet.name || 'Personagem', texto: `Teste de ${name}`, tipo: 'rolagem', canal: 'chat', detalhesRolagem: { ...result, modificador: bonus } }]; } catch { message = `Não foi possível rolar ${name}.`; } }
+	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) { try { const bonus = skillBonus(name, ability); const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`); const result = event.payload as { dados: number[]; total: number; expressao: string }; const label = skillLabel(name); $diceOverlay = { expression: `${label} · ${result.expressao}`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: sheet.name || ($appLocale === 'en' ? 'Character' : 'Personagem'), texto: $appLocale === 'en' ? `${label} check` : `Teste de ${label}`, tipo: 'rolagem', canal: 'chat', detalhesRolagem: { ...result, modificador: bonus } }]; } catch { message = $appLocale === 'en' ? `Could not roll ${skillLabel(name)}.` : `Não foi possível rolar ${name}.`; } }
 	function onLevelChanged() { if (sheet.level > previousLevel) levelChoiceOpen = true; else { previousLevel = sheet.level; syncProgression(); } }
 	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') { const gained = Math.max(0, sheet.level - previousLevel); const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8); let gainedHP = 0; if (choice === 'max') gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution)); if (choice === 'roll') { for (let i = 0; i < gained; i++) { const event = await rollDice(session, campaignId, `1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`); gainedHP += (event.payload as { total:number }).total; } } if (choice !== 'keep') { sheet.hitPointsMax += gainedHP; sheet.hitPointsCurrent += gainedHP; } previousLevel = sheet.level; levelChoiceOpen = false; syncProgression(); }
 	function spendResource(index: number) { sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1); }
@@ -458,64 +483,64 @@ import {
 >
 	<section class="sheet" class:minimized aria-label="Ficha de personagem D&D 2024">
 		<header>
-			<div class="sheet-heading"><h2>{sheet.name || 'Nova ficha'}</h2><div><p>FICHA D&D 2024 · MVP</p>{#if characterOwnerName}<small>Personagem de {characterOwnerName}</small>{/if}</div></div>
-			<div class="sheet-actions">{#if docked}<button onclick={() => minimized = !minimized} aria-label="Minimizar ficha">{minimized ? '▸' : '▾'}</button>{/if}<button onclick={onclose} aria-label="Fechar ficha">×</button></div>
+			<div class="sheet-heading"><h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2><div><p>D&D 2024 · MVP</p>{#if characterOwnerName}<small>{$appLocale === 'en' ? `Character of ${characterOwnerName}` : `Personagem de ${characterOwnerName}`}</small>{/if}</div></div>
+			<div class="sheet-actions">{#if docked}<button onclick={() => minimized = !minimized} aria-label={$appLocale === 'en' ? 'Minimize character sheet' : 'Minimizar ficha'}>{minimized ? '▸' : '▾'}</button>{/if}<button onclick={onclose} aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button></div>
 		</header>
-		{#if !loading && !minimized}<nav class="sheet-tabs" aria-label="Seções da ficha">
-			{#each [['profile', 'Perfil'], ['skills', 'Perícias'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']] as [tab, label]}
+		{#if !loading && !minimized}<nav class="sheet-tabs" aria-label={$appLocale === 'en' ? 'Character sheet sections' : 'Seções da ficha'}>
+			{#each sheetTabs() as [tab, label]}
 				<button class:active={activeTab === tab} onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button>
 			{/each}
 		</nav>{/if}
-		{#if loading}<p class="status">Carregando ficha…</p>{:else if !minimized}
+		{#if loading}<p class="status">{$appLocale === 'en' ? 'Loading character sheet…' : 'Carregando ficha…'}</p>{:else if !minimized}
 			<div class="sheet-body">
 				{#if isNewCharacter}
 					<aside class="onboarding">
-						<strong>Seu personagem começa aqui.</strong>
+						<strong>{$appLocale === 'en' ? 'Your character starts here.' : 'Seu personagem começa aqui.'}</strong>
 						<span
-							>Preencha os dados, salve a ficha e o narrador poderá vinculá-la a um token na mesa.</span
+							>{$appLocale === 'en' ? 'Fill in the details, save the sheet, and the GM can link it to a token on the table.' : 'Preencha os dados, salve a ficha e o narrador poderá vinculá-la a um token na mesa.'}</span
 						>
 					</aside>
 				{/if}
 				{#if activeTab === 'profile'}
-				<section class="portrait-editor" aria-label="Retrato do personagem">
+				<section class="portrait-editor" aria-label={$appLocale === 'en' ? 'Character portrait' : 'Retrato do personagem'}>
 					<div class="portrait-preview">
 						{#if portraitPreview}<img src={portraitPreview} alt={`Retrato de ${sheet.name || 'personagem'}`} />{:else}<span>◈</span>{/if}
 					</div>
 					<div>
-						<h3>Retrato e token</h3>
-						<p>Use uma imagem própria ou crie um retrato por IA. Ao salvar a ficha, o token vinculado recebe a nova imagem.</p>
-						<label class="portrait-upload">{portraitBusy ? 'Processando…' : 'Enviar imagem'}<input type="file" accept="image/jpeg,image/png,image/webp" onchange={uploadPortrait} disabled={portraitBusy}/></label>
-						<div class="portrait-ai"><input bind:value={portraitPrompt} maxlength="600" placeholder="Ex.: elfa drow feiticeira, cabelos brancos, olhos violeta" /><button onclick={() => void generatePortrait()} disabled={portraitBusy || portraitPrompt.trim().length < 3}>{portraitBusy ? 'Gerando…' : 'Gerar com IA'}</button></div>
-						<small>JPG, PNG ou WebP de até 5 MB. O retrato é privado no armazenamento e exibido somente para membros da campanha.</small>
+						<h3>{$appLocale === 'en' ? 'Portrait and token' : 'Retrato e token'}</h3>
+						<p>{$appLocale === 'en' ? 'Use your own image or create an AI portrait. Saving the sheet updates the linked token image.' : 'Use uma imagem própria ou crie um retrato por IA. Ao salvar a ficha, o token vinculado recebe a nova imagem.'}</p>
+						<label class="portrait-upload">{portraitBusy ? ($appLocale === 'en' ? 'Processing…' : 'Processando…') : ($appLocale === 'en' ? 'Upload image' : 'Enviar imagem')}<input type="file" accept="image/jpeg,image/png,image/webp" onchange={uploadPortrait} disabled={portraitBusy}/></label>
+						<div class="portrait-ai"><input bind:value={portraitPrompt} maxlength="600" placeholder={$appLocale === 'en' ? 'E.g. drow sorceress, white hair, violet eyes' : 'Ex.: elfa drow feiticeira, cabelos brancos, olhos violeta'} /><button onclick={() => void generatePortrait()} disabled={portraitBusy || portraitPrompt.trim().length < 3}>{portraitBusy ? ($appLocale === 'en' ? 'Generating…' : 'Gerando…') : ($appLocale === 'en' ? 'Generate with AI' : 'Gerar com IA')}</button></div>
+						<small>{$appLocale === 'en' ? 'JPG, PNG, or WebP up to 5 MB. The portrait is private in storage and visible only to campaign members.' : 'JPG, PNG ou WebP de até 5 MB. O retrato é privado no armazenamento e exibido somente para membros da campanha.'}</small>
 					</div>
 				</section>
 				<section class="identity">
-					<label>Nome<input bind:value={sheet.name} maxlength="120" placeholder="Nome do personagem" /></label>
-					<label>Classe<input bind:value={sheet.class} onchange={onClassChanged} list="class-options" placeholder="Ex.: Guerreiro" /></label>
-					<label>Nível<input type="number" min="1" max="20" bind:value={sheet.level} onchange={onLevelChanged} /></label>
-					{#if subclassOptions().length}<label>Subclasse<select bind:value={sheet.subclass} onchange={syncProgression}><option value="">Escolha no nível 3…</option>{#each subclassOptions() as subclass}<option value={subclass}>{subclass}</option>{/each}</select></label>{/if}
-					<label>Espécie<input bind:value={sheet.species} onchange={onSpeciesChanged} list="species-options" placeholder="Ex.: Humano" /></label>
+					<label>{$appLocale === 'en' ? 'Name' : 'Nome'}<input bind:value={sheet.name} maxlength="120" placeholder={$appLocale === 'en' ? 'Character name' : 'Nome do personagem'} /></label>
+					<label>{$appLocale === 'en' ? 'Class' : 'Classe'}<input bind:value={sheet.class} onchange={onClassChanged} list="class-options" placeholder={$appLocale === 'en' ? 'E.g. Fighter' : 'Ex.: Guerreiro'} /></label>
+					<label>{$appLocale === 'en' ? 'Level' : 'Nível'}<input type="number" min="1" max="20" bind:value={sheet.level} onchange={onLevelChanged} /></label>
+					{#if subclassOptions().length}<label>{$appLocale === 'en' ? 'Subclass' : 'Subclasse'}<select bind:value={sheet.subclass} onchange={syncProgression}><option value="">{$appLocale === 'en' ? 'Choose at level 3…' : 'Escolha no nível 3…'}</option>{#each subclassOptions() as subclass}<option value={subclass}>{subclass}</option>{/each}</select></label>{/if}
+					<label>{$appLocale === 'en' ? 'Species' : 'Espécie'}<input bind:value={sheet.species} onchange={onSpeciesChanged} list="species-options" placeholder={$appLocale === 'en' ? 'E.g. Human' : 'Ex.: Humano'} /></label>
 					{#if lineageOptions().length}
-						<label>Linhagem / legado<select bind:value={sheet.speciesLineage} onchange={onLineageChanged}><option value="">Escolha uma opção…</option>{#each lineageOptions() as lineage}<option value={lineage}>{lineage}</option>{/each}</select></label>
+						<label>{$appLocale === 'en' ? 'Lineage / legacy' : 'Linhagem / legado'}<select bind:value={sheet.speciesLineage} onchange={onLineageChanged}><option value="">{$appLocale === 'en' ? 'Choose an option…' : 'Escolha uma opção…'}</option>{#each lineageOptions() as lineage}<option value={lineage}>{lineage}</option>{/each}</select></label>
 					{/if}
-					<label>Antecedente<input bind:value={sheet.background} list="background-options" /></label>
-					<label>Alinhamento<input bind:value={sheet.alignment} /></label>
+					<label>{$appLocale === 'en' ? 'Background' : 'Antecedente'}<input bind:value={sheet.background} list="background-options" /></label>
+					<label>{$appLocale === 'en' ? 'Alignment' : 'Alinhamento'}<input bind:value={sheet.alignment} /></label>
 					<datalist id="class-options">{#each optionsFor('class') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
 					<datalist id="species-options">{#each optionsFor('species') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
 					<datalist id="background-options">{#each optionsFor('background') as entry (entry.id)}<option value={optionLabel(entry)}>{entry.summary}</option>{/each}</datalist>
 				</section>
 				{#if speciesProfile()}
-					<section class="species-traits" aria-label="Traços de espécie aplicados">
-						<div><h3>{speciesProfile().label}{sheet.speciesLineage ? ` · ${sheet.speciesLineage}` : ''}</h3><span>Deslocamento base aplicado: {speciesSpeed()} m</span></div>
-						<ul>{#each activeSpeciesTraits() as trait}<li>{trait}</li>{/each}</ul>
-						<small>Estes traços são calculados pela espécie e linhagem selecionadas. Ajustes de PV, magias e usos são exibidos aqui para a mesa; preencha os valores atuais de combate e inclua as magias desejadas na ficha.</small>
+					<section class="species-traits" aria-label={$appLocale === 'en' ? 'Applied species traits' : 'Traços de espécie aplicados'}>
+						<div><h3>{speciesProfile().label}{sheet.speciesLineage ? ` · ${sheet.speciesLineage}` : ''}</h3><span>{$appLocale === 'en' ? 'Applied base speed' : 'Deslocamento base aplicado'}: {distance(speciesSpeed(), $appLocale)}</span></div>
+						<ul>{#each activeSpeciesTraits() as trait}<li>{distanceText(trait, $appLocale)}</li>{/each}</ul>
+						<small>{$appLocale === 'en' ? 'These traits are calculated from the selected species and lineage. HP, spells, and uses appear here for the table; complete current combat values and add the desired spells to the sheet.' : 'Estes traços são calculados pela espécie e linhagem selecionadas. Ajustes de PV, magias e usos são exibidos aqui para a mesa; preencha os valores atuais de combate e inclua as magias desejadas na ficha.'}</small>
 					</section>
 				{/if}
 				<section>
-					<h3>Atributos</h3>
+					<h3>{$appLocale === 'en' ? 'Ability scores' : 'Atributos'}</h3>
 					<div class="abilities">
 						{#each attributes as attribute}<label
-								><span>{attribute.label}</span><input
+								><span>{abilityLabel(attribute.key)}</span><input
 									type="number"
 									min="1"
 									max="30"
@@ -529,29 +554,29 @@ import {
 							>{/each}
 					</div>
 				</section>
-				<section class="saving-throws"><h3>Testes de resistência</h3><div>{#each attributes as attribute}<article><label title={`Proficiência em resistência de ${attribute.label}`}><span>{attribute.label}</span><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/></label><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><button onclick={() => void rollSheet(`Resistência de ${attribute.label}`, saveBonus(attribute.key))} aria-label={`Rolar resistência de ${attribute.label}`}>🎲</button></article>{/each}</div></section>
-				<div class="passive-perception"><span>Percepção passiva</span><strong class="derived-value">{passivePerception()}</strong><small>10 + Sabedoria + proficiência em Percepção</small></div>
+				<section class="saving-throws"><h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3><div>{#each attributes as attribute}<article><label title={$appLocale === 'en' ? `${abilityLabel(attribute.key)} saving throw proficiency` : `Proficiência em resistência de ${abilityLabel(attribute.key)}`}><span>{abilityLabel(attribute.key)}</span><input type="checkbox" checked={sheet.savingThrows.includes(attribute.key)} onchange={() => toggleSavingThrow(attribute.key)}/></label><strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong><button onclick={() => void rollSheet($appLocale === 'en' ? `${abilityLabel(attribute.key)} saving throw` : `Resistência de ${abilityLabel(attribute.key)}`, saveBonus(attribute.key))} aria-label={$appLocale === 'en' ? `Roll ${abilityLabel(attribute.key)} saving throw` : `Rolar resistência de ${abilityLabel(attribute.key)}`}>🎲</button></article>{/each}</div></section>
+				<div class="passive-perception"><span>{$appLocale === 'en' ? 'Passive Perception' : 'Percepção passiva'}</span><strong class="derived-value">{passivePerception()}</strong><small>{$appLocale === 'en' ? '10 + Wisdom + Perception proficiency' : '10 + Sabedoria + proficiência em Percepção'}</small></div>
 				{#if derivedFeatures().length}<section class="progression"><h3>Progressão de classe</h3><ul>{#each derivedFeatures() as feature}<li><span>Nível {feature.level}</span>{feature.name}</li>{/each}</ul>{#if expertiseChoices() > 0}<div class="expertise-choices"><strong>Especialização de classe</strong><p>Escolha {expertiseChoices()} perícia{expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.</p><div>{#each Array(expertiseChoices()) as _, index}<label>Especialização {index + 1}<select value={sheet.skillExpertise[index] ?? ''} onchange={(event) => setExpertiseChoice(index, event.currentTarget.value)}><option value="">Escolha uma perícia…</option>{#each skills as [name]}<option value={name}>{name}</option>{/each}</select></label>{/each}</div></div>{/if}</section>{/if}
 				{/if}
 				{#if activeTab === 'combat'}
 				<section class="combat">
-					<h3>Combate</h3>
-					<div class="rest-actions"><button onclick={() => rest('short')}>Descanso curto</button><button onclick={() => rest('long')}>Descanso longo</button></div>
-					<label>CA<input type="number" min="0" max="99" bind:value={sheet.armorClass} oninput={syncTokenSoon} /></label
-					><label>Deslocamento (m)<input type="number" min="0" bind:value={sheet.speed} /></label
-					><label>Proficiência<input type="number" bind:value={sheet.proficiencyBonus} /></label
+					<h3>{$appLocale === 'en' ? 'Combat' : 'Combate'}</h3>
+					<div class="rest-actions"><button onclick={() => rest('short')}>{$appLocale === 'en' ? 'Short rest' : 'Descanso curto'}</button><button onclick={() => rest('long')}>{$appLocale === 'en' ? 'Long rest' : 'Descanso longo'}</button></div>
+					<label>{$appLocale === 'en' ? 'AC' : 'CA'}<input type="number" min="0" max="99" bind:value={sheet.armorClass} oninput={syncTokenSoon} /></label
+					><label>{$appLocale === 'en' ? 'Speed (ft)' : 'Deslocamento (m)'}<input type="number" min="0" value={displayedSpeed()} onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)} /></label
+					><label>{$appLocale === 'en' ? 'Proficiency' : 'Proficiência'}<input type="number" bind:value={sheet.proficiencyBonus} /></label
 					><label
-						>PV atuais<input
+						>{$appLocale === 'en' ? 'Current HP' : 'PV atuais'}<input
 							type="number"
 							min="0"
 							max={sheet.hitPointsMax}
 							bind:value={sheet.hitPointsCurrent}
 							oninput={syncTokenSoon}
 						/></label
-					><label>PV máximos<input type="number" min="1" bind:value={sheet.hitPointsMax} oninput={syncTokenSoon} /></label
+					><label>{$appLocale === 'en' ? 'Maximum HP' : 'PV máximos'}<input type="number" min="1" bind:value={sheet.hitPointsMax} oninput={syncTokenSoon} /></label
 					><label
-						>PV temporários<input type="number" min="0" bind:value={sheet.temporaryHP} /></label
-					><label>Dados de vida<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} disponíveis</small></label>
+						>{$appLocale === 'en' ? 'Temporary HP' : 'PV temporários'}<input type="number" min="0" bind:value={sheet.temporaryHP} /></label
+					><label>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}<input bind:value={sheet.hitDice} /><small>{sheet.level - sheet.hitDiceSpent}/{sheet.level} {$appLocale === 'en' ? 'available' : 'disponíveis'}</small></label>
 				</section>
 				{#if sheet.resources.length}<section class="resources"><h3>Recursos</h3>{#each sheet.resources as resource, index}<div><strong>{resource.name}</strong><span>{resource.current}/{resource.max} · {resource.restoreOn === 'short' ? 'descanso curto' : 'descanso longo'}</span><button onclick={() => spendResource(index)} disabled={resource.current === 0}>Usar</button></div>{/each}</section>{/if}
 				<section class="combat-attacks">
@@ -565,7 +590,7 @@ import {
 				</section>
 				{/if}
 				{#if activeTab === 'skills'}
-				<section class="skills"><div class="section-title"><h3>Perícias</h3><span>Marque as perícias proficientes. Especializações vêm da Progressão de classe.</span></div><div class="skills-grid">{#each skills as [name, ability]}<div class="skill-row"><label title={`Proficiência em ${name}`}><input type="checkbox" checked={sheet.skillProficiencies.includes(name)} onchange={() => toggleSkill(name)}/></label><span>{name}{#if sheet.skillExpertise.includes(name)}<small>especialização</small>{/if}</span><strong>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong><button class="skill-roll" onclick={() => void rollSkill(name, ability)} aria-label={`Rolar ${name}`}>🎲</button></div>{/each}</div></section>
+				<section class="skills"><div class="section-title"><h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3><span>{$appLocale === 'en' ? 'Mark proficient skills. Expertise is granted by class progression.' : 'Marque as perícias proficientes. Especializações vêm da Progressão de classe.'}</span></div><div class="skills-grid">{#each skills as [name, ability]}<div class="skill-row"><label title={$appLocale === 'en' ? `${skillLabel(name)} proficiency` : `Proficiência em ${name}`}><input type="checkbox" checked={sheet.skillProficiencies.includes(name)} onchange={() => toggleSkill(name)}/></label><span>{skillLabel(name)}{#if sheet.skillExpertise.includes(name)}<small>{$appLocale === 'en' ? 'expertise' : 'especialização'}</small>{/if}</span><strong>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong><button class="skill-roll" onclick={() => void rollSkill(name, ability)} aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}>🎲</button></div>{/each}</div></section>
 				{/if}
 				{#if activeTab === 'inventory'}
 				<section class="inventory-section">

@@ -7,8 +7,9 @@ describe('locale unit formatting', () => {
 		expect(distanceText('30 ft., fly 60 ft.', 'pt-BR')).toBe('9,1 m, fly 18,3 m');
 	});
 
-	it('uses feet for English and preserves canonical English text', () => {
+	it('uses feet for English and converts stored metric text for display', () => {
 		expect(distance(9, 'en')).toBe('30 ft');
 		expect(distanceText('30 ft., fly 60 ft.', 'en')).toBe('30 ft., fly 60 ft.');
+		expect(distanceText('Deslocamento 9 m', 'en')).toBe('Deslocamento 30 ft');
 	});
 });
