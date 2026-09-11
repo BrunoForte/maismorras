@@ -329,7 +329,7 @@
 		const radius = Math.floor(fogBrush / 2);
 		const cells: [number, number][] = [];
 		for (let x = centerX - radius; x <= centerX + radius; x++) for (let y = centerY - radius; y <= centerY + radius; y++) cells.push([x, y]);
-		try { await updateFog(session, scene.id, fogMode, cells); sceneSocket?.publishRefresh(); await carregarTokens(); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível pintar a névoa.'; }
+		try { await updateFog(session, scene.id, fogMode, cells); sceneSocket?.publishRefresh(); await carregarTokens(); } catch (error) { persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not update the fog.' : 'Não foi possível pintar a névoa.'); }
 	}
 	function handleMapTap(worldX: number, worldY: number) {
 		if (pingArmed) {
@@ -345,7 +345,7 @@
 		saveAreaArmed = false;
 		try { const created = await createSceneArea(session, scene.id, { ...area, startX: Math.round(area.startX), startY: Math.round(area.startY), endX: Math.round(area.endX), endY: Math.round(area.endY), color: area.shape === 'circle' ? 0x8bc4ff : area.shape === 'cone' ? 0xf0a8e1 : 0xffaa00, label: areaLabel.trim() || 'Área de efeito', visibleToPlayers: areaVisible }); areas = [...areas,created]; motor?.setAreas(areas); sceneSocket?.publishRefresh(); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível salvar a área.'; }
 	}
-	async function removeArea(area: SceneArea) { try { await deleteSceneArea(session,scene.id,area.id); areas=areas.filter((item)=>item.id!==area.id);motor?.setAreas(areas);sceneSocket?.publishRefresh(); } catch(error){persistenceError=error instanceof Error?error.message:'Não foi possível remover a área.';} }
+	async function removeArea(area: SceneArea) { try { await deleteSceneArea(session,scene.id,area.id); areas=areas.filter((item)=>item.id!==area.id);motor?.setAreas(areas);sceneSocket?.publishRefresh(); } catch(error){persistenceError=error instanceof Error?error.message:($appLocale === 'en' ? 'Could not remove the area.' : 'Não foi possível remover a área.');} }
 	async function saveWall(wall: Omit<SceneWall, 'id' | 'kind' | 'open'>) {
 		if (!isGM) return;
 		wallDrawing = false;
@@ -358,11 +358,11 @@
 	}
 	async function removeWall(wall: SceneWall) {
 		try { await deleteSceneWall(session, scene.id, wall.id); walls = walls.filter((item) => item.id !== wall.id); motor?.setWalls(walls); sceneSocket?.publishRefresh(); }
-		catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível remover a parede.'; }
+		catch (error) { persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not remove the wall.' : 'Não foi possível remover a parede.'); }
 	}
 	async function toggleDoor(wall: SceneWall) {
 		try { const updated = await setSceneDoorOpen(session, scene.id, wall.id, !wall.open); walls = walls.map((item) => item.id === updated.id ? updated : item); motor?.setWalls(walls); sceneSocket?.publishRefresh(); }
-		catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível alterar a porta.'; }
+		catch (error) { persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not change the door.' : 'Não foi possível alterar a porta.'); }
 	}
 	function toggleWallDrawing() {
 		wallDrawing = !wallDrawing;
