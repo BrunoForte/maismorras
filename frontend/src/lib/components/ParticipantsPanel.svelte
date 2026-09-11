@@ -3,6 +3,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import { createTokenFromCharacter } from '$lib/services/sceneApi';
+	import { appLocale } from '$lib/stores/locale';
 
 	let {
 		campaignId,
@@ -53,17 +54,17 @@
 		if (event.currentTarget === event.target) onclose();
 	}}
 >
-	<section class="panel" aria-label="Participantes da campanha">
+	<section class="panel" aria-label={$appLocale === 'en' ? 'Campaign participants' : 'Participantes da campanha'}>
 		<header>
 			<div>
-				<p>GESTÃO DA CAMPANHA</p>
-				<h2>Participantes</h2>
+				<p>{$appLocale === 'en' ? 'CAMPAIGN MANAGEMENT' : 'GESTÃO DA CAMPANHA'}</p>
+				<h2>{$appLocale === 'en' ? 'Participants' : 'Participantes'}</h2>
 			</div>
-			<button onclick={onclose} aria-label="Fechar">×</button>
+			<button onclick={onclose} aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}>×</button>
 		</header>
 		<div class="body">
-			{#if loading}<p>Consultando aventureiros…</p>{:else if participants.length === 0}<p>
-					Nenhum participante ainda.
+			{#if loading}<p>{$appLocale === 'en' ? 'Consulting adventurers…' : 'Consultando aventureiros…'}</p>{:else if participants.length === 0}<p>
+					{$appLocale === 'en' ? 'No participants yet.' : 'Nenhum participante ainda.'}
 				</p>{:else}{#each participants as participant (participant.userId)}<article>
 						<div class="avatar">{participant.displayName.slice(0, 1).toUpperCase()}</div>
 						<div class="details">

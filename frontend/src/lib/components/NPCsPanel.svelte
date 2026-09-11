@@ -3,6 +3,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { createNPC, listNPCs, type NPC } from '$lib/services/npcApi';
 	import { request } from '$lib/services/sceneApi';
+	import { appLocale } from '$lib/stores/locale';
 
 	let {
 		campaignId,
@@ -84,10 +85,10 @@
 	role="presentation"
 	onclick={(event) => event.currentTarget === event.target && onclose()}
 >
-	<section class="panel" aria-label="NPCs da campanha">
+	<section class="panel" aria-label={$appLocale === 'en' ? 'Campaign NPCs' : 'NPCs da campanha'}>
 		<header>
 			<div>
-				<p>GESTÃO DA CAMPANHA</p>
+				<p>{$appLocale === 'en' ? 'CAMPAIGN MANAGEMENT' : 'GESTÃO DA CAMPANHA'}</p>
 				<h2>NPCs</h2>
 			</div>
 			<button onclick={onclose} aria-label="Fechar">×</button>
@@ -98,14 +99,14 @@
 				void addNPC();
 			}}
 		>
-			<input bind:value={name} placeholder="Nome do NPC" maxlength="120" aria-label="Nome do NPC" />
+			<input bind:value={name} placeholder={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'} maxlength="120" aria-label={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'} />
 			<label>PV <input bind:value={hp} type="number" min="1" max="9999" /></label>
 			<label>CA <input bind:value={ca} type="number" min="0" max="99" /></label>
-			<button disabled={saving}>{saving ? 'Criando…' : 'Criar NPC'}</button>
+			<button disabled={saving}>{saving ? ($appLocale === 'en' ? 'Creating…' : 'Criando…') : ($appLocale === 'en' ? 'Create NPC' : 'Criar NPC')}</button>
 		</form>
 		<div class="body">
-			{#if loading}<p>Consultando bestiário…</p>{:else if npcs.length === 0}<p>
-					Nenhum NPC criado ainda.
+			{#if loading}<p>{$appLocale === 'en' ? 'Consulting the bestiary…' : 'Consultando bestiário…'}</p>{:else if npcs.length === 0}<p>
+					{$appLocale === 'en' ? 'No NPCs created yet.' : 'Nenhum NPC criado ainda.'}
 				</p>{:else}{#each npcs as npc (npc.id)}<article>
 						<div>
 							<strong>{npc.name}</strong><small

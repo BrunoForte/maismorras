@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
+	import { appLocale } from '$lib/stores/locale';
 	type Note = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let {
 		campaignId,
@@ -64,8 +65,8 @@
 	<section>
 		<header>
 			<div>
-				<p>ARQUIVO DA CAMPANHA</p>
-				<h2>Notas</h2>
+				<p>{$appLocale === 'en' ? 'CAMPAIGN ARCHIVE' : 'ARQUIVO DA CAMPANHA'}</p>
+				<h2>{$appLocale === 'en' ? 'Notes' : 'Notas'}</h2>
 			</div>
 			<button onclick={onclose}>×</button>
 		</header>
@@ -75,20 +76,20 @@
 					void create();
 				}}
 			>
-				<input bind:value={title} maxlength="120" placeholder="Título da nota" /><textarea
+				<input bind:value={title} maxlength="120" placeholder={$appLocale === 'en' ? 'Note title' : 'Título da nota'} /><textarea
 					bind:value={body}
-					placeholder="Pistas, NPCs, preparação…"></textarea>
+					placeholder={$appLocale === 'en' ? 'Clues, NPCs, preparation…' : 'Pistas, NPCs, preparação…'}></textarea>
 				<div>
 					<select bind:value={visibility}
-						><option value="gm">Somente narrador</option><option value="players"
-							>Visível aos jogadores</option
+						><option value="gm">{$appLocale === 'en' ? 'Game Master only' : 'Somente narrador'}</option><option value="players"
+							>{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option
 						></select
-					><button>Salvar nota</button>
+					><button>{$appLocale === 'en' ? 'Save note' : 'Salvar nota'}</button>
 				</div>
 			</form>{/if}
 		<main>
-			{#if loading}<p>Carregando…</p>{:else if notes.length === 0}<p>
-					Nenhuma nota disponível.
+			{#if loading}<p>{$appLocale === 'en' ? 'Loading…' : 'Carregando…'}</p>{:else if notes.length === 0}<p>
+					{$appLocale === 'en' ? 'No notes available.' : 'Nenhuma nota disponível.'}
 				</p>{:else}{#each notes as note (note.id)}<article>
 						<small>{note.visibility === 'gm' ? 'Privada' : 'Compartilhada'}</small>
 						<h3>{note.title}</h3>
