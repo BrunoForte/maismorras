@@ -8,6 +8,7 @@
 	import { getCombat, rollSceneInitiative, rollTokenInitiative, setCombat } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
+	import { appLocale } from '$lib/stores/locale';
 
 	let {
 		campaignId,
@@ -135,37 +136,37 @@
 	}
 </script>
 
-<div class="table-tools" aria-label="Ferramentas da mesa">
+<div class="table-tools" aria-label={$appLocale === 'en' ? 'Table tools' : 'Ferramentas da mesa'}>
 	<div class="tool-group">
-		<button class:active={toolsOpen} onclick={() => (toolsOpen = !toolsOpen)} title="Régua de área"
+		<button class:active={toolsOpen} onclick={() => (toolsOpen = !toolsOpen)} title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}
 			>📏</button
 		><button
 			class:active={initiativeOpen}
 			onclick={() => (initiativeOpen = !initiativeOpen)}
-			title="Iniciativa">⚔️</button
+			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}>⚔️</button
 		><button
 			class:active={diceOpen}
 			onclick={() => (diceOpen = !diceOpen)}
 			disabled={rolling}
-			title="Dados">🎲</button
+			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
 		>
 	</div>
 	{#if toolsOpen}<section class="tool-popover">
-			<strong>Régua de magia</strong><span
-				>Escolha a área e segure <kbd>Shift</kbd> enquanto arrasta no mapa.</span
+			<strong>{$appLocale === 'en' ? 'Spell ruler' : 'Régua de magia'}</strong><span
+				>{$appLocale === 'en' ? 'Choose an area and hold' : 'Escolha a área e segure'} <kbd>Shift</kbd> {$appLocale === 'en' ? 'while dragging on the map.' : 'enquanto arrasta no mapa.'}</span
 			>
 			<div class="mode-buttons">
 				<button class:active={$rulerMode === 'line'} onclick={() => setRulerMode('line')}
-					>Linha</button
+					>{$appLocale === 'en' ? 'Line' : 'Linha'}</button
 				><button class:active={$rulerMode === 'circle'} onclick={() => setRulerMode('circle')}
-					>Círculo</button
+					>{$appLocale === 'en' ? 'Circle' : 'Círculo'}</button
 				><button class:active={$rulerMode === 'cone'} onclick={() => setRulerMode('cone')}
-					>Leque</button
+					>{$appLocale === 'en' ? 'Cone' : 'Leque'}</button
 				>
 			</div>
 		</section>{/if}
 	{#if diceOpen}<section class="dice-popover">
-			<strong>Dados</strong>
+			<strong>{$appLocale === 'en' ? 'Dice' : 'Dados'}</strong>
 			<div class="quick-dice">
 				<button onclick={() => void roll('1d4')}>d4</button><button onclick={() => void roll('1d6')}
 					>d6</button
@@ -175,15 +176,15 @@
 					onclick={() => void roll('1d20')}>d20</button
 				>
 			</div>
-			<small>Use o chat para expressões como <code>/r 2d6+3</code>.</small>
+			<small>{$appLocale === 'en' ? 'Use chat for expressions such as' : 'Use o chat para expressões como'} <code>/r 2d6+3</code>.</small>
 		</section>{/if}
 	{#if initiativeOpen}<section class="initiative-popover">
 			<header>
-				<div><span>COMBATE</span><strong>Iniciativa</strong></div>
-				{#if isGM}<div class="combat-actions"><button onclick={() => void rollAllInitiative()} disabled={rollingInitiative}>{rollingInitiative ? 'Rolando…' : 'Rolar todos'}</button><button onclick={() => void nextTurn()}>{activeTokenId ? 'Próximo turno →' : 'Iniciar combate'}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>Encerrar</button>{/if}</div>{/if}
+				<div><span>{$appLocale === 'en' ? 'COMBAT' : 'COMBATE'}</span><strong>{$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}</strong></div>
+				{#if isGM}<div class="combat-actions"><button onclick={() => void rollAllInitiative()} disabled={rollingInitiative}>{rollingInitiative ? ($appLocale === 'en' ? 'Rolling…' : 'Rolando…') : ($appLocale === 'en' ? 'Roll all' : 'Rolar todos')}</button><button onclick={() => void nextTurn()}>{activeTokenId ? ($appLocale === 'en' ? 'Next turn →' : 'Próximo turno →') : ($appLocale === 'en' ? 'Start combat' : 'Iniciar combate')}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>{$appLocale === 'en' ? 'End' : 'Encerrar'}</button>{/if}</div>{/if}
 			</header>
 			{#if combatants.length === 0}<p>
-					Nenhum token nesta cena.
+					{$appLocale === 'en' ? 'No tokens in this scene.' : 'Nenhum token nesta cena.'}
 				</p>{:else}{#each combatants as token (token.id)}<article
 						class:turn={token.persistedId === activeTokenId}
 					>

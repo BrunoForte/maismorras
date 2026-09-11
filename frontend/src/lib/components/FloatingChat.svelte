@@ -5,6 +5,7 @@
 	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import { appLocale } from '$lib/stores/locale';
 
 	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } = $props();
 	let open = $state(true);
@@ -74,26 +75,26 @@
 	}
 </script>
 
-<aside class:closed={!open} class="floating-chat" aria-label="Chat da mesa">
+<aside class:closed={!open} class="floating-chat" aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}>
 	<button class="chat-toggle" onclick={() => (open = !open)} aria-expanded={open}>
-		<span>◌</span>{open ? 'Chat da mesa' : 'Abrir chat'}
+		<span>◌</span>{open ? ($appLocale === 'en' ? 'Table chat' : 'Chat da mesa') : ($appLocale === 'en' ? 'Open chat' : 'Abrir chat')}
 	</button>
 	{#if open}
 		<div class="chat-body">
-			<nav class="channel-tabs" aria-label="Canais do chat">
-				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}>Todos</button>
+			<nav class="channel-tabs" aria-label={$appLocale === 'en' ? 'Chat channels' : 'Canais do chat'}>
+				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}>{$appLocale === 'en' ? 'All' : 'Todos'}</button>
 				<button class:active={channel === 'chat'} onclick={() => (channel = 'chat')}>Chat</button>
-				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}>Combate</button>
-				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}>Info</button>
+				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}>{$appLocale === 'en' ? 'Combat' : 'Combate'}</button>
+				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}>{$appLocale === 'en' ? 'Info' : 'Info'}</button>
 			</nav>
 			<div class="messages" aria-live="polite">
 				{#if visibleMessages.length === 0}<p class="empty">
-						{channel === 'combat' ? 'Ainda não há eventos de combate.' : channel === 'info' ? 'Ainda não há informações do sistema.' : 'Converse com o grupo ou use /r 1d20+2.'}
+						{channel === 'combat' ? ($appLocale === 'en' ? 'There are no combat events yet.' : 'Ainda não há eventos de combate.') : channel === 'info' ? ($appLocale === 'en' ? 'There is no system information yet.' : 'Ainda não há informações do sistema.') : ($appLocale === 'en' ? 'Talk to the group or use /r 1d20+2.' : 'Converse com o grupo ou use /r 1d20+2.')}
 					</p>{/if}
 				{#each visibleMessages as message (message.id)}
 					<article class:combat={message.canal === 'combat'} class:info={message.canal === 'info'}>
 						<strong>{message.autor}</strong>
-						{#if message.tipo === 'texto'}<span>{message.texto}</span>{#if message.texto.length > 80}<button class="expand" onclick={() => expanded = { author: message.autor, text: message.texto }}>Ler em destaque</button>{/if}
+						{#if message.tipo === 'texto'}<span>{message.texto}</span>{#if message.texto.length > 80}<button class="expand" onclick={() => expanded = { author: message.autor, text: message.texto }}>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button>{/if}
 						{:else if message.detalhesRolagem}<div class="roll">
 								<small>{message.detalhesRolagem.expressao}</small><b
 									>{message.detalhesRolagem.total}</b
@@ -106,14 +107,14 @@
 				<input
 					name="message"
 					autocomplete="off"
-					placeholder="Mensagem ou /r 1d20+2"
+							placeholder={$appLocale === 'en' ? 'Message or /r 1d20+2' : 'Mensagem ou /r 1d20+2'}
 					disabled={sending}
 				/><button disabled={sending}>↑</button>
 			</form>
 		</div>
 	{/if}
 </aside>
-{#if expanded}<div class="reading-backdrop" role="presentation" onclick={(event) => event.currentTarget === event.target && (expanded = null)}><section><button aria-label="Fechar" onclick={() => expanded = null}>×</button><small>{expanded.author}</small><p>{expanded.text}</p></section></div>{/if}
+{#if expanded}<div class="reading-backdrop" role="presentation" onclick={(event) => event.currentTarget === event.target && (expanded = null)}><section><button aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'} onclick={() => expanded = null}>×</button><small>{expanded.author}</small><p>{expanded.text}</p></section></div>{/if}
 
 <style>
 	.floating-chat {

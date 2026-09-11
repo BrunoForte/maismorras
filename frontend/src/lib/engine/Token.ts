@@ -1,6 +1,8 @@
 // src/lib/engine/Token.ts
 import * as PIXI from 'pixi.js';
+import { get } from 'svelte/store';
 import type { Personagem } from '$lib/stores/gameStore';
+import { appLocale, distance } from '$lib/stores/locale';
 
 export class Token {
 	public containerPrincipal: PIXI.Container;
@@ -253,7 +255,7 @@ export class Token {
 					this.textoRegua.visible = true;
 					this.textoRegua.x = this.startX + dx / 2;
 					this.textoRegua.y = this.startY + dy / 2 - 15;
-					this.textoRegua.text = `${metros.toFixed(1)}m`;
+					this.textoRegua.text = distance(metros, get(appLocale));
 				} else {
 					this.linhaRegua.clear();
 					this.textoRegua.visible = false;

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
+	import { appLocale } from '$lib/stores/locale';
 	let {
 		campaignId,
 		session,
@@ -104,31 +105,31 @@
 	}
 </script>
 
-<section class="library-view" aria-label="Biblioteca da campanha">
+<section class="library-view" aria-label={$appLocale === 'en' ? 'Campaign library' : 'Biblioteca da campanha'}>
 	<header>
 		<div>
-			<p>BIBLIOTECA DA CAMPANHA</p>
-			<h2>Handouts e mídias</h2>
-			<span>Imagens, mapas, documentos e trilhas desta mesa.</span>
+			<p>{$appLocale === 'en' ? 'CAMPAIGN LIBRARY' : 'BIBLIOTECA DA CAMPANHA'}</p>
+			<h2>{$appLocale === 'en' ? 'Handouts and media' : 'Handouts e mídias'}</h2>
+			<span>{$appLocale === 'en' ? 'Images, maps, documents, and music for this table.' : 'Imagens, mapas, documentos e trilhas desta mesa.'}</span>
 		</div>
 		{#if isGM}<div class="actions">
 				<label
-					>{uploading ? 'Enviando…' : 'Adicionar mídia'}<input
+					>{uploading ? ($appLocale === 'en' ? 'Uploading…' : 'Enviando…') : ($appLocale === 'en' ? 'Add media' : 'Adicionar mídia')}<input
 						type="file"
 						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav"
 						onchange={upload}
 						disabled={uploading}
 					/></label
-				><button onclick={() => (handoutOpen = !handoutOpen)}>Novo handout</button><button onclick={onnotes}>Notas internas</button>
+				><button onclick={() => (handoutOpen = !handoutOpen)}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button><button onclick={onnotes}>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button>
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
 	{#if handoutOpen && isGM}<form class="handout-form" onsubmit={(event) => { event.preventDefault(); void saveHandout(); }}>
-		<input bind:value={handoutTitle} maxlength="120" placeholder="Título do handout" />
-		<textarea bind:value={handoutBody} maxlength="32000" placeholder="Texto, links e orientações para a mesa"></textarea>
-		<div><select bind:value={handoutVisibility}><option value="players">Visível aos jogadores</option><option value="gm">Somente narrador</option></select><button disabled={savingHandout}>{savingHandout ? 'Salvando…' : 'Salvar handout'}</button></div>
+		<input bind:value={handoutTitle} maxlength="120" placeholder={$appLocale === 'en' ? 'Handout title' : 'Título do handout'} />
+		<textarea bind:value={handoutBody} maxlength="32000" placeholder={$appLocale === 'en' ? 'Text, links, and guidance for the table' : 'Texto, links e orientações para a mesa'}></textarea>
+		<div><select bind:value={handoutVisibility}><option value="players">{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option><option value="gm">{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</option></select><button disabled={savingHandout}>{savingHandout ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Save handout' : 'Salvar handout')}</button></div>
 	</form>{/if}
-	<section class="handouts" aria-label="Handouts da campanha"><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? 'Compartilhado' : 'Privado'}</small><h4>{handout.title}</h4><p>{handout.body || 'Sem texto.'}</p></article>{/each}</div>{:else}<p class="empty-handouts">Nenhum handout salvo nesta campanha.</p>{/if}</section>
+	<section class="handouts" aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? ($appLocale === 'en' ? 'Shared' : 'Compartilhado') : ($appLocale === 'en' ? 'Private' : 'Privado')}</small><h4>{handout.title}</h4><p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p></article>{/each}</div>{:else}<p class="empty-handouts">{$appLocale === 'en' ? 'No handouts have been saved for this campaign.' : 'Nenhum handout salvo nesta campanha.'}</p>{/if}</section>
 	{#if assets.length}<section class="asset-grid">
 			{#each assets as asset (asset.url)}<article>
 					{#if asset.type === 'image'}<button class="asset-image" onclick={() => (preview = asset)}
@@ -137,8 +138,8 @@
 						></audio>{/if}<small>{asset.name}</small>
 				</article>{/each}
 		</section>{:else}<div class="empty">
-			<strong>{isGM ? 'Adicione a primeira mídia.' : 'A biblioteca ainda está vazia.'}</strong><span
-				>Handouts e trilhas desta campanha aparecerão aqui.</span
+			<strong>{isGM ? ($appLocale === 'en' ? 'Add the first media item.' : 'Adicione a primeira mídia.') : ($appLocale === 'en' ? 'The library is still empty.' : 'A biblioteca ainda está vazia.')}</strong><span
+				>{$appLocale === 'en' ? 'Handouts and music for this campaign will appear here.' : 'Handouts e trilhas desta campanha aparecerão aqui.'}</span
 			>
 		</div>{/if}
 </section>
@@ -150,7 +151,7 @@
 		}}
 	>
 		<section>
-			<button onclick={() => (preview = null)} aria-label="Fechar imagem">×</button><img
+			<button onclick={() => (preview = null)} aria-label={$appLocale === 'en' ? 'Close image' : 'Fechar imagem'}>×</button><img
 				src={preview.url}
 				alt={preview.name}
 			/>

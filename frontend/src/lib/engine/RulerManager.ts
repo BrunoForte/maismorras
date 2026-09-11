@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
-import type { Unsubscriber } from 'svelte/store';
+import { get, type Unsubscriber } from 'svelte/store';
+import { appLocale, distance } from '$lib/stores/locale';
 export type MeasuredArea = { shape: RulerMode; startX: number; startY: number; endX: number; endY: number };
 
 export class RulerManager {
@@ -115,7 +116,9 @@ export class RulerManager {
 			// Posiciona o texto exatamente no meio da linha
 			this.texto.x = this.startX + dx / 2;
 			this.texto.y = this.startY + dy / 2 - 15; // -15px para ficar um pouco acima da linha
-			this.texto.text = `${metros.toFixed(1)}m · ${this.mode === 'line' ? 'linha' : this.mode === 'circle' ? 'raio' : 'cone 60°'}`;
+			const locale = get(appLocale);
+			const shape = this.mode === 'line' ? (locale === 'en' ? 'line' : 'linha') : this.mode === 'circle' ? (locale === 'en' ? 'radius' : 'raio') : 'cone 60°';
+			this.texto.text = `${distance(metros, locale)} · ${shape}`;
 		});
 
 		// SOLTANDO O CLIQUE
