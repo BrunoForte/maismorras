@@ -155,7 +155,7 @@
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
-				error instanceof Error ? error.message : 'Não foi possível salvar o token.';
+				error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the token.' : 'Não foi possível salvar o token.');
 		}
 	}
 	async function persistirMovimentoDoJogador(personagem: Personagem, x: number, y: number) {
@@ -165,7 +165,7 @@
 			sceneSocket?.publishRefresh();
 			persistenceError = '';
 		} catch (error) {
-			persistenceError = error instanceof Error ? error.message : 'Não foi possível mover o token.';
+		persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not move the token.' : 'Não foi possível mover o token.');
 			await carregarTokens();
 		}
 	}
@@ -190,7 +190,7 @@
 			persistenceError = '';
 			sceneSocket?.publishRefresh();
 		} catch (error) {
-			persistenceError = error instanceof Error ? error.message : 'Não foi possível remover o token.';
+			persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not remove the token.' : 'Não foi possível remover o token.');
 		}
 	}
 
@@ -310,7 +310,7 @@
 			persistenceError = '';
 			sceneSocket?.publishRefresh();
 		} catch (error) {
-			persistenceError = error instanceof Error ? error.message : 'Não foi possível remover a condição.';
+			persistenceError = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not remove the condition.' : 'Não foi possível remover a condição.');
 		}
 	}
 
