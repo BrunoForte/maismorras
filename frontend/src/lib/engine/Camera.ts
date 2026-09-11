@@ -6,6 +6,11 @@ export class Camera {
 	private arrastandoCamera = false;
 	private posicaoInicialCamera = { x: 0, y: 0 };
 	private pinchDistance = 0;
+	private readonly onKeyDown = (e: KeyboardEvent) => {
+		if (e.key === '+' || e.key === '=') { e.preventDefault(); this.zoomBy(0.1); }
+		else if (e.key === '-' || e.key === '_') { e.preventDefault(); this.zoomBy(-0.1); }
+		else if (e.key === '0' || e.key === 'Home') { e.preventDefault(); this.resetView(); }
+	};
 	private readonly onWheel = (e: WheelEvent) => {
 		e.preventDefault();
 		const direcao = e.deltaY < 0 ? 1 : -1;
@@ -33,6 +38,7 @@ export class Camera {
 		this.app.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
 		this.app.canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
 		this.app.canvas.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
+		this.app.canvas.addEventListener('keydown', this.onKeyDown);
 
 		this.fundoInterativo.eventMode = 'static';
 		this.fundoInterativo.on('pointerdown', (e) => {
@@ -106,6 +112,7 @@ export class Camera {
 		this.app.canvas.removeEventListener('touchmove', this.onTouchMove);
 		this.app.canvas.removeEventListener('touchend', this.onTouchEnd);
 		this.app.canvas.removeEventListener('touchcancel', this.onTouchEnd);
+		this.app.canvas.removeEventListener('keydown', this.onKeyDown);
 		this.fundoInterativo.removeAllListeners();
 		this.app.stage.removeAllListeners();
 	}

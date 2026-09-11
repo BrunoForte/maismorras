@@ -381,6 +381,7 @@
 	}
 	function persistirVisaoDaCamera() {
 		if (!motor?.camera) return;
+		cameraZoom = motor.camera.zoom;
 		try { sessionStorage.setItem(`maismorras:camera:${scene.id}`, JSON.stringify(motor.camera.view)); } catch { /* storage may be unavailable in private mode */ }
 	}
 
@@ -552,7 +553,7 @@
 </script>
 
 <div class="borda-mesa" bind:this={container}>
-	<canvas bind:this={canvasMesa}></canvas>
+	<canvas bind:this={canvasMesa} tabindex="0" aria-label={$appLocale === 'en' ? 'Interactive game map. Focus it to use keyboard shortcuts.' : 'Mapa interativo da mesa. Foque nele para usar atalhos do teclado.'}></canvas>
 	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => ambientPlaying = true}></audio><audio bind:this={ambientAudioB} loop></audio><div class="ambient-audio"><button onclick={() => void toggleTrilha()}>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button><span>{scene.ambientAudioVolume}%</span></div>{/if}
 	<div class="ping-tool"><button class:active={pingArmed} onclick={() => pingArmed = !pingArmed}>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button></div>
 	<div class="camera-tools" aria-label={$appLocale === 'en' ? 'Map camera' : 'Câmera do mapa'}>
