@@ -83,7 +83,7 @@
 		<div class="chat-body">
 			<nav class="channel-tabs" aria-label={$appLocale === 'en' ? 'Chat channels' : 'Canais do chat'}>
 				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}>{$appLocale === 'en' ? 'All' : 'Todos'}</button>
-				<button class:active={channel === 'chat'} onclick={() => (channel = 'chat')}>Chat</button>
+				<button class:active={channel === 'chat'} onclick={() => (channel = 'chat')} aria-label={$appLocale === 'en' ? 'Chat channel' : 'Canal de chat'}>Chat</button>
 				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}>{$appLocale === 'en' ? 'Combat' : 'Combate'}</button>
 				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}>{$appLocale === 'en' ? 'Info' : 'Info'}</button>
 			</nav>
@@ -109,7 +109,7 @@
 					autocomplete="off"
 							placeholder={$appLocale === 'en' ? 'Message or /r 1d20+2' : 'Mensagem ou /r 1d20+2'}
 					disabled={sending}
-				/><button disabled={sending}>↑</button>
+				/><button disabled={sending} aria-label={$appLocale === 'en' ? 'Send message' : 'Enviar mensagem'}>↑</button>
 			</form>
 		</div>
 	{/if}
