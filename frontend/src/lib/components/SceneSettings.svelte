@@ -129,8 +129,8 @@
 				>
 			</div>
 			<label
-				>Trilha da cena<select bind:value={draft.ambientAudioPath}
-					><option value="">Sem trilha</option>{#each audioFiles as audio (audio.path)}<option
+				>{$appLocale === 'en' ? 'Scene soundtrack' : 'Trilha da cena'}<select bind:value={draft.ambientAudioPath}
+					><option value="">{$appLocale === 'en' ? 'No soundtrack' : 'Sem trilha'}</option>{#each audioFiles as audio (audio.path)}<option
 							value={audio.path}>{audio.name}</option
 						>{/each}</select
 				></label
@@ -160,26 +160,25 @@
 					><option value={false}>{$appLocale === 'en' ? 'Disabled' : 'Desativada'}</option><option value={true}>{$appLocale === 'en' ? 'Enabled' : 'Ativada'}</option></select
 				></label
 			><label
-				>Modo de visão<select bind:value={draft.visionMode}
-					><option value="manual">Manual</option><option value="shared">Compartilhada</option
-					><option value="token">Por token</option></select
+				>{$appLocale === 'en' ? 'Vision mode' : 'Modo de visão'}<select bind:value={draft.visionMode}
+					><option value="manual">Manual</option><option value="shared">{$appLocale === 'en' ? 'Shared' : 'Compartilhada'}</option
+					><option value="token">{$appLocale === 'en' ? 'By token' : 'Por token'}</option></select
 				></label
 			><label class="toggle"
-				><input type="checkbox" bind:checked={draft.allowPlayerMovement} /> Jogadores podem mover apenas
-				seus próprios tokens</label
+				><input type="checkbox" bind:checked={draft.allowPlayerMovement} /> {$appLocale === 'en' ? 'Players can move only their own tokens' : 'Jogadores podem mover apenas seus próprios tokens'}</label
 			><label class="toggle"
-				><input type="checkbox" bind:checked={draft.allowPlayerDoorInteraction} /> Jogadores podem interagir
-				com portas próximas</label
+				><input type="checkbox" bind:checked={draft.allowPlayerDoorInteraction} /> {$appLocale === 'en' ? 'Players can interact with nearby doors' : 'Jogadores podem interagir com portas próximas'}</label
 			>
 			<p>
-				Envie imagens e áudios na Biblioteca. Mídias privadas recebem uma URL temporária no
-				navegador, sem expor o bucket publicamente.
+				{$appLocale === 'en'
+					? 'Upload images and audio in the Library. Private media gets a temporary browser URL without exposing the bucket publicly.'
+					: 'Envie imagens e áudios na Biblioteca. Mídias privadas recebem uma URL temporária no navegador, sem expor o bucket publicamente.'}
 			</p>
 			{#if message}<small>{message}</small>{/if}
 			<footer>
-				<button type="button" onclick={onclose}>Cancelar</button><button
+				<button type="button" onclick={onclose}>{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}</button><button
 					class="primary"
-					disabled={saving}>{saving ? 'Salvando…' : 'Salvar cena'}</button
+					disabled={saving}>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Save scene' : 'Salvar cena')}</button
 				>
 			</footer>
 		</form>
