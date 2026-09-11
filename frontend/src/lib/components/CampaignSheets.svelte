@@ -6,6 +6,7 @@
 		listParticipants,
 		type Participant
 	} from '$lib/services/characterApi';
+	import { appLocale } from '$lib/stores/locale';
 
 	let {
 		campaignId,
@@ -34,7 +35,7 @@
 		try {
 			participants = (await listParticipants(session, campaignId)).participants;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível carregar as fichas.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load character sheets.' : 'Não foi possível carregar as fichas.');
 		} finally {
 			loading = false;
 		}
@@ -46,38 +47,38 @@
 			const character = await createCharacterForGM(session, campaignId, participant.userId);
 			onopencharacter(character.id, participant.displayName);
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível criar a ficha.';
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not create the character sheet.' : 'Não foi possível criar a ficha.');
 		} finally {
 			creatingFor = null;
 		}
 	}
 </script>
 
-<section class="sheets-view" aria-label="Fichas da campanha">
+<section class="sheets-view" aria-label={$appLocale === 'en' ? 'Campaign character sheets' : 'Fichas da campanha'}>
 	<header class="view-heading">
 		<div>
-			<p>PERSONAGENS DA MESA</p>
-			<h2>{isGM ? 'Elenco e fichas' : 'Sua ficha'}</h2>
+			<p>{$appLocale === 'en' ? 'TABLE CHARACTERS' : 'PERSONAGENS DA MESA'}</p>
+			<h2>{isGM ? ($appLocale === 'en' ? 'Cast and sheets' : 'Elenco e fichas') : ($appLocale === 'en' ? 'Your sheet' : 'Sua ficha')}</h2>
 			<span
 				>{isGM
-					? 'Abra e edite qualquer ficha vinculada a esta campanha.'
-					: 'Sua ficha pertence a você e acompanha esta campanha.'}</span
+					? ($appLocale === 'en' ? 'Open and edit any sheet linked to this campaign.' : 'Abra e edite qualquer ficha vinculada a esta campanha.')
+					: ($appLocale === 'en' ? 'Your sheet belongs to you and follows this campaign.' : 'Sua ficha pertence a você e acompanha esta campanha.')}</span
 			>
 		</div>
-		{#if !isGM}<button class="primary" onclick={onopenmine}>Abrir minha ficha</button>{/if}
+		{#if !isGM}<button class="primary" onclick={onopenmine}>{$appLocale === 'en' ? 'Open my sheet' : 'Abrir minha ficha'}</button>{/if}
 	</header>
 
 	{#if !isGM}
 		<div class="player-sheet-card">
 			<div class="sheet-icon">◇</div>
 			<div>
-				<strong>Ficha de personagem D&D 2024</strong><span
-					>Crie, consulte e atualize os detalhes do seu aventureiro.</span
+				<strong>{$appLocale === 'en' ? 'D&D 2024 character sheet' : 'Ficha de personagem D&D 2024'}</strong><span
+					>{$appLocale === 'en' ? 'Create, review, and update your adventurer details.' : 'Crie, consulte e atualize os detalhes do seu aventureiro.'}</span
 				>
 			</div>
-			<button onclick={onopenmine}>Abrir ficha →</button>
+			<button onclick={onopenmine}>{$appLocale === 'en' ? 'Open sheet' : 'Abrir ficha'} →</button>
 		</div>
-	{:else if loading}<p class="status">Carregando o elenco da campanha…</p>
+	{:else if loading}<p class="status">{$appLocale === 'en' ? 'Loading the campaign cast…' : 'Carregando o elenco da campanha…'}</p>
 	{:else if message}<p class="status error">{message}</p>
 	{:else}
 		<div class="sheet-grid">
@@ -87,26 +88,26 @@
 					<div class="details">
 						<span class="owner"
 							>{participant.displayName} · {participant.role === 'gm'
-								? 'Narrador'
-								: 'Jogador'}</span
+								? ($appLocale === 'en' ? 'Game Master' : 'Narrador')
+								: ($appLocale === 'en' ? 'Player' : 'Jogador')}</span
 						>
 						<strong>{participant.character?.sheet.name ?? 'Ficha ainda não criada'}</strong>
 						<small
 							>{participant.character
-								? `${participant.character.sheet.class || 'Sem classe'} · nível ${participant.character.sheet.level}`
-								: 'O jogador poderá criá-la pela própria aba Fichas.'}</small
+								? `${participant.character.sheet.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · ${$appLocale === 'en' ? 'level' : 'nível'} ${participant.character.sheet.level}`
+								: ($appLocale === 'en' ? 'The player can create it from the Sheets tab.' : 'O jogador poderá criá-la pela própria aba Fichas.')}</small
 						>
 					</div>
 					{#if participant.character}
 						<button
 							onclick={() => onopencharacter(participant.character!.id, participant.displayName)}
-							>Abrir e editar</button
+							>{$appLocale === 'en' ? 'Open and edit' : 'Abrir e editar'}</button
 						>
 					{:else}<button
 							class="create"
 							onclick={() => void createSheet(participant)}
 							disabled={creatingFor === participant.userId}
-							>{creatingFor === participant.userId ? 'Criando…' : 'Criar ficha'}</button
+							>{creatingFor === participant.userId ? ($appLocale === 'en' ? 'Creating…' : 'Criando…') : ($appLocale === 'en' ? 'Create sheet' : 'Criar ficha')}</button
 						>{/if}
 				</article>
 			{/each}
