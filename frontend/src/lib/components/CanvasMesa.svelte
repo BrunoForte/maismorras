@@ -600,7 +600,7 @@
 							<input bind:value={duracaoEfeito} inputmode="numeric" type="number" min="1" placeholder="Turnos (opcional)" aria-label="Duração em turnos" />
 							<button onclick={aplicarCondicaoOficial}>{$appLocale === 'en' ? 'Apply' : 'Aplicar'}</button>
 						</div>
-					{:else}<p class="effect-empty">Execute a migração 0017 para carregar o catálogo SRD.</p>{/if}
+					{:else}<p class="effect-empty">{$appLocale === 'en' ? 'Run migration 0017 to load the SRD catalog.' : 'Execute a migração 0017 para carregar o catálogo SRD.'}</p>{/if}
 					{#if efeitosDoToken.length}
 						<div class="official-effect-list">
 							{#each efeitosDoToken as effect}<span title={effect.source}>{effect.name}{effect.remainingTurns ? ` · ${effect.remainingTurns} turnos` : ''}{#if isGM}<button onclick={() => void removerEfeito(effect)} aria-label={`Remover ${effect.name}`}>×</button>{/if}</span>{/each}
@@ -611,9 +611,9 @@
 			{#if isGM}
 				<div class="visibility-control">
 					<div>
-						<span class="inspector-eyebrow">VISIBILIDADE PARA OUTROS JOGADORES</span>
+						<span class="inspector-eyebrow">{$appLocale === 'en' ? 'VISIBILITY FOR OTHER PLAYERS' : 'VISIBILIDADE PARA OUTROS JOGADORES'}</span>
 						<p>
-							O narrador sempre vê os dados completos. Estas opções regulam os outros jogadores.
+							{$appLocale === 'en' ? 'The Game Master always sees complete data. These options control what other players see.' : 'O narrador sempre vê os dados completos. Estas opções regulam os outros jogadores.'}
 						</p>
 					</div>
 					<label
@@ -621,7 +621,7 @@
 							type="checkbox"
 							checked={personagemSelecionado.visibility.showName}
 							onchange={(event) => alterarVisibilidade('showName', event.currentTarget.checked)}
-						/> Nome</label
+						/> {$appLocale === 'en' ? 'Name' : 'Nome'}</label
 					>
 					<label
 						><input
@@ -635,14 +635,14 @@
 							type="checkbox"
 							checked={personagemSelecionado.visibility.showAC}
 							onchange={(event) => alterarVisibilidade('showAC', event.currentTarget.checked)}
-						/> CA</label
+						/> {$appLocale === 'en' ? 'AC' : 'CA'}</label
 					>
 					<label
 						><input
 							type="checkbox"
 							checked={personagemSelecionado.visibility.showStatuses}
 							onchange={(event) => alterarVisibilidade('showStatuses', event.currentTarget.checked)}
-						/> Condições</label
+						/> {$appLocale === 'en' ? 'Conditions' : 'Condições'}</label
 					>
 				</div>
 			{/if}
