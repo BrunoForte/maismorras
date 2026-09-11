@@ -558,21 +558,21 @@
 			{#if !isGM && personagemSelecionado.isOwned && scene.allowPlayerDoorInteraction}<button class="door-interaction" onclick={() => void interagirComPorta()}>🚪 {$appLocale === 'en' ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button>{/if}
 			{#if personagemSelecionado.actorId && (isGM || personagemSelecionado.isOwned)}<button class="open-sheet" onclick={() => onopensheet(personagemSelecionado.actorId!)}>{$appLocale === 'en' ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button>{/if}
 			{#if isGM && personagemSelecionado.persistedId}<button class="remove-token" onclick={() => void removerTokenSelecionado()}>{$appLocale === 'en' ? 'Remove token from scene' : 'Remover token da cena'}</button>{/if}
-			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>Rolagem do token</span><button onclick={() => void rollSelectedInitiative()}>⚔️ Rolar iniciativa</button></div>{/if}
+			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls"><span>{$appLocale === 'en' ? 'Token rolls' : 'Rolagem do token'}</span><button onclick={() => void rollSelectedInitiative()}>⚔️ {$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}</button></div>{/if}
 			{#if isGM && npcSelecionado?.sheet.actions.length}
 				<div class="npc-actions">
-					<span>Ações da criatura</span>
+					<span>{$appLocale === 'en' ? 'Creature actions' : 'Ações da criatura'}</span>
 					{#each npcSelecionado.sheet.actions as action (action.name)}
 						<button onclick={() => void rolarAcaoDeNPC(action)} title={action.description || action.damage}>
 							<strong>{action.name}</strong>
-							<small>{action.toHit >= 0 ? `+${action.toHit}` : action.toHit} · {action.damage || action.range || 'Ação'}</small>
+							<small>{action.toHit >= 0 ? `+${action.toHit}` : action.toHit} · {action.damage || action.range || ($appLocale === 'en' ? 'Action' : 'Ação')}</small>
 						</button>
 					{/each}
 				</div>
 			{/if}
 			<div class="hp-control">
 				<div>
-					<span>Pontos de vida</span><strong
+					<span>{$appLocale === 'en' ? 'Hit points' : 'Pontos de vida'}</span><strong
 						>{personagemSelecionado.hpAtual} <small>/ {personagemSelecionado.hpMax}</small></strong
 					>
 				</div>
@@ -590,7 +590,7 @@
 			</div>
 			{#if isGM}
 				<div class="official-effects">
-					<div class="status-heading"><span>Condições oficiais (SRD)</span></div>
+					<div class="status-heading"><span>{$appLocale === 'en' ? 'Official conditions (SRD)' : 'Condições oficiais (SRD)'}</span></div>
 					{#if definicoesDeEfeito.length}
 						<select bind:value={definicaoSelecionada} aria-label="Condição oficial">
 							{#each definicoesDeEfeito as definition}<option value={definition.slug}>{definition.name}</option>{/each}
@@ -598,7 +598,7 @@
 						{#if efeitoSelecionado}<p>{efeitoSelecionado.summary}</p>{/if}
 						<div class="effect-actions">
 							<input bind:value={duracaoEfeito} inputmode="numeric" type="number" min="1" placeholder="Turnos (opcional)" aria-label="Duração em turnos" />
-							<button onclick={aplicarCondicaoOficial}>Aplicar</button>
+							<button onclick={aplicarCondicaoOficial}>{$appLocale === 'en' ? 'Apply' : 'Aplicar'}</button>
 						</div>
 					{:else}<p class="effect-empty">Execute a migração 0017 para carregar o catálogo SRD.</p>{/if}
 					{#if efeitosDoToken.length}
