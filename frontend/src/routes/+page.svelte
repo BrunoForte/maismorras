@@ -353,6 +353,10 @@
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
 					{#if activeScene}{#key `${activeScene.id}:${sceneRevision}`}
+							<div class="scene-board-heading" aria-label="Cena atual">
+								<span>Cena</span><strong>{activeScene.name}</strong>
+							</div>
+							<div class="scene-board">
 							<CanvasMesa scene={activeScene} {session} isGM={activeCampaign.role === 'gm'} onopensheet={(actorId) => activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()} />
 							<DiceOverlay />
 							<TableTools
@@ -363,6 +367,7 @@
 							/>
 							<FloatingChat campaignId={activeCampaign.id} sceneId={activeScene.id} {session} />
 							{#if activeCampaign.role === 'gm'}<ActorDrawer campaignId={activeCampaign.id} sceneId={activeScene.id} {session} onadded={() => reloadActiveScene()} />{/if}
+							</div>
 						{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
 				</main>
 			{:else if workspaceTab === 'sheets'}<CampaignSheets
@@ -1112,9 +1117,12 @@
 		color: #f6d89c;
 	}
 	.vtt-workspace {
-		position: relative;
 		padding: 1.25rem clamp(1.25rem, 5vw, 5rem) 3rem;
 	}
+	.scene-board-heading { display:flex; align-items:baseline; justify-content:center; gap:.5rem; min-height:2.2rem; padding:0 .5rem .65rem; color:#eadfce; text-align:center; }
+	.scene-board-heading span { color:#b58b52; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+	.scene-board-heading strong { overflow:hidden; max-width:min(72vw,720px); color:#f1d4a0; font:600 clamp(1rem,2vw,1.35rem) Georgia,serif; text-overflow:ellipsis; white-space:nowrap; }
+	.scene-board { position:relative; }
 	@media (max-width: 760px) {
 		.auth-shell {
 			grid-template-columns: 1fr;
@@ -1175,5 +1183,7 @@
 		.vtt-workspace {
 			padding: 0.45rem 0 0;
 		}
+		.scene-board-heading { min-height:1.8rem; padding:.2rem .75rem .45rem; }
+		.scene-board-heading strong { max-width:78vw; font-size:1rem; }
 	}
 </style>

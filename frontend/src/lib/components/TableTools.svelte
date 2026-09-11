@@ -202,9 +202,7 @@
 	.table-tools {
 		position: absolute;
 		z-index: 8;
-		/* Keep this vertical strip below the scene heading, even when a GM
-		 * gives the scene a longer name that wraps across multiple lines. */
-		top: clamp(7rem, 13vh, 8.5rem);
+		top: 0.8rem;
 		left: 0.9rem;
 	}
 	.tool-group {
@@ -400,11 +398,11 @@
 		color: #f0cb85;
 		font-weight: 800;
 	}
-	@media (max-width: 650px) {
+	@media (max-width: 760px) {
 		.table-tools {
-			top: auto;
+			top: 0.75rem;
 			left: 50%;
-			bottom: 0.9rem;
+			bottom: auto;
 			transform: translateX(-50%);
 		}
 		.tool-group {
@@ -418,8 +416,8 @@
 		.tool-popover,
 		.dice-popover,
 		.initiative-popover {
-			top: auto;
-			bottom: 3.55rem;
+			top: 3.55rem;
+			bottom: auto;
 			left: 50%;
 			width: min(340px, calc(100vw - 1.5rem));
 			transform: translateX(-50%);
