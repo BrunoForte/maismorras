@@ -122,6 +122,8 @@ export const createCharacterForGM = (session: Session, campaignId: string, owner
 		method: 'POST',
 		body: JSON.stringify({ ownerId })
 	}).then(normalizeCharacter);
+export const deleteCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
+	request<void>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, { method: 'DELETE' });
 
 export function createEmptySheet(): CharacterSheet {
 	return {

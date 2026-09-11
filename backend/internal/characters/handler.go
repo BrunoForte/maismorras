@@ -73,6 +73,18 @@ func (h *Handler) SaveForGM(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, item)
 }
+func (h *Handler) DeleteForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.DeleteForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID); errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode excluir fichas.")
+	} else if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada.")
+	} else if err != nil {
+		return apperror.Internal(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 
 func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())

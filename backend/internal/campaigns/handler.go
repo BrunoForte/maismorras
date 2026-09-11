@@ -46,6 +46,18 @@ func (h *Handler) AcceptInvite(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(campaign)
 }
+func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	if err := h.repo.RemoveMember(r.Context(), r.PathValue("campaignID"), r.PathValue("userID"), p.UserID); errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode remover jogadores.")
+	} else if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("MEMBER_NOT_FOUND", "Jogador não encontrado nesta campanha.")
+	} else if err != nil {
+		return apperror.Internal(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var input struct {

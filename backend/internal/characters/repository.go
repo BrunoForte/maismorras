@@ -218,6 +218,22 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	}
 	return item, nil
 }
+func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, userID string) error {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return err
+	}
+	if _, err := r.pool.Exec(ctx, `delete from scene_tokens where actor_id=$1`, characterID); err != nil {
+		return err
+	}
+	result, err := r.pool.Exec(ctx, `delete from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
 
 // Tokens linked to a character are instances for position and conditions, but
 // their sheet-derived combat numbers must follow the character sheet.

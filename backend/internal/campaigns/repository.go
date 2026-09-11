@@ -23,6 +23,7 @@ type Invite struct {
 var (
 	ErrForbidden     = errors.New("forbidden")
 	ErrInviteInvalid = errors.New("invalid invite")
+	ErrNotFound      = errors.New("not found")
 )
 
 type Repository struct{ pool *pgxpool.Pool }
@@ -106,4 +107,37 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 		return Campaign{}, err
 	}
 	return campaign, nil
+}
+
+func (r *Repository) RemoveMember(ctx context.Context, campaignID, memberID, userID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var role string
+	if err = tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	var ownerID string
+	if err = tx.QueryRow(ctx, `select owner_id::text from campaigns where id=$1`, campaignID).Scan(&ownerID); err != nil {
+		return err
+	}
+	if ownerID == memberID || memberID == userID {
+		return ErrForbidden
+	}
+	if _, err = tx.Exec(ctx, `delete from scene_tokens where actor_id in (select id from actors where campaign_id=$1 and owner_id=$2 and kind='character')`, campaignID, memberID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `delete from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, memberID); err != nil {
+		return err
+	}
+	result, err := tx.Exec(ctx, `delete from campaign_members where campaign_id=$1 and user_id=$2 and role='player'`, campaignID, memberID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return tx.Commit(ctx)
 }
