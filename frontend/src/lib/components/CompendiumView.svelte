@@ -50,6 +50,8 @@
 		importing = $state(false),
 		placing = $state<string | null>(null),
 		translating = $state<string | null>(null),
+		batchTranslating = $state(false),
+		batchProgress = $state(''),
 		message = $state('');
 	let selectedEntryId = $state<string | null>(null);
 	let editingEntryId = $state<string | null>(null);
@@ -319,6 +321,27 @@
 			translating = null;
 		}
 	}
+	async function translateSRDPending() {
+		if ($appLocale !== 'pt-BR' || batchTranslating) return;
+		const pending = entries.filter((entry) => sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' && !entry.translations?.['pt-BR.summary']);
+		if (!pending.length) { message = 'As entradas SRD já possuem tradução ou não têm texto para traduzir.'; return; }
+		batchTranslating = true;
+		message = '';
+		try {
+			for (let index = 0; index < pending.length; index += 1) {
+				const entry = pending[index];
+				batchProgress = `${index + 1}/${pending.length}`;
+				const updated = await translateCompendiumEntry(session, campaignId, entry.id);
+				entries = entries.map((item) => (item.id === updated.id ? updated : item));
+			}
+			message = `Tradução concluída para ${pending.length} entrada(s) SRD.`;
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível concluir a tradução em lote.';
+		} finally {
+			batchTranslating = false;
+			batchProgress = '';
+		}
+	}
 	onMount(() => void load());
 </script>
 
@@ -334,6 +357,7 @@
 			>
 		</div>
 		<div class="header-actions">
+			{#if isGM && $appLocale === 'pt-BR'}<button onclick={() => void translateSRDPending()} disabled={batchTranslating}>{batchTranslating ? `Traduzindo ${batchProgress}…` : 'Traduzir SRD pendente'}</button>{/if}
 			{#if isGM}<button onclick={load} disabled={loading}
 					>{$appLocale === 'en' ? 'Refresh' : 'Atualizar'}</button
 				>{/if}
