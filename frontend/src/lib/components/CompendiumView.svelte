@@ -1,4 +1,6 @@
+<!-- eslint-disable svelte/require-each-key -- select options and imported records can be positional. -->
 <script lang="ts">
+	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -77,25 +79,46 @@
 		speed = $state(9);
 	type LevelFeature = { id: string; name: string; level: number; description: string };
 	let levelFeatures = $state<LevelFeature[]>([]);
-	const newFeature = (): LevelFeature => ({ id: crypto.randomUUID(), name: '', level: 1, description: '' });
-	function addLevelFeature() { levelFeatures = [...levelFeatures, newFeature()]; }
-	function removeLevelFeature(id: string) { levelFeatures = levelFeatures.filter((feature) => feature.id !== id); }
+	const newFeature = (): LevelFeature => ({
+		id: crypto.randomUUID(),
+		name: '',
+		level: 1,
+		description: ''
+	});
+	function addLevelFeature() {
+		levelFeatures = [...levelFeatures, newFeature()];
+	}
+	function removeLevelFeature(id: string) {
+		levelFeatures = levelFeatures.filter((feature) => feature.id !== id);
+	}
 	const privateSources = () => sources.filter((source) => !source.readOnly);
 	const visible = () =>
-		entries.filter(
-			(entry) =>
-				(filter === 'all' || entry.entryType === filter) &&
-				(sourceFilter === 'all' || entry.sourceId === sourceFilter) &&
-				(!query.trim() ||
-					`${entry.name} ${entry.translations?.['pt-BR'] ?? ''}`
-						.toLocaleLowerCase()
-						.includes(query.trim().toLocaleLowerCase()))
-		).sort((a, b) => {
-			if (sortMode === 'challenge') return Number(rules(a).challenge ?? 999) - Number(rules(b).challenge ?? 999) || a.name.localeCompare(b.name);
-			if (sortMode === 'category') return a.entryType.localeCompare(b.entryType) || a.name.localeCompare(b.name);
-			if (sortMode === 'source') return (sources.find((s) => s.id === a.sourceId)?.title ?? '').localeCompare(sources.find((s) => s.id === b.sourceId)?.title ?? '') || a.name.localeCompare(b.name);
-			return displayName(a).localeCompare(displayName(b));
-		});
+		entries
+			.filter(
+				(entry) =>
+					(filter === 'all' || entry.entryType === filter) &&
+					(sourceFilter === 'all' || entry.sourceId === sourceFilter) &&
+					(!query.trim() ||
+						`${entry.name} ${entry.translations?.['pt-BR'] ?? ''}`
+							.toLocaleLowerCase()
+							.includes(query.trim().toLocaleLowerCase()))
+			)
+			.sort((a, b) => {
+				if (sortMode === 'challenge')
+					return (
+						Number(rules(a).challenge ?? 999) - Number(rules(b).challenge ?? 999) ||
+						a.name.localeCompare(b.name)
+					);
+				if (sortMode === 'category')
+					return a.entryType.localeCompare(b.entryType) || a.name.localeCompare(b.name);
+				if (sortMode === 'source')
+					return (
+						(sources.find((s) => s.id === a.sourceId)?.title ?? '').localeCompare(
+							sources.find((s) => s.id === b.sourceId)?.title ?? ''
+						) || a.name.localeCompare(b.name)
+					);
+				return displayName(a).localeCompare(displayName(b));
+			});
 	const entryCount = (id: string) => entries.filter((entry) => entry.sourceId === id).length;
 	// The SRD pack keeps English as the canonical text. Localized fields use a
 	// stable flat key (for example `pt-BR.summary` or `pt-BR.rules.school`) so
@@ -122,8 +145,7 @@
 		(rules(entry).kind === 'monster' || rules(entry).catalog === 'monster');
 	const hasMonsterSheet = (entry: CompendiumEntry) =>
 		isMonster(entry) && Number(rules(entry).hpMax) > 0 && Number(rules(entry).armorClass) >= 0;
-	const typeLabel = (entry: CompendiumEntry) =>
-		typeName(entry.entryType);
+	const typeLabel = (entry: CompendiumEntry) => typeName(entry.entryType);
 	const typeName = (value: string) => {
 		const labels: Record<string, [string, string]> = {
 			species: ['Espécie', 'Species'],
@@ -178,8 +200,36 @@
 					.map((value) => value.trim())
 					.filter(Boolean)
 			};
-		if (entryType === 'class') return { hitDie: classHitDie, ...(levelFeatures.length ? { features: levelFeatures.filter((feature) => feature.name.trim()).map((feature) => ({ ...feature, name: feature.name.trim(), description: feature.description.trim() })) } : {}) };
-		if (entryType === 'subclass') return { className: parentClass.trim(), ...(levelFeatures.length ? { features: levelFeatures.filter((feature) => feature.name.trim()).map((feature) => ({ ...feature, name: feature.name.trim(), description: feature.description.trim() })) } : {}) };
+		if (entryType === 'class')
+			return {
+				hitDie: classHitDie,
+				...(levelFeatures.length
+					? {
+							features: levelFeatures
+								.filter((feature) => feature.name.trim())
+								.map((feature) => ({
+									...feature,
+									name: feature.name.trim(),
+									description: feature.description.trim()
+								}))
+						}
+					: {})
+			};
+		if (entryType === 'subclass')
+			return {
+				className: parentClass.trim(),
+				...(levelFeatures.length
+					? {
+							features: levelFeatures
+								.filter((feature) => feature.name.trim())
+								.map((feature) => ({
+									...feature,
+									name: feature.name.trim(),
+									description: feature.description.trim()
+								}))
+						}
+					: {})
+			};
 		if (entryType === 'species') return { speed };
 		return {};
 	}
@@ -203,14 +253,22 @@
 			entries = data.entries;
 			sourceId = privateSources()[0]?.id ?? '';
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load the compendium.' : 'Não foi possível carregar o compêndio.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not load the compendium.'
+						: 'Não foi possível carregar o compêndio.';
 		} finally {
 			loading = false;
 		}
 	}
 	async function create() {
 		if (!name.trim() || !sourceId) {
-			message = $appLocale === 'en' ? 'Enter a name and a private source.' : 'Informe nome e uma fonte privada.';
+			message =
+				$appLocale === 'en'
+					? 'Enter a name and a private source.'
+					: 'Informe nome e uma fonte privada.';
 			return;
 		}
 		saving = true;
@@ -222,7 +280,9 @@
 				name: name.trim(),
 				summary: summary.trim(),
 				rules: formRules(),
-				translations: portugueseName.trim() ? { 'pt-BR': portugueseName.trim() } : {} as Record<string, string>,
+				translations: portugueseName.trim()
+					? { 'pt-BR': portugueseName.trim() }
+					: ({} as Record<string, string>),
 				isPublished: published
 			};
 			const wasEditing = Boolean(editingEntryId);
@@ -234,9 +294,21 @@
 				: [...entries, entry].sort((a, b) => a.name.localeCompare(b.name));
 			clearForm();
 			editingEntryId = null;
-			message = $appLocale === 'en' ? (wasEditing ? 'Private entry updated.' : 'Private entry added.') : (wasEditing ? 'Entrada privada atualizada.' : 'Entrada privada adicionada.');
+			message =
+				$appLocale === 'en'
+					? wasEditing
+						? 'Private entry updated.'
+						: 'Private entry added.'
+					: wasEditing
+						? 'Entrada privada atualizada.'
+						: 'Entrada privada adicionada.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the entry.' : 'Não foi possível salvar a entrada.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not save the entry.'
+						: 'Não foi possível salvar a entrada.';
 		} finally {
 			saving = false;
 		}
@@ -251,14 +323,44 @@
 		published = entry.isPublished;
 		const value = entry.rules ?? {};
 		category = String(value.kind ?? value.category ?? 'monster') as typeof category;
-		hpMax = Number(value.hpMax ?? 10); armorClass = Number(value.armorClass ?? 10); size = Number(value.size ?? 1); initiative = Number(value.initiative ?? 0); imageUrl = String(value.imageUrl ?? '');
-		itemDamage = String(value.damage ?? ''); itemDefense = Number(value.armorClass ?? 0); spellLevel = Number(value.level ?? 1); spellClasses = Array.isArray(value.classes) ? value.classes.join(', ') : ''; classHitDie = Number(value.hitDie ?? 8); parentClass = String(value.className ?? ''); speed = Number(value.speed ?? 9);
-		levelFeatures = Array.isArray(value.features) ? value.features.map((feature, index) => { const item = feature as Record<string, unknown>; return { id: String(item.id ?? `feature-${index}`), name: String(item.name ?? ''), level: Number(item.level ?? 1), description: String(item.description ?? '') }; }) : [];
+		hpMax = Number(value.hpMax ?? 10);
+		armorClass = Number(value.armorClass ?? 10);
+		size = Number(value.size ?? 1);
+		initiative = Number(value.initiative ?? 0);
+		imageUrl = String(value.imageUrl ?? '');
+		itemDamage = String(value.damage ?? '');
+		itemDefense = Number(value.armorClass ?? 0);
+		spellLevel = Number(value.level ?? 1);
+		spellClasses = Array.isArray(value.classes) ? value.classes.join(', ') : '';
+		classHitDie = Number(value.hitDie ?? 8);
+		parentClass = String(value.className ?? '');
+		speed = Number(value.speed ?? 9);
+		levelFeatures = Array.isArray(value.features)
+			? value.features.map((feature, index) => {
+					const item = feature as Record<string, unknown>;
+					return {
+						id: String(item.id ?? `feature-${index}`),
+						name: String(item.name ?? ''),
+						level: Number(item.level ?? 1),
+						description: String(item.description ?? '')
+					};
+				})
+			: [];
 	}
 	async function removeEntry(entry: CompendiumEntry) {
-		if (sources.find((source) => source.id === entry.sourceId)?.readOnly || !confirm($appLocale === 'en' ? 'Delete this private entry?' : 'Excluir esta entrada privada?')) return;
-		try { await deleteCompendiumEntry(session, campaignId, entry.id); entries = entries.filter((item) => item.id !== entry.id); selectedEntryId = null; message = $appLocale === 'en' ? 'Private entry deleted.' : 'Entrada privada excluída.'; }
-		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível excluir.'; }
+		if (
+			sources.find((source) => source.id === entry.sourceId)?.readOnly ||
+			!confirm($appLocale === 'en' ? 'Delete this private entry?' : 'Excluir esta entrada privada?')
+		)
+			return;
+		try {
+			await deleteCompendiumEntry(session, campaignId, entry.id);
+			entries = entries.filter((item) => item.id !== entry.id);
+			selectedEntryId = null;
+			message = $appLocale === 'en' ? 'Private entry deleted.' : 'Entrada privada excluída.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível excluir.';
+		}
 	}
 	function sample(): CompendiumDraft {
 		const label = typeName(entryType);
@@ -300,17 +402,28 @@
 				entryType,
 				imported
 			);
-			message = $appLocale === 'en' ? `${result.imported} entr${result.imported === 1 ? 'y' : 'ies'} imported or updated.` : `${result.imported} entrada(s) importada(s) ou atualizada(s).`;
+			message =
+				$appLocale === 'en'
+					? `${result.imported} entr${result.imported === 1 ? 'y' : 'ies'} imported or updated.`
+					: `${result.imported} entrada(s) importada(s) ou atualizada(s).`;
 			await load();
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not import the file.' : 'Não foi possível importar o arquivo.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not import the file.'
+						: 'Não foi possível importar o arquivo.';
 		} finally {
 			importing = false;
 		}
 	}
 	async function placeMonster(entry: CompendiumEntry) {
 		if (!sceneId) {
-			message = $appLocale === 'en' ? 'Open a scene in the Table tab before placing the monster.' : 'Abra uma cena na aba Mesa antes de posicionar o monstro.';
+			message =
+				$appLocale === 'en'
+					? 'Open a scene in the Table tab before placing the monster.'
+					: 'Abra uma cena na aba Mesa antes de posicionar o monstro.';
 			return;
 		}
 		placing = entry.id;
@@ -320,7 +433,12 @@
 			message = `${displayName(entry)} foi adicionado à cena.`;
 			ontokencreated();
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the monster.' : 'Não foi possível adicionar o monstro.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not add the monster.'
+						: 'Não foi possível adicionar o monstro.';
 		} finally {
 			placing = null;
 		}
@@ -331,17 +449,32 @@
 		try {
 			const updated = await translateCompendiumEntry(session, campaignId, entry.id);
 			entries = entries.map((item) => (item.id === updated.id ? updated : item));
-			message = $appLocale === 'en' ? 'AI translation generated and marked.' : 'Tradução por IA gerada e identificada.';
+			message =
+				$appLocale === 'en'
+					? 'AI translation generated and marked.'
+					: 'Tradução por IA gerada e identificada.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not generate the translation.' : 'Não foi possível gerar a tradução.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not generate the translation.'
+						: 'Não foi possível gerar a tradução.';
 		} finally {
 			translating = null;
 		}
 	}
 	async function translateSRDPending() {
 		if ($appLocale !== 'pt-BR' || batchTranslating) return;
-		const pending = entries.filter((entry) => sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' && !entry.translations?.['pt-BR.summary']);
-		if (!pending.length) { message = 'As entradas SRD já possuem tradução ou não têm texto para traduzir.'; return; }
+		const pending = entries.filter(
+			(entry) =>
+				sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' &&
+				!entry.translations?.['pt-BR.summary']
+		);
+		if (!pending.length) {
+			message = 'As entradas SRD já possuem tradução ou não têm texto para traduzir.';
+			return;
+		}
 		batchTranslating = true;
 		message = '';
 		try {
@@ -353,7 +486,8 @@
 			}
 			message = `Tradução concluída para ${pending.length} entrada(s) SRD.`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível concluir a tradução em lote.';
+			message =
+				error instanceof Error ? error.message : 'Não foi possível concluir a tradução em lote.';
 		} finally {
 			batchTranslating = false;
 			batchProgress = '';
@@ -374,7 +508,11 @@
 			>
 		</div>
 		<div class="header-actions">
-			{#if isGM && $appLocale === 'pt-BR'}<button onclick={() => void translateSRDPending()} disabled={batchTranslating}>{batchTranslating ? `Traduzindo ${batchProgress}…` : 'Traduzir SRD pendente'}</button>{/if}
+			{#if isGM && $appLocale === 'pt-BR'}<button
+					onclick={() => void translateSRDPending()}
+					disabled={batchTranslating}
+					>{batchTranslating ? `Traduzindo ${batchProgress}…` : 'Traduzir SRD pendente'}</button
+				>{/if}
 			{#if isGM}<button onclick={load} disabled={loading}
 					>{$appLocale === 'en' ? 'Refresh' : 'Atualizar'}</button
 				>{/if}
@@ -391,12 +529,15 @@
 	<section class="sources">
 		<h3>{$appLocale === 'en' ? 'Active sources' : 'Fontes ativas'}</h3>
 		<button class:active={sourceFilter === 'all'} onclick={() => (sourceFilter = 'all')}
-			><strong>{$appLocale === 'en' ? 'All sources' : 'Todas as fontes'}</strong><small>{entries.length} {$appLocale === 'en' ? 'entries' : 'entradas'}</small></button
+			><strong>{$appLocale === 'en' ? 'All sources' : 'Todas as fontes'}</strong><small
+				>{entries.length} {$appLocale === 'en' ? 'entries' : 'entradas'}</small
+			></button
 		>{#each sources as source (source.id)}<button
 				class:active={sourceFilter === source.id}
 				onclick={() => (sourceFilter = source.id)}
 				><strong>{source.title}</strong><small
-					>{sourceKindLabel(source)} · {entryCount(source.id)} {$appLocale === 'en' ? 'entries' : 'entradas'}</small
+					>{sourceKindLabel(source)} · {entryCount(source.id)}
+					{$appLocale === 'en' ? 'entries' : 'entradas'}</small
 				></button
 			>{/each}
 	</section>
@@ -414,16 +555,22 @@
 					>{#each privateSources() as source}<option value={source.id}>{source.title}</option
 						>{/each}</select
 				><select bind:value={entryType}
-					>{#each types as [value]}<option value={value}>{typeName(value)}</option>{/each}</select
-								><input bind:value={name} maxlength="120" placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><input
+					>{#each types as [value]}<option {value}>{typeName(value)}</option>{/each}</select
+				><input
+					bind:value={name}
+					maxlength="120"
+					placeholder={$appLocale === 'en' ? 'Name' : 'Nome'}
+				/><input
 					bind:value={portugueseName}
 					maxlength="120"
-									placeholder={$appLocale === 'en' ? 'Portuguese name (optional)' : 'Nome em português (opcional)'}
+					placeholder={$appLocale === 'en'
+						? 'Portuguese name (optional)'
+						: 'Nome em português (opcional)'}
 				/>
 				{#if entryType === 'other'}<select bind:value={category}
-						><option value="monster">{$appLocale === 'en' ? 'Monster' : 'Monstro'}</option><option value="vehicle">{$appLocale === 'en' ? 'Vehicle' : 'Veículo'}</option><option
-							value="hazard">Perigo</option
-						><option value="other">Outro</option></select
+						><option value="monster">{$appLocale === 'en' ? 'Monster' : 'Monstro'}</option><option
+							value="vehicle">{$appLocale === 'en' ? 'Vehicle' : 'Veículo'}</option
+						><option value="hazard">Perigo</option><option value="other">Outro</option></select
 					>{#if category === 'monster'}<input
 							bind:value={hpMax}
 							type="number"
@@ -478,14 +625,43 @@
 					/>{/if}
 				{#if entryType === 'class' || entryType === 'subclass'}
 					<div class="level-features-editor">
-						<div class="feature-editor-head"><strong>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</strong><button class="ghost" type="button" onclick={addLevelFeature}>+ {$appLocale === 'en' ? 'Add feature' : 'Adicionar habilidade'}</button></div>
-						{#if levelFeatures.length === 0}<small>{$appLocale === 'en' ? 'Add each feature with the level at which it unlocks.' : 'Adicione cada habilidade com o nível em que ela é desbloqueada.'}</small>{/if}
+						<div class="feature-editor-head">
+							<strong>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</strong
+							><button class="ghost" type="button" onclick={addLevelFeature}
+								>+ {$appLocale === 'en' ? 'Add feature' : 'Adicionar habilidade'}</button
+							>
+						</div>
+						{#if levelFeatures.length === 0}<small
+								>{$appLocale === 'en'
+									? 'Add each feature with the level at which it unlocks.'
+									: 'Adicione cada habilidade com o nível em que ela é desbloqueada.'}</small
+							>{/if}
 						{#each levelFeatures as feature (feature.id)}
 							<div class="level-feature-row">
-								<input type="number" min="1" max="20" bind:value={feature.level} aria-label={$appLocale === 'en' ? 'Unlock level' : 'Nível de desbloqueio'} />
-								<input bind:value={feature.name} placeholder={$appLocale === 'en' ? 'Feature name' : 'Nome da habilidade'} />
-								<textarea bind:value={feature.description} rows="2" placeholder={$appLocale === 'en' ? 'Short objective description' : 'Descrição curta e objetiva'}></textarea>
-								<button class="ghost" type="button" onclick={() => removeLevelFeature(feature.id)} aria-label={$appLocale === 'en' ? 'Remove feature' : 'Remover habilidade'}>×</button>
+								<input
+									type="number"
+									min="1"
+									max="20"
+									bind:value={feature.level}
+									aria-label={$appLocale === 'en' ? 'Unlock level' : 'Nível de desbloqueio'}
+								/>
+								<input
+									bind:value={feature.name}
+									placeholder={$appLocale === 'en' ? 'Feature name' : 'Nome da habilidade'}
+								/>
+								<textarea
+									bind:value={feature.description}
+									rows="2"
+									placeholder={$appLocale === 'en'
+										? 'Short objective description'
+										: 'Descrição curta e objetiva'}></textarea>
+								<button
+									class="ghost"
+									type="button"
+									onclick={() => removeLevelFeature(feature.id)}
+									aria-label={$appLocale === 'en' ? 'Remove feature' : 'Remover habilidade'}
+									>×</button
+								>
 							</div>
 						{/each}
 					</div>
@@ -493,8 +669,11 @@
 				<textarea
 					bind:value={summary}
 					maxlength="2000"
-					placeholder={$appLocale === 'en' ? 'Original, objective summary of how it works.' : 'Resumo autoral e objetivo do funcionamento.'}></textarea><label
-					><input type="checkbox" bind:checked={published} /> {$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</label
+					placeholder={$appLocale === 'en'
+						? 'Original, objective summary of how it works.'
+						: 'Resumo autoral e objetivo do funcionamento.'}></textarea><label
+					><input type="checkbox" bind:checked={published} />
+					{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</label
 				>
 				<div class="form-actions">
 					<button class="ghost" onclick={downloadTemplate}>Baixar modelo JSON</button><label
@@ -506,10 +685,30 @@
 							disabled={importing}
 						/>
 						{importing
-							? ($appLocale === 'en' ? 'Importing…' : 'Importando…')
-							: ($appLocale === 'en' ? `Import ${types.find(([value]) => value === entryType)?.[1]}` : `Importar ${types.find(([value]) => value === entryType)?.[1]}`)}</label
-					>{#if editingEntryId}<button class="ghost" onclick={() => { editingEntryId = null; clearForm(); }}>{$appLocale === 'en' ? 'Cancel edit' : 'Cancelar edição'}</button>{/if}<button class="primary" onclick={create} disabled={saving}
-						>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : (editingEntryId ? ($appLocale === 'en' ? 'Save changes' : 'Salvar alterações') : ($appLocale === 'en' ? 'Add' : 'Adicionar'))}</button
+							? $appLocale === 'en'
+								? 'Importing…'
+								: 'Importando…'
+							: $appLocale === 'en'
+								? `Import ${types.find(([value]) => value === entryType)?.[1]}`
+								: `Importar ${types.find(([value]) => value === entryType)?.[1]}`}</label
+					>{#if editingEntryId}<button
+							class="ghost"
+							onclick={() => {
+								editingEntryId = null;
+								clearForm();
+							}}>{$appLocale === 'en' ? 'Cancel edit' : 'Cancelar edição'}</button
+						>{/if}<button class="primary" onclick={create} disabled={saving}
+						>{saving
+							? $appLocale === 'en'
+								? 'Saving…'
+								: 'Salvando…'
+							: editingEntryId
+								? $appLocale === 'en'
+									? 'Save changes'
+									: 'Salvar alterações'
+								: $appLocale === 'en'
+									? 'Add'
+									: 'Adicionar'}</button
 					>
 				</div>
 			</div>
@@ -524,10 +723,17 @@
 				><option value="all">{$appLocale === 'en' ? 'All types' : 'Todos os tipos'}</option
 				>{#each types as [value, label]}<option {value}>{label}</option>{/each}</select
 			>
-			<select bind:value={sortMode} aria-label={$appLocale === 'en' ? 'Sort entries' : 'Ordenar entradas'}>
+			<select
+				bind:value={sortMode}
+				aria-label={$appLocale === 'en' ? 'Sort entries' : 'Ordenar entradas'}
+			>
 				<option value="name">{$appLocale === 'en' ? 'Sort: name' : 'Ordenar: nome'}</option>
-				<option value="category">{$appLocale === 'en' ? 'Sort: category' : 'Ordenar: categoria'}</option>
-				<option value="challenge">{$appLocale === 'en' ? 'Sort: challenge rating' : 'Ordenar: nível de desafio'}</option>
+				<option value="category"
+					>{$appLocale === 'en' ? 'Sort: category' : 'Ordenar: categoria'}</option
+				>
+				<option value="challenge"
+					>{$appLocale === 'en' ? 'Sort: challenge rating' : 'Ordenar: nível de desafio'}</option
+				>
 				<option value="source">{$appLocale === 'en' ? 'Sort: source' : 'Ordenar: fonte'}</option>
 			</select>
 		</div>
@@ -571,8 +777,12 @@
 						>
 						{#if isGM && !sources.find((source) => source.id === entry.sourceId)?.readOnly}
 							<div class="entry-actions">
-								<button class="ghost" onclick={() => editEntry(entry)}>{$appLocale === 'en' ? 'Edit private entry' : 'Editar entrada privada'}</button>
-								<button class="danger" onclick={() => void removeEntry(entry)}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button>
+								<button class="ghost" onclick={() => editEntry(entry)}
+									>{$appLocale === 'en' ? 'Edit private entry' : 'Editar entrada privada'}</button
+								>
+								<button class="danger" onclick={() => void removeEntry(entry)}
+									>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
+								>
 							</div>
 						{/if}
 						<h3>{displayName(entry)}</h3>
@@ -587,7 +797,7 @@
 							{displaySummary(entry) ||
 								($appLocale === 'en'
 									? 'No summary is available for this entry.'
-					: 'Sem resumo cadastrado para esta entrada.')}
+									: 'Sem resumo cadastrado para esta entrada.')}
 						</p>
 						{#if isGM && $appLocale === 'pt-BR'}
 							<button
@@ -597,8 +807,8 @@
 								>{translating === entry.id
 									? 'Traduzindo…'
 									: entry.translations?.['pt-BR.summary']
-									? 'Completar tradução com IA'
-									: 'Traduzir com IA'}</button
+										? 'Completar tradução com IA'
+										: 'Traduzir com IA'}</button
 							>
 						{/if}
 						{#if isMonster(entry)}<div class="rules">
@@ -645,7 +855,7 @@
 											: 'Adicionando…'
 										: $appLocale === 'en'
 											? 'Add to scene'
-										: 'Adicionar à cena'}</button
+											: 'Adicionar à cena'}</button
 								>{/if}{:else if entry.entryType === 'spell'}<div class="rules">
 								<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b><b
 									>{Array.isArray(detail.classes) ? (detail.classes as string[]).join(', ') : ''}</b
@@ -669,7 +879,23 @@
 										detail.hitDie ?? '—'
 									)}</b
 								>
-							</div>{#if Array.isArray(detail.features) && detail.features.length}<div class="feature-detail-list"><h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}<article><strong>{$appLocale === 'en' ? 'Level' : 'Nível'} {String((feature as Record<string, unknown>).level ?? '—')} · {String((feature as Record<string, unknown>).name ?? '')}</strong>{#if (feature as Record<string, unknown>).description}<p>{String((feature as Record<string, unknown>).description)}</p>{/if}</article>{/each}</div>{/if}{:else if entry.entryType === 'subclass'}<div class="rules">
+							</div>
+							{#if Array.isArray(detail.features) && detail.features.length}<div
+									class="feature-detail-list"
+								>
+									<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+									{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}<article
+										>
+											<strong
+												>{$appLocale === 'en' ? 'Level' : 'Nível'}
+												{String((feature as Record<string, unknown>).level ?? '—')} · {String(
+													(feature as Record<string, unknown>).name ?? ''
+												)}</strong
+											>{#if (feature as Record<string, unknown>).description}<p>
+													{String((feature as Record<string, unknown>).description)}
+												</p>{/if}
+										</article>{/each}
+								</div>{/if}{:else if entry.entryType === 'subclass'}<div class="rules">
 								<b
 									>{$appLocale === 'en' ? 'Base class' : 'Classe-base'}: {displayRule(
 										entry,
@@ -677,7 +903,23 @@
 										detail.className ?? '—'
 									)}</b
 								>
-							</div>{#if Array.isArray(detail.features) && detail.features.length}<div class="feature-detail-list"><h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}<article><strong>{$appLocale === 'en' ? 'Level' : 'Nível'} {String((feature as Record<string, unknown>).level ?? '—')} · {String((feature as Record<string, unknown>).name ?? '')}</strong>{#if (feature as Record<string, unknown>).description}<p>{String((feature as Record<string, unknown>).description)}</p>{/if}</article>{/each}</div>{/if}{:else if entry.entryType === 'species'}<div class="rules">
+							</div>
+							{#if Array.isArray(detail.features) && detail.features.length}<div
+									class="feature-detail-list"
+								>
+									<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+									{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}<article
+										>
+											<strong
+												>{$appLocale === 'en' ? 'Level' : 'Nível'}
+												{String((feature as Record<string, unknown>).level ?? '—')} · {String(
+													(feature as Record<string, unknown>).name ?? ''
+												)}</strong
+											>{#if (feature as Record<string, unknown>).description}<p>
+													{String((feature as Record<string, unknown>).description)}
+												</p>{/if}
+										</article>{/each}
+								</div>{/if}{:else if entry.entryType === 'species'}<div class="rules">
 								<b
 									>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}: {distanceText(
 										displayRule(entry, 'speed', detail.speed ?? '—'),
@@ -691,7 +933,7 @@
 									: 'Visível aos jogadores'
 								: $appLocale === 'en'
 									? 'Game master only'
-					: 'Somente narrador'}</small
+									: 'Somente narrador'}</small
 						>
 					</aside>{/if}
 			</div>{:else}<p class="empty">
@@ -765,16 +1007,59 @@
 		border-radius: 8px;
 		background: #121015;
 	}
-	.feature-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
-	.level-features-editor small { color: #a99b8d; font-size: 0.72rem; }
-	.level-feature-row { display: grid; grid-template-columns: 5rem minmax(9rem, 1fr) minmax(12rem, 2fr) auto; gap: 0.45rem; align-items: start; }
-	.level-feature-row textarea { resize: vertical; min-height: 2.5rem; }
-	@media (max-width: 720px) { .level-feature-row { grid-template-columns: 4.5rem 1fr auto; } .level-feature-row textarea { grid-column: 1 / -1; } }
-	.feature-detail-list { display: grid; gap: 0.45rem; margin-top: 0.8rem; }
-	.feature-detail-list h4 { margin: 0; color: #d8ad67; font-size: 0.78rem; }
-	.feature-detail-list article { padding: 0.45rem 0.6rem; border-left: 2px solid #8f6737; background: #171417; }
-	.feature-detail-list article strong { font-size: 0.76rem; color: #eadfce; }
-	.feature-detail-list article p { margin: 0.2rem 0 0; color: #bcae9e; font-size: 0.74rem; line-height: 1.4; }
+	.feature-editor-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+	.level-features-editor small {
+		color: #a99b8d;
+		font-size: 0.72rem;
+	}
+	.level-feature-row {
+		display: grid;
+		grid-template-columns: 5rem minmax(9rem, 1fr) minmax(12rem, 2fr) auto;
+		gap: 0.45rem;
+		align-items: start;
+	}
+	.level-feature-row textarea {
+		resize: vertical;
+		min-height: 2.5rem;
+	}
+	@media (max-width: 720px) {
+		.level-feature-row {
+			grid-template-columns: 4.5rem 1fr auto;
+		}
+		.level-feature-row textarea {
+			grid-column: 1 / -1;
+		}
+	}
+	.feature-detail-list {
+		display: grid;
+		gap: 0.45rem;
+		margin-top: 0.8rem;
+	}
+	.feature-detail-list h4 {
+		margin: 0;
+		color: #d8ad67;
+		font-size: 0.78rem;
+	}
+	.feature-detail-list article {
+		padding: 0.45rem 0.6rem;
+		border-left: 2px solid #8f6737;
+		background: #171417;
+	}
+	.feature-detail-list article strong {
+		font-size: 0.76rem;
+		color: #eadfce;
+	}
+	.feature-detail-list article p {
+		margin: 0.2rem 0 0;
+		color: #bcae9e;
+		font-size: 0.74rem;
+		line-height: 1.4;
+	}
 	.header-actions button,
 	.form button,
 	.sources button,
@@ -896,9 +1181,23 @@
 	.form .ghost {
 		background: transparent;
 	}
-	.entry-actions { display: flex; gap: .4rem; margin: .45rem 0 .7rem; }
-	.entry-actions button { font-size: .7rem; padding: .35rem .55rem; border-radius: 5px; border: 1px solid #765d3d; color: #f0d5a3; background: transparent; }
-	.entry-actions .danger { border-color: #9c5c54; color: #f0aaa0; }
+	.entry-actions {
+		display: flex;
+		gap: 0.4rem;
+		margin: 0.45rem 0 0.7rem;
+	}
+	.entry-actions button {
+		font-size: 0.7rem;
+		padding: 0.35rem 0.55rem;
+		border-radius: 5px;
+		border: 1px solid #765d3d;
+		color: #f0d5a3;
+		background: transparent;
+	}
+	.entry-actions .danger {
+		border-color: #9c5c54;
+		color: #f0aaa0;
+	}
 	.file {
 		cursor: pointer;
 	}

@@ -7,7 +7,8 @@
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
 
-	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } = $props();
+	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } =
+		$props();
 	let open = $state(true);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
@@ -75,26 +76,64 @@
 	}
 </script>
 
-<aside class:closed={!open} class="floating-chat" aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}>
+<aside
+	class:closed={!open}
+	class="floating-chat"
+	aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}
+>
 	<button class="chat-toggle" onclick={() => (open = !open)} aria-expanded={open}>
-		<span>◌</span>{open ? ($appLocale === 'en' ? 'Table chat' : 'Chat da mesa') : ($appLocale === 'en' ? 'Open chat' : 'Abrir chat')}
+		<span>◌</span>{open
+			? $appLocale === 'en'
+				? 'Table chat'
+				: 'Chat da mesa'
+			: $appLocale === 'en'
+				? 'Open chat'
+				: 'Abrir chat'}
 	</button>
 	{#if open}
 		<div class="chat-body">
-			<nav class="channel-tabs" aria-label={$appLocale === 'en' ? 'Chat channels' : 'Canais do chat'}>
-				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}>{$appLocale === 'en' ? 'All' : 'Todos'}</button>
-				<button class:active={channel === 'chat'} onclick={() => (channel = 'chat')} aria-label={$appLocale === 'en' ? 'Chat channel' : 'Canal de chat'}>Chat</button>
-				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}>{$appLocale === 'en' ? 'Combat' : 'Combate'}</button>
-				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}>{$appLocale === 'en' ? 'Info' : 'Info'}</button>
+			<nav
+				class="channel-tabs"
+				aria-label={$appLocale === 'en' ? 'Chat channels' : 'Canais do chat'}
+			>
+				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}
+					>{$appLocale === 'en' ? 'All' : 'Todos'}</button
+				>
+				<button
+					class:active={channel === 'chat'}
+					onclick={() => (channel = 'chat')}
+					aria-label={$appLocale === 'en' ? 'Chat channel' : 'Canal de chat'}>Chat</button
+				>
+				<button class:active={channel === 'combat'} onclick={() => (channel = 'combat')}
+					>{$appLocale === 'en' ? 'Combat' : 'Combate'}</button
+				>
+				<button class:active={channel === 'info'} onclick={() => (channel = 'info')}
+					>{$appLocale === 'en' ? 'Info' : 'Info'}</button
+				>
 			</nav>
 			<div class="messages" aria-live="polite">
 				{#if visibleMessages.length === 0}<p class="empty">
-						{channel === 'combat' ? ($appLocale === 'en' ? 'There are no combat events yet.' : 'Ainda não há eventos de combate.') : channel === 'info' ? ($appLocale === 'en' ? 'There is no system information yet.' : 'Ainda não há informações do sistema.') : ($appLocale === 'en' ? 'Talk to the group or use /r 1d20+2.' : 'Converse com o grupo ou use /r 1d20+2.')}
+						{channel === 'combat'
+							? $appLocale === 'en'
+								? 'There are no combat events yet.'
+								: 'Ainda não há eventos de combate.'
+							: channel === 'info'
+								? $appLocale === 'en'
+									? 'There is no system information yet.'
+									: 'Ainda não há informações do sistema.'
+								: $appLocale === 'en'
+									? 'Talk to the group or use /r 1d20+2.'
+									: 'Converse com o grupo ou use /r 1d20+2.'}
 					</p>{/if}
 				{#each visibleMessages as message (message.id)}
 					<article class:combat={message.canal === 'combat'} class:info={message.canal === 'info'}>
 						<strong>{message.autor}</strong>
-						{#if message.tipo === 'texto'}<span>{message.texto}</span>{#if message.texto.length > 80}<button class="expand" onclick={() => expanded = { author: message.autor, text: message.texto }}>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button>{/if}
+						{#if message.tipo === 'texto'}<span>{message.texto}</span
+							>{#if message.texto.length > 80}<button
+									class="expand"
+									onclick={() => (expanded = { author: message.autor, text: message.texto })}
+									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
+								>{/if}
 						{:else if message.detalhesRolagem}<div class="roll">
 								<small>{message.detalhesRolagem.expressao}</small><b
 									>{message.detalhesRolagem.total}</b
@@ -107,14 +146,29 @@
 				<input
 					name="message"
 					autocomplete="off"
-							placeholder={$appLocale === 'en' ? 'Message or /r 1d20+2' : 'Mensagem ou /r 1d20+2'}
+					placeholder={$appLocale === 'en' ? 'Message or /r 1d20+2' : 'Mensagem ou /r 1d20+2'}
 					disabled={sending}
-				/><button disabled={sending} aria-label={$appLocale === 'en' ? 'Send message' : 'Enviar mensagem'}>↑</button>
+				/><button
+					disabled={sending}
+					aria-label={$appLocale === 'en' ? 'Send message' : 'Enviar mensagem'}>↑</button
+				>
 			</form>
 		</div>
 	{/if}
 </aside>
-{#if expanded}<div class="reading-backdrop" role="presentation" onclick={(event) => event.currentTarget === event.target && (expanded = null)}><section><button aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'} onclick={() => expanded = null}>×</button><small>{expanded.author}</small><p>{expanded.text}</p></section></div>{/if}
+{#if expanded}<div
+		class="reading-backdrop"
+		role="presentation"
+		onclick={(event) => event.currentTarget === event.target && (expanded = null)}
+	>
+		<section>
+			<button
+				aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}
+				onclick={() => (expanded = null)}>×</button
+			><small>{expanded.author}</small>
+			<p>{expanded.text}</p>
+		</section>
+	</div>{/if}
 
 <style>
 	.floating-chat {
@@ -155,9 +209,27 @@
 		grid-template-rows: auto minmax(0, 1fr) auto;
 		height: 315px;
 	}
-	.channel-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:.2rem; padding:.45rem .45rem 0; border-bottom:1px solid rgba(216,173,103,.15); }
-	.channel-tabs button { border:0; border-radius:5px 5px 0 0; padding:.38rem .15rem; color:#ac9f94; background:transparent; font-size:.62rem; font-weight:700; cursor:pointer; }
-	.channel-tabs button.active { color:#f0cb85; background:rgba(114,76,40,.35); }
+	.channel-tabs {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.2rem;
+		padding: 0.45rem 0.45rem 0;
+		border-bottom: 1px solid rgba(216, 173, 103, 0.15);
+	}
+	.channel-tabs button {
+		border: 0;
+		border-radius: 5px 5px 0 0;
+		padding: 0.38rem 0.15rem;
+		color: #ac9f94;
+		background: transparent;
+		font-size: 0.62rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.channel-tabs button.active {
+		color: #f0cb85;
+		background: rgba(114, 76, 40, 0.35);
+	}
 	.messages {
 		display: flex;
 		flex-direction: column;
@@ -187,8 +259,14 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
-	article.combat { border-left-color:#c86b48; background:rgba(105,45,34,.34); }
-	article.info { border-left-color:#5f9cbd; background:rgba(42,71,91,.34); }
+	article.combat {
+		border-left-color: #c86b48;
+		background: rgba(105, 45, 34, 0.34);
+	}
+	article.info {
+		border-left-color: #5f9cbd;
+		background: rgba(42, 71, 91, 0.34);
+	}
 	article span {
 		color: #e2d7ca;
 		line-height: 1.4;
@@ -251,5 +329,56 @@
 			height: 280px;
 		}
 	}
-	.expand{justify-self:start;border:1px solid #765d3d;border-radius:5px;padding:.25rem .4rem;color:#f0cb85;background:#2b211c;font-size:.65rem;cursor:pointer}.reading-backdrop{position:fixed;z-index:40;inset:0;display:grid;place-items:center;padding:1.25rem;background:#080608c9;backdrop-filter:blur(6px)}.reading-backdrop section{position:relative;width:min(720px,100%);max-height:80vh;overflow:auto;border:1px solid #765d3d;border-radius:12px;padding:clamp(1.5rem,4vw,3rem);color:#f0e6d7;background:#201a1c;box-shadow:0 30px 90px #000}.reading-backdrop button{position:absolute;top:.7rem;right:.8rem;border:0;color:#ddc7ad;background:transparent;font-size:1.4rem}.reading-backdrop small{color:#d8ad67;text-transform:uppercase;letter-spacing:.12em}.reading-backdrop p{white-space:pre-wrap;font:1.05rem/1.75 Georgia,serif}
+	.expand {
+		justify-self: start;
+		border: 1px solid #765d3d;
+		border-radius: 5px;
+		padding: 0.25rem 0.4rem;
+		color: #f0cb85;
+		background: #2b211c;
+		font-size: 0.65rem;
+		cursor: pointer;
+	}
+	.reading-backdrop {
+		position: fixed;
+		z-index: 40;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding: 1.25rem;
+		background: #080608c9;
+		backdrop-filter: blur(6px);
+	}
+	.reading-backdrop section {
+		position: relative;
+		width: min(720px, 100%);
+		max-height: 80vh;
+		overflow: auto;
+		border: 1px solid #765d3d;
+		border-radius: 12px;
+		padding: clamp(1.5rem, 4vw, 3rem);
+		color: #f0e6d7;
+		background: #201a1c;
+		box-shadow: 0 30px 90px #000;
+	}
+	.reading-backdrop button {
+		position: absolute;
+		top: 0.7rem;
+		right: 0.8rem;
+		border: 0;
+		color: #ddc7ad;
+		background: transparent;
+		font-size: 1.4rem;
+	}
+	.reading-backdrop small {
+		color: #d8ad67;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+	}
+	.reading-backdrop p {
+		white-space: pre-wrap;
+		font:
+			1.05rem/1.75 Georgia,
+			serif;
+	}
 </style>

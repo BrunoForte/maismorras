@@ -30,7 +30,12 @@
 		try {
 			npcs = (await listNPCs(session, campaignId)).npcs;
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load NPCs.' : 'Não foi possível carregar os NPCs.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not load NPCs.'
+						: 'Não foi possível carregar os NPCs.';
 		} finally {
 			loading = false;
 		}
@@ -49,15 +54,35 @@
 					initiative: 0,
 					size: 1,
 					color: 3381504,
-					imageUrl: '', creatureType: 'humanoide', challenge: '', speed: '9 m',
-					abilities: { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 },
-					traits: [], actions: [], resistances: [], immunities: [], senses: '', languages: ''
+					imageUrl: '',
+					creatureType: 'humanoide',
+					challenge: '',
+					speed: '9 m',
+					abilities: {
+						strength: 10,
+						dexterity: 10,
+						constitution: 10,
+						intelligence: 10,
+						wisdom: 10,
+						charisma: 10
+					},
+					traits: [],
+					actions: [],
+					resistances: [],
+					immunities: [],
+					senses: '',
+					languages: ''
 				}
 			});
 			npcs = [...npcs, npc];
 			name = '';
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not create the NPC.' : 'Não foi possível criar o NPC.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not create the NPC.'
+						: 'Não foi possível criar o NPC.';
 		} finally {
 			saving = false;
 		}
@@ -71,19 +96,41 @@
 				body: JSON.stringify({ actorId: npc.id })
 			});
 			await ontokencreated();
-			message = $appLocale === 'en' ? `${npc.name} was added to the scene.` : `${npc.name} foi adicionado à cena.`;
+			message =
+				$appLocale === 'en'
+					? `${npc.name} was added to the scene.`
+					: `${npc.name} foi adicionado à cena.`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not add the NPC.' : 'Não foi possível adicionar o NPC.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not add the NPC.'
+						: 'Não foi possível adicionar o NPC.';
 		} finally {
 			placing = null;
 		}
 	}
 	async function removeNPC(npc: NPC) {
-		if (!confirm($appLocale === 'en' ? `Delete ${npc.name} and its scene tokens?` : `Excluir ${npc.name} e seus tokens das cenas?`)) return;
-		placing = npc.id; message = '';
-		try { await deleteNPC(session, campaignId, npc.id); npcs = npcs.filter((item) => item.id !== npc.id); message = $appLocale === 'en' ? 'NPC deleted.' : 'NPC excluído.'; }
-		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível excluir o NPC.'; }
-		finally { placing = null; }
+		if (
+			!confirm(
+				$appLocale === 'en'
+					? `Delete ${npc.name} and its scene tokens?`
+					: `Excluir ${npc.name} e seus tokens das cenas?`
+			)
+		)
+			return;
+		placing = npc.id;
+		message = '';
+		try {
+			await deleteNPC(session, campaignId, npc.id);
+			npcs = npcs.filter((item) => item.id !== npc.id);
+			message = $appLocale === 'en' ? 'NPC deleted.' : 'NPC excluído.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível excluir o NPC.';
+		} finally {
+			placing = null;
+		}
 	}
 </script>
 
@@ -106,13 +153,28 @@
 				void addNPC();
 			}}
 		>
-			<input bind:value={name} placeholder={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'} maxlength="120" aria-label={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'} />
+			<input
+				bind:value={name}
+				placeholder={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'}
+				maxlength="120"
+				aria-label={$appLocale === 'en' ? 'NPC name' : 'Nome do NPC'}
+			/>
 			<label>PV <input bind:value={hp} type="number" min="1" max="9999" /></label>
 			<label>CA <input bind:value={ca} type="number" min="0" max="99" /></label>
-			<button disabled={saving}>{saving ? ($appLocale === 'en' ? 'Creating…' : 'Criando…') : ($appLocale === 'en' ? 'Create NPC' : 'Criar NPC')}</button>
+			<button disabled={saving}
+				>{saving
+					? $appLocale === 'en'
+						? 'Creating…'
+						: 'Criando…'
+					: $appLocale === 'en'
+						? 'Create NPC'
+						: 'Criar NPC'}</button
+			>
 		</form>
 		<div class="body">
-			{#if loading}<p>{$appLocale === 'en' ? 'Consulting the bestiary…' : 'Consultando bestiário…'}</p>{:else if npcs.length === 0}<p>
+			{#if loading}<p>
+					{$appLocale === 'en' ? 'Consulting the bestiary…' : 'Consultando bestiário…'}
+				</p>{:else if npcs.length === 0}<p>
 					{$appLocale === 'en' ? 'No NPCs created yet.' : 'Nenhum NPC criado ainda.'}
 				</p>{:else}{#each npcs as npc (npc.id)}<article>
 						<div>
@@ -122,7 +184,17 @@
 							>
 						</div>
 						<button onclick={() => placeNPC(npc)} disabled={placing === npc.id}
-									>{placing === npc.id ? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…') : ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button><button class="danger" onclick={() => void removeNPC(npc)} disabled={placing === npc.id}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
+							>{placing === npc.id
+								? $appLocale === 'en'
+									? 'Adding…'
+									: 'Adicionando…'
+								: $appLocale === 'en'
+									? 'Create token'
+									: 'Criar token'}</button
+						><button
+							class="danger"
+							onclick={() => void removeNPC(npc)}
+							disabled={placing === npc.id}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
 						>
 					</article>{/each}{/if}
 		</div>
@@ -247,7 +319,16 @@
 		color: #b6a89b;
 		font-size: 0.72rem;
 	}
-	.danger { border: 1px solid #945348; border-radius: 7px; padding: .5rem .65rem; color: #ffd0c4; background: #3a211f; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+	.danger {
+		border: 1px solid #945348;
+		border-radius: 7px;
+		padding: 0.5rem 0.65rem;
+		color: #ffd0c4;
+		background: #3a211f;
+		font-size: 0.72rem;
+		font-weight: 800;
+		white-space: nowrap;
+	}
 	footer {
 		border-top: 1px solid #403536;
 		padding: 0.7rem 1rem;

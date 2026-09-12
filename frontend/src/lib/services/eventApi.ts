@@ -24,20 +24,40 @@ type StoredEvent = {
 	payload: unknown;
 };
 function asMessage(event: StoredEvent): Mensagem | null {
-	if (event.type === 'chat.message' || event.type === 'combat.log' || event.type === 'system.info') {
+	if (
+		event.type === 'chat.message' ||
+		event.type === 'combat.log' ||
+		event.type === 'system.info'
+	) {
 		const p = event.payload as { text?: string };
 		return p.text
-			? { id: String(event.id), autor: event.author, texto: p.text, tipo: 'texto', canal: event.type === 'combat.log' ? 'combat' : event.type === 'system.info' ? 'info' : p.text.startsWith('⚔️') ? 'combat' : 'chat' }
+			? {
+					id: String(event.id),
+					autor: event.author,
+					texto: p.text,
+					tipo: 'texto',
+					canal:
+						event.type === 'combat.log'
+							? 'combat'
+							: event.type === 'system.info'
+								? 'info'
+								: p.text.startsWith('⚔️')
+									? 'combat'
+									: 'chat'
+				}
 			: null;
 	}
-	const p = event.payload as Mensagem['detalhesRolagem'] & { text?: string; channel?: 'chat' | 'combat' };
+	const p = event.payload as Mensagem['detalhesRolagem'] & {
+		text?: string;
+		channel?: 'chat' | 'combat';
+	};
 	return p?.expressao
 		? {
 				id: String(event.id),
 				autor: event.author,
-			texto: p.text ?? '',
-			tipo: 'rolagem',
-			canal: p.channel ?? 'chat',
+				texto: p.text ?? '',
+				tipo: 'rolagem',
+				canal: p.channel ?? 'chat',
 				detalhesRolagem: p
 			}
 		: null;
@@ -65,7 +85,13 @@ export const saveRoll = (
 		body: JSON.stringify({ type: 'dice.roll', payload: { ...details, text } })
 	});
 
-export const rollDice = (session: Session, campaignId: string, expression: string, mode?: 'advantage' | 'disadvantage', channel: 'chat' | 'combat' = 'chat') =>
+export const rollDice = (
+	session: Session,
+	campaignId: string,
+	expression: string,
+	mode?: 'advantage' | 'disadvantage',
+	channel: 'chat' | 'combat' = 'chat'
+) =>
 	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
 		body: JSON.stringify({ type: 'dice.roll', payload: { expression, mode, channel } })

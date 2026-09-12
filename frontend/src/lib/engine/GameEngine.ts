@@ -98,7 +98,12 @@ export class GameEngine {
 			})
 		);
 
-		this.rulerManager = new RulerManager(this.camera.mundo, this.app.stage, this.tamanhoGrid, this.onAreaComplete);
+		this.rulerManager = new RulerManager(
+			this.camera.mundo,
+			this.app.stage,
+			this.tamanhoGrid,
+			this.onAreaComplete
+		);
 		this.wallPreview = new PIXI.Graphics();
 		this.camera.mundo.addChild(this.wallPreview);
 		this.app.stage.on('pointerdown', (event) => {
@@ -109,18 +114,33 @@ export class GameEngine {
 		this.app.stage.on('pointermove', (event) => {
 			if (!this.drawingWall || !this.wallStart || !this.wallPreview) return;
 			const pos = this.camera.mundo.toLocal(event.global);
-			this.wallPreview.clear().moveTo(this.wallStart.x, this.wallStart.y).lineTo(pos.x, pos.y).stroke({ width: 7, color: 0xc98e57, alpha: .9 });
+			this.wallPreview
+				.clear()
+				.moveTo(this.wallStart.x, this.wallStart.y)
+				.lineTo(pos.x, pos.y)
+				.stroke({ width: 7, color: 0xc98e57, alpha: 0.9 });
 		});
 		const finishWall = (event: PIXI.FederatedPointerEvent) => {
 			if (!this.drawingWall || !this.wallStart) return;
 			const pos = this.camera.mundo.toLocal(event.global);
 			const start = this.wallStart;
 			this.setWallDrawing(false);
-			if (Math.hypot(pos.x - start.x, pos.y - start.y) >= 8) this.onWallComplete?.({ startX: Math.round(start.x), startY: Math.round(start.y), endX: Math.round(pos.x), endY: Math.round(pos.y) });
+			if (Math.hypot(pos.x - start.x, pos.y - start.y) >= 8)
+				this.onWallComplete?.({
+					startX: Math.round(start.x),
+					startY: Math.round(start.y),
+					endX: Math.round(pos.x),
+					endY: Math.round(pos.y)
+				});
 		};
 		this.app.stage.on('pointerup', finishWall);
 		this.app.stage.on('pointerupoutside', finishWall);
-		this.app.stage.on('pointertap', (event) => this.onFogPaint?.(this.camera.mundo.toLocal(event.global).x, this.camera.mundo.toLocal(event.global).y));
+		this.app.stage.on('pointertap', (event) =>
+			this.onFogPaint?.(
+				this.camera.mundo.toLocal(event.global).x,
+				this.camera.mundo.toLocal(event.global).y
+			)
+		);
 	}
 
 	resize(width: number, height: number) {
@@ -145,13 +165,35 @@ export class GameEngine {
 		this.app.destroy(true, { children: true, texture: false, textureSource: false });
 	}
 	setAreas(areas: SceneArea[]) {
-		if (!this.areaLayer) { this.areaLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.areaLayer); }
+		if (!this.areaLayer) {
+			this.areaLayer = new PIXI.Graphics();
+			this.camera.mundo.addChild(this.areaLayer);
+		}
 		this.areaLayer.clear();
 		for (const area of areas) {
 			const color = area.color;
-			if (area.shape === 'line') this.areaLayer.moveTo(area.startX,area.startY).lineTo(area.endX,area.endY).stroke({width:5,color,alpha:.85});
-			else if (area.shape === 'circle') { const radius=Math.hypot(area.endX-area.startX,area.endY-area.startY); this.areaLayer.circle(area.startX,area.startY,radius).fill({color,alpha:.18}).stroke({width:3,color,alpha:.9}); }
-			else { const angle=Math.atan2(area.endY-area.startY,area.endX-area.startX),radius=Math.hypot(area.endX-area.startX,area.endY-area.startY),spread=Math.PI/6; this.areaLayer.moveTo(area.startX,area.startY).arc(area.startX,area.startY,radius,angle-spread,angle+spread).closePath().fill({color,alpha:.2}).stroke({width:3,color,alpha:.9}); }
+			if (area.shape === 'line')
+				this.areaLayer
+					.moveTo(area.startX, area.startY)
+					.lineTo(area.endX, area.endY)
+					.stroke({ width: 5, color, alpha: 0.85 });
+			else if (area.shape === 'circle') {
+				const radius = Math.hypot(area.endX - area.startX, area.endY - area.startY);
+				this.areaLayer
+					.circle(area.startX, area.startY, radius)
+					.fill({ color, alpha: 0.18 })
+					.stroke({ width: 3, color, alpha: 0.9 });
+			} else {
+				const angle = Math.atan2(area.endY - area.startY, area.endX - area.startX),
+					radius = Math.hypot(area.endX - area.startX, area.endY - area.startY),
+					spread = Math.PI / 6;
+				this.areaLayer
+					.moveTo(area.startX, area.startY)
+					.arc(area.startX, area.startY, radius, angle - spread, angle + spread)
+					.closePath()
+					.fill({ color, alpha: 0.2 })
+					.stroke({ width: 3, color, alpha: 0.9 });
+			}
 		}
 	}
 
@@ -169,17 +211,26 @@ export class GameEngine {
 	}
 
 	setWalls(walls: SceneWall[]) {
-		if (!this.wallLayer) { this.wallLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.wallLayer); }
+		if (!this.wallLayer) {
+			this.wallLayer = new PIXI.Graphics();
+			this.camera.mundo.addChild(this.wallLayer);
+		}
 		this.wallLayer.clear();
 		for (const wall of walls) {
 			const color = wall.kind === 'door' ? (wall.open ? 0x6da96c : 0xb97b43) : 0x5b3a2a;
-			this.wallLayer.moveTo(wall.startX, wall.startY).lineTo(wall.endX, wall.endY).stroke({ width: 7, color, alpha: wall.open ? .48 : .95 });
+			this.wallLayer
+				.moveTo(wall.startX, wall.startY)
+				.lineTo(wall.endX, wall.endY)
+				.stroke({ width: 7, color, alpha: wall.open ? 0.48 : 0.95 });
 		}
 	}
 
 	setWallDrawing(active: boolean) {
 		this.drawingWall = active;
-		if (!active) { this.wallStart = null; this.wallPreview?.clear(); }
+		if (!active) {
+			this.wallStart = null;
+			this.wallPreview?.clear();
+		}
 	}
 
 	showPing(x: number, y: number, color = 0xf2cf77) {
@@ -191,14 +242,27 @@ export class GameEngine {
 			elapsed += ticker.deltaMS;
 			const progress = Math.min(1, elapsed / 1100);
 			const radius = this.tamanhoGrid * (0.16 + progress * 0.72);
-			ping.clear().circle(x, y, radius).stroke({ width: Math.max(2, 6 * (1 - progress)), color, alpha: 1 - progress });
+			ping
+				.clear()
+				.circle(x, y, radius)
+				.stroke({ width: Math.max(2, 6 * (1 - progress)), color, alpha: 1 - progress });
 			ping.circle(x, y, 5).fill({ color, alpha: 1 - progress });
-			if (progress >= 1) { this.app.ticker.remove(animate); this.pings.delete(ping); ping.destroy(); }
+			if (progress >= 1) {
+				this.app.ticker.remove(animate);
+				this.pings.delete(ping);
+				ping.destroy();
+			}
 		};
 		this.app.ticker.add(animate);
 	}
 
-	setFog(enabled: boolean, isGM: boolean, visibleCells: string[], revealedCells: string[], hiddenCells: string[] = []) {
+	setFog(
+		enabled: boolean,
+		isGM: boolean,
+		visibleCells: string[],
+		revealedCells: string[],
+		hiddenCells: string[] = []
+	) {
 		if (!this.fogLayer) {
 			this.fogLayer = new PIXI.Graphics();
 			this.camera.mundo.addChild(this.fogLayer);
@@ -210,12 +274,14 @@ export class GameEngine {
 		const hidden = new Set(hiddenCells);
 		// The existing grid spans ±2520px. Rendering one batched Graphics layer
 		// is inexpensive and keeps the mask aligned while camera zooms/pans.
-		for (let x = -36; x <= 36; x++) for (let y = -36; y <= 36; y++) {
-			const key = `${x}:${y}`;
-			if (visible.has(key) && !hidden.has(key)) continue;
-			this.fogLayer.rect(x * this.tamanhoGrid, y * this.tamanhoGrid, this.tamanhoGrid, this.tamanhoGrid)
-				.fill({ color: 0x0a080c, alpha: explored.has(key) ? 0.58 : 0.94 });
-		}
+		for (let x = -36; x <= 36; x++)
+			for (let y = -36; y <= 36; y++) {
+				const key = `${x}:${y}`;
+				if (visible.has(key) && !hidden.has(key)) continue;
+				this.fogLayer
+					.rect(x * this.tamanhoGrid, y * this.tamanhoGrid, this.tamanhoGrid, this.tamanhoGrid)
+					.fill({ color: 0x0a080c, alpha: explored.has(key) ? 0.58 : 0.94 });
+			}
 	}
 
 	private desenharGrid() {

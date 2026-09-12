@@ -6,14 +6,17 @@
 	let result = $state<{ expression: string; total: number; dice: number[] } | null>(null);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
-	$diceOverlay;
+	void $diceOverlay;
 	$effect(() => {
 		if (!$diceOverlay) return;
 		result = $diceOverlay;
 		visible = false;
 		void tick().then(() => (visible = true));
 		if (timer) clearTimeout(timer);
-		timer = setTimeout(() => { visible = false; diceOverlay.set(null); }, 2500);
+		timer = setTimeout(() => {
+			visible = false;
+			diceOverlay.set(null);
+		}, 2500);
 	});
 	const sides = () => Number(result?.expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
 </script>
@@ -60,7 +63,24 @@
 		animation: roll 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 		box-shadow: 0 15px 28px rgba(0, 0, 0, 0.45);
 	}
-	.d4{clip-path:polygon(50% 0,100% 100%,0 100%)}.d6{clip-path:polygon(20% 0,80% 0,100% 50%,80% 100%,20% 100%,0 50%)}.d8{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}.d10{clip-path:polygon(50% 0,95% 32%,78% 100%,22% 100%,5% 32%)}.d12{clip-path:polygon(50% 0,85% 12%,100% 50%,85% 88%,50% 100%,15% 88%,0 50%,15% 12%)}.d100{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+	.d4 {
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.d6 {
+		clip-path: polygon(20% 0, 80% 0, 100% 50%, 80% 100%, 20% 100%, 0 50%);
+	}
+	.d8 {
+		clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+	}
+	.d10 {
+		clip-path: polygon(50% 0, 95% 32%, 78% 100%, 22% 100%, 5% 32%);
+	}
+	.d12 {
+		clip-path: polygon(50% 0, 85% 12%, 100% 50%, 85% 88%, 50% 100%, 15% 88%, 0 50%, 15% 12%);
+	}
+	.d100 {
+		clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
+	}
 	.result {
 		display: grid;
 		gap: 0.08rem;

@@ -2,7 +2,13 @@ import * as PIXI from 'pixi.js';
 import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 import { get, type Unsubscriber } from 'svelte/store';
 import { appLocale, distance } from '$lib/stores/locale';
-export type MeasuredArea = { shape: RulerMode; startX: number; startY: number; endX: number; endY: number };
+export type MeasuredArea = {
+	shape: RulerMode;
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
+};
 
 export class RulerManager {
 	private graphics: PIXI.Graphics;
@@ -122,7 +128,16 @@ export class RulerManager {
 			this.texto.x = this.startX + dx / 2;
 			this.texto.y = this.startY + dy / 2 - 15; // -15px para ficar um pouco acima da linha
 			const locale = get(appLocale);
-			const shape = this.mode === 'line' ? (locale === 'en' ? 'line' : 'linha') : this.mode === 'circle' ? (locale === 'en' ? 'radius' : 'raio') : 'cone 60°';
+			const shape =
+				this.mode === 'line'
+					? locale === 'en'
+						? 'line'
+						: 'linha'
+					: this.mode === 'circle'
+						? locale === 'en'
+							? 'radius'
+							: 'raio'
+						: 'cone 60°';
 			this.texto.text = `${distance(metros, locale)} · ${shape}`;
 		});
 
@@ -130,7 +145,13 @@ export class RulerManager {
 		const pararMedicao = () => {
 			if (this.medindo) {
 				this.medindo = false;
-				this.onComplete?.({ shape: this.mode, startX: this.startX, startY: this.startY, endX: this.endX, endY: this.endY });
+				this.onComplete?.({
+					shape: this.mode,
+					startX: this.startX,
+					startY: this.startY,
+					endX: this.endX,
+					endY: this.endY
+				});
 				this.graphics.clear();
 				this.texto.visible = false;
 			}

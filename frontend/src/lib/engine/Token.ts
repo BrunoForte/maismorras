@@ -294,13 +294,16 @@ export class Token {
 				}
 
 				if (this.moveuDesdeClique) {
-					const moved = this.onMover?.(this.id, this.containerPrincipal.x, this.containerPrincipal.y);
+					const moved = this.onMover?.(
+						this.id,
+						this.containerPrincipal.x,
+						this.containerPrincipal.y
+					);
 					// A rule can deny movement (for example Restrained). Revert the
 					// visual token immediately so its rendered position cannot diverge
 					// from the persisted board state.
 					if (moved === false) this.containerPrincipal.position.set(this.dados.x, this.dados.y);
-				}
-				else this.onSelecionar?.(this.id);
+				} else this.onSelecionar?.(this.id);
 				this.atualizarCoordenada();
 			}
 		};

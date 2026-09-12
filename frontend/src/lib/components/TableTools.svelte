@@ -5,7 +5,13 @@
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice } from '$lib/services/eventApi';
-	import { getCombat, rollSceneInitiative, rollTokenInitiative, setCombat, setTokenInitiative } from '$lib/services/sceneApi';
+	import {
+		getCombat,
+		rollSceneInitiative,
+		rollTokenInitiative,
+		setCombat,
+		setTokenInitiative
+	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 	import { appLocale } from '$lib/stores/locale';
@@ -85,7 +91,7 @@
 		activeTokenId = combat.activeTokenId;
 		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
 		sceneSocket?.publishRefresh();
-}
+	}
 	async function rollAllInitiative() {
 		if (!isGM || rollingInitiative) return;
 		rollingInitiative = true;
@@ -130,8 +136,12 @@
 		$personagens = $personagens.map((token) =>
 			token.id === id ? { ...token, iniciativa: initiative } : token
 		);
-		try { await setTokenInitiative(session, sceneId, tokenId, initiative); sceneSocket?.publishRefresh(); }
-		catch (error) { console.error('Falha ao salvar iniciativa:', error); }
+		try {
+			await setTokenInitiative(session, sceneId, tokenId, initiative);
+			sceneSocket?.publishRefresh();
+		} catch (error) {
+			console.error('Falha ao salvar iniciativa:', error);
+		}
 	}
 	function setRulerMode(mode: RulerMode) {
 		rulerMode.set(mode);
@@ -143,8 +153,10 @@
 
 <div class="table-tools" aria-label={$appLocale === 'en' ? 'Table tools' : 'Ferramentas da mesa'}>
 	<div class="tool-group">
-		<button class:active={toolsOpen} onclick={() => (toolsOpen = !toolsOpen)} title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}
-			>📏</button
+		<button
+			class:active={toolsOpen}
+			onclick={() => (toolsOpen = !toolsOpen)}
+			title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}>📏</button
 		><button
 			class:active={initiativeOpen}
 			onclick={() => (initiativeOpen = !initiativeOpen)}
@@ -155,11 +167,22 @@
 			disabled={rolling}
 			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
 		>
-		{#if isGM}<button onclick={() => toggleMapTool('layers')} title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button><button onclick={() => toggleMapTool('areas')} title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button><button onclick={() => toggleMapTool('barriers')} title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button>{/if}
+		{#if isGM}<button
+				onclick={() => toggleMapTool('layers')}
+				title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
+			><button
+				onclick={() => toggleMapTool('areas')}
+				title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button
+			><button
+				onclick={() => toggleMapTool('barriers')}
+				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
+			>{/if}
 	</div>
 	{#if toolsOpen}<section class="tool-popover">
 			<strong>{$appLocale === 'en' ? 'Spell ruler' : 'Régua de magia'}</strong><span
-				>{$appLocale === 'en' ? 'Choose an area and hold' : 'Escolha a área e segure'} <kbd>Shift</kbd> {$appLocale === 'en' ? 'while dragging on the map.' : 'enquanto arrasta no mapa.'}</span
+				>{$appLocale === 'en' ? 'Choose an area and hold' : 'Escolha a área e segure'}
+				<kbd>Shift</kbd>
+				{$appLocale === 'en' ? 'while dragging on the map.' : 'enquanto arrasta no mapa.'}</span
 			>
 			<div class="mode-buttons">
 				<button class:active={$rulerMode === 'line'} onclick={() => setRulerMode('line')}
@@ -182,12 +205,40 @@
 					onclick={() => void roll('1d20')}>d20</button
 				>
 			</div>
-			<small>{$appLocale === 'en' ? 'Use chat for expressions such as' : 'Use o chat para expressões como'} <code>/r 2d6+3</code>.</small>
+			<small
+				>{$appLocale === 'en'
+					? 'Use chat for expressions such as'
+					: 'Use o chat para expressões como'} <code>/r 2d6+3</code>.</small
+			>
 		</section>{/if}
 	{#if initiativeOpen}<section class="initiative-popover">
 			<header>
-				<div><span>{$appLocale === 'en' ? 'COMBAT' : 'COMBATE'}</span><strong>{$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}</strong></div>
-				{#if isGM}<div class="combat-actions"><button onclick={() => void rollAllInitiative()} disabled={rollingInitiative}>{rollingInitiative ? ($appLocale === 'en' ? 'Rolling…' : 'Rolando…') : ($appLocale === 'en' ? 'Roll all' : 'Rolar todos')}</button><button onclick={() => void nextTurn()}>{activeTokenId ? ($appLocale === 'en' ? 'Next turn →' : 'Próximo turno →') : ($appLocale === 'en' ? 'Start combat' : 'Iniciar combate')}</button>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}>{$appLocale === 'en' ? 'End' : 'Encerrar'}</button>{/if}</div>{/if}
+				<div>
+					<span>{$appLocale === 'en' ? 'COMBAT' : 'COMBATE'}</span><strong
+						>{$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}</strong
+					>
+				</div>
+				{#if isGM}<div class="combat-actions">
+						<button onclick={() => void rollAllInitiative()} disabled={rollingInitiative}
+							>{rollingInitiative
+								? $appLocale === 'en'
+									? 'Rolling…'
+									: 'Rolando…'
+								: $appLocale === 'en'
+									? 'Roll all'
+									: 'Rolar todos'}</button
+						><button onclick={() => void nextTurn()}
+							>{activeTokenId
+								? $appLocale === 'en'
+									? 'Next turn →'
+									: 'Próximo turno →'
+								: $appLocale === 'en'
+									? 'Start combat'
+									: 'Iniciar combate'}</button
+						>{#if activeTokenId}<button class="end-combat" onclick={() => void endCombat()}
+								>{$appLocale === 'en' ? 'End' : 'Encerrar'}</button
+							>{/if}
+					</div>{/if}
 			</header>
 			{#if combatants.length === 0}<p>
 					{$appLocale === 'en' ? 'No tokens in this scene.' : 'Nenhum token nesta cena.'}
@@ -196,11 +247,20 @@
 					>
 						<i style={`background:#${token.cor.toString(16).padStart(6, '0')}`}></i><strong
 							>{token.nome}</strong
-						>{#if isGM}<button class="turn-select" onclick={() => void selectTurn(token.persistedId)}>{token.persistedId === activeTokenId ? 'Ativo' : 'Ativar'}</button><input
+						>{#if isGM}<button
+								class="turn-select"
+								onclick={() => void selectTurn(token.persistedId)}
+								>{token.persistedId === activeTokenId ? 'Ativo' : 'Ativar'}</button
+							><input
 								type="number"
 								value={token.iniciativa}
-								onchange={(event) => void setInitiative(token.id, token.persistedId, event.currentTarget.value)}
-							/>{:else}{#if token.isOwned}<button class="turn-select" onclick={() => void rollOwnInitiative(token)} disabled={rollingInitiative}>Rolar</button>{/if}<span>{token.iniciativa}</span>{/if}
+								onchange={(event) =>
+									void setInitiative(token.id, token.persistedId, event.currentTarget.value)}
+							/>{:else}{#if token.isOwned}<button
+									class="turn-select"
+									onclick={() => void rollOwnInitiative(token)}
+									disabled={rollingInitiative}>Rolar</button
+								>{/if}<span>{token.iniciativa}</span>{/if}
 					</article>{/each}{/if}
 		</section>{/if}
 </div>

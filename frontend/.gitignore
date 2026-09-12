@@ -8,6 +8,7 @@ node_modules
 /.svelte-kit
 /build
 /test-results
+/.auth
 
 # OS
 .DS_Store

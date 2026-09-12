@@ -11,6 +11,8 @@
 		onsaved
 	}: { scene: Scene; session: Session; onclose: () => void; onsaved: (scene: Scene) => void } =
 		$props();
+	// Draft is intentionally mutable while editing a scene copy.
+	// eslint-disable-next-line svelte/prefer-writable-derived
 	let draft = $state<Scene>({} as Scene),
 		saving = $state(false),
 		message = $state('');
@@ -52,7 +54,12 @@
 			onsaved(result);
 			onclose();
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the scene.' : 'Não foi possível salvar a cena.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not save the scene.'
+						: 'Não foi possível salvar a cena.';
 		} finally {
 			saving = false;
 		}
@@ -67,7 +74,11 @@
 				{ headers: { Authorization: `Bearer ${session.access_token}` } }
 			);
 			const data = await response.json();
-			if (!response.ok) throw new Error(data.error?.message ?? ($appLocale === 'en' ? 'Could not generate the map.' : 'Não foi possível gerar o mapa.'));
+			if (!response.ok)
+				throw new Error(
+					data.error?.message ??
+						($appLocale === 'en' ? 'Could not generate the map.' : 'Não foi possível gerar o mapa.')
+				);
 			const blob = await (await fetch(data.fotoUrl)).blob();
 			const path = `campaigns/${scene.campaignId}/media/${crypto.randomUUID()}-mapa-gerado.png`;
 			const { error } = await supabase.storage
@@ -76,9 +87,17 @@
 			if (error) throw error;
 			imageFiles = [{ path, name: `Mapa gerado · ${mapPrompt.slice(0, 40)}` }, ...imageFiles];
 			draft.backgroundUrl = path;
-			message = $appLocale === 'en' ? 'Map generated and selected. Save the scene to apply it.' : 'Mapa gerado e selecionado. Salve a cena para aplicá-lo.';
+			message =
+				$appLocale === 'en'
+					? 'Map generated and selected. Save the scene to apply it.'
+					: 'Mapa gerado e selecionado. Salve a cena para aplicá-lo.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not generate the map.' : 'Não foi possível gerar o mapa.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not generate the map.'
+						: 'Não foi possível gerar o mapa.';
 		} finally {
 			generating = false;
 		}
@@ -104,20 +123,29 @@
 				void save();
 			}}
 		>
-			<label>{$appLocale === 'en' ? 'Name' : 'Nome'}<input bind:value={draft.name} maxlength="120" /></label><label
+			<label
+				>{$appLocale === 'en' ? 'Name' : 'Nome'}<input
+					bind:value={draft.name}
+					maxlength="120"
+				/></label
+			><label
 				>{$appLocale === 'en' ? 'Background image' : 'Imagem de fundo'}<input
 					bind:value={draft.backgroundUrl}
 					placeholder={$appLocale === 'en' ? 'Public image URL' : 'URL pública da imagem'}
 				/></label
 			><label
-				>{$appLocale === 'en' ? 'Choose image from Library' : 'Escolher imagem da Biblioteca'}<select bind:value={draft.backgroundUrl}
-					><option value="">{$appLocale === 'en' ? 'No background image' : 'Sem imagem de fundo'}</option
+				>{$appLocale === 'en'
+					? 'Choose image from Library'
+					: 'Escolher imagem da Biblioteca'}<select bind:value={draft.backgroundUrl}
+					><option value=""
+						>{$appLocale === 'en' ? 'No background image' : 'Sem imagem de fundo'}</option
 					>{#each imageFiles as image (image.path)}<option value={image.path}>{image.name}</option
 						>{/each}</select
 				></label
 			>
 			<div class="map-ai">
-				<strong>{$appLocale === 'en' ? 'Generate map with AI' : 'Gerar mapa com IA'}</strong><textarea
+				<strong>{$appLocale === 'en' ? 'Generate map with AI' : 'Gerar mapa com IA'}</strong
+				><textarea
 					bind:value={mapPrompt}
 					maxlength="1500"
 					placeholder="Ex.: ruínas élficas subterrâneas, ponte quebrada sobre rio de lava, espaço para combate"
@@ -125,13 +153,20 @@
 					type="button"
 					onclick={() => void generateMap()}
 					disabled={generating || !mapPrompt.trim()}
-					>{generating ? ($appLocale === 'en' ? 'Generating map…' : 'Gerando mapa…') : ($appLocale === 'en' ? 'Generate and select map' : 'Gerar e selecionar mapa')}</button
+					>{generating
+						? $appLocale === 'en'
+							? 'Generating map…'
+							: 'Gerando mapa…'
+						: $appLocale === 'en'
+							? 'Generate and select map'
+							: 'Gerar e selecionar mapa'}</button
 				>
 			</div>
 			<label
-				>{$appLocale === 'en' ? 'Scene soundtrack' : 'Trilha da cena'}<select bind:value={draft.ambientAudioPath}
-					><option value="">{$appLocale === 'en' ? 'No soundtrack' : 'Sem trilha'}</option>{#each audioFiles as audio (audio.path)}<option
-							value={audio.path}>{audio.name}</option
+				>{$appLocale === 'en' ? 'Scene soundtrack' : 'Trilha da cena'}<select
+					bind:value={draft.ambientAudioPath}
+					><option value="">{$appLocale === 'en' ? 'No soundtrack' : 'Sem trilha'}</option
+					>{#each audioFiles as audio (audio.path)}<option value={audio.path}>{audio.name}</option
 						>{/each}</select
 				></label
 			><label
@@ -146,28 +181,54 @@
 					type="checkbox"
 					bind:checked={draft.ambientAudioEnabled}
 					disabled={!draft.ambientAudioPath}
-				/> {$appLocale === 'en' ? 'Play soundtrack for players' : 'Reproduzir trilha para participantes'}</label
+				/>
+				{$appLocale === 'en'
+					? 'Play soundtrack for players'
+					: 'Reproduzir trilha para participantes'}</label
 			><label
-				>{$appLocale === 'en' ? 'Grid in pixels' : 'Grid em pixels'}<input bind:value={draft.gridSize} type="number" min="20" max="200" /></label
+				>{$appLocale === 'en' ? 'Grid in pixels' : 'Grid em pixels'}<input
+					bind:value={draft.gridSize}
+					type="number"
+					min="20"
+					max="200"
+				/></label
 			><label
-				>{$appLocale === 'en' ? 'Player visibility' : 'Visibilidade para jogadores'}<select bind:value={draft.playerAccess}
-					><option value="hidden">{$appLocale === 'en' ? 'Hidden — nobody can see it' : 'Oculta — ninguém vê'}</option><option value="available"
-						>{$appLocale === 'en' ? 'Available — players can open it' : 'Disponível — jogadores podem abrir'}</option
-					><option value="active">{$appLocale === 'en' ? 'Active — group scene' : 'Ativa — cena do grupo'}</option></select
+				>{$appLocale === 'en' ? 'Player visibility' : 'Visibilidade para jogadores'}<select
+					bind:value={draft.playerAccess}
+					><option value="hidden"
+						>{$appLocale === 'en' ? 'Hidden — nobody can see it' : 'Oculta — ninguém vê'}</option
+					><option value="available"
+						>{$appLocale === 'en'
+							? 'Available — players can open it'
+							: 'Disponível — jogadores podem abrir'}</option
+					><option value="active"
+						>{$appLocale === 'en' ? 'Active — group scene' : 'Ativa — cena do grupo'}</option
+					></select
 				></label
 			><label
-				>{$appLocale === 'en' ? 'Fog of war' : 'Névoa de guerra'}<select bind:value={draft.fogEnabled}
-					><option value={false}>{$appLocale === 'en' ? 'Disabled' : 'Desativada'}</option><option value={true}>{$appLocale === 'en' ? 'Enabled' : 'Ativada'}</option></select
+				>{$appLocale === 'en' ? 'Fog of war' : 'Névoa de guerra'}<select
+					bind:value={draft.fogEnabled}
+					><option value={false}>{$appLocale === 'en' ? 'Disabled' : 'Desativada'}</option><option
+						value={true}>{$appLocale === 'en' ? 'Enabled' : 'Ativada'}</option
+					></select
 				></label
 			><label
-				>{$appLocale === 'en' ? 'Vision mode' : 'Modo de visão'}<select bind:value={draft.visionMode}
-					><option value="manual">Manual</option><option value="shared">{$appLocale === 'en' ? 'Shared' : 'Compartilhada'}</option
+				>{$appLocale === 'en' ? 'Vision mode' : 'Modo de visão'}<select
+					bind:value={draft.visionMode}
+					><option value="manual">Manual</option><option value="shared"
+						>{$appLocale === 'en' ? 'Shared' : 'Compartilhada'}</option
 					><option value="token">{$appLocale === 'en' ? 'By token' : 'Por token'}</option></select
 				></label
 			><label class="toggle"
-				><input type="checkbox" bind:checked={draft.allowPlayerMovement} /> {$appLocale === 'en' ? 'Players can move only their own tokens' : 'Jogadores podem mover apenas seus próprios tokens'}</label
+				><input type="checkbox" bind:checked={draft.allowPlayerMovement} />
+				{$appLocale === 'en'
+					? 'Players can move only their own tokens'
+					: 'Jogadores podem mover apenas seus próprios tokens'}</label
 			><label class="toggle"
-				><input type="checkbox" bind:checked={draft.allowPlayerDoorInteraction} /> {$appLocale === 'en' ? 'Players can interact with nearby doors' : 'Jogadores podem interagir com portas próximas'}</label
+				><input type="checkbox" bind:checked={draft.allowPlayerDoorInteraction} />
+				{$appLocale === 'en'
+					? 'Players can interact with nearby doors'
+					: 'Jogadores podem interagir com portas próximas'}</label
 			>
 			<p>
 				{$appLocale === 'en'
@@ -176,9 +237,16 @@
 			</p>
 			{#if message}<small>{message}</small>{/if}
 			<footer>
-				<button type="button" onclick={onclose}>{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}</button><button
-					class="primary"
-					disabled={saving}>{saving ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Save scene' : 'Salvar cena')}</button
+				<button type="button" onclick={onclose}
+					>{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}</button
+				><button class="primary" disabled={saving}
+					>{saving
+						? $appLocale === 'en'
+							? 'Saving…'
+							: 'Salvando…'
+						: $appLocale === 'en'
+							? 'Save scene'
+							: 'Salvar cena'}</button
 				>
 			</footer>
 		</form>

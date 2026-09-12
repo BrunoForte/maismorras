@@ -56,8 +56,26 @@ export type EffectDefinition = {
 	source: string;
 };
 export type FogState = { visibleCells: string[]; revealedCells: string[]; hiddenCells: string[] };
-export type SceneArea = { id: string; shape: 'line' | 'circle' | 'cone'; startX: number; startY: number; endX: number; endY: number; color: number; label: string; visibleToPlayers: boolean };
-export type SceneWall = { id: string; startX: number; startY: number; endX: number; endY: number; kind: 'wall' | 'door'; open: boolean };
+export type SceneArea = {
+	id: string;
+	shape: 'line' | 'circle' | 'cone';
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
+	color: number;
+	label: string;
+	visibleToPlayers: boolean;
+};
+export type SceneWall = {
+	id: string;
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
+	kind: 'wall' | 'door';
+	open: boolean;
+};
 
 const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 export async function request<T>(
@@ -85,38 +103,102 @@ export const createScene = (session: Session, campaignId: string, name: string) 
 		method: 'POST',
 		body: JSON.stringify({ name })
 	});
-export const updateScene = (session: Session, scene: Scene) => request<Scene>(session, `/api/v1/scenes/${scene.id}`, { method: 'PATCH', body: JSON.stringify(scene) });
-export const updateFog = (session: Session, sceneId: string, mode: 'reveal' | 'hide', cells: [number, number][]) =>
-	request<{ ok: boolean }>(session, `/api/v1/scenes/${sceneId}/fog`, { method: 'PATCH', body: JSON.stringify({ mode, cells }) });
+export const updateScene = (session: Session, scene: Scene) =>
+	request<Scene>(session, `/api/v1/scenes/${scene.id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(scene)
+	});
+export const updateFog = (
+	session: Session,
+	sceneId: string,
+	mode: 'reveal' | 'hide',
+	cells: [number, number][]
+) =>
+	request<{ ok: boolean }>(session, `/api/v1/scenes/${sceneId}/fog`, {
+		method: 'PATCH',
+		body: JSON.stringify({ mode, cells })
+	});
 export const loadScene = (session: Session, sceneId: string) =>
-	request<{ scene: Scene; tokens: PersistedToken[]; fog: FogState; areas: SceneArea[]; walls: SceneWall[] }>(session, `/api/v1/scenes/${sceneId}`);
-export const createSceneArea = (session: Session, sceneId: string, area: Omit<SceneArea, 'id'>) => request<SceneArea>(session, `/api/v1/scenes/${sceneId}/areas`, { method: 'POST', body: JSON.stringify(area) });
-export const deleteSceneArea = (session: Session, sceneId: string, areaId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/areas/${areaId}`, { method: 'DELETE' });
-export const createSceneWall = (session: Session, sceneId: string, wall: Omit<SceneWall, 'id'>) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls`, { method: 'POST', body: JSON.stringify(wall) });
-export const deleteSceneWall = (session: Session, sceneId: string, wallId: string) => request<void>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'DELETE' });
-export const setSceneDoorOpen = (session: Session, sceneId: string, wallId: string, open: boolean) => request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'PATCH', body: JSON.stringify({ open }) });
-export const interactWithNearbyDoor = (session: Session, sceneId: string) => request<{ open: boolean }>(session, `/api/v1/scenes/${sceneId}/doors/interact`, { method: 'POST' });
+	request<{
+		scene: Scene;
+		tokens: PersistedToken[];
+		fog: FogState;
+		areas: SceneArea[];
+		walls: SceneWall[];
+	}>(session, `/api/v1/scenes/${sceneId}`);
+export const createSceneArea = (session: Session, sceneId: string, area: Omit<SceneArea, 'id'>) =>
+	request<SceneArea>(session, `/api/v1/scenes/${sceneId}/areas`, {
+		method: 'POST',
+		body: JSON.stringify(area)
+	});
+export const deleteSceneArea = (session: Session, sceneId: string, areaId: string) =>
+	request<void>(session, `/api/v1/scenes/${sceneId}/areas/${areaId}`, { method: 'DELETE' });
+export const createSceneWall = (session: Session, sceneId: string, wall: Omit<SceneWall, 'id'>) =>
+	request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls`, {
+		method: 'POST',
+		body: JSON.stringify(wall)
+	});
+export const deleteSceneWall = (session: Session, sceneId: string, wallId: string) =>
+	request<void>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, { method: 'DELETE' });
+export const setSceneDoorOpen = (
+	session: Session,
+	sceneId: string,
+	wallId: string,
+	open: boolean
+) =>
+	request<SceneWall>(session, `/api/v1/scenes/${sceneId}/walls/${wallId}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ open })
+	});
+export const interactWithNearbyDoor = (session: Session, sceneId: string) =>
+	request<{ open: boolean }>(session, `/api/v1/scenes/${sceneId}/doors/interact`, {
+		method: 'POST'
+	});
 export const getCombat = (session: Session, sceneId: string) =>
 	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>
-	request<{ activeTokenId: string | null; message?: string }>(session, `/api/v1/scenes/${sceneId}/combat`, {
-		method: 'PATCH',
-		body: JSON.stringify({ activeTokenId: activeTokenId ?? '' })
-	});
+	request<{ activeTokenId: string | null; message?: string }>(
+		session,
+		`/api/v1/scenes/${sceneId}/combat`,
+		{
+			method: 'PATCH',
+			body: JSON.stringify({ activeTokenId: activeTokenId ?? '' })
+		}
+	);
 export const rollSceneInitiative = (session: Session, sceneId: string) =>
-	request<{ tokens: { id: string; initiative: number }[] }>(session, `/api/v1/scenes/${sceneId}/combat/roll-initiative`, {
-		method: 'POST'
-	});
+	request<{ tokens: { id: string; initiative: number }[] }>(
+		session,
+		`/api/v1/scenes/${sceneId}/combat/roll-initiative`,
+		{
+			method: 'POST'
+		}
+	);
 export const rollTokenInitiative = (session: Session, sceneId: string, tokenId: string) =>
-	request<{ tokenId: string; roll: number; bonus: number; initiative: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`, {
-		method: 'POST'
-	});
-export const setTokenInitiative = (session: Session, sceneId: string, tokenId: string, initiative: number) =>
-	request<{ initiative: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/initiative`, { method: 'PATCH', body: JSON.stringify({ initiative }) });
+	request<{ tokenId: string; roll: number; bonus: number; initiative: number }>(
+		session,
+		`/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`,
+		{
+			method: 'POST'
+		}
+	);
+export const setTokenInitiative = (
+	session: Session,
+	sceneId: string,
+	tokenId: string,
+	initiative: number
+) =>
+	request<{ initiative: number }>(
+		session,
+		`/api/v1/scenes/${sceneId}/tokens/${tokenId}/initiative`,
+		{ method: 'PATCH', body: JSON.stringify({ initiative }) }
+	);
 export const listSceneEffects = (session: Session, sceneId: string) =>
 	request<{ effects: SceneEffect[] }>(session, `/api/v1/scenes/${sceneId}/effects`);
 export const listEffectDefinitions = (session: Session, sceneId: string) =>
-	request<{ definitions: EffectDefinition[] }>(session, `/api/v1/scenes/${sceneId}/effect-definitions`);
+	request<{ definitions: EffectDefinition[] }>(
+		session,
+		`/api/v1/scenes/${sceneId}/effect-definitions`
+	);
 export const addSceneEffect = (
 	session: Session,
 	sceneId: string,
@@ -152,8 +234,18 @@ export const updateToken = (
 export const deleteSceneToken = (session: Session, sceneId: string, tokenId: string) =>
 	request<void>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}`, { method: 'DELETE' });
 
-export const moveToken = (session: Session, sceneId: string, tokenId: string, x: number, y: number) =>
-	request<{ x: number; y: number }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/position`, { method: 'PATCH', body: JSON.stringify({ x, y }) });
+export const moveToken = (
+	session: Session,
+	sceneId: string,
+	tokenId: string,
+	x: number,
+	y: number
+) =>
+	request<{ x: number; y: number }>(
+		session,
+		`/api/v1/scenes/${sceneId}/tokens/${tokenId}/position`,
+		{ method: 'PATCH', body: JSON.stringify({ x, y }) }
+	);
 
 export const createTokenFromCharacter = (session: Session, sceneId: string, actorId: string) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/from-character`, {
@@ -161,7 +253,11 @@ export const createTokenFromCharacter = (session: Session, sceneId: string, acto
 		body: JSON.stringify({ actorId })
 	});
 
-export const createTokenFromCompendiumMonster = (session: Session, sceneId: string, entryId: string) =>
+export const createTokenFromCompendiumMonster = (
+	session: Session,
+	sceneId: string,
+	entryId: string
+) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/from-compendium-monster`, {
 		method: 'POST',
 		body: JSON.stringify({ entryId })

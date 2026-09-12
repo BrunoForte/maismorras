@@ -7,10 +7,17 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('sceneApi request wrapper', () => {
 	it('sends bearer authentication and parses scene collections', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ scenes: [] }), { status: 200 }));
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ scenes: [] }), { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
 		await expect(listScenes(session, 'campaign-1')).resolves.toEqual({ scenes: [] });
-		expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/campaigns/campaign-1/scenes'), expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) }));
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.stringContaining('/api/v1/campaigns/campaign-1/scenes'),
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+			})
+		);
 	});
 
 	it('accepts a 204 response for destructive operations', async () => {

@@ -19,7 +19,9 @@
 		window.addEventListener('beforeinstallprompt', rememberInstallPrompt);
 		window.addEventListener('appinstalled', clearInstallPrompt);
 		if ('serviceWorker' in navigator)
-			void navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('PWA indisponível:', error));
+			void navigator.serviceWorker
+				.register('/sw.js')
+				.catch((error) => console.warn('PWA indisponível:', error));
 		return () => {
 			window.removeEventListener('beforeinstallprompt', rememberInstallPrompt);
 			window.removeEventListener('appinstalled', clearInstallPrompt);
@@ -41,9 +43,7 @@
 {@render children()}
 
 {#if installPrompt}
-	<button class="install-app" onclick={() => void installApp()}>
-		⊕ Instalar MaisMorras
-	</button>
+	<button class="install-app" onclick={() => void installApp()}> ⊕ Instalar MaisMorras </button>
 {/if}
 
 <style>
@@ -58,7 +58,11 @@
 		color: #2a1b0e;
 		background: #f0cb85;
 		box-shadow: 0 10px 28px #0008;
-		font: 700 0.76rem Inter, ui-sans-serif, system-ui, sans-serif;
+		font:
+			700 0.76rem Inter,
+			ui-sans-serif,
+			system-ui,
+			sans-serif;
 		cursor: pointer;
 	}
 </style>

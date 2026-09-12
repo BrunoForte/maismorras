@@ -10,9 +10,21 @@ export type AbilityScores = {
 };
 export type Attack = { name: string; attackBonus: number; damage: string; notes: string };
 export type Spell = { name: string; level: number; notes: string };
-export type CharacterResource = { id: string; name: string; current: number; max: number; restoreOn: 'short' | 'long' };
+export type CharacterResource = {
+	id: string;
+	name: string;
+	current: number;
+	max: number;
+	restoreOn: 'short' | 'long';
+};
 export type SpellSlot = { level: number; current: number; max: number };
-export type InventoryItem = { entryId: string; name: string; quantity: number; equipped: boolean; rules: Record<string, unknown> };
+export type InventoryItem = {
+	entryId: string;
+	name: string;
+	quantity: number;
+	equipped: boolean;
+	rules: Record<string, unknown>;
+};
 export type CharacterSheet = {
 	name: string;
 	portraitPath: string;
@@ -89,16 +101,12 @@ function normalizeCharacter(character: Character): Character {
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
 		skillExpertise: character.sheet.skillExpertise ?? [],
 		speciesLineage: character.sheet.speciesLineage ?? '',
-		feats: character.sheet.feats ?? ''
-		,
-		portraitPath: character.sheet.portraitPath ?? ''
-		,
+		feats: character.sheet.feats ?? '',
+		portraitPath: character.sheet.portraitPath ?? '',
 		resources: character.sheet.resources ?? [],
-		spellSlots: character.sheet.spellSlots ?? []
-		,
+		spellSlots: character.sheet.spellSlots ?? [],
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
-		visibleRolls: character.sheet.visibleRolls ?? []
-		,
+		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
 		automaticTraits: character.sheet.automaticTraits ?? [],
 		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0
@@ -115,7 +123,9 @@ export const saveMyCharacter = (session: Session, campaignId: string, sheet: Cha
 export const listParticipants = (session: Session, campaignId: string) =>
 	request<{ participants: Participant[] }>(session, `/api/v1/campaigns/${campaignId}/participants`);
 export const getCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
-	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`).then(normalizeCharacter);
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`).then(
+		normalizeCharacter
+	);
 export const saveCharacterForGM = (
 	session: Session,
 	campaignId: string,
@@ -132,7 +142,9 @@ export const createCharacterForGM = (session: Session, campaignId: string, owner
 		body: JSON.stringify({ ownerId })
 	}).then(normalizeCharacter);
 export const deleteCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
-	request<void>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, { method: 'DELETE' });
+	request<void>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, {
+		method: 'DELETE'
+	});
 
 export function createEmptySheet(): CharacterSheet {
 	return {
@@ -173,8 +185,7 @@ export function createEmptySheet(): CharacterSheet {
 		inventory: [],
 		resources: [],
 		spellSlots: [],
-		visibleRolls: []
-		,
+		visibleRolls: [],
 		resistances: [],
 		automaticTraits: [],
 		speciesHPBonusApplied: 0

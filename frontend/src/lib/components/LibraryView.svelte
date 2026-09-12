@@ -1,4 +1,6 @@
+<!-- eslint-disable svelte/require-each-key, svelte/no-navigation-without-resolve -- media URLs are external storage URLs. -->
 <script lang="ts">
+	/* eslint-disable svelte/require-each-key, svelte/no-navigation-without-resolve */
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
@@ -9,7 +11,12 @@
 		isGM,
 		onnotes
 	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
-	type Asset = { name: string; path: string; url: string; type: 'image' | 'audio' | 'document' | 'map' };
+	type Asset = {
+		name: string;
+		path: string;
+		url: string;
+		type: 'image' | 'audio' | 'document' | 'map';
+	};
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
 	let handouts = $state<Handout[]>([]);
@@ -30,36 +37,106 @@
 		void loadHandouts();
 	});
 	async function notesRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-		const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`, {
-			...init,
-			headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json', ...init.headers }
-		});
+		const response = await fetch(
+			`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
+			{
+				...init,
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					'Content-Type': 'application/json',
+					...init.headers
+				}
+			}
+		);
 		const data = await response.json();
-		if (!response.ok) throw new Error(data.error?.message ?? ($appLocale === 'en' ? 'Could not save the handout.' : 'Não foi possível salvar o handout.'));
+		if (!response.ok)
+			throw new Error(
+				data.error?.message ??
+					($appLocale === 'en'
+						? 'Could not save the handout.'
+						: 'Não foi possível salvar o handout.')
+			);
 		return data as T;
 	}
 	async function loadHandouts() {
-		try { handouts = (await notesRequest<{ notes: Handout[] }>(`/api/v1/campaigns/${campaignId}/notes`)).notes; }
-		catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load handouts.' : 'Não foi possível carregar os handouts.'); }
+		try {
+			handouts = (await notesRequest<{ notes: Handout[] }>(`/api/v1/campaigns/${campaignId}/notes`))
+				.notes;
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not load handouts.'
+						: 'Não foi possível carregar os handouts.';
+		}
 	}
 	async function saveHandout() {
 		if (!handoutTitle.trim() || savingHandout) return;
-		savingHandout = true; message = '';
+		savingHandout = true;
+		message = '';
 		try {
-			const handout = await notesRequest<Handout>(editingHandoutId ? `/api/v1/campaigns/${campaignId}/notes/${editingHandoutId}` : `/api/v1/campaigns/${campaignId}/notes`, { method: editingHandoutId ? 'PUT' : 'POST', body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: handoutVisibility }) });
-			handouts = editingHandoutId ? handouts.map((item) => item.id === handout.id ? handout : item) : [handout, ...handouts];
-			handoutTitle = ''; handoutBody = ''; handoutVisibility = 'players'; editingHandoutId = null; handoutOpen = false;
-		} catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not save the handout.' : 'Não foi possível salvar o handout.'); }
-		finally { savingHandout = false; }
+			const handout = await notesRequest<Handout>(
+				editingHandoutId
+					? `/api/v1/campaigns/${campaignId}/notes/${editingHandoutId}`
+					: `/api/v1/campaigns/${campaignId}/notes`,
+				{
+					method: editingHandoutId ? 'PUT' : 'POST',
+					body: JSON.stringify({
+						title: handoutTitle.trim(),
+						body: handoutBody,
+						visibility: handoutVisibility
+					})
+				}
+			);
+			handouts = editingHandoutId
+				? handouts.map((item) => (item.id === handout.id ? handout : item))
+				: [handout, ...handouts];
+			handoutTitle = '';
+			handoutBody = '';
+			handoutVisibility = 'players';
+			editingHandoutId = null;
+			handoutOpen = false;
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not save the handout.'
+						: 'Não foi possível salvar o handout.';
+		} finally {
+			savingHandout = false;
+		}
 	}
-	function editHandout(handout: Handout) { editingHandoutId = handout.id; handoutTitle = handout.title; handoutBody = handout.body; handoutVisibility = handout.visibility; handoutOpen = true; }
+	function editHandout(handout: Handout) {
+		editingHandoutId = handout.id;
+		handoutTitle = handout.title;
+		handoutBody = handout.body;
+		handoutVisibility = handout.visibility;
+		handoutOpen = true;
+	}
 	async function deleteHandout(handout: Handout) {
-		try { await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, { method: 'DELETE' }); handouts = handouts.filter((item) => item.id !== handout.id); }
-		catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not delete the handout.' : 'Não foi possível excluir o handout.'); }
+		try {
+			await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, {
+				method: 'DELETE'
+			});
+			handouts = handouts.filter((item) => item.id !== handout.id);
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not delete the handout.'
+						: 'Não foi possível excluir o handout.';
+		}
 	}
 	async function deleteAsset(asset: Asset) {
 		if (!supabase || deletingAsset) return;
-		const confirmed = window.confirm($appLocale === 'en' ? `Delete “${asset.name}” from this campaign?` : `Excluir “${asset.name}” desta campanha?`);
+		const confirmed = window.confirm(
+			$appLocale === 'en'
+				? `Delete “${asset.name}” from this campaign?`
+				: `Excluir “${asset.name}” desta campanha?`
+		);
 		if (!confirmed) return;
 		deletingAsset = asset.path;
 		message = '';
@@ -69,7 +146,12 @@
 			assets = assets.filter((item) => item.path !== asset.path);
 			if (preview?.path === asset.path) preview = null;
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not delete the media.' : 'Não foi possível excluir a mídia.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not delete the media.'
+						: 'Não foi possível excluir a mídia.';
 		} finally {
 			deletingAsset = null;
 		}
@@ -94,7 +176,14 @@
 							name: file.name.replace(/^[a-f0-9-]+-/, ''),
 							path: `${folder()}/${file.name}`,
 							url: signed.data.signedUrl,
-							type: file.metadata?.mimetype?.startsWith('audio/') ? ('audio' as const) : file.metadata?.mimetype === 'application/pdf' || file.metadata?.mimetype?.startsWith('text/') ? ('document' as const) : /map|scene|battle|mapa|cena/i.test(file.name) ? ('map' as const) : ('image' as const)
+							type: file.metadata?.mimetype?.startsWith('audio/')
+								? ('audio' as const)
+								: file.metadata?.mimetype === 'application/pdf' ||
+									  file.metadata?.mimetype?.startsWith('text/')
+									? ('document' as const)
+									: /map|scene|battle|mapa|cena/i.test(file.name)
+										? ('map' as const)
+										: ('image' as const)
 						}
 					: null;
 			})
@@ -106,10 +195,16 @@
 		const file = input.files?.[0];
 		if (!file || !supabase) return;
 		if (
-			(!file.type.startsWith('image/') && !file.type.startsWith('audio/') && file.type !== 'application/pdf' && !file.type.startsWith('text/')) ||
+			(!file.type.startsWith('image/') &&
+				!file.type.startsWith('audio/') &&
+				file.type !== 'application/pdf' &&
+				!file.type.startsWith('text/')) ||
 			file.size > 20 * 1024 * 1024
 		) {
-			message = $appLocale === 'en' ? 'Upload an image, audio, or document up to 20 MB.' : 'Envie imagem, áudio ou documento de até 20 MB.';
+			message =
+				$appLocale === 'en'
+					? 'Upload an image, audio, or document up to 20 MB.'
+					: 'Envie imagem, áudio ou documento de até 20 MB.';
 			return;
 		}
 		uploading = true;
@@ -130,42 +225,165 @@
 	}
 </script>
 
-<section class="library-view" aria-label={$appLocale === 'en' ? 'Campaign library' : 'Biblioteca da campanha'}>
+<section
+	class="library-view"
+	aria-label={$appLocale === 'en' ? 'Campaign library' : 'Biblioteca da campanha'}
+>
 	<header>
 		<div>
 			<p>{$appLocale === 'en' ? 'CAMPAIGN LIBRARY' : 'BIBLIOTECA DA CAMPANHA'}</p>
 			<h2>{$appLocale === 'en' ? 'Handouts and media' : 'Handouts e mídias'}</h2>
-			<span>{$appLocale === 'en' ? 'Images, maps, documents, and music for this table.' : 'Imagens, mapas, documentos e trilhas desta mesa.'}</span>
+			<span
+				>{$appLocale === 'en'
+					? 'Images, maps, documents, and music for this table.'
+					: 'Imagens, mapas, documentos e trilhas desta mesa.'}</span
+			>
 		</div>
 		{#if isGM}<div class="actions">
 				<label
-					>{uploading ? ($appLocale === 'en' ? 'Uploading…' : 'Enviando…') : ($appLocale === 'en' ? 'Add media' : 'Adicionar mídia')}<input
+					>{uploading
+						? $appLocale === 'en'
+							? 'Uploading…'
+							: 'Enviando…'
+						: $appLocale === 'en'
+							? 'Add media'
+							: 'Adicionar mídia'}<input
 						type="file"
-					accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav,application/pdf,text/plain"
+						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav,application/pdf,text/plain"
 						onchange={upload}
 						disabled={uploading}
 					/></label
-			><button onclick={() => { editingHandoutId = null; handoutTitle = ''; handoutBody = ''; handoutOpen = !handoutOpen; }}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button><button onclick={onnotes}>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button>
+				><button
+					onclick={() => {
+						editingHandoutId = null;
+						handoutTitle = '';
+						handoutBody = '';
+						handoutOpen = !handoutOpen;
+					}}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
+				><button onclick={onnotes}
+					>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button
+				>
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
-	{#if handoutOpen && isGM}<form class="handout-form" onsubmit={(event) => { event.preventDefault(); void saveHandout(); }}>
-		<input bind:value={handoutTitle} maxlength="120" placeholder={$appLocale === 'en' ? 'Handout title' : 'Título do handout'} />
-		<textarea bind:value={handoutBody} maxlength="32000" placeholder={$appLocale === 'en' ? 'Text, links, and guidance for the table' : 'Texto, links e orientações para a mesa'}></textarea>
-		<div><select bind:value={handoutVisibility}><option value="players">{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option><option value="gm">{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</option></select><button disabled={savingHandout}>{savingHandout ? ($appLocale === 'en' ? 'Saving…' : 'Salvando…') : ($appLocale === 'en' ? 'Save handout' : 'Salvar handout')}</button></div>
-	</form>{/if}
-	<section class="handouts" aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? ($appLocale === 'en' ? 'Shared' : 'Compartilhado') : ($appLocale === 'en' ? 'Private' : 'Privado')}</small><h4>{handout.title}</h4><p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p>{#if isGM}<div class="handout-actions"><button onclick={() => editHandout(handout)}>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button><button onclick={() => void deleteHandout(handout)}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button></div>{/if}</article>{/each}</div>{:else}<p class="empty-handouts">{$appLocale === 'en' ? 'No handouts have been saved for this campaign.' : 'Nenhum handout salvo nesta campanha.'}</p>{/if}</section>
-	{#if assets.length}<nav class="asset-filters" aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}>{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'],['image', $appLocale === 'en' ? 'Images' : 'Imagens'],['map', $appLocale === 'en' ? 'Maps' : 'Mapas'],['audio', $appLocale === 'en' ? 'Music' : 'Músicas'],['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value,label]}<button class:active={assetFilter === value} onclick={() => assetFilter = value as typeof assetFilter}>{label}</button>{/each}</nav>{/if}
+	{#if handoutOpen && isGM}<form
+			class="handout-form"
+			onsubmit={(event) => {
+				event.preventDefault();
+				void saveHandout();
+			}}
+		>
+			<input
+				bind:value={handoutTitle}
+				maxlength="120"
+				placeholder={$appLocale === 'en' ? 'Handout title' : 'Título do handout'}
+			/>
+			<textarea
+				bind:value={handoutBody}
+				maxlength="32000"
+				placeholder={$appLocale === 'en'
+					? 'Text, links, and guidance for the table'
+					: 'Texto, links e orientações para a mesa'}></textarea>
+			<div>
+				<select bind:value={handoutVisibility}
+					><option value="players"
+						>{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option
+					><option value="gm"
+						>{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</option
+					></select
+				><button disabled={savingHandout}
+					>{savingHandout
+						? $appLocale === 'en'
+							? 'Saving…'
+							: 'Salvando…'
+						: $appLocale === 'en'
+							? 'Save handout'
+							: 'Salvar handout'}</button
+				>
+			</div>
+		</form>{/if}
+	<section
+		class="handouts"
+		aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}
+	>
+		<h3>Handouts</h3>
+		{#if handouts.length}<div class="handout-grid">
+				{#each handouts as handout (handout.id)}<article>
+						<small
+							>{handout.visibility === 'players'
+								? $appLocale === 'en'
+									? 'Shared'
+									: 'Compartilhado'
+								: $appLocale === 'en'
+									? 'Private'
+									: 'Privado'}</small
+						>
+						<h4>{handout.title}</h4>
+						<p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p>
+						{#if isGM}<div class="handout-actions">
+								<button onclick={() => editHandout(handout)}
+									>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button
+								><button onclick={() => void deleteHandout(handout)}
+									>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
+								>
+							</div>{/if}
+					</article>{/each}
+			</div>{:else}<p class="empty-handouts">
+				{$appLocale === 'en'
+					? 'No handouts have been saved for this campaign.'
+					: 'Nenhum handout salvo nesta campanha.'}
+			</p>{/if}
+	</section>
+	{#if assets.length}<nav
+			class="asset-filters"
+			aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}
+		>
+			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Music' : 'Músicas'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label]}<button
+					class:active={assetFilter === value}
+					onclick={() => (assetFilter = value as typeof assetFilter)}>{label}</button
+				>{/each}
+		</nav>{/if}
 	{#if assets.length}<section class="asset-grid">
-			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.path)}<article class="asset-card">
-					{#if asset.type === 'image' || asset.type === 'map'}<button class="asset-image" onclick={() => (preview = asset)}><img src={asset.url} alt={asset.name} /></button>
-					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio controls src={asset.url}></audio>
-					{:else}<span class="document-mark">▤</span><a class="document-link" href={asset.url} target="_blank" rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a>{/if}
-					<div class="asset-footer"><small>{asset.name}</small>{#if isGM}<button class="asset-delete" aria-label={$appLocale === 'en' ? `Delete ${asset.name}` : `Excluir ${asset.name}`} title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'} onclick={() => void deleteAsset(asset)} disabled={deletingAsset === asset.path}>×</button>{/if}</div>
+			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.path)}<article
+					class="asset-card"
+				>
+					{#if asset.type === 'image' || asset.type === 'map'}<button
+							class="asset-image"
+							onclick={() => (preview = asset)}><img src={asset.url} alt={asset.name} /></button
+						>
+					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio
+							controls
+							src={asset.url}
+						></audio>
+					{:else}<span class="document-mark">▤</span><a
+							class="document-link"
+							href={asset.url}
+							target="_blank"
+							rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a
+						>{/if}
+					<div class="asset-footer">
+						<small>{asset.name}</small>{#if isGM}<button
+								class="asset-delete"
+								aria-label={$appLocale === 'en' ? `Delete ${asset.name}` : `Excluir ${asset.name}`}
+								title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
+								onclick={() => void deleteAsset(asset)}
+								disabled={deletingAsset === asset.path}>×</button
+							>{/if}
+					</div>
 				</article>{/each}
 		</section>{:else}<div class="empty">
-			<strong>{isGM ? ($appLocale === 'en' ? 'Add the first media item.' : 'Adicione a primeira mídia.') : ($appLocale === 'en' ? 'The library is still empty.' : 'A biblioteca ainda está vazia.')}</strong><span
-				>{$appLocale === 'en' ? 'Handouts and music for this campaign will appear here.' : 'Handouts e trilhas desta campanha aparecerão aqui.'}</span
+			<strong
+				>{isGM
+					? $appLocale === 'en'
+						? 'Add the first media item.'
+						: 'Adicione a primeira mídia.'
+					: $appLocale === 'en'
+						? 'The library is still empty.'
+						: 'A biblioteca ainda está vazia.'}</strong
+			><span
+				>{$appLocale === 'en'
+					? 'Handouts and music for this campaign will appear here.'
+					: 'Handouts e trilhas desta campanha aparecerão aqui.'}</span
 			>
 		</div>{/if}
 </section>
@@ -177,10 +395,10 @@
 		}}
 	>
 		<section>
-			<button onclick={() => (preview = null)} aria-label={$appLocale === 'en' ? 'Close image' : 'Fechar imagem'}>×</button><img
-				src={preview.url}
-				alt={preview.name}
-			/>
+			<button
+				onclick={() => (preview = null)}
+				aria-label={$appLocale === 'en' ? 'Close image' : 'Fechar imagem'}>×</button
+			><img src={preview.url} alt={preview.name} />
 			<p>{preview.name}</p>
 		</section>
 	</div>{/if}
@@ -252,7 +470,9 @@
 		border-radius: 10px;
 		background: #211b1e;
 	}
-	.handout-form input, .handout-form textarea, .handout-form select {
+	.handout-form input,
+	.handout-form textarea,
+	.handout-form select {
 		border: 1px solid #5a493b;
 		border-radius: 6px;
 		padding: 0.55rem;
@@ -260,19 +480,120 @@
 		background: #121012;
 		font: inherit;
 	}
-	.handout-form textarea { min-height: 100px; resize: vertical; }
-	.handout-form div { display: flex; justify-content: space-between; gap: 0.6rem; }
-	.handout-form button { border: 0; border-radius: 7px; padding: 0.52rem 0.7rem; color: #26190e; background: #e0b86f; font-weight: 750; cursor: pointer; }
-	.handouts { margin: 0 0 1.4rem; }
-	.handouts h3 { margin: 0 0 0.7rem; color: #d8ad67; font: 0.8rem Georgia, serif; letter-spacing: 0.08em; text-transform: uppercase; }
-	.handout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.7rem; }
-	.handout-grid article { min-width: 0; padding: 0.85rem; border: 1px solid #493c39; border-radius: 9px; background: #211b1e; }
-	.handout-grid small { color: #d8ad67; font-size: 0.65rem; text-transform: uppercase; }
-	.handout-grid h4 { margin: 0.35rem 0; color: #eee4d6; font: 600 1rem Georgia, serif; }
-	.handout-grid p { color: #b9aa9d; white-space: pre-wrap; font-size: 0.82rem; line-height: 1.45; }
-	.handout-actions { display:flex; gap:.4rem; margin-top:.7rem; }.handout-actions button { border:1px solid #5a493b; border-radius:5px; padding:.35rem .5rem; color:#edc77f; background:#2b211e; font-size:.68rem; cursor:pointer; }
-	.empty-handouts { padding: 0.9rem; border: 1px dashed #5a493b; border-radius: 8px; color: #a99c91; font-size: 0.82rem; }
-	.asset-filters { display:flex; flex-wrap:wrap; gap:.35rem; margin:0 0 .75rem; }.asset-filters button { border:1px solid #5a493b; border-radius:6px; padding:.35rem .55rem; color:#b9aa9d; background:#211b1e; font-size:.68rem; cursor:pointer; }.asset-filters button.active { border-color:#c89655; color:#26190e; background:#e0b86f; }.document-mark { display:grid; place-items:center; height:125px; color:#d8ad67; background:#120f11; font-size:2rem; }.document-link { color:#edc77f; font-size:.75rem; text-decoration:none; }
+	.handout-form textarea {
+		min-height: 100px;
+		resize: vertical;
+	}
+	.handout-form div {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.6rem;
+	}
+	.handout-form button {
+		border: 0;
+		border-radius: 7px;
+		padding: 0.52rem 0.7rem;
+		color: #26190e;
+		background: #e0b86f;
+		font-weight: 750;
+		cursor: pointer;
+	}
+	.handouts {
+		margin: 0 0 1.4rem;
+	}
+	.handouts h3 {
+		margin: 0 0 0.7rem;
+		color: #d8ad67;
+		font:
+			0.8rem Georgia,
+			serif;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.handout-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 0.7rem;
+	}
+	.handout-grid article {
+		min-width: 0;
+		padding: 0.85rem;
+		border: 1px solid #493c39;
+		border-radius: 9px;
+		background: #211b1e;
+	}
+	.handout-grid small {
+		color: #d8ad67;
+		font-size: 0.65rem;
+		text-transform: uppercase;
+	}
+	.handout-grid h4 {
+		margin: 0.35rem 0;
+		color: #eee4d6;
+		font:
+			600 1rem Georgia,
+			serif;
+	}
+	.handout-grid p {
+		color: #b9aa9d;
+		white-space: pre-wrap;
+		font-size: 0.82rem;
+		line-height: 1.45;
+	}
+	.handout-actions {
+		display: flex;
+		gap: 0.4rem;
+		margin-top: 0.7rem;
+	}
+	.handout-actions button {
+		border: 1px solid #5a493b;
+		border-radius: 5px;
+		padding: 0.35rem 0.5rem;
+		color: #edc77f;
+		background: #2b211e;
+		font-size: 0.68rem;
+		cursor: pointer;
+	}
+	.empty-handouts {
+		padding: 0.9rem;
+		border: 1px dashed #5a493b;
+		border-radius: 8px;
+		color: #a99c91;
+		font-size: 0.82rem;
+	}
+	.asset-filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		margin: 0 0 0.75rem;
+	}
+	.asset-filters button {
+		border: 1px solid #5a493b;
+		border-radius: 6px;
+		padding: 0.35rem 0.55rem;
+		color: #b9aa9d;
+		background: #211b1e;
+		font-size: 0.68rem;
+		cursor: pointer;
+	}
+	.asset-filters button.active {
+		border-color: #c89655;
+		color: #26190e;
+		background: #e0b86f;
+	}
+	.document-mark {
+		display: grid;
+		place-items: center;
+		height: 125px;
+		color: #d8ad67;
+		background: #120f11;
+		font-size: 2rem;
+	}
+	.document-link {
+		color: #edc77f;
+		font-size: 0.75rem;
+		text-decoration: none;
+	}
 	.message {
 		margin: 0 0 1rem;
 		color: #f0cb85;

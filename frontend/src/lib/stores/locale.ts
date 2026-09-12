@@ -26,7 +26,8 @@ export function restoreAppLocale() {
 
 export function distance(valueInMeters: number, locale: AppLocale): string {
 	if (!Number.isFinite(valueInMeters)) return '—';
-	if (locale === 'pt-BR') return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valueInMeters)} m`;
+	if (locale === 'pt-BR')
+		return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valueInMeters)} m`;
 	const feet = valueInMeters * 3.28084;
 	return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(feet)} ft`;
 }

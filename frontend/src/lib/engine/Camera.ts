@@ -7,9 +7,16 @@ export class Camera {
 	private posicaoInicialCamera = { x: 0, y: 0 };
 	private pinchDistance = 0;
 	private readonly onKeyDown = (e: KeyboardEvent) => {
-		if (e.key === '+' || e.key === '=') { e.preventDefault(); this.zoomBy(0.1); }
-		else if (e.key === '-' || e.key === '_') { e.preventDefault(); this.zoomBy(-0.1); }
-		else if (e.key === '0' || e.key === 'Home') { e.preventDefault(); this.resetView(); }
+		if (e.key === '+' || e.key === '=') {
+			e.preventDefault();
+			this.zoomBy(0.1);
+		} else if (e.key === '-' || e.key === '_') {
+			e.preventDefault();
+			this.zoomBy(-0.1);
+		} else if (e.key === '0' || e.key === 'Home') {
+			e.preventDefault();
+			this.resetView();
+		}
 	};
 	private readonly onWheel = (e: WheelEvent) => {
 		e.preventDefault();
@@ -60,7 +67,10 @@ export class Camera {
 		this.app.stage.on('pointerup', soltarCamera);
 		this.app.stage.on('pointerupoutside', soltarCamera);
 	}
-	private onTouchStart = (event: TouchEvent) => { if (event.touches.length === 2) this.pinchDistance = this.distance(event.touches[0], event.touches[1]); };
+	private onTouchStart = (event: TouchEvent) => {
+		if (event.touches.length === 2)
+			this.pinchDistance = this.distance(event.touches[0], event.touches[1]);
+	};
 	private onTouchMove = (event: TouchEvent) => {
 		if (event.touches.length !== 2 || !this.pinchDistance) return;
 		event.preventDefault();
@@ -68,10 +78,18 @@ export class Camera {
 		const factor = nextDistance / this.pinchDistance;
 		this.pinchDistance = nextDistance;
 		const rect = this.app.canvas.getBoundingClientRect();
-		this.zoomAt(factor, (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left, (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top);
+		this.zoomAt(
+			factor,
+			(event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left,
+			(event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top
+		);
 	};
-	private onTouchEnd = (event: TouchEvent) => { if (event.touches.length < 2) this.pinchDistance = 0; };
-	private distance(a: Touch, b: Touch) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+	private onTouchEnd = (event: TouchEvent) => {
+		if (event.touches.length < 2) this.pinchDistance = 0;
+	};
+	private distance(a: Touch, b: Touch) {
+		return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+	}
 	public zoomBy(delta: number) {
 		this.zoomAt(1 + delta, this.app.renderer.width / 2, this.app.renderer.height / 2);
 	}

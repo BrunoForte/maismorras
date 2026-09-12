@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { deleteCharacterForGM, listParticipants, type Participant } from '$lib/services/characterApi';
+	import {
+		deleteCharacterForGM,
+		listParticipants,
+		type Participant
+	} from '$lib/services/characterApi';
 	import { removeCampaignMember } from '$lib/services/campaignApi';
 	import { createTokenFromCharacter } from '$lib/services/sceneApi';
 	import { appLocale } from '$lib/stores/locale';
@@ -28,7 +32,12 @@
 		try {
 			participants = (await listParticipants(session, campaignId)).participants;
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not load participants.' : 'Não foi possível carregar participantes.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not load participants.'
+						: 'Não foi possível carregar participantes.';
 		} finally {
 			loading = false;
 		}
@@ -39,27 +48,68 @@
 		message = '';
 		try {
 			await createTokenFromCharacter(session, sceneId, participant.character.id);
-			message = $appLocale === 'en' ? `${participant.character.sheet.name} was added to the scene.` : `${participant.character.sheet.name} foi adicionado à cena.`;
+			message =
+				$appLocale === 'en'
+					? `${participant.character.sheet.name} was added to the scene.`
+					: `${participant.character.sheet.name} foi adicionado à cena.`;
 			ontokencreated();
 		} catch (error) {
-			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not create the token.' : 'Não foi possível criar o token.');
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not create the token.'
+						: 'Não foi possível criar o token.';
 		} finally {
 			creatingActorId = null;
 		}
 	}
 	async function removeSheet(participant: Participant) {
-		if (!participant.character || !confirm($appLocale === 'en' ? 'Remove this character sheet? The player remains in the campaign.' : 'Remover esta ficha? O jogador continuará na campanha.')) return;
-		removing = participant.userId; message = '';
-		try { await deleteCharacterForGM(session, campaignId, participant.character.id); participants = participants.map((item) => item.userId === participant.userId ? { ...item, character: null } : item); message = $appLocale === 'en' ? 'Character sheet removed.' : 'Ficha removida.'; }
-		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível remover a ficha.'; }
-		finally { removing = null; }
+		if (
+			!participant.character ||
+			!confirm(
+				$appLocale === 'en'
+					? 'Remove this character sheet? The player remains in the campaign.'
+					: 'Remover esta ficha? O jogador continuará na campanha.'
+			)
+		)
+			return;
+		removing = participant.userId;
+		message = '';
+		try {
+			await deleteCharacterForGM(session, campaignId, participant.character.id);
+			participants = participants.map((item) =>
+				item.userId === participant.userId ? { ...item, character: null } : item
+			);
+			message = $appLocale === 'en' ? 'Character sheet removed.' : 'Ficha removida.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível remover a ficha.';
+		} finally {
+			removing = null;
+		}
 	}
 	async function removeMember(participant: Participant) {
-		if (participant.role === 'gm' || !confirm($appLocale === 'en' ? 'Remove this player and their campaign access?' : 'Remover este jogador e seu acesso à campanha?')) return;
-		removing = participant.userId; message = '';
-		try { await removeCampaignMember(session, campaignId, participant.userId); participants = participants.filter((item) => item.userId !== participant.userId); message = $appLocale === 'en' ? 'Player removed from campaign.' : 'Jogador removido da campanha.'; }
-		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível remover o jogador.'; }
-		finally { removing = null; }
+		if (
+			participant.role === 'gm' ||
+			!confirm(
+				$appLocale === 'en'
+					? 'Remove this player and their campaign access?'
+					: 'Remover este jogador e seu acesso à campanha?'
+			)
+		)
+			return;
+		removing = participant.userId;
+		message = '';
+		try {
+			await removeCampaignMember(session, campaignId, participant.userId);
+			participants = participants.filter((item) => item.userId !== participant.userId);
+			message =
+				$appLocale === 'en' ? 'Player removed from campaign.' : 'Jogador removido da campanha.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível remover o jogador.';
+		} finally {
+			removing = null;
+		}
 	}
 </script>
 
@@ -70,7 +120,10 @@
 		if (event.currentTarget === event.target) onclose();
 	}}
 >
-	<section class="panel" aria-label={$appLocale === 'en' ? 'Campaign participants' : 'Participantes da campanha'}>
+	<section
+		class="panel"
+		aria-label={$appLocale === 'en' ? 'Campaign participants' : 'Participantes da campanha'}
+	>
 		<header>
 			<div>
 				<p>{$appLocale === 'en' ? 'CAMPAIGN MANAGEMENT' : 'GESTÃO DA CAMPANHA'}</p>
@@ -79,13 +132,21 @@
 			<button onclick={onclose} aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}>×</button>
 		</header>
 		<div class="body">
-			{#if loading}<p>{$appLocale === 'en' ? 'Consulting adventurers…' : 'Consultando aventureiros…'}</p>{:else if participants.length === 0}<p>
+			{#if loading}<p>
+					{$appLocale === 'en' ? 'Consulting adventurers…' : 'Consultando aventureiros…'}
+				</p>{:else if participants.length === 0}<p>
 					{$appLocale === 'en' ? 'No participants yet.' : 'Nenhum participante ainda.'}
 				</p>{:else}{#each participants as participant (participant.userId)}<article>
 						<div class="avatar">{participant.displayName.slice(0, 1).toUpperCase()}</div>
 						<div class="details">
 							<strong>{participant.displayName}</strong><small
-				>{participant.role === 'gm' ? ($appLocale === 'en' ? 'Game Master' : 'Narrador') : ($appLocale === 'en' ? 'Player' : 'Jogador')}</small
+								>{participant.role === 'gm'
+									? $appLocale === 'en'
+										? 'Game Master'
+										: 'Narrador'
+									: $appLocale === 'en'
+										? 'Player'
+										: 'Jogador'}</small
 							>{#if participant.character}<span
 									>{participant.character.sheet.name} · {participant.character.sheet.class ||
 										'Sem classe'} nível {participant.character.sheet.level}</span
@@ -96,11 +157,26 @@
 								onclick={() => placeCharacter(participant)}
 								disabled={creatingActorId === participant.character.id}
 								>{creatingActorId === participant.character.id
-									? ($appLocale === 'en' ? 'Adding…' : 'Adicionando…')
-									: ($appLocale === 'en' ? 'Create token' : 'Criar token')}</button>
-								<button class="secondary" onclick={() => void removeSheet(participant)} disabled={removing === participant.userId}>{$appLocale === 'en' ? 'Remove sheet' : 'Remover ficha'}</button>
+									? $appLocale === 'en'
+										? 'Adding…'
+										: 'Adicionando…'
+									: $appLocale === 'en'
+										? 'Create token'
+										: 'Criar token'}</button
+							>
+							<button
+								class="secondary"
+								onclick={() => void removeSheet(participant)}
+								disabled={removing === participant.userId}
+								>{$appLocale === 'en' ? 'Remove sheet' : 'Remover ficha'}</button
+							>
 							>{/if}
-						{#if participant.role !== 'gm'}<button class="danger" onclick={() => void removeMember(participant)} disabled={removing === participant.userId}>{$appLocale === 'en' ? 'Remove player' : 'Remover jogador'}</button>{/if}
+						{#if participant.role !== 'gm'}<button
+								class="danger"
+								onclick={() => void removeMember(participant)}
+								disabled={removing === participant.userId}
+								>{$appLocale === 'en' ? 'Remove player' : 'Remover jogador'}</button
+							>{/if}
 					</article>{/each}{/if}
 		</div>
 		{#if message}<footer>{message}</footer>{/if}
