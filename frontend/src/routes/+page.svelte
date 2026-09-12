@@ -1136,7 +1136,7 @@
 		color: #f6d89c;
 	}
 	.vtt-workspace {
-		padding: 1.25rem clamp(1.25rem, 5vw, 5rem) 3rem;
+		padding: 0.35rem clamp(0.35rem, 1.2vw, 1rem) 1rem;
 	}
 	.scene-board-heading { display:none; }
 	.scene-board-heading span { color:#b58b52; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
