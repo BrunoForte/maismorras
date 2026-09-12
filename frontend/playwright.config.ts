@@ -6,8 +6,9 @@ export default defineConfig({
 	 forbidOnly: !!process.env.CI,
 	 retries: process.env.CI ? 2 : 0,
 	 reporter: process.env.CI ? 'line' : 'list',
-	 use: {
+	use: {
 		 baseURL: 'http://127.0.0.1:4173',
+		 storageState: process.env.E2E_STORAGE_STATE || undefined,
 		 trace: 'on-first-retry'
 	 },
 	 projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
