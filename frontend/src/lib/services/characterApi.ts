@@ -44,6 +44,7 @@ export type CharacterSheet = {
 	inventory: InventoryItem[];
 	resources: CharacterResource[];
 	spellSlots: SpellSlot[];
+	visibleRolls?: string[];
 };
 export type Character = { id: string; campaignId: string; ownerId: string; sheet: CharacterSheet };
 export type Participant = {
@@ -92,7 +93,8 @@ function normalizeCharacter(character: Character): Character {
 		resources: character.sheet.resources ?? [],
 		spellSlots: character.sheet.spellSlots ?? []
 		,
-		hitDiceSpent: character.sheet.hitDiceSpent ?? 0
+		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
+		visibleRolls: character.sheet.visibleRolls ?? []
 	};
 	return character;
 }
@@ -163,6 +165,7 @@ export function createEmptySheet(): CharacterSheet {
 		equipment: '',
 		inventory: [],
 		resources: [],
-		spellSlots: []
+		spellSlots: [],
+		visibleRolls: []
 	};
 }

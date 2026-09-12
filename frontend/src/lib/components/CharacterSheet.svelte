@@ -176,8 +176,9 @@ import {
 		const profile = speciesProfile();
 		if (!profile?.lineages?.[sheet.speciesLineage]) sheet.speciesLineage = '';
 		if (profile) sheet.speed = speciesSpeed();
+		syncTokenSoon();
 	}
-	function onLineageChanged() { sheet.speed = speciesSpeed(); }
+	function onLineageChanged() { sheet.speed = speciesSpeed(); syncTokenSoon(); }
 
 	onMount(async () => {
 		// Lists come from the campaign compendium, so a GM can mix SRD choices,
@@ -305,6 +306,7 @@ import {
 			? sheet.skillProficiencies.filter((item) => item !== name)
 			: [...sheet.skillProficiencies, name];
 		if (!sheet.skillProficiencies.includes(name)) sheet.skillExpertise = sheet.skillExpertise.filter((item) => item !== name);
+		syncTokenSoon();
 	}
 	const expertiseChoices = () => {
 		const key = canonicalClass(sheet.class);
@@ -318,11 +320,17 @@ import {
 		next[index] = value;
 		sheet.skillExpertise = next.filter(Boolean);
 		if (value && !sheet.skillProficiencies.includes(value)) sheet.skillProficiencies = [...sheet.skillProficiencies, value];
+		syncTokenSoon();
 	}
 	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) { try { const bonus = skillBonus(name, ability); const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`); const result = event.payload as { dados: number[]; total: number; expressao: string }; const label = skillLabel(name); $diceOverlay = { expression: `${label} · ${result.expressao}`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() }; $chatMensagens = [...$chatMensagens, { id: String(event.id), autor: sheet.name || ($appLocale === 'en' ? 'Character' : 'Personagem'), texto: $appLocale === 'en' ? `${label} check` : `Teste de ${label}`, tipo: 'rolagem', canal: 'chat', detalhesRolagem: { ...result, modificador: bonus } }]; } catch { message = $appLocale === 'en' ? `Could not roll ${skillLabel(name)}.` : `Não foi possível rolar ${name}.`; } }
+	function toggleVisibleRoll(key: string) {
+		const current = sheet.visibleRolls ?? [];
+		sheet.visibleRolls = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
+		syncTokenSoon();
+	}
 	function onLevelChanged() { if (sheet.level > previousLevel) levelChoiceOpen = true; else { previousLevel = sheet.level; syncProgression(); } }
-	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') { const gained = Math.max(0, sheet.level - previousLevel); const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8); let gainedHP = 0; if (choice === 'max') gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution)); if (choice === 'roll') { for (let i = 0; i < gained; i++) { const event = await rollDice(session, campaignId, `1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`); gainedHP += (event.payload as { total:number }).total; } } if (choice !== 'keep') { sheet.hitPointsMax += gainedHP; sheet.hitPointsCurrent += gainedHP; } previousLevel = sheet.level; levelChoiceOpen = false; syncProgression(); }
-	function spendResource(index: number) { sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1); }
+	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') { const gained = Math.max(0, sheet.level - previousLevel); const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8); let gainedHP = 0; if (choice === 'max') gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution)); if (choice === 'roll') { for (let i = 0; i < gained; i++) { const event = await rollDice(session, campaignId, `1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`); gainedHP += (event.payload as { total:number }).total; } } if (choice !== 'keep') { sheet.hitPointsMax += gainedHP; sheet.hitPointsCurrent += gainedHP; } previousLevel = sheet.level; levelChoiceOpen = false; syncProgression(); await save(); }
+	function spendResource(index: number) { sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1); syncTokenSoon(); }
 	async function rest(kind: 'short' | 'long') {
 		if (kind === 'short') {
 			const hitDie = sheet.hitDice.match(/^1d(\d+)$/i);
@@ -339,6 +347,7 @@ import {
 		if (kind === 'short') sheet.spellSlots = sheet.spellSlots.map((slot) => canonicalClass(sheet.class) === 'warlock' ? { ...slot, current: slot.max } : slot);
 		if (kind === 'long') { sheet.hitPointsCurrent = sheet.hitPointsMax; sheet.temporaryHP = 0; sheet.hitDiceSpent = 0; sheet.spellSlots = sheet.spellSlots.map((slot) => ({ ...slot, current: slot.max })); }
 		message = kind === 'long' ? 'Descanso longo aplicado: PV, recursos e espaços restaurados.' : 'Descanso curto aplicado: recursos de descanso curto restaurados.';
+		await save();
 	}
 	const spellEntries = () => compendiumEntries.filter((entry) => {
 		if (entry.entryType !== 'spell') return false;
@@ -592,7 +601,7 @@ import {
 						<button onclick={addAttack}>+ {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button>
 					</div>
 					{#each sheet.attacks as attack, index}<div class="line-item">
-							<input bind:value={attack.name} placeholder="Nome" /><input type="number" bind:value={attack.attackBonus} aria-label="Bônus de ataque" /><input bind:value={attack.damage} placeholder="Dano" /><button class="roll-custom" onclick={() => void rollCustomAttack(attack,index)} disabled={rollingAttack === index}>{rollingAttack === index ? '…' : '🎲'}</button><button onclick={() => removeAttack(index)}>×</button>
+						<label class="token-roll-toggle" title={$appLocale === 'en' ? 'Show on token' : 'Exibir no token'}><input type="checkbox" checked={(sheet.visibleRolls ?? []).includes(`attack:${index}`)} onchange={() => toggleVisibleRoll(`attack:${index}`)} />⌁</label><input bind:value={attack.name} placeholder="Nome" /><input type="number" bind:value={attack.attackBonus} aria-label="Bônus de ataque" /><input bind:value={attack.damage} placeholder="Dano" /><button class="roll-custom" onclick={() => void rollCustomAttack(attack,index)} disabled={rollingAttack === index}>{rollingAttack === index ? '…' : '🎲'}</button><button onclick={() => removeAttack(index)}>×</button>
 						</div>{/each}
 				</section>
 				{/if}
@@ -645,6 +654,7 @@ import {
 	.portrait-editor{display:grid;grid-template-columns:auto 1fr;gap:.85rem;align-items:start;border:1px solid #493c39;border-radius:10px;padding:.8rem;background:#211b1e}.portrait-preview{display:grid;place-items:center;width:92px;height:92px;overflow:hidden;border:1px solid #765d3d;border-radius:50%;color:#e0b86f;background:#171216;font-size:2rem}.portrait-preview img{width:100%;height:100%;object-fit:cover}.portrait-editor h3{margin:0 0 .3rem;color:#f0d29d;font:600 1rem Georgia,serif}.portrait-editor p,.portrait-editor small{margin:0;color:#aa9d91;font-size:.68rem;line-height:1.4}.portrait-upload{display:inline-flex;margin:.55rem .4rem .55rem 0;border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#f0d29d;background:#2b211c;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-upload input{display:none}.portrait-ai{display:flex;gap:.35rem;margin-bottom:.45rem}.portrait-ai input{min-width:0;flex:1;border:1px solid #5a493b;border-radius:6px;padding:.42rem;color:#eee4d6;background:#161216;font:inherit;font-size:.68rem}.portrait-ai button{border:1px solid #765d3d;border-radius:6px;padding:.42rem .55rem;color:#291b10;background:#e0b86f;font-size:.68rem;font-weight:700;cursor:pointer}.portrait-ai button:disabled,.portrait-upload:has(input:disabled){opacity:.6;cursor:wait}
 	.skills-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.skill-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:.55rem;border:1px solid #493c39;border-radius:7px;padding:.55rem;color:#cbbbab}.skill-row label,.saving-throws label{display:grid;place-items:center}.skill-row input,.saving-throws input{appearance:none;width:1rem;height:1rem;margin:0;border:1px solid #806444;border-radius:50%;padding:0;background:#171216}.skill-row input:checked,.saving-throws input:checked{border-color:#e0b86f;background:#e0b86f;box-shadow:inset 0 0 0 3px #211914}.skill-row>span{overflow:hidden;color:#eee4d6;font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}.skill-row>span small{display:block;color:#d8ad67;font-size:.58rem}.skill-row strong{min-width:2.1rem;color:#f0d29d;font-size:1rem;text-align:center}.skill-roll{border:1px solid #765d3d;border-radius:6px;padding:.32rem .4rem;color:#f0d29d;background:#2b211c;cursor:pointer}.derived-value{display:block;color:#f0d29d;font-size:1.1rem}.level-modal{position:fixed;z-index:40;inset:0;display:grid;place-items:center;background:#080608c9}.level-modal section{width:min(92vw,380px);border:1px solid #765d3d;border-radius:12px;padding:1.2rem;color:#eee4d6;background:#1b171a}.level-modal h3{margin:0}.level-modal p{color:#b9aa9d}.level-modal div{display:grid;gap:.5rem}.level-modal button{border:1px solid #765d3d;border-radius:7px;padding:.6rem;color:#f0d29d;background:#2b211c;cursor:pointer}
 	.saving-throws>div{display:grid;grid-template-columns:repeat(6,1fr);gap:.45rem}.saving-throws article{display:grid;grid-template-rows:auto 1fr auto;place-items:center;gap:.3rem;border:1px solid #493c39;border-radius:7px;padding:.5rem;color:#cbbbab}.saving-throws label{display:flex;align-items:center;gap:.28rem;color:#d8c5aa;font-size:.68rem;font-weight:800}.saving-throws strong{display:grid;place-items:center;min-height:1.8rem;color:#f0d29d;font-size:1.05rem}.saving-throws button{border:1px solid #765d3d;border-radius:6px;padding:.28rem .4rem;color:#f0d29d;background:#2b211c;cursor:pointer}.passive-perception{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:.55rem;border:1px solid rgba(116,151,179,.48);border-radius:8px;padding:.6rem .75rem;color:#c9dced;background:rgba(33,54,74,.28);font-size:.74rem}.passive-perception small{color:#9eb3c6;font-size:.65rem}.expertise-choices{display:grid;gap:.45rem;margin-top:.65rem;border-top:1px solid #493c39;padding-top:.65rem}.expertise-choices>strong{color:#f0cb85;font-size:.8rem}.expertise-choices p{margin:0;color:#a99c91;font-size:.7rem;line-height:1.4}.expertise-choices>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.expertise-choices label{font-size:.63rem}.roll-custom{border:1px solid #765d3d!important;border-radius:5px!important;color:#f0d29d!important;background:#2b211c!important}
+	.token-roll-toggle{display:flex;align-items:center;justify-content:center;gap:.2rem;color:#d8ad67;font-size:.7rem;cursor:pointer}.token-roll-toggle input{accent-color:#d8ad67}
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;
