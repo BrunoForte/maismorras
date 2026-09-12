@@ -1,0 +1,19 @@
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Build and local tooling output
+backend/bin/
+backend/coverage.out
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.vercel/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
