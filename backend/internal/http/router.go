@@ -85,12 +85,14 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	// Cloud Run's public frontend can reserve/intercept /healthz and return
 	// its own 404 before the request reaches the container. Use /health for
 	// the externally reachable liveness endpoint instead.
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
+	mux.HandleFunc("GET /health", health)
 
 	return recoverer(logger)(requestLogger(logger)(cors(cfg.CORSOrigin)(mux)))
+}
+
+func health(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 func withError(next errorHandler) http.Handler {
