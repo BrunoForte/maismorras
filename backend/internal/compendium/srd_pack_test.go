@@ -24,7 +24,7 @@ func TestSRDPackHasCompleteSpellIndex(t *testing.T) {
 		foundWish = foundWish || entry.Name == "Wish"
 		foundFireBolt = foundFireBolt || entry.Name == "Fire Bolt"
 	}
-	if spells != 336 || !foundWish || !foundFireBolt {
+	if spells != 338 || !foundWish || !foundFireBolt {
 		t.Fatalf("unexpected spell index: spells=%d wish=%t fireBolt=%t", spells, foundWish, foundFireBolt)
 	}
 }
