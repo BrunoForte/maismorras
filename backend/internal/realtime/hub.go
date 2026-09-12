@@ -29,6 +29,8 @@ type peer struct {
 	mu   sync.Mutex
 }
 
+const maxPeersPerRoom = 100
+
 func NewHub() *Hub { return &Hub{rooms: map[string]map[*peer]struct{}{}} }
 
 type Handler struct {
@@ -64,11 +66,17 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	peer := &peer{conn: conn}
-	h.hub.join(sceneID, peer)
+	conn.SetReadLimit(32 << 10)
+	if !h.hub.join(sceneID, peer) {
+		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
+		return nil
+	}
 	defer h.hub.leave(sceneID, peer)
 	defer conn.Close(websocket.StatusNormalClosure, "bye")
 	for {
-		_, raw, err := conn.Read(r.Context())
+		readCtx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
+		_, raw, err := conn.Read(readCtx)
+		cancel()
 		if err != nil {
 			return nil
 		}
@@ -103,13 +111,17 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 }
-func (h *Hub) join(room string, p *peer) {
+func (h *Hub) join(room string, p *peer) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.rooms[room] == nil {
 		h.rooms[room] = map[*peer]struct{}{}
 	}
+	if len(h.rooms[room]) >= maxPeersPerRoom {
+		return false
+	}
 	h.rooms[room][p] = struct{}{}
+	return true
 }
 func (h *Hub) leave(room string, p *peer) {
 	h.mu.Lock()

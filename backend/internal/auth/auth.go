@@ -8,6 +8,8 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
@@ -41,6 +43,10 @@ func Authenticate(baseURL, secret string, next func(http.ResponseWriter, *http.R
 			return
 		}
 		claims := jwt.MapClaims{}
+		issuer := ""
+		if baseURL != "" {
+			issuer = baseURL + "/auth/v1"
+		}
 		token, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (any, error) {
 			if _, isHMAC := t.Method.(*jwt.SigningMethodHMAC); isHMAC {
 				if secret == "" {
@@ -55,7 +61,7 @@ func Authenticate(baseURL, secret string, next func(http.ResponseWriter, *http.R
 				return nil, jwt.ErrTokenSignatureInvalid
 			}
 			return nil, jwt.ErrTokenSignatureInvalid
-		})
+		}, jwt.WithValidMethods([]string{"HS256", "ES256", "RS256", "EdDSA"}), jwt.WithIssuer(issuer), jwt.WithAudience("authenticated"))
 		if err != nil || !token.Valid {
 			alg, kid := "", ""
 			if token != nil {
@@ -86,15 +92,19 @@ func key(ctx context.Context, base, kid string) (any, error) {
 		if e != nil {
 			return nil, e
 		}
-		res, e := http.DefaultClient.Do(req)
+		client := &http.Client{Timeout: 5 * time.Second}
+		res, e := client.Do(req)
 		if e != nil {
 			return nil, e
 		}
 		defer res.Body.Close()
+		if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+			return nil, fmt.Errorf("jwks endpoint returned %s", res.Status)
+		}
 		var body struct {
 			Keys []map[string]any `json:"keys"`
 		}
-		if e = json.NewDecoder(res.Body).Decode(&body); e != nil {
+		if e = json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&body); e != nil {
 			return nil, e
 		}
 		cache.keys = map[string]any{}

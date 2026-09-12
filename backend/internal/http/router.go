@@ -24,7 +24,7 @@ type errorHandler func(http.ResponseWriter, *http.Request) error
 
 func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/v1/tokens/gerar", withError(tokenHandler.Generate))
+	mux.Handle("GET /api/v1/tokens/gerar", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.Generate))
 	mux.Handle("GET /api/v1/scenes/generate-background", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.GenerateMap))
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
 	mux.Handle("GET /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.List))
@@ -87,7 +87,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	// the externally reachable liveness endpoint instead.
 	mux.HandleFunc("GET /health", health)
 
-	return recoverer(logger)(requestLogger(logger)(cors(cfg.CORSOrigin)(mux)))
+	return recoverer(logger)(requestLogger(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux))))
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {
@@ -117,6 +117,19 @@ func cors(origin string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {

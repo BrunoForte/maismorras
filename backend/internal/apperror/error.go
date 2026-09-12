@@ -29,6 +29,10 @@ func Forbidden(message string) *Error {
 	return &Error{Status: http.StatusForbidden, Code: "FORBIDDEN", Message: message}
 }
 
+func TooManyRequests(code, message string) *Error {
+	return &Error{Status: http.StatusTooManyRequests, Code: code, Message: message}
+}
+
 func NotFound(code, message string) *Error {
 	return &Error{Status: http.StatusNotFound, Code: code, Message: message}
 }
