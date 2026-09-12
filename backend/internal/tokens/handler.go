@@ -72,6 +72,9 @@ func (h *Handler) GenerateMap(w http.ResponseWriter, r *http.Request) error {
 	if prompt == "" || len([]rune(prompt)) > 1500 {
 		return apperror.BadRequest("INVALID_PROMPT", "Informe uma descrição de até 1500 caracteres.")
 	}
+	if !h.allow(r.RemoteAddr) {
+		return apperror.TooManyRequests("RATE_LIMITED", "Limite de geração atingido. Tente novamente em instantes.")
+	}
 	service, ok := h.service.(interface {
 		GenerateMap(context.Context, string) (string, error)
 	})

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -9,7 +10,7 @@ import (
 
 func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	if databaseURL == "" {
-		return nil, nil
+		return nil, errors.New("DATABASE_URL is required")
 	}
 	pool, err := pgxpool.New(ctx, databaseURL)
 	if err != nil {

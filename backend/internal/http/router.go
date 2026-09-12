@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"vtt-backend/internal/apperror"
@@ -106,8 +108,15 @@ func withError(next errorHandler) http.Handler {
 func cors(origin string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin")
+			requestOrigin := r.Header.Get("Origin")
+			if requestOrigin != "" && requestOrigin != origin {
+				http.Error(w, "origin not allowed", http.StatusForbidden)
+				return
+			}
+			if requestOrigin == origin && validOrigin(origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			if r.Method == http.MethodOptions {
@@ -117,6 +126,11 @@ func cors(origin string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func validOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && !strings.ContainsAny(origin, "\r\n")
 }
 
 func securityHeaders(next http.Handler) http.Handler {

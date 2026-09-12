@@ -167,7 +167,7 @@ func (h *Handler) CreateWall(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(w, r, &wall); err != nil {
 		return err
 	}
-	if wall.StartX == wall.EndX && wall.StartY == wall.EndY {
+	if wall.StartX < -100000 || wall.StartX > 100000 || wall.EndX < -100000 || wall.EndX > 100000 || wall.StartY < -100000 || wall.StartY > 100000 || wall.EndY < -100000 || wall.EndY > 100000 || wall.StartX == wall.EndX && wall.StartY == wall.EndY {
 		return apperror.BadRequest("INVALID_WALL", "Uma parede precisa ter comprimento.")
 	}
 	if wall.Kind != "" && wall.Kind != "wall" && wall.Kind != "door" {

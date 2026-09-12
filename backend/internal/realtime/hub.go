@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,17 +22,30 @@ import (
 // WebSocket messages guarantees each browser receives the visibility-filtered
 // representation from the REST endpoint.
 type Hub struct {
-	mu    sync.RWMutex
-	rooms map[string]map[*peer]struct{}
+	mu          sync.RWMutex
+	rooms       map[string]map[*peer]struct{}
+	peersByUser map[string]int
+	peersByIP   map[string]int
+	totalPeers  int
 }
 type peer struct {
-	conn *websocket.Conn
-	mu   sync.Mutex
+	conn       *websocket.Conn
+	mu         sync.Mutex
+	rateMu     sync.Mutex
+	messageLog []time.Time
+	userID     string
+	ip         string
 }
 
 const maxPeersPerRoom = 100
+const maxTotalPeers = 1000
+const maxPeersPerUser = 10
+const maxPeersPerIP = 20
+const maxMessagesPerMinute = 120
 
-func NewHub() *Hub { return &Hub{rooms: map[string]map[*peer]struct{}{}} }
+func NewHub() *Hub {
+	return &Hub{rooms: map[string]map[*peer]struct{}{}, peersByUser: map[string]int{}, peersByIP: map[string]int{}}
+}
 
 type Handler struct {
 	cfg  config.Config
@@ -65,7 +79,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return nil
 	}
-	peer := &peer{conn: conn}
+	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr)}
 	conn.SetReadLimit(32 << 10)
 	if !h.hub.join(sceneID, peer) {
 		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
@@ -82,6 +96,10 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		}
 		if len(raw) > 32<<10 {
 			continue
+		}
+		if !peer.allowMessage() {
+			_ = conn.Close(websocket.StatusPolicyViolation, "message rate limit reached")
+			return nil
 		}
 		var event struct {
 			Type  string  `json:"type"`
@@ -120,16 +138,58 @@ func (h *Hub) join(room string, p *peer) bool {
 	if len(h.rooms[room]) >= maxPeersPerRoom {
 		return false
 	}
+	if h.totalPeers >= maxTotalPeers || h.peersByUser[p.userID] >= maxPeersPerUser || h.peersByIP[p.ip] >= maxPeersPerIP {
+		return false
+	}
 	h.rooms[room][p] = struct{}{}
+	h.totalPeers++
+	h.peersByUser[p.userID]++
+	h.peersByIP[p.ip]++
 	return true
 }
 func (h *Hub) leave(room string, p *peer) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.rooms[room], p)
+	if h.totalPeers > 0 {
+		h.totalPeers--
+	}
+	if h.peersByUser[p.userID] > 0 {
+		h.peersByUser[p.userID]--
+	}
+	if h.peersByIP[p.ip] > 0 {
+		h.peersByIP[p.ip]--
+	}
 	if len(h.rooms[room]) == 0 {
 		delete(h.rooms, room)
 	}
+}
+
+func (p *peer) allowMessage() bool {
+	now := time.Now()
+	cutoff := now.Add(-time.Minute)
+	p.rateMu.Lock()
+	defer p.rateMu.Unlock()
+	kept := p.messageLog[:0]
+	for _, t := range p.messageLog {
+		if t.After(cutoff) {
+			kept = append(kept, t)
+		}
+	}
+	if len(kept) >= maxMessagesPerMinute {
+		p.messageLog = kept
+		return false
+	}
+	p.messageLog = append(kept, now)
+	return true
+}
+
+func clientIP(remote string) string {
+	host, _, err := net.SplitHostPort(remote)
+	if err != nil || host == "" {
+		return remote
+	}
+	return host
 }
 func (h *Hub) broadcast(room string, raw []byte) {
 	h.mu.RLock()
