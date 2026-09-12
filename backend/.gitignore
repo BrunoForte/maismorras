@@ -1,5 +1,6 @@
 .env
 bin/
+*.exe
 coverage.out
 work/go-runtime/
 work/go-build-cache/
