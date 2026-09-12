@@ -235,6 +235,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>MaisMorras</title>
+	<meta name="description" content="Mesa virtual para campanhas de RPG." />
+</svelte:head>
+
 {#if loading}
 	<main class="loading-screen" aria-live="polite">
 		<div class="brand-mark">M</div>
