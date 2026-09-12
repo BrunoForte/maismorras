@@ -136,6 +136,9 @@
 	function setRulerMode(mode: RulerMode) {
 		rulerMode.set(mode);
 	}
+	function toggleMapTool(tool: 'layers' | 'areas' | 'barriers') {
+		window.dispatchEvent(new CustomEvent('maismorras:map-tool', { detail: tool }));
+	}
 </script>
 
 <div class="table-tools" aria-label={$appLocale === 'en' ? 'Table tools' : 'Ferramentas da mesa'}>
@@ -152,6 +155,7 @@
 			disabled={rolling}
 			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
 		>
+		{#if isGM}<button onclick={() => toggleMapTool('layers')} title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button><button onclick={() => toggleMapTool('areas')} title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button><button onclick={() => toggleMapTool('barriers')} title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button>{/if}
 	</div>
 	{#if toolsOpen}<section class="tool-popover">
 			<strong>{$appLocale === 'en' ? 'Spell ruler' : 'Régua de magia'}</strong><span

@@ -406,6 +406,13 @@
 	}
 
 	onMount(() => {
+		const mapToolHandler = (event: Event) => {
+			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
+			if (tool === 'layers') layerToolsOpen = !layerToolsOpen;
+			if (tool === 'areas') areaToolsOpen = !areaToolsOpen;
+			if (tool === 'barriers') wallToolsOpen = !wallToolsOpen;
+		};
+		window.addEventListener('maismorras:map-tool', mapToolHandler);
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
@@ -477,6 +484,7 @@
 		});
 
 		return () => {
+			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			sceneSocket?.close();
 			sceneSocket = null;
 			unsubscribe();
@@ -728,6 +736,7 @@
 	.table-tools-gm-buttons > div{position:relative;display:grid;place-items:center}
 	.table-tools-gm-buttons .layer-tool-trigger,.table-tools-gm-buttons .area-tool-trigger,.table-tools-gm-buttons .wall-tool-trigger{position:relative;top:auto;left:auto;right:auto;transform:none;}
 	.table-tools-gm-buttons > div > button{display:grid;place-items:center;width:2.35rem;height:2.35rem;border:0;border-radius:6px;color:#f0cb85;background:transparent;font-size:1.05rem;cursor:pointer}
+	.table-tools-gm-buttons > div > button{display:none}
 	.table-tools-gm-buttons > div > button:hover,.table-tools-gm-buttons > div > button.active{background:#453329}
 	.table-tools-gm .layer-tools,.table-tools-gm .area-tools,.table-tools-gm .wall-tools{top:2.85rem;left:0;right:auto;width:190px;}
 	.table-tools-gm .area-tools{width:180px;}
