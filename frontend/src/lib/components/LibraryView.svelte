@@ -9,11 +9,12 @@
 		isGM,
 		onnotes
 	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
-	type Asset = { name: string; url: string; type: 'image' | 'audio' | 'document' | 'map' };
+	type Asset = { name: string; path: string; url: string; type: 'image' | 'audio' | 'document' | 'map' };
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
 	let handouts = $state<Handout[]>([]);
 	let uploading = $state(false);
+	let deletingAsset = $state<string | null>(null);
 	let savingHandout = $state(false);
 	let handoutOpen = $state(false);
 	let editingHandoutId = $state<string | null>(null);
@@ -56,6 +57,23 @@
 		try { await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, { method: 'DELETE' }); handouts = handouts.filter((item) => item.id !== handout.id); }
 		catch (error) { message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not delete the handout.' : 'Não foi possível excluir o handout.'); }
 	}
+	async function deleteAsset(asset: Asset) {
+		if (!supabase || deletingAsset) return;
+		const confirmed = window.confirm($appLocale === 'en' ? `Delete “${asset.name}” from this campaign?` : `Excluir “${asset.name}” desta campanha?`);
+		if (!confirmed) return;
+		deletingAsset = asset.path;
+		message = '';
+		try {
+			const { error } = await supabase.storage.from('campaign-assets').remove([asset.path]);
+			if (error) throw error;
+			assets = assets.filter((item) => item.path !== asset.path);
+			if (preview?.path === asset.path) preview = null;
+		} catch (error) {
+			message = error instanceof Error ? error.message : ($appLocale === 'en' ? 'Could not delete the media.' : 'Não foi possível excluir a mídia.');
+		} finally {
+			deletingAsset = null;
+		}
+	}
 	async function loadAssets() {
 		if (!supabase) return;
 		const client = supabase;
@@ -74,6 +92,7 @@
 				return signed.data?.signedUrl
 					? {
 							name: file.name.replace(/^[a-f0-9-]+-/, ''),
+							path: `${folder()}/${file.name}`,
 							url: signed.data.signedUrl,
 							type: file.metadata?.mimetype?.startsWith('audio/') ? ('audio' as const) : file.metadata?.mimetype === 'application/pdf' || file.metadata?.mimetype?.startsWith('text/') ? ('document' as const) : /map|scene|battle|mapa|cena/i.test(file.name) ? ('map' as const) : ('image' as const)
 						}
@@ -138,11 +157,11 @@
 	<section class="handouts" aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}><h3>Handouts</h3>{#if handouts.length}<div class="handout-grid">{#each handouts as handout (handout.id)}<article><small>{handout.visibility === 'players' ? ($appLocale === 'en' ? 'Shared' : 'Compartilhado') : ($appLocale === 'en' ? 'Private' : 'Privado')}</small><h4>{handout.title}</h4><p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p>{#if isGM}<div class="handout-actions"><button onclick={() => editHandout(handout)}>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button><button onclick={() => void deleteHandout(handout)}>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button></div>{/if}</article>{/each}</div>{:else}<p class="empty-handouts">{$appLocale === 'en' ? 'No handouts have been saved for this campaign.' : 'Nenhum handout salvo nesta campanha.'}</p>{/if}</section>
 	{#if assets.length}<nav class="asset-filters" aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}>{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'],['image', $appLocale === 'en' ? 'Images' : 'Imagens'],['map', $appLocale === 'en' ? 'Maps' : 'Mapas'],['audio', $appLocale === 'en' ? 'Music' : 'Músicas'],['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value,label]}<button class:active={assetFilter === value} onclick={() => assetFilter = value as typeof assetFilter}>{label}</button>{/each}</nav>{/if}
 	{#if assets.length}<section class="asset-grid">
-			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.url)}<article>
+			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.path)}<article class="asset-card">
 					{#if asset.type === 'image' || asset.type === 'map'}<button class="asset-image" onclick={() => (preview = asset)}><img src={asset.url} alt={asset.name} /></button>
 					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio controls src={asset.url}></audio>
 					{:else}<span class="document-mark">▤</span><a class="document-link" href={asset.url} target="_blank" rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a>{/if}
-					<small>{asset.name}</small>
+					<div class="asset-footer"><small>{asset.name}</small>{#if isGM}<button class="asset-delete" aria-label={$appLocale === 'en' ? `Delete ${asset.name}` : `Excluir ${asset.name}`} title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'} onclick={() => void deleteAsset(asset)} disabled={deletingAsset === asset.path}>×</button>{/if}</div>
 				</article>{/each}
 		</section>{:else}<div class="empty">
 			<strong>{isGM ? ($appLocale === 'en' ? 'Add the first media item.' : 'Adicione a primeira mídia.') : ($appLocale === 'en' ? 'The library is still empty.' : 'A biblioteca ainda está vazia.')}</strong><span
@@ -288,6 +307,13 @@
 		border-radius: 9px;
 		background: #211b1e;
 	}
+	.asset-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.45rem;
+		min-width: 0;
+	}
 	.asset-image {
 		height: 125px;
 		overflow: hidden;
@@ -303,11 +329,33 @@
 		object-fit: cover;
 	}
 	.asset-grid small {
+		min-width: 0;
 		overflow: hidden;
 		color: #c8b8a8;
 		font-size: 0.7rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.asset-delete {
+		flex: 0 0 auto;
+		width: 1.45rem;
+		height: 1.45rem;
+		border: 1px solid #5a493b;
+		border-radius: 50%;
+		color: #d9a3a0;
+		background: #2b211e;
+		font-size: 1rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.asset-delete:hover:not(:disabled) {
+		border-color: #b96d68;
+		color: #fff0ed;
+		background: #6b302e;
+	}
+	.asset-delete:disabled {
+		opacity: 0.55;
+		cursor: wait;
 	}
 	.audio-mark {
 		color: #e0b86f;
