@@ -144,7 +144,15 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			w.Header().Set("X-Request-ID", requestID)
 			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(recorder, r)
-			logger.Info("request completed", "request_id", requestID, "method", r.Method, "path", r.URL.Path, "status", recorder.status, "bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds())
+			attrs := []any{"request_id", requestID, "method", r.Method, "path", r.URL.Path, "status", recorder.status, "bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds(), "user_agent", r.UserAgent(), "remote_addr", r.RemoteAddr}
+			switch {
+			case recorder.status >= http.StatusInternalServerError:
+				logger.Error("request completed", attrs...)
+			case recorder.status >= http.StatusBadRequest:
+				logger.Warn("request completed", attrs...)
+			default:
+				logger.Info("request completed", attrs...)
+			}
 		})
 	}
 }
