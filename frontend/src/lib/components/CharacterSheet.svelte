@@ -95,6 +95,12 @@ import {
 		: [['profile', 'Perfil'], ['skills', 'Perícias'], ['combat', 'Combate'], ['inventory', 'Inventário'], ['spells', 'Magias'], ['details', 'Detalhes']];
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	const classHitDice: Record<string, string> = Object.fromEntries(Object.entries(classData).map(([name, data]) => [name, data.hitDice]));
+	const classSavingThrows: Record<string, string[]> = {
+		barbarian: ['strength', 'constitution'], bard: ['dexterity', 'charisma'], cleric: ['wisdom', 'charisma'],
+		druid: ['intelligence', 'wisdom'], fighter: ['strength', 'constitution'], monk: ['strength', 'dexterity'],
+		paladin: ['wisdom', 'charisma'], ranger: ['strength', 'dexterity'], rogue: ['dexterity', 'intelligence'],
+		sorcerer: ['constitution', 'charisma'], warlock: ['wisdom', 'charisma'], wizard: ['intelligence', 'wisdom']
+	};
 	type SpeciesProfile = {
 		label: string;
 		speed: number;
@@ -164,6 +170,7 @@ import {
 		normalizedSpecies(sheet.species) === 'elf' && sheet.speciesLineage === 'Elfo da Floresta'
 			? 10.5
 			: speciesProfile()?.speed ?? sheet.speed;
+	const speciesHPBonusPerLevel = () => normalizedSpecies(sheet.species) === 'dwarf' ? 1 : 0;
 	const displayedSpeed = () => $appLocale === 'en' ? Math.round(sheet.speed * 3.28084) : sheet.speed;
 	function updateDisplayedSpeed(value: string) {
 		const parsed = Number(value);
@@ -176,9 +183,10 @@ import {
 		const profile = speciesProfile();
 		if (!profile?.lineages?.[sheet.speciesLineage]) sheet.speciesLineage = '';
 		if (profile) sheet.speed = speciesSpeed();
+		syncProgression();
 		syncTokenSoon();
 	}
-	function onLineageChanged() { sheet.speed = speciesSpeed(); syncTokenSoon(); }
+	function onLineageChanged() { sheet.speed = speciesSpeed(); syncProgression(); syncTokenSoon(); }
 
 	onMount(async () => {
 		// Lists come from the campaign compendium, so a GM can mix SRD choices,
@@ -291,6 +299,18 @@ import {
 		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
 		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
 		sheet.proficiencyBonus = Math.ceil(Math.max(1, sheet.level) / 4) + 1;
+		sheet.speed = speciesSpeed();
+		if (!sheet.savingThrows.length) sheet.savingThrows = [...(classSavingThrows[progressionClass(sheet.class)] ?? [])];
+		const desiredHPBonus = speciesHPBonusPerLevel() * Math.max(1, sheet.level);
+		const previousHPBonus = sheet.speciesHPBonusApplied ?? 0;
+		if (desiredHPBonus !== previousHPBonus) {
+			const delta = desiredHPBonus - previousHPBonus;
+			sheet.hitPointsMax = Math.max(1, sheet.hitPointsMax + delta);
+			sheet.hitPointsCurrent = Math.max(0, Math.min(sheet.hitPointsMax, sheet.hitPointsCurrent + delta));
+			sheet.speciesHPBonusApplied = desiredHPBonus;
+		}
+		sheet.resistances = activeSpeciesTraits().filter((trait) => /resistência a /i.test(trait)).map((trait) => trait.replace(/^.*resistência a /i, '').split(' e ')[0]);
+		sheet.automaticTraits = activeSpeciesTraits();
 		const hitDie = classHitDice[canonicalClass(sheet.class)];
 		if (hitDie) sheet.hitDice = hitDie;
 		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);

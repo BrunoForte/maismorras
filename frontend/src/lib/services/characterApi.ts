@@ -45,6 +45,9 @@ export type CharacterSheet = {
 	resources: CharacterResource[];
 	spellSlots: SpellSlot[];
 	visibleRolls?: string[];
+	resistances?: string[];
+	automaticTraits?: string[];
+	speciesHPBonusApplied?: number;
 };
 export type Character = { id: string; campaignId: string; ownerId: string; sheet: CharacterSheet };
 export type Participant = {
@@ -95,6 +98,10 @@ function normalizeCharacter(character: Character): Character {
 		,
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
 		visibleRolls: character.sheet.visibleRolls ?? []
+		,
+		resistances: character.sheet.resistances ?? [],
+		automaticTraits: character.sheet.automaticTraits ?? [],
+		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0
 	};
 	return character;
 }
@@ -167,5 +174,9 @@ export function createEmptySheet(): CharacterSheet {
 		resources: [],
 		spellSlots: [],
 		visibleRolls: []
+		,
+		resistances: [],
+		automaticTraits: [],
+		speciesHPBonusApplied: 0
 	};
 }
