@@ -258,7 +258,6 @@
 			atoresNPC = (await listNPCs(session, scene.campaignId)).npcs;
 		} catch (error) {
 			// NPC action cards are supplemental; the map continues usable if a
-			// deployment is temporarily behind the current frontend revision.
 			persistenceError = error instanceof Error ? error.message : 'Não foi possível carregar ações do NPC.';
 		}
 	}

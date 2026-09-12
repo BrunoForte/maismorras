@@ -4,6 +4,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	envPrefix: ['VITE_', 'PUBLIC_'],
+	test: {
+		exclude: ['e2e/**', 'node_modules/**']
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {
