@@ -14,6 +14,10 @@ O modelo de dados base está em `migrations/0001_vtt_core.sql`, pronto para Supa
 
 Execute a migration pelo SQL Editor do Supabase antes de conectar os módulos protegidos. Nunca exponha `SUPABASE_JWT_SECRET` ou a Service Role Key ao frontend. A camada `internal/auth` valida o JWT recebido do Supabase e a camada `internal/database` abre um pool PostgreSQL com `DATABASE_URL`.
 
+### Política de migrations
+
+Migrations já aplicadas são imutáveis: não renomeie, mova ou edite arquivos que já chegaram ao Supabase. O histórico atual contém os prefixos duplicados `0018` e `0019`, preservados por compatibilidade. Novas migrations devem usar um prefixo numérico único; o CI executa `scripts/check-migration-prefixes.mjs` para bloquear novos conflitos.
+
 ## Estrutura
 
 ```text
