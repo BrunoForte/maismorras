@@ -278,22 +278,23 @@
 				onclick={() => (activeCampaign = null)}
 				aria-label={$appLocale === 'en' ? 'Go to your tables' : 'Ir para suas mesas'}
 			>
-				<span class="brand-mark" aria-hidden="true">M</span><span>MaisMorras</span>
+				<span class="brand-mark" aria-hidden="true">M</span><span>{activeCampaign ? activeCampaign.name : 'MaisMorras'}</span>
 			</button>
 			{#if activeCampaign}
-				<div class="breadcrumb">
-					<button onclick={() => (activeCampaign = null)}>{$appLocale === 'en' ? 'Tables' : 'Mesas'}</button><span>/</span><strong
-						>{activeCampaign.name}</strong
-					>
+				<div class="header-scene">
+					<div class="scene-control">
+						<label for="header-scene-select">{$appLocale === 'en' ? 'Scene' : 'Cena'}</label><select id="header-scene-select" value={activeScene?.id ?? ''} onchange={(event) => selectScene(event.currentTarget.value)}>{#each availableScenes as scene (scene.id)}<option value={scene.id}>{scene.name}</option>{/each}</select>
+						{#if activeCampaign.role === 'gm'}<button class="scene-add" onclick={() => (sceneCreatorOpen = !sceneCreatorOpen)} disabled={creatingScene} title={$appLocale === 'en' ? 'Create scene' : 'Criar cena'}>+</button>{/if}
+						{#if activeCampaign.role === 'gm' && activeScene}<button class="scene-add" onclick={() => (sceneSettingsOpen = true)} title={$appLocale === 'en' ? 'Configure scene' : 'Configurar cena'}>⚙</button>{/if}
+					</div>
+					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form class="scene-creator" onsubmit={(event) => { event.preventDefault(); void addScene(); }}><input bind:value={sceneDraft} maxlength="120" placeholder={$appLocale === 'en' ? 'New scene name' : 'Nome da nova cena'} /><button disabled={creatingScene}>{creatingScene ? '…' : $appLocale === 'en' ? 'Create' : 'Criar'}</button></form>{/if}
 				</div>
 			{:else}
 				<p class="header-context">{$appLocale === 'en' ? 'Campaign hub' : 'Central de campanhas'}</p>
 			{/if}
 			<div class="account">
 				<select class="locale-select" aria-label={$appLocale === 'en' ? 'Language' : 'Idioma'} value={$appLocale} onchange={(event) => setAppLocale(event.currentTarget.value === 'en' ? 'en' : 'pt-BR')}><option value="pt-BR">PT</option><option value="en">EN</option></select>
-				<span class="avatar">{session.user.email?.slice(0, 1).toUpperCase()}</span><span
-					class="account-email">{session.user.email}</span
-				><button class="text-button" onclick={logout}>{$appLocale === 'en' ? 'Sign out' : 'Sair'}</button>
+				<span class="avatar">{session.user.email?.slice(0, 1).toUpperCase()}</span><div class="account-copy"><span class="account-email">{session.user.email}</span>{#if activeCampaign}<small class="account-role">{activeCampaign.role === 'gm' ? ($appLocale === 'en' ? 'Game Master' : 'Narrador') : ($appLocale === 'en' ? 'Player' : 'Jogador')}</small>{/if}</div><button class="text-button" onclick={logout}>{$appLocale === 'en' ? 'Sign out' : 'Sair'}</button>
 			</div>
 		</header>
 
@@ -700,11 +701,12 @@
 			radial-gradient(circle at 65% -10%, rgba(126, 82, 40, 0.15), transparent 26%), #141114;
 	}
 	.app-header {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 2rem;
-		min-height: 72px;
-		padding: 0 clamp(1.25rem, 5vw, 5rem);
+		gap: 1rem;
+		min-height: 52px;
+		padding: 0 clamp(0.8rem, 3vw, 2.5rem);
 		border-bottom: 1px solid #30292a;
 		background: rgba(20, 17, 20, 0.88);
 		backdrop-filter: blur(14px);
@@ -714,6 +716,15 @@
 		padding: 0;
 		background: transparent;
 	}
+	.game-mode .brand-button { max-width: 30%; overflow: hidden; color: #f0d29d; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+	.header-scene { position: absolute; left: 50%; display: flex; align-items: center; gap: .45rem; transform: translateX(-50%); }
+	.header-scene .scene-control { align-items: center; }
+	.header-scene .scene-control label { display: none; }
+	.header-scene .scene-control select { max-width: min(26vw, 190px); padding: .34rem .5rem; font-size: .7rem; }
+	.header-scene .scene-add { width: 1.75rem; height: 1.75rem; font-size: .95rem; }
+	.header-scene .scene-creator { position: absolute; top: calc(100% + .45rem); right: 0; z-index: 20; padding: .45rem; border: 1px solid #5c5045; border-radius: 7px; background: #211c1e; box-shadow: 0 8px 24px #0008; }
+	.account-copy { display: grid; gap: .08rem; min-width: 0; }
+	.account-role { color: #8f8378; font-size: .58rem; line-height: 1; }
 	.brand-button .brand-mark {
 		width: 2rem;
 		height: 2rem;
@@ -729,20 +740,14 @@
 		align-items: center;
 		gap: 0.7rem;
 	}
-	.breadcrumb button,
 	.text-button {
 		border: 0;
 		padding: 0;
 		color: #aaa097;
 		background: none;
 	}
-	.breadcrumb button:hover,
 	.text-button:hover {
 		color: #f0c97e;
-	}
-	.breadcrumb strong {
-		color: #eee5d8;
-		font-weight: 600;
 	}
 	.account {
 		display: flex;
@@ -997,7 +1002,7 @@
 		font-size: 0.9rem;
 	}
 	.game-header {
-		display: flex;
+		display: none;
 		align-items: end;
 		justify-content: space-between;
 		gap: 2rem;
@@ -1133,7 +1138,7 @@
 	.vtt-workspace {
 		padding: 1.25rem clamp(1.25rem, 5vw, 5rem) 3rem;
 	}
-	.scene-board-heading { display:flex; align-items:baseline; justify-content:center; gap:.5rem; min-height:2.2rem; padding:0 .5rem .65rem; color:#eadfce; text-align:center; }
+	.scene-board-heading { display:none; }
 	.scene-board-heading span { color:#b58b52; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
 	.scene-board-heading strong { overflow:hidden; max-width:min(72vw,720px); color:#f1d4a0; font:600 clamp(1rem,2vw,1.35rem) Georgia,serif; text-overflow:ellipsis; white-space:nowrap; }
 	.scene-board { position:relative; }
@@ -1145,8 +1150,8 @@
 			position: sticky;
 			top: 0;
 			z-index: 40;
-			min-height: 3.5rem;
-			padding: 0.65rem 0.9rem;
+			min-height: 2.8rem;
+			padding: 0.4rem 0.65rem;
 			background: rgba(20, 17, 20, 0.96);
 			backdrop-filter: blur(12px);
 		}
@@ -1197,7 +1202,7 @@
 		}
 		.workspace-tabs {
 			position: sticky;
-			top: 3.5rem;
+			top: 2.8rem;
 			z-index: 35;
 			overflow-x: auto;
 			scrollbar-width: none;
