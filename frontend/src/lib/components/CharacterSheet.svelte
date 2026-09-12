@@ -192,7 +192,7 @@ import {
 		// Lists come from the campaign compendium, so a GM can mix SRD choices,
 		// private references and homebrew without exposing unpublished entries.
 		void getCompendium(session, campaignId)
-			.then((data) => (compendiumEntries = data.entries))
+			.then((data) => { compendiumEntries = data.entries; syncProgression(); })
 			.catch(() => undefined);
 		try {
 			sheet = characterId
@@ -286,11 +286,21 @@ import {
 	function onClassChanged() {
 		const hitDice = classHitDice[canonicalClass(sheet.class)];
 		if (hitDice) sheet.hitDice = hitDice;
-		if (!classData[progressionClass(sheet.class)]?.subclasses.includes(sheet.subclass)) sheet.subclass = '';
+		if (!subclassOptions().includes(sheet.subclass)) sheet.subclass = '';
 		syncProgression();
 	}
-	const subclassOptions = () => classData[progressionClass(sheet.class)]?.subclasses ?? [];
-	const derivedFeatures = () => classFeatures(sheet.class, sheet.level, sheet.subclass);
+	const compendiumClass = () => compendiumEntries.find((entry) => entry.entryType === 'class' && (String(entry.rules.id ?? '') === progressionClass(sheet.class) || entry.name.toLowerCase() === sheet.class.toLowerCase()));
+	const compendiumSubclassOptions = () => compendiumEntries.filter((entry) => entry.entryType === 'subclass' && (!entry.rules.classId || String(entry.rules.classId) === progressionClass(sheet.class))).map((entry) => entry.name);
+	const subclassOptions = () => compendiumSubclassOptions().length ? compendiumSubclassOptions() : (classData[progressionClass(sheet.class)]?.subclasses ?? []);
+	const derivedFeatures = () => {
+		const classFeaturesData = compendiumClass()?.rules.features;
+		const classFeaturesList = Array.isArray(classFeaturesData) ? classFeaturesData : [];
+		const classResult = classFeaturesList.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level).map((feature) => ({ level: Number((feature as Record<string, unknown>).level ?? 0), name: String((feature as Record<string, unknown>).name ?? '') })).filter((feature) => feature.name);
+		const subclassEntry = compendiumEntries.find((entry) => entry.entryType === 'subclass' && entry.name === sheet.subclass);
+		const subclassFeatures = Array.isArray(subclassEntry?.rules.features) ? subclassEntry.rules.features : [];
+		const subclassResult = subclassFeatures.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level).map((feature) => ({ level: Number((feature as Record<string, unknown>).level ?? 0), name: String((feature as Record<string, unknown>).name ?? '') })).filter((feature) => feature.name);
+		return classResult.length ? [...classResult, ...subclassResult] : classFeatures(sheet.class, sheet.level, sheet.subclass);
+	};
 	const featList = () => sheet.feats.split(/\n|,/).map((feat) => feat.trim()).filter(Boolean);
 	const featDescription = (feat: string) => optionsFor('feat').find((entry) => optionLabel(entry).toLowerCase() === feat.toLowerCase() || entry.name.toLowerCase() === feat.toLowerCase())?.summary || 'Talento privado ou sem resumo cadastrado no compêndio.';
 	function addFeat() { const feat = newFeat.trim(); if (!feat || featList().some((item) => item.toLowerCase() === feat.toLowerCase())) return; sheet.feats = [...featList(), feat].join('\n'); selectedFeat = feat; newFeat = ''; }
