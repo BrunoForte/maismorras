@@ -123,12 +123,29 @@
 	const hasMonsterSheet = (entry: CompendiumEntry) =>
 		isMonster(entry) && Number(rules(entry).hpMax) > 0 && Number(rules(entry).armorClass) >= 0;
 	const typeLabel = (entry: CompendiumEntry) =>
-		types.find(([value]) => value === entry.entryType)?.[1] ?? entry.entryType;
+		typeName(entry.entryType);
+	const typeName = (value: string) => {
+		const labels: Record<string, [string, string]> = {
+			species: ['Espécie', 'Species'],
+			background: ['Antecedente', 'Background'],
+			class: ['Classe', 'Class'],
+			subclass: ['Subclasse', 'Subclass'],
+			feat: ['Talento', 'Feat'],
+			spell: ['Magia', 'Spell'],
+			item: ['Item', 'Item'],
+			feature: ['Característica', 'Feature'],
+			other: ['Monstro / outro', 'Monster / other']
+		};
+		const label = labels[value];
+		return label ? label[$appLocale === 'en' ? 1 : 0] : value;
+	};
+	const sourceKindLabel = (source: CompendiumSource) =>
+		source.kind === 'srd' ? `SRD ${source.version}` : $appLocale === 'en' ? 'Private' : 'Privada';
 	const selectedEntry = () => entries.find((entry) => entry.id === selectedEntryId) ?? null;
 	const groupedVisible = () =>
 		types
-			.map(([type, label]) => ({
-				label,
+			.map(([type]) => ({
+				label: typeName(type),
 				entries: visible().filter((entry) => entry.entryType === type)
 			}))
 			.filter((group) => group.entries.length);
@@ -244,7 +261,7 @@
 		catch (error) { message = error instanceof Error ? error.message : 'Não foi possível excluir.'; }
 	}
 	function sample(): CompendiumDraft {
-		const label = types.find(([value]) => value === entryType)?.[1] ?? 'Entrada';
+		const label = typeName(entryType);
 		return {
 			name: `Novo(a) ${label}`,
 			summary: 'Resumo autoral do efeito ou referência.',
@@ -379,7 +396,7 @@
 				class:active={sourceFilter === source.id}
 				onclick={() => (sourceFilter = source.id)}
 				><strong>{source.title}</strong><small
-					>{source.kind === 'srd' ? `SRD ${source.version}` : 'Privada'} · {entryCount(source.id)} entradas</small
+					>{sourceKindLabel(source)} · {entryCount(source.id)} {$appLocale === 'en' ? 'entries' : 'entradas'}</small
 				></button
 			>{/each}
 	</section>
@@ -397,7 +414,7 @@
 					>{#each privateSources() as source}<option value={source.id}>{source.title}</option
 						>{/each}</select
 				><select bind:value={entryType}
-					>{#each types as [value, label]}<option {value}>{label}</option>{/each}</select
+					>{#each types as [value]}<option value={value}>{typeName(value)}</option>{/each}</select
 								><input bind:value={name} maxlength="120" placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><input
 					bind:value={portugueseName}
 					maxlength="120"
