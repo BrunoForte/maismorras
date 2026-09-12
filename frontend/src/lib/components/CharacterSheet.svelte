@@ -466,6 +466,16 @@ import {
 		$diceOverlay = { expression: `${label} · dano`, total: result.total, dice: result.dados, nonce: crypto.randomUUID() };
 	}
 	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) { if (rollingAttack !== null) return; rollingAttack = index; try { await rollSheet(attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'), attack.attackBonus, attack.damage); } catch { message = $appLocale === 'en' ? 'Could not roll the attack.' : 'Não foi possível rolar o ataque.'; } finally { rollingAttack = null; } }
+	function spellcastingAbility() {
+		const ability = ({ bard: 'charisma', cleric: 'wisdom', druid: 'wisdom', paladin: 'charisma', ranger: 'wisdom', sorcerer: 'charisma', warlock: 'charisma', wizard: 'intelligence' } as Record<string, keyof Sheet['abilityScores']>)[canonicalClass(sheet.class)];
+		return ability ?? 'intelligence';
+	}
+	async function rollSpell(spell: Sheet['spells'][number]) {
+		const ability = spellcastingAbility();
+		const bonus = modifier(sheet.abilityScores[ability]) + sheet.proficiencyBonus;
+		try { await rollSheet(`${spell.name || ($appLocale === 'en' ? 'Spell' : 'Magia')} · ${$appLocale === 'en' ? 'attack' : 'ataque'}`, bonus); }
+		catch { message = $appLocale === 'en' ? 'Could not roll the spell.' : 'Não foi possível rolar a magia.'; }
+	}
 	function addAttack() {
 		sheet.attacks = [
 			...sheet.attacks,
@@ -654,7 +664,7 @@ import {
 						<button onclick={addSpell}>+ {$appLocale === 'en' ? 'Manual spell' : 'Magia manual'}</button>
 					</div>
 					<div class="compendium-picker spell-picker"><select bind:value={spellCircle}>{#each availableSpellCircles() as circle}<option value={String(circle)}>{circleLabel(circle)}</option>{/each}</select><select bind:value={selectedSpellId}><option value="">{sheet.class ? ($appLocale === 'en' ? 'Spell available to this class…' : 'Magia disponível para a classe…') : ($appLocale === 'en' ? 'Set a class to filter spells…' : 'Defina a classe para filtrar magias…')}</option>{#each spellEntries() as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)}</option>{/each}</select><button onclick={addCompendiumSpell} disabled={!selectedSpellId}>{$appLocale === 'en' ? 'Add' : 'Adicionar'}</button></div>
-					{#each availableSpellCircles() as circle}<section class="spell-circle"><header><div><h4>{circleLabel(circle)}</h4><small>{#if circle > 0}<input type="number" min="0" max={spellSlotForCircle(circle)?.max ?? 0} value={spellSlotForCircle(circle)?.current ?? 0} onchange={(event) => { const slotIndex = sheet.spellSlots.findIndex((item) => item.level === circle); if (slotIndex >= 0) sheet.spellSlots[slotIndex].current = Math.max(0, Math.min(sheet.spellSlots[slotIndex].max, Number(event.currentTarget.value) || 0)); }} /> / {spellSlotForCircle(circle)?.max ?? 0} {$appLocale === 'en' ? 'slots' : 'espaços'}{:else}{$appLocale === 'en' ? 'Always available' : 'Sempre disponíveis'}{/if}</small></div></header>{#if spellsForCircle(circle).length}{#each spellsForCircle(circle) as { spell, index } (index)}<div class="line-item"><input bind:value={spell.name} placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><input bind:value={spell.notes} placeholder={$appLocale === 'en' ? 'Notes' : 'Notas'} /><button onclick={() => removeSpell(index)}>×</button></div>{/each}{:else}<p>{$appLocale === 'en' ? `No ${circle === 0 ? 'cantrips' : `level ${circle} spells`} added.` : `Nenhuma ${circle === 0 ? 'magia' : 'magia deste círculo'} adicionada.`}</p>{/if}</section>{/each}
+					{#each availableSpellCircles() as circle}<section class="spell-circle"><header><div><h4>{circleLabel(circle)}</h4><small>{#if circle > 0}<input type="number" min="0" max={spellSlotForCircle(circle)?.max ?? 0} value={spellSlotForCircle(circle)?.current ?? 0} onchange={(event) => { const slotIndex = sheet.spellSlots.findIndex((item) => item.level === circle); if (slotIndex >= 0) sheet.spellSlots[slotIndex].current = Math.max(0, Math.min(sheet.spellSlots[slotIndex].max, Number(event.currentTarget.value) || 0)); }} /> / {spellSlotForCircle(circle)?.max ?? 0} {$appLocale === 'en' ? 'slots' : 'espaços'}{:else}{$appLocale === 'en' ? 'Always available' : 'Sempre disponíveis'}{/if}</small></div></header>{#if spellsForCircle(circle).length}{#each spellsForCircle(circle) as { spell, index } (index)}<div class="line-item"><input bind:value={spell.name} placeholder={$appLocale === 'en' ? 'Name' : 'Nome'} /><input bind:value={spell.notes} placeholder={$appLocale === 'en' ? 'Notes' : 'Notas'} /><button class="roll-spell" onclick={() => void rollSpell(spell)} aria-label={$appLocale === 'en' ? `Roll ${spell.name}` : `Rolar ${spell.name}`}>🎲</button><button onclick={() => removeSpell(index)}>×</button></div>{/each}{:else}<p>{$appLocale === 'en' ? `No ${circle === 0 ? 'cantrips' : `level ${circle} spells`} added.` : `Nenhuma ${circle === 0 ? 'magia' : 'magia deste círculo'} adicionada.`}</p>{/if}</section>{/each}
 				</section>
 				{/if}
 				{#if activeTab === 'details'}
