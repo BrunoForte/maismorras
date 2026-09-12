@@ -159,6 +159,15 @@ export class GameEngine {
 		if (this.gridLayer) this.gridLayer.visible = visible;
 	}
 
+	/** Toggle render-only layers without changing persisted scene state. */
+	setWallsVisible(visible: boolean) {
+		if (this.wallLayer) this.wallLayer.visible = visible;
+	}
+
+	setAreasVisible(visible: boolean) {
+		if (this.areaLayer) this.areaLayer.visible = visible;
+	}
+
 	setWalls(walls: SceneWall[]) {
 		if (!this.wallLayer) { this.wallLayer = new PIXI.Graphics(); this.camera.mundo.addChild(this.wallLayer); }
 		this.wallLayer.clear();
