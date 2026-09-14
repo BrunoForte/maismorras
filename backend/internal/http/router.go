@@ -36,6 +36,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/members/{userID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.RemoveMember))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.GetMine))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/character", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveMine))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/character/roll", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.RollMine))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/character/cast-spell", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.CastMineSpell))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/participants", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.ListForGM))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.GetForGM))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveForGM))

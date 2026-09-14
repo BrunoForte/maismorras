@@ -2,6 +2,47 @@ package characters
 
 import "testing"
 
+func TestAbilityModifierUsesDNDHalfDownForNegativeScores(t *testing.T) {
+	cases := map[int]int{1: -5, 9: -1, 10: 0, 11: 0, 18: 4}
+	for score, want := range cases {
+		if got := abilityModifier(score); got != want {
+			t.Errorf("abilityModifier(%d) = %d, want %d", score, got, want)
+		}
+	}
+}
+
+func TestSpellEffectAddsScalingForHigherSlots(t *testing.T) {
+	rules := map[string]any{
+		"description": "Each creature takes 3d6 fire damage.",
+		"damage":      map[string]any{"dice": "3d6", "scalingType": "spell-level"},
+	}
+	got := spellEffect(rules, 1, 3)
+	want := "Aumento automático: +3d6 por 2 nível(is) de espaço acima do base."
+	if len(got) == 0 || !containsString(got, want) {
+		t.Fatalf("unexpected scaling effect: %q", got)
+	}
+}
+
+func TestSpellEffectDoesNotInventScaling(t *testing.T) {
+	rules := map[string]any{"description": "An effect.", "damage": map[string]any{"dice": "1d8"}}
+	if got := spellEffect(rules, 1, 2); got != "An effect." {
+		t.Fatalf("unexpected effect: %q", got)
+	}
+}
+
+func containsString(value, part string) bool {
+	return len(value) >= len(part) && (value == part || containsRunes(value, part))
+}
+
+func containsRunes(value, part string) bool {
+	for i := 0; i+len(part) <= len(value); i++ {
+		if value[i:i+len(part)] == part {
+			return true
+		}
+	}
+	return false
+}
+
 func validSheet() Sheet {
 	return Sheet{
 		Name: "Lia", Level: 1, ArmorClass: 14, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10,

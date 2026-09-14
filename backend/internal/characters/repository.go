@@ -2,9 +2,14 @@ package characters
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -49,6 +54,7 @@ type Sheet struct {
 	Inventory          []InventoryItem `json:"inventory"`
 	Resources          []Resource      `json:"resources"`
 	SpellSlots         []SpellSlot     `json:"spellSlots"`
+	VisibleRolls       []string        `json:"visibleRolls"`
 }
 
 type AbilityScores struct {
@@ -66,9 +72,10 @@ type Attack struct {
 	Notes       string `json:"notes"`
 }
 type Spell struct {
-	Name  string `json:"name"`
-	Level int    `json:"level"`
-	Notes string `json:"notes"`
+	EntryID string `json:"entryId"`
+	Name    string `json:"name"`
+	Level   int    `json:"level"`
+	Notes   string `json:"notes"`
 }
 type Resource struct {
 	ID        string `json:"id"`
@@ -108,7 +115,245 @@ type Participant struct {
 
 type Repository struct{ pool *pgxpool.Pool }
 
+type SheetRollResult struct {
+	EventID  int64  `json:"eventId"`
+	Dice     []int  `json:"dados"`
+	Mode     string `json:"modo"`
+	Modifier int    `json:"modificador"`
+	Total    int    `json:"total"`
+	Label    string `json:"label"`
+}
+type SpellCastResult struct {
+	EventID   int64  `json:"eventId"`
+	Sheet     Sheet  `json:"sheet"`
+	SpellName string `json:"spellName"`
+	BaseLevel int    `json:"baseLevel"`
+	SlotLevel int    `json:"slotLevel"`
+	Effect    string `json:"effect"`
+}
+
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
+
+var abilityKey = map[string]func(AbilityScores) int{
+	"strength": func(s AbilityScores) int { return s.Strength }, "dexterity": func(s AbilityScores) int { return s.Dexterity },
+	"constitution": func(s AbilityScores) int { return s.Constitution }, "intelligence": func(s AbilityScores) int { return s.Intelligence },
+	"wisdom": func(s AbilityScores) int { return s.Wisdom }, "charisma": func(s AbilityScores) int { return s.Charisma },
+}
+var skills = map[string]string{"Acrobacia": "dexterity", "Adestrar Animais": "wisdom", "Arcanismo": "intelligence", "Atletismo": "strength", "Atuação": "charisma", "Enganação": "charisma", "Furtividade": "dexterity", "História": "intelligence", "Intimidação": "charisma", "Intuição": "wisdom", "Investigação": "intelligence", "Medicina": "wisdom", "Natureza": "intelligence", "Percepção": "wisdom", "Persuasão": "charisma", "Prestidigitação": "dexterity", "Religião": "intelligence", "Sobrevivência": "wisdom"}
+var spellAbility = map[string]string{"bard": "charisma", "cleric": "wisdom", "druid": "wisdom", "paladin": "charisma", "ranger": "wisdom", "sorcerer": "charisma", "warlock": "charisma", "wizard": "intelligence"}
+var diceInEffect = regexp.MustCompile(`(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?`)
+
+func abilityModifier(score int) int {
+	if score >= 10 {
+		return (score - 10) / 2
+	}
+	return -((11 - score) / 2)
+}
+func canonicalClass(value string) string {
+	key := strings.ToLower(strings.TrimSpace(value))
+	if mapped, ok := map[string]string{
+		"bárbaro": "barbarian", "barbaro": "barbarian", "bardo": "bard", "clérigo": "cleric",
+		"clerigo": "cleric", "druida": "druid", "guerreiro": "fighter", "monge": "monk",
+		"paladino": "paladin", "patrulheiro": "ranger", "ladino": "rogue", "feiticeiro": "sorcerer",
+		"bruxo": "warlock", "mago": "wizard",
+	}[key]; ok {
+		return mapped
+	}
+	return key
+}
+
+// RollSheet creates sheet-bound d20 rolls. The client selects only an allowed
+// roll and its advantage state; the modifier always comes from the stored sheet.
+func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, key, mode string) (SheetRollResult, error) {
+	if mode != "normal" && mode != "advantage" && mode != "disadvantage" {
+		return SheetRollResult{}, fmt.Errorf("invalid roll mode")
+	}
+	character, err := r.GetMine(ctx, campaignID, userID)
+	if err != nil {
+		return SheetRollResult{}, err
+	}
+	sheet := character.Sheet
+	result := SheetRollResult{Mode: mode}
+	switch kind {
+	case "skill":
+		ability, ok := skills[key]
+		if !ok {
+			return result, fmt.Errorf("invalid skill")
+		}
+		result.Label = "Teste de " + key
+		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores))
+		if contains(sheet.SkillProficiencies, key) {
+			result.Modifier += sheet.ProficiencyBonus
+		}
+		if contains(sheet.SkillExpertise, key) {
+			result.Modifier += sheet.ProficiencyBonus
+		}
+	case "save":
+		get, ok := abilityKey[key]
+		if !ok {
+			return result, fmt.Errorf("invalid saving throw")
+		}
+		result.Label = "Resistência de " + key
+		result.Modifier = abilityModifier(get(sheet.AbilityScores))
+		if contains(sheet.SavingThrows, key) {
+			result.Modifier += sheet.ProficiencyBonus
+		}
+	case "spell":
+		ability, ok := spellAbility[canonicalClass(sheet.Class)]
+		if !ok {
+			return result, fmt.Errorf("character cannot cast spells")
+		}
+		result.Label = "Ataque mágico"
+		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores)) + sheet.ProficiencyBonus
+	default:
+		return result, fmt.Errorf("invalid sheet roll")
+	}
+	rolls := 1
+	if mode != "normal" {
+		rolls = 2
+	}
+	result.Dice = make([]int, rolls)
+	for i := range rolls {
+		n, rollErr := rand.Int(rand.Reader, big.NewInt(20))
+		if rollErr != nil {
+			return result, rollErr
+		}
+		result.Dice[i] = int(n.Int64()) + 1
+	}
+	kept := result.Dice[0]
+	for _, die := range result.Dice[1:] {
+		if (mode == "advantage" && die > kept) || (mode == "disadvantage" && die < kept) {
+			kept = die
+		}
+	}
+	result.Total = kept + result.Modifier
+	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
+	err = r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
+	return result, err
+}
+
+func contains(items []string, value string) bool {
+	for _, item := range items {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+func joinDice(dice []int) string {
+	values := make([]string, len(dice))
+	for i, die := range dice {
+		values[i] = fmt.Sprint(die)
+	}
+	return strings.Join(values, ", ")
+}
+
+// CastSpell locks the character row and consumes a compatible slot together
+// with the chat event, preventing duplicate spending from concurrent clients.
+func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, spellIndex, slotLevel int) (SpellCastResult, error) {
+	if spellIndex < 0 || slotLevel < 0 {
+		return SpellCastResult{}, fmt.Errorf("invalid spell")
+	}
+	member, err := r.isMember(ctx, campaignID, userID)
+	if err != nil || !member {
+		return SpellCastResult{}, ErrForbidden
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return SpellCastResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var raw []byte
+	var characterID string
+	if err = tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &raw); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SpellCastResult{}, ErrNotFound
+		}
+		return SpellCastResult{}, err
+	}
+	var sheet Sheet
+	if err = json.Unmarshal(raw, &sheet); err != nil {
+		return SpellCastResult{}, err
+	}
+	if spellIndex >= len(sheet.Spells) {
+		return SpellCastResult{}, fmt.Errorf("spell not found")
+	}
+	spell := sheet.Spells[spellIndex]
+	if spell.EntryID == "" {
+		return SpellCastResult{}, fmt.Errorf("spell is not linked to compendium data")
+	}
+	if spell.Level > 0 {
+		if slotLevel < spell.Level {
+			return SpellCastResult{}, fmt.Errorf("incompatible spell slot")
+		}
+		found := false
+		for i := range sheet.SpellSlots {
+			if sheet.SpellSlots[i].Level == slotLevel && sheet.SpellSlots[i].Current > 0 {
+				sheet.SpellSlots[i].Current--
+				found = true
+				break
+			}
+		}
+		if !found {
+			return SpellCastResult{}, fmt.Errorf("no compatible spell slot")
+		}
+	} else if slotLevel != 0 {
+		return SpellCastResult{}, fmt.Errorf("cantrips do not consume spell slots")
+	}
+	var rulesRaw []byte
+	if err = tx.QueryRow(ctx, `select rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='spell' and is_published=true`, spell.EntryID, campaignID).Scan(&rulesRaw); err != nil {
+		return SpellCastResult{}, fmt.Errorf("spell data unavailable")
+	}
+	var rules map[string]any
+	if err = json.Unmarshal(rulesRaw, &rules); err != nil {
+		return SpellCastResult{}, err
+	}
+	if baseLevel, ok := rules["level"].(float64); !ok || int(baseLevel) != spell.Level {
+		return SpellCastResult{}, fmt.Errorf("spell level does not match compendium data")
+	}
+	effect := spellEffect(rules, spell.Level, slotLevel)
+	if effect == "" {
+		effect = "Efeito não definido."
+	}
+	raw, err = json.Marshal(sheet)
+	if err != nil {
+		return SpellCastResult{}, err
+	}
+	if _, err = tx.Exec(ctx, `update actors set sheet=$1 where id=$2`, raw, characterID); err != nil {
+		return SpellCastResult{}, err
+	}
+	payload, _ := json.Marshal(map[string]any{"expressao": "magia", "dados": []int{}, "modo": "normal", "modificador": 0, "total": 0, "text": fmt.Sprintf("✨ %s · nível base %d · espaço usado %d · custo: 1 espaço de nível %d · efeito: %s", spell.Name, spell.Level, slotLevel, slotLevel, effect), "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect})
+	var eventID int64
+	if err = tx.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&eventID); err != nil {
+		return SpellCastResult{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return SpellCastResult{}, err
+	}
+	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect}, nil
+}
+
+func spellEffect(rules map[string]any, base, slot int) string {
+	description := strings.TrimSpace(fmt.Sprint(rules["description"]))
+	if description == "<nil>" {
+		description = ""
+	}
+	if slot <= base {
+		return description
+	}
+	damage, ok := rules["damage"].(map[string]any)
+	if !ok || damage["scalingType"] != "spell-level" {
+		return description
+	}
+	dice := fmt.Sprint(damage["dice"])
+	match := diceInEffect.FindStringSubmatch(dice)
+	if match == nil {
+		return description
+	}
+	count, _ := strconv.Atoi(match[1])
+	sides := match[2]
+	return fmt.Sprintf("%s Aumento automático: +%dd%s por %d nível(is) de espaço acima do base.", description, count, sides, slot-base)
+}
 
 func (r *Repository) isMember(ctx context.Context, campaignID, userID string) (bool, error) {
 	var ok bool

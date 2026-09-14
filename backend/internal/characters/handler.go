@@ -39,6 +39,51 @@ func (h *Handler) SaveMine(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, item)
 }
+
+func (h *Handler) RollMine(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Kind string `json:"kind"`
+		Key  string `json:"key"`
+		Mode string `json:"mode"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
+	}
+	result, err := h.repo.RollSheet(r.Context(), r.PathValue("campaignID"), p.UserID, strings.TrimSpace(in.Kind), strings.TrimSpace(in.Key), strings.TrimSpace(in.Mode))
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Você não participa desta campanha.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Você ainda não criou uma ficha nesta campanha.")
+	}
+	if err != nil {
+		return apperror.BadRequest("INVALID_ROLL", "A rolagem precisa ser uma ação autorizada pela ficha.")
+	}
+	return write(w, http.StatusCreated, result)
+}
+
+func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		SpellIndex int `json:"spellIndex"`
+		SlotLevel  int `json:"slotLevel"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_SPELL_CAST", "Conjuração inválida.")
+	}
+	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, in.SpellIndex, in.SlotLevel)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Você não participa desta campanha.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Você ainda não criou uma ficha nesta campanha.")
+	}
+	if err != nil {
+		return apperror.BadRequest("INVALID_SPELL_CAST", "Não há espaço compatível disponível para esta magia.")
+	}
+	return write(w, http.StatusCreated, result)
+}
 func (h *Handler) ListForGM(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	items, err := h.repo.ListForGM(r.Context(), r.PathValue("campaignID"), p.UserID)

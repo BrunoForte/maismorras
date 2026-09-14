@@ -50,6 +50,7 @@ function asMessage(event: StoredEvent): Mensagem | null {
 	const p = event.payload as Mensagem['detalhesRolagem'] & {
 		text?: string;
 		channel?: 'chat' | 'combat';
+		modo?: 'normal' | 'advantage' | 'disadvantage';
 	};
 	return p?.expressao
 		? {
@@ -58,7 +59,7 @@ function asMessage(event: StoredEvent): Mensagem | null {
 				texto: p.text ?? '',
 				tipo: 'rolagem',
 				canal: p.channel ?? 'chat',
-				detalhesRolagem: p
+				detalhesRolagem: { ...p, mode: p.mode ?? p.modo }
 			}
 		: null;
 }

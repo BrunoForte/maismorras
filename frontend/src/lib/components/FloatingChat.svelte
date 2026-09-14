@@ -135,9 +135,26 @@
 									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
 								>{/if}
 						{:else if message.detalhesRolagem}<div class="roll">
-								<small>{message.detalhesRolagem.expressao}</small><b
-									>{message.detalhesRolagem.total}</b
-								>
+								<div>
+									<small>{message.texto || message.detalhesRolagem.expressao}</small
+									>{#if message.detalhesRolagem.dados.length}<em
+											>{message.detalhesRolagem.mode === 'advantage'
+												? $appLocale === 'en'
+													? 'Advantage'
+													: 'Vantagem'
+												: message.detalhesRolagem.mode === 'disadvantage'
+													? $appLocale === 'en'
+														? 'Disadvantage'
+														: 'Desvantagem'
+													: $appLocale === 'en'
+														? 'Normal'
+														: 'Normal'} · [{message.detalhesRolagem.dados.join(', ')}] · {message
+												.detalhesRolagem.modificador >= 0
+												? '+'
+												: ''}{message.detalhesRolagem.modificador}</em
+										>{/if}
+								</div>
+								<b>{message.detalhesRolagem.total}</b>
 							</div>{/if}
 					</article>
 				{/each}
@@ -282,7 +299,16 @@
 		background: #161216;
 	}
 	.roll small {
+		display: block;
 		color: #ad9e90;
+		line-height: 1.35;
+	}
+	.roll em {
+		display: block;
+		margin-top: 0.15rem;
+		color: #d8bd8e;
+		font-size: 0.64rem;
+		font-style: normal;
 	}
 	.roll b {
 		color: #f0cb85;

@@ -7,6 +7,8 @@
 		createEmptySheet,
 		getCharacterForGM,
 		getMyCharacter,
+		rollMyCharacter,
+		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
 		type CharacterSheet as Sheet,
@@ -64,6 +66,9 @@
 	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
 	let rollingWeapon = $state<string | null>(null);
 	let rollingAttack = $state<number | null>(null);
+	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
+	let castingSpell = $state<number | null>(null);
+	let spellSlotChoice = $state<Record<number, number>>({});
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
@@ -696,14 +701,15 @@
 			sheet.skillProficiencies = [...sheet.skillProficiencies, value];
 		syncTokenSoon();
 	}
-	async function rollSkill(name: string, ability: keyof Sheet['abilityScores']) {
+	async function rollAuthorized(
+		kind: 'skill' | 'save' | 'spell',
+		key: string,
+		fallbackLabel: string
+	) {
 		try {
-			const bonus = skillBonus(name, ability);
-			const event = await rollDice(session, campaignId, `1d20${bonus >= 0 ? '+' : ''}${bonus}`);
-			const result = event.payload as { dados: number[]; total: number; expressao: string };
-			const label = skillLabel(name);
+			const result = await rollMyCharacter(session, campaignId, kind, key, rollMode);
 			$diceOverlay = {
-				expression: `${label} · ${result.expressao}`,
+				expression: `${fallbackLabel} · ${rollMode === 'advantage' ? 'Vantagem' : rollMode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
 				total: result.total,
 				dice: result.dados,
 				nonce: crypto.randomUUID()
@@ -711,21 +717,30 @@
 			$chatMensagens = [
 				...$chatMensagens,
 				{
-					id: String(event.id),
+					id: String(result.eventId),
 					autor: sheet.name || ($appLocale === 'en' ? 'Character' : 'Personagem'),
-					texto: $appLocale === 'en' ? `${label} check` : `Teste de ${label}`,
+					texto: `${fallbackLabel} · ${rollMode === 'advantage' ? 'Vantagem' : rollMode === 'disadvantage' ? 'Desvantagem' : 'Normal'} · dados [${result.dados.join(', ')}] · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
 					tipo: 'rolagem',
-					canal: 'chat',
-					detalhesRolagem: { ...result, modificador: bonus }
+					canal: 'combat',
+					detalhesRolagem: {
+						expressao: '1d20',
+						dados: result.dados,
+						modificador: result.modificador,
+						total: result.total,
+						mode: result.modo
+					}
 				}
 			];
-		} catch {
-			message =
-				$appLocale === 'en'
-					? `Could not roll ${skillLabel(name)}.`
-					: `Não foi possível rolar ${name}.`;
+		} catch (error) {
+			message = error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
 		}
 	}
+	const rollSkill = (name: string, _ability: keyof Sheet['abilityScores']) =>
+		rollAuthorized(
+			'skill',
+			name,
+			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`
+		);
 	function toggleVisibleRoll(key: string) {
 		const current = sheet.visibleRolls ?? [];
 		sheet.visibleRolls = current.includes(key)
@@ -997,6 +1012,7 @@
 		sheet.spells = [
 			...sheet.spells,
 			{
+				entryId: entry.id,
 				name: optionLabel(entry),
 				level: Number(rules.level ?? 0),
 				notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`
@@ -1108,16 +1124,40 @@
 		return ability ?? 'intelligence';
 	}
 	async function rollSpell(spell: Sheet['spells'][number]) {
-		const ability = spellcastingAbility();
-		const bonus = modifier(sheet.abilityScores[ability]) + sheet.proficiencyBonus;
+		await rollAuthorized('spell', '', `${spell.name || 'Magia'} · ataque`);
+	}
+	const compatibleSlots = (spell: Sheet['spells'][number]) =>
+		sheet.spellSlots.filter((slot) => slot.level >= spell.level && slot.current > 0);
+	function selectedSlot(spell: Sheet['spells'][number], index: number) {
+		return spellSlotChoice[index] ?? compatibleSlots(spell)[0]?.level ?? spell.level;
+	}
+	async function castSpell(spell: Sheet['spells'][number], index: number) {
+		if (castingSpell !== null || (spell.level > 0 && !compatibleSlots(spell).length)) return;
+		castingSpell = index;
 		try {
-			await rollSheet(
-				`${spell.name || ($appLocale === 'en' ? 'Spell' : 'Magia')} · ${$appLocale === 'en' ? 'attack' : 'ataque'}`,
-				bonus
+			const result = await castMySpell(
+				session,
+				campaignId,
+				index,
+				spell.level === 0 ? 0 : selectedSlot(spell, index)
 			);
-		} catch {
-			message =
-				$appLocale === 'en' ? 'Could not roll the spell.' : 'Não foi possível rolar a magia.';
+			sheet = result.sheet;
+			$chatMensagens = [
+				...$chatMensagens,
+				{
+					id: String(result.eventId),
+					autor: sheet.name || 'Personagem',
+					texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'} · efeito: ${result.effect}`,
+					tipo: 'rolagem',
+					canal: 'combat',
+					detalhesRolagem: { expressao: 'magia', dados: [], modificador: 0, total: 0 }
+				}
+			];
+			message = 'Magia lançada e espaço consumido.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível lançar a magia.';
+		} finally {
+			castingSpell = null;
 		}
 	}
 	function addAttack() {
@@ -1429,7 +1469,18 @@
 						</div>
 					</section>
 					<section class="saving-throws">
-						<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3>
+						<div class="section-title">
+							<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3>
+							<label class="roll-mode"
+								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
+									><option value="advantage"
+										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
+									><option value="normal">Normal</option><option value="disadvantage"
+										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option
+									></select
+								></label
+							>
+						</div>
 						<div>
 							{#each attributes as attribute}<article>
 									<label
@@ -1445,11 +1496,12 @@
 										>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong
 									><button
 										onclick={() =>
-											void rollSheet(
+											void rollAuthorized(
+												'save',
+												attribute.key,
 												$appLocale === 'en'
 													? `${abilityLabel(attribute.key)} saving throw`
-													: `Resistência de ${abilityLabel(attribute.key)}`,
-												saveBonus(attribute.key)
+													: `Resistência de ${abilityLabel(attribute.key)}`
 											)}
 										aria-label={$appLocale === 'en'
 											? `Roll ${abilityLabel(attribute.key)} saving throw`
@@ -1621,6 +1673,15 @@
 					<section class="skills">
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
+							<label class="roll-mode"
+								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
+									><option value="advantage"
+										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
+									><option value="normal">Normal</option><option value="disadvantage"
+										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option
+									></select
+								></label
+							>
 							<span
 								>{$appLocale === 'en'
 									? 'Mark proficient skills. Expertise is granted by class progression.'
@@ -1762,25 +1823,7 @@
 									<div>
 										<h4>{circleLabel(circle)}</h4>
 										<small
-											>{#if circle > 0}<input
-													type="number"
-													min="0"
-													max={spellSlotForCircle(circle)?.max ?? 0}
-													value={spellSlotForCircle(circle)?.current ?? 0}
-													onchange={(event) => {
-														const slotIndex = sheet.spellSlots.findIndex(
-															(item) => item.level === circle
-														);
-														if (slotIndex >= 0)
-															sheet.spellSlots[slotIndex].current = Math.max(
-																0,
-																Math.min(
-																	sheet.spellSlots[slotIndex].max,
-																	Number(event.currentTarget.value) || 0
-																)
-															);
-													}}
-												/>
+											>{#if circle > 0}<strong>{spellSlotForCircle(circle)?.current ?? 0}</strong>
 												/ {spellSlotForCircle(circle)?.max ?? 0}
 												{$appLocale === 'en' ? 'slots' : 'espaços'}{:else}{$appLocale === 'en'
 													? 'Always available'
@@ -1803,6 +1846,28 @@
 												aria-label={$appLocale === 'en'
 													? `Roll ${spell.name}`
 													: `Rolar ${spell.name}`}>🎲</button
+											>{#if spell.level > 0}<select
+													value={selectedSlot(spell, index)}
+													onchange={(event) =>
+														(spellSlotChoice[index] = Number(event.currentTarget.value))}
+													aria-label="Espaço de magia"
+													>{#each compatibleSlots(spell) as slot}<option value={slot.level}
+															>{circleLabel(slot.level)} · {slot.current}/{slot.max}</option
+														>{/each}</select
+												>{/if}<button
+												class="cast-spell"
+												disabled={castingSpell === index ||
+													!spell.entryId ||
+													(spell.level > 0 && !compatibleSlots(spell).length)}
+												title={!spell.entryId
+													? 'Adicione a magia pelo compêndio para conjurá-la com regras.'
+													: ''}
+												onclick={() => void castSpell(spell, index)}
+												>{castingSpell === index
+													? '…'
+													: $appLocale === 'en'
+														? 'Cast'
+														: 'Lançar'}</button
 											><button onclick={() => removeSpell(index)}>×</button>
 										</div>{/each}{:else}<p>
 										{$appLocale === 'en'
@@ -2479,11 +2544,6 @@
 		gap: 0.25rem;
 		color: #a99c91;
 		font-size: 0.68rem;
-	}
-	.spell-circle small input {
-		width: 2.5rem;
-		padding: 0.22rem;
-		text-align: center;
 	}
 	.spell-circle p {
 		margin: 0;

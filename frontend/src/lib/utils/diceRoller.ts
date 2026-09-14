@@ -6,6 +6,7 @@ export type ResultadoRolagem = {
 	modificador: number;
 	total: number;
 	channel?: 'chat' | 'combat';
+	mode?: 'normal' | 'advantage' | 'disadvantage';
 };
 
 export function rolarDados(expressao: string): ResultadoRolagem | null {

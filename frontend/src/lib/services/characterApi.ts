@@ -9,7 +9,7 @@ export type AbilityScores = {
 	charisma: number;
 };
 export type Attack = { name: string; attackBonus: number; damage: string; notes: string };
-export type Spell = { name: string; level: number; notes: string };
+export type Spell = { entryId?: string; name: string; level: number; notes: string };
 export type CharacterResource = {
 	id: string;
 	name: string;
@@ -145,6 +145,46 @@ export const deleteCharacterForGM = (session: Session, campaignId: string, chara
 	request<void>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`, {
 		method: 'DELETE'
 	});
+export type SheetRoll = {
+	eventId: number;
+	dados: number[];
+	modo: 'normal' | 'advantage' | 'disadvantage';
+	modificador: number;
+	total: number;
+	label: string;
+};
+export const rollMyCharacter = (
+	session: Session,
+	campaignId: string,
+	kind: 'skill' | 'save' | 'spell',
+	key: string,
+	mode: SheetRoll['modo']
+) =>
+	request<SheetRoll>(session, `/api/v1/campaigns/${campaignId}/character/roll`, {
+		method: 'POST',
+		body: JSON.stringify({ kind, key, mode })
+	});
+export type SpellCast = {
+	eventId: number;
+	sheet: CharacterSheet;
+	spellName: string;
+	baseLevel: number;
+	slotLevel: number;
+	effect: string;
+};
+export const castMySpell = (
+	session: Session,
+	campaignId: string,
+	spellIndex: number,
+	slotLevel: number
+) =>
+	request<SpellCast>(session, `/api/v1/campaigns/${campaignId}/character/cast-spell`, {
+		method: 'POST',
+		body: JSON.stringify({ spellIndex, slotLevel })
+	}).then((result) => ({
+		...result,
+		sheet: normalizeCharacter({ id: '', campaignId, ownerId: '', sheet: result.sheet }).sheet
+	}));
 
 export function createEmptySheet(): CharacterSheet {
 	return {
