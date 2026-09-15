@@ -33,6 +33,10 @@ func TooManyRequests(code, message string) *Error {
 	return &Error{Status: http.StatusTooManyRequests, Code: code, Message: message}
 }
 
+func ImagePolicyBlocked() *Error {
+	return &Error{Status: http.StatusUnprocessableEntity, Code: "IMAGE_POLICY_BLOCKED", Message: "O provedor bloqueou este pedido por política de conteúdo. Reformule o prompt e tente novamente."}
+}
+
 func NotFound(code, message string) *Error {
 	return &Error{Status: http.StatusNotFound, Code: code, Message: message}
 }

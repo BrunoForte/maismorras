@@ -12,7 +12,15 @@ export async function gerarImagemToken(prompt: string, signal?: AbortSignal): Pr
 		}
 	);
 
-	if (!response.ok) throw new Error(`Não foi possível gerar o token (HTTP ${response.status}).`);
+	if (!response.ok) {
+		const body = await response.json().catch(() => null);
+		const error = new Error(
+			body?.error?.message ?? `Não foi possível gerar o token (HTTP ${response.status}).`
+		) as Error & { code?: string; status?: number };
+		error.code = body?.error?.code;
+		error.status = response.status;
+		throw error;
+	}
 
 	const body: TokenImageResponse = await response.json();
 	if (!body.fotoUrl.startsWith('data:image/'))

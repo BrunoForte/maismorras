@@ -94,3 +94,35 @@ func TestPollinationsServiceGenerateRejectsOversizedImage(t *testing.T) {
 		t.Fatalf("error = %#v, want 502 AppError", err)
 	}
 }
+
+func TestClassifyProviderPolicyBlock(t *testing.T) {
+	err := classifyProviderError(http.StatusBadRequest, `{"error":"content policy violation"}`)
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Code != "IMAGE_POLICY_BLOCKED" || appErr.Status != http.StatusUnprocessableEntity {
+		t.Fatalf("error = %#v, want IMAGE_POLICY_BLOCKED/422", err)
+	}
+}
+
+func TestClassifyProviderRateLimit(t *testing.T) {
+	err := classifyProviderError(http.StatusTooManyRequests, "slow down")
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Code != "UPSTREAM_RATE_LIMITED" || appErr.Status != http.StatusTooManyRequests {
+		t.Fatalf("error = %#v, want UPSTREAM_RATE_LIMITED/429", err)
+	}
+}
+
+func TestClassifyProviderDoesNotExposeResponseBody(t *testing.T) {
+	err := classifyProviderError(http.StatusInternalServerError, "secret provider token")
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || strings.Contains(appErr.Error(), "secret provider token") {
+		t.Fatalf("error leaked provider response: %v", err)
+	}
+}
+
+func TestClassifyProviderGenericContentErrorAsUpstreamFailure(t *testing.T) {
+	err := classifyProviderError(http.StatusBadRequest, "invalid content-type parameter")
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Code != "UPSTREAM_IMAGE_ERROR" {
+		t.Fatalf("error = %#v, want UPSTREAM_IMAGE_ERROR", err)
+	}
+}

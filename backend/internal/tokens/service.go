@@ -3,6 +3,7 @@ package tokens
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -52,11 +53,15 @@ func (s *PollinationsService) generate(ctx context.Context, fullPrompt string, w
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		if ctx.Err() != nil || errors.Is(err, context.DeadlineExceeded) {
+			return "", apperror.ServiceUnavailable("O provedor de imagens demorou demais para responder.")
+		}
 		return "", apperror.BadGateway(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", apperror.BadGateway(fmt.Errorf("pollinations returned status %d", resp.StatusCode))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return "", classifyProviderError(resp.StatusCode, string(body))
 	}
 
 	// LimitReader mantém o download na RAM sob um teto. O +1 detecta respostas maiores
@@ -70,4 +75,16 @@ func (s *PollinationsService) generate(ctx context.Context, fullPrompt string, w
 	}
 
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(imageBytes), nil
+}
+
+func classifyProviderError(status int, body string) error {
+	if status == http.StatusTooManyRequests {
+		return apperror.TooManyRequests("UPSTREAM_RATE_LIMITED", "O provedor de imagens atingiu o limite de requisições. Tente novamente em instantes.")
+	}
+	lower := strings.ToLower(body)
+	if (status == http.StatusBadRequest || status == http.StatusForbidden || status == http.StatusUnprocessableEntity) &&
+		(strings.Contains(lower, "policy") || strings.Contains(lower, "safety") || strings.Contains(lower, "moderation") || strings.Contains(lower, "guideline") || strings.Contains(lower, "nsfw") || strings.Contains(lower, "blocked")) {
+		return apperror.ImagePolicyBlocked()
+	}
+	return apperror.BadGateway(fmt.Errorf("image provider returned status %d", status))
 }
