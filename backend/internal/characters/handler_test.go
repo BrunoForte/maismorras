@@ -1,6 +1,9 @@
 package characters
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAbilityModifierUsesDNDHalfDownForNegativeScores(t *testing.T) {
 	cases := map[int]int{1: -5, 9: -1, 10: 0, 11: 0, 18: 4}
@@ -17,7 +20,7 @@ func TestSpellEffectAddsScalingForHigherSlots(t *testing.T) {
 		"damage":      map[string]any{"dice": "3d6", "scalingType": "spell-level"},
 	}
 	got := spellEffect(rules, 1, 3)
-	if !containsString(got, "5d6") || containsString(got, "3d6") {
+	if !strings.Contains(got, "5d6") || strings.Contains(got, "3d6") {
 		t.Fatalf("unexpected scaling effect: %q", got)
 	}
 }
@@ -45,17 +48,12 @@ func TestSpellEffectDoesNotInventScaling(t *testing.T) {
 	}
 }
 
-func containsString(value, part string) bool {
-	return len(value) >= len(part) && (value == part || containsRunes(value, part))
-}
-
-func containsRunes(value, part string) bool {
-	for i := 0; i+len(part) <= len(value); i++ {
-		if value[i:i+len(part)] == part {
-			return true
-		}
+func TestRollSpellEffectPreservesModifierWhenScaling(t *testing.T) {
+	rules := map[string]any{"damage": map[string]any{"dice": "2d8+3", "scalingType": "spell-level"}}
+	expression, dice, modifier, total := rollSpellEffect(rules, 2, 4)
+	if expression != "4d8+3" || len(dice) != 4 || modifier != 3 || total < 7 || total > 35 {
+		t.Fatalf("unexpected scaled modifier roll: %s %v +%d = %d", expression, dice, modifier, total)
 	}
-	return false
 }
 
 func validSheet() Sheet {
