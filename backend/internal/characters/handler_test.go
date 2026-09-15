@@ -17,9 +17,24 @@ func TestSpellEffectAddsScalingForHigherSlots(t *testing.T) {
 		"damage":      map[string]any{"dice": "3d6", "scalingType": "spell-level"},
 	}
 	got := spellEffect(rules, 1, 3)
-	want := "Aumento automático: +3d6 por 2 nível(is) de espaço acima do base."
-	if len(got) == 0 || !containsString(got, want) {
+	if !containsString(got, "5d6") || containsString(got, "3d6") {
 		t.Fatalf("unexpected scaling effect: %q", got)
+	}
+}
+
+func TestRollSpellEffectScalesDiceAndReturnsAllResults(t *testing.T) {
+	rules := map[string]any{"damage": map[string]any{"dice": "8d6", "scalingType": "spell-level"}}
+	expression, dice, modifier, total := rollSpellEffect(rules, 3, 4)
+	if expression != "9d6" || len(dice) != 9 || modifier != 0 || total < 9 || total > 54 {
+		t.Fatalf("unexpected roll: %s %v +%d = %d", expression, dice, modifier, total)
+	}
+}
+
+func TestRollSpellEffectSupportsRepeatedProjectiles(t *testing.T) {
+	rules := map[string]any{"damage": map[string]any{"dice": "1d4+1", "scalingType": "spell-level", "instances": float64(3), "scalingInstances": float64(1)}}
+	expression, dice, modifier, _ := rollSpellEffect(rules, 1, 2)
+	if expression != "4d4+4" || len(dice) != 4 || modifier != 4 {
+		t.Fatalf("unexpected projectile roll: %s %v +%d", expression, dice, modifier)
 	}
 }
 

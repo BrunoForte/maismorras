@@ -27401,7 +27401,9 @@
         "damage": {
           "type": "force",
           "dice": "1d4+1",
-          "scalingType": "spell-level"
+          "scalingType": "spell-level",
+          "instances": 3,
+          "scalingInstances": 1
         }
       }
     },

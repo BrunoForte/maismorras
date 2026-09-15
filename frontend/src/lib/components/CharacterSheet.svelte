@@ -17,7 +17,7 @@
 	import { createTokenFromCharacter, listSceneEffects, loadScene } from '$lib/services/sceneApi';
 	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 	import { rollDice } from '$lib/services/eventApi';
-	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import { beginDiceBatch, diceOverlay, finishDiceBatch } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { supabase } from '$lib/services/supabase';
@@ -80,6 +80,12 @@
 	let portraitPreview = $state<string | null>(null);
 	let portraitBusy = $state(false);
 	let expandedFeature = $state<string | null>(null);
+	const hasAttackDisadvantage = () =>
+		activeConditions.some((condition) => ['Cego', 'Envenenado', 'Impedido'].includes(condition));
+	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
+	$effect(() => {
+		if (hasAttackDisadvantage() && rollMode === 'advantage') rollMode = 'normal';
+	});
 	const skills = [
 		['Acrobacia', 'dexterity'],
 		['Adestrar Animais', 'wisdom'],
@@ -707,9 +713,10 @@
 		fallbackLabel: string
 	) {
 		try {
-			const result = await rollMyCharacter(session, campaignId, kind, key, rollMode);
+			const mode = selectedAttackMode();
+			const result = await rollMyCharacter(session, campaignId, kind, key, mode);
 			$diceOverlay = {
-				expression: `${fallbackLabel} · ${rollMode === 'advantage' ? 'Vantagem' : rollMode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
+				expression: `${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
 				total: result.total,
 				dice: result.dados,
 				nonce: crypto.randomUUID()
@@ -719,7 +726,7 @@
 				{
 					id: String(result.eventId),
 					autor: sheet.name || ($appLocale === 'en' ? 'Character' : 'Personagem'),
-					texto: `${fallbackLabel} · ${rollMode === 'advantage' ? 'Vantagem' : rollMode === 'disadvantage' ? 'Desvantagem' : 'Normal'} · dados [${result.dados.join(', ')}] · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
+					texto: `${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'} · dados [${result.dados.join(', ')}] · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
 					tipo: 'rolagem',
 					canal: 'combat',
 					detalhesRolagem: {
@@ -930,15 +937,14 @@
 		const attackBonus = modifier(ability) + sheet.proficiencyBonus;
 		rollingWeapon = item.entryId;
 		message = '';
+		beginDiceBatch();
 		try {
-			const disadvantage = activeConditions.some((condition) =>
-				['Cego', 'Envenenado', 'Impedido'].includes(condition)
-			);
+			const attackMode = selectedAttackMode();
 			const attackEvent = await rollDice(
 				session,
 				campaignId,
 				`1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`,
-				disadvantage ? 'disadvantage' : undefined,
+				attackMode === 'normal' ? undefined : attackMode,
 				'combat'
 			);
 			const attack = attackEvent.payload as { expressao: string; dados: number[]; total: number };
@@ -1002,6 +1008,7 @@
 						? 'Could not roll the weapon.'
 						: 'Não foi possível rolar a arma.';
 		} finally {
+			finishDiceBatch();
 			rollingWeapon = null;
 		}
 	}
@@ -1036,11 +1043,12 @@
 			: [...sheet.savingThrows, key];
 	}
 	async function rollSheet(label: string, bonus: number, damage = '') {
+		const attackMode = selectedAttackMode();
 		const attackEvent = await rollDice(
 			session,
 			campaignId,
 			`1d20${bonus >= 0 ? '+' : ''}${bonus}`,
-			undefined,
+			attackMode === 'normal' ? undefined : attackMode,
 			'combat'
 		);
 		const attack = attackEvent.payload as { dados: number[]; total: number; expressao: string };
@@ -1095,6 +1103,7 @@
 	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) {
 		if (rollingAttack !== null) return;
 		rollingAttack = index;
+		beginDiceBatch();
 		try {
 			await rollSheet(
 				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
@@ -1105,6 +1114,7 @@
 			message =
 				$appLocale === 'en' ? 'Could not roll the attack.' : 'Não foi possível rolar o ataque.';
 		} finally {
+			finishDiceBatch();
 			rollingAttack = null;
 		}
 	}
@@ -1147,12 +1157,25 @@
 				{
 					id: String(result.eventId),
 					autor: sheet.name || 'Personagem',
-					texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'} · efeito: ${result.effect}`,
+					texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
 					tipo: 'rolagem',
 					canal: 'combat',
-					detalhesRolagem: { expressao: 'magia', dados: [], modificador: 0, total: 0 }
+					detalhesRolagem: {
+						expressao: result.expression || 'magia',
+						dados: result.dados ?? [],
+						modificador: result.modificador ?? 0,
+						total: result.total ?? 0
+					}
 				}
 			];
+			if (result.dados?.length) {
+				$diceOverlay = {
+					expression: `${result.spellName} · ${result.expression ?? 'rolagem'}`,
+					total: result.total ?? 0,
+					dice: result.dados,
+					nonce: crypto.randomUUID()
+				};
+			}
 			message = 'Magia lançada e espaço consumido.';
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Não foi possível lançar a magia.';
@@ -1473,7 +1496,7 @@
 							<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3>
 							<label class="roll-mode"
 								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
-									><option value="advantage"
+									><option value="advantage" disabled={hasAttackDisadvantage()}
 										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
 									><option value="normal">Normal</option><option value="disadvantage"
 										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option
@@ -1675,7 +1698,7 @@
 							<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
 							<label class="roll-mode"
 								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
-									><option value="advantage"
+									><option value="advantage" disabled={hasAttackDisadvantage()}
 										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
 									><option value="normal">Normal</option><option value="disadvantage"
 										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option

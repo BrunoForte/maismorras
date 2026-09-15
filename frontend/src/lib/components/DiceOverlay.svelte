@@ -1,15 +1,23 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import {
+		activeDiceRolls,
+		dice3dEnabled,
+		diceOverlay,
+		restoreDicePreference
+	} from '$lib/stores/diceOverlayStore';
 
 	let visible = $state(false);
-	let result = $state<{ expression: string; total: number; dice: number[] } | null>(null);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
-	void $diceOverlay;
+	void $activeDiceRolls;
+	void $dice3dEnabled;
+	restoreDicePreference();
 	$effect(() => {
-		if (!$diceOverlay) return;
-		result = $diceOverlay;
+		if (!$activeDiceRolls.length) {
+			visible = false;
+			return;
+		}
 		visible = false;
 		void tick().then(() => (visible = true));
 		if (timer) clearTimeout(timer);
@@ -18,21 +26,30 @@
 			diceOverlay.set(null);
 		}, 2500);
 	});
-	const sides = () => Number(result?.expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
+	const sides = (expression: string) =>
+		Number(expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
 </script>
 
-{#if result && visible}
+{#if $activeDiceRolls.length && visible}
 	<div
+		class:dice3d={$dice3dEnabled}
 		class="dice-overlay"
 		aria-live="polite"
-		aria-label={`Rolagem ${result.expression}: ${result.total}`}
+		aria-label="Rolagens recentes"
 	>
-		<div class={`die d${sides()}`}>d{sides()}</div>
-		<div class="result">
-			<span>{result.expression}</span><strong>{result.total}</strong><small
-				>[{result.dice.join(', ')}]</small
+		{#each $activeDiceRolls as result (result.nonce ?? `${result.expression}-${result.total}-${result.dice.join(',')}`)}<article
 			>
-		</div>
+				{#if $dice3dEnabled}<div class="die-3d" aria-hidden="true">
+						<span>{result.dice.at(-1) ?? result.total}</span>
+					</div>{:else}<div class={`die d${sides(result.expression)}`}>
+						d{sides(result.expression)}
+					</div>{/if}
+				<div class="result">
+					<span>{result.expression}</span><strong>{result.total}</strong><small
+						>[{result.dice.join(', ')}]</small
+					>
+				</div>
+			</article>{/each}
 	</div>
 {/if}
 
@@ -45,9 +62,17 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+		max-width: min(94vw, 900px);
+		flex-wrap: wrap;
+		justify-content: center;
 		transform: translate(-50%, -50%);
 		pointer-events: none;
 		animation: appear 0.24s ease-out both;
+	}
+	.dice-overlay article {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
 	}
 	.die {
 		display: grid;
@@ -62,6 +87,31 @@
 			serif;
 		animation: roll 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 		box-shadow: 0 15px 28px rgba(0, 0, 0, 0.45);
+	}
+	.dice3d article {
+		perspective: 700px;
+	}
+	.die-3d {
+		display: grid;
+		place-items: center;
+		width: 4.5rem;
+		height: 4.5rem;
+		border: 2px solid #ffe2a0;
+		border-radius: 18%;
+		color: #fff5d9;
+		background: linear-gradient(135deg, #bd713d, #5a2924 62%, #27151a);
+		box-shadow:
+			inset -8px -10px 14px #1c0d13aa,
+			0 14px 25px #0009;
+		font:
+			800 1.65rem Georgia,
+			serif;
+		animation: tumble3d 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+		transform-style: preserve-3d;
+	}
+	.die-3d span {
+		transform: translateZ(18px);
+		text-shadow: 0 2px 3px #000;
 	}
 	.d4 {
 		clip-path: polygon(50% 0, 100% 100%, 0 100%);
@@ -127,9 +177,23 @@
 			transform: translate(-50%, -50%);
 		}
 	}
+	@keyframes tumble3d {
+		0% {
+			opacity: 0;
+			transform: translateY(-2rem) rotateX(-540deg) rotateY(360deg) scale(0.35);
+		}
+		70% {
+			transform: translateY(0.2rem) rotateX(25deg) rotateY(-20deg) scale(1.08);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0) rotateX(0) rotateY(0) scale(1);
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
 		.dice-overlay,
-		.die {
+		.die,
+		.die-3d {
 			animation: none;
 		}
 	}

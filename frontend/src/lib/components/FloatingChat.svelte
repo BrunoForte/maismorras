@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
-	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import {
+		dice3dEnabled,
+		diceBatchOpen,
+		diceOverlay,
+		setDice3dPreference
+	} from '$lib/stores/diceOverlayStore';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
 
@@ -14,6 +20,25 @@
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
 	let sceneSocket: SceneSocket | null = null;
+	let initialized = false;
+	const knownMessageIds = new SvelteSet<string>();
+	const revealedRollIds = new SvelteSet<string>();
+	const waitingRollIds = new SvelteSet<string>();
+	const revealTimers = new SvelteMap<string, ReturnType<typeof setTimeout>>();
+	const queueRollReveal = (messageId: string) => {
+		if (revealedRollIds.has(messageId) || revealTimers.has(messageId)) return;
+		if ($diceBatchOpen) {
+			waitingRollIds.add(messageId);
+			return;
+		}
+		revealTimers.set(
+			messageId,
+			setTimeout(() => {
+				revealTimers.delete(messageId);
+				revealedRollIds.add(messageId);
+			}, 2500)
+		);
+	};
 	let visibleMessages = $derived(
 		channel === 'all'
 			? $chatMensagens
@@ -22,11 +47,46 @@
 
 	async function reloadMessages() {
 		try {
-			$chatMensagens = await loadMessages(session, campaignId);
+			const nextMessages = await loadMessages(session, campaignId);
+			if (!initialized) {
+				nextMessages.forEach((message) => {
+					knownMessageIds.add(message.id);
+					if (message.tipo === 'rolagem') revealedRollIds.add(message.id);
+				});
+				initialized = true;
+			} else {
+				for (const message of nextMessages) {
+					if (knownMessageIds.has(message.id)) continue;
+					knownMessageIds.add(message.id);
+					if (message.tipo === 'rolagem') queueRollReveal(message.id);
+					if (message.tipo === 'rolagem' && message.detalhesRolagem)
+						$diceOverlay = {
+							expression: message.detalhesRolagem.expressao,
+							total: message.detalhesRolagem.total,
+							dice: message.detalhesRolagem.dados,
+							nonce: crypto.randomUUID()
+						};
+				}
+			}
+			$chatMensagens = nextMessages;
 		} catch (error) {
 			console.error('Falha ao carregar histórico do chat:', error);
 		}
 	}
+
+	$effect(() => {
+		if (!initialized) return;
+		if (!$diceBatchOpen) {
+			for (const messageId of waitingRollIds) {
+				waitingRollIds.delete(messageId);
+				queueRollReveal(messageId);
+			}
+		}
+		for (const message of $chatMensagens) {
+			if (message.tipo === 'rolagem' && !revealedRollIds.has(message.id))
+				queueRollReveal(message.id);
+		}
+	});
 
 	onMount(() => {
 		void reloadMessages();
@@ -34,6 +94,8 @@
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;
+			for (const timer of revealTimers.values()) clearTimeout(timer);
+			revealTimers.clear();
 		};
 	});
 
@@ -60,6 +122,7 @@
 						detalhesRolagem: result
 					}
 				];
+				knownMessageIds.add(String(event.id));
 				$diceOverlay = { expression: result.expressao, total: result.total, dice: result.dados };
 			} else {
 				await saveMessage(session, campaignId, input);
@@ -96,6 +159,14 @@
 				class="channel-tabs"
 				aria-label={$appLocale === 'en' ? 'Chat channels' : 'Canais do chat'}
 			>
+				<label class="dice-preference"
+					>Dados <select
+						value={$dice3dEnabled ? '3d' : '2d'}
+						onchange={(event) => setDice3dPreference(event.currentTarget.value === '3d')}
+						aria-label="Renderização dos dados"
+						><option value="2d">2D</option><option value="3d">3D</option></select
+					></label
+				>
 				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}
 					>{$appLocale === 'en' ? 'All' : 'Todos'}</button
 				>
@@ -134,28 +205,32 @@
 									onclick={() => (expanded = { author: message.autor, text: message.texto })}
 									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
 								>{/if}
-						{:else if message.detalhesRolagem}<div class="roll">
-								<div>
-									<small>{message.texto || message.detalhesRolagem.expressao}</small
-									>{#if message.detalhesRolagem.dados.length}<em
-											>{message.detalhesRolagem.mode === 'advantage'
-												? $appLocale === 'en'
-													? 'Advantage'
-													: 'Vantagem'
-												: message.detalhesRolagem.mode === 'disadvantage'
+						{:else if message.detalhesRolagem}{#if revealedRollIds.has(message.id)}<div
+									class="roll"
+								>
+									<div>
+										<small>{message.texto || message.detalhesRolagem.expressao}</small
+										>{#if message.detalhesRolagem.dados.length}<em
+												>{message.detalhesRolagem.mode === 'advantage'
 													? $appLocale === 'en'
-														? 'Disadvantage'
-														: 'Desvantagem'
-													: $appLocale === 'en'
-														? 'Normal'
-														: 'Normal'} · [{message.detalhesRolagem.dados.join(', ')}] · {message
-												.detalhesRolagem.modificador >= 0
-												? '+'
-												: ''}{message.detalhesRolagem.modificador}</em
-										>{/if}
-								</div>
-								<b>{message.detalhesRolagem.total}</b>
-							</div>{/if}
+														? 'Advantage'
+														: 'Vantagem'
+													: message.detalhesRolagem.mode === 'disadvantage'
+														? $appLocale === 'en'
+															? 'Disadvantage'
+															: 'Desvantagem'
+														: $appLocale === 'en'
+															? 'Normal'
+															: 'Normal'} · [{message.detalhesRolagem.dados.join(', ')}] · {message
+													.detalhesRolagem.modificador >= 0
+													? '+'
+													: ''}{message.detalhesRolagem.modificador}</em
+											>{/if}
+									</div>
+									<b>{message.detalhesRolagem.total}</b>
+								</div>{:else}<div class="roll pending">
+									<small>🎲 {$appLocale === 'en' ? 'Rolling…' : 'Rolando…'}</small>
+								</div>{/if}{/if}
 					</article>
 				{/each}
 			</div>
@@ -246,6 +321,23 @@
 	.channel-tabs button.active {
 		color: #f0cb85;
 		background: rgba(114, 76, 40, 0.35);
+	}
+	.dice-preference {
+		grid-column: 1 / -1;
+		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		color: #a99c91;
+		font-size: 0.62rem;
+	}
+	.dice-preference select {
+		border: 1px solid #5c493b;
+		border-radius: 4px;
+		padding: 0.18rem 0.28rem;
+		color: #e8c786;
+		background: #171216;
+		font-size: 0.62rem;
 	}
 	.messages {
 		display: flex;

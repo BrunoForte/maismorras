@@ -171,6 +171,10 @@ export type SpellCast = {
 	baseLevel: number;
 	slotLevel: number;
 	effect: string;
+	expression?: string;
+	dados?: number[];
+	modificador?: number;
+	total?: number;
 };
 export const castMySpell = (
 	session: Session,

@@ -124,12 +124,16 @@ type SheetRollResult struct {
 	Label    string `json:"label"`
 }
 type SpellCastResult struct {
-	EventID   int64  `json:"eventId"`
-	Sheet     Sheet  `json:"sheet"`
-	SpellName string `json:"spellName"`
-	BaseLevel int    `json:"baseLevel"`
-	SlotLevel int    `json:"slotLevel"`
-	Effect    string `json:"effect"`
+	EventID    int64  `json:"eventId"`
+	Sheet      Sheet  `json:"sheet"`
+	SpellName  string `json:"spellName"`
+	BaseLevel  int    `json:"baseLevel"`
+	SlotLevel  int    `json:"slotLevel"`
+	Effect     string `json:"effect"`
+	Expression string `json:"expression,omitempty"`
+	Dice       []int  `json:"dados,omitempty"`
+	Modifier   int    `json:"modificador,omitempty"`
+	Total      int    `json:"total,omitempty"`
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
@@ -315,6 +319,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if effect == "" {
 		effect = "Efeito não definido."
 	}
+	expression, dice, modifier, total := rollSpellEffect(rules, spell.Level, slotLevel)
 	raw, err = json.Marshal(sheet)
 	if err != nil {
 		return SpellCastResult{}, err
@@ -322,7 +327,12 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if _, err = tx.Exec(ctx, `update actors set sheet=$1 where id=$2`, raw, characterID); err != nil {
 		return SpellCastResult{}, err
 	}
-	payload, _ := json.Marshal(map[string]any{"expressao": "magia", "dados": []int{}, "modo": "normal", "modificador": 0, "total": 0, "text": fmt.Sprintf("✨ %s · nível base %d · espaço usado %d · custo: 1 espaço de nível %d · efeito: %s", spell.Name, spell.Level, slotLevel, slotLevel, effect), "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect})
+	payload, _ := json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "text": fmt.Sprintf("✨ %s · nível base %d · espaço usado %d · custo: %s · rolagem: %s · resultado: %d · efeito: %s", spell.Name, spell.Level, slotLevel, func() string {
+		if slotLevel == 0 {
+			return "nenhum"
+		}
+		return fmt.Sprintf("1 espaço de nível %d", slotLevel)
+	}(), expression, total, effect), "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect})
 	var eventID int64
 	if err = tx.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&eventID); err != nil {
 		return SpellCastResult{}, err
@@ -330,7 +340,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if err = tx.Commit(ctx); err != nil {
 		return SpellCastResult{}, err
 	}
-	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect}, nil
+	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, Expression: expression, Dice: dice, Modifier: modifier, Total: total}, nil
 }
 
 func spellEffect(rules map[string]any, base, slot int) string {
@@ -338,21 +348,100 @@ func spellEffect(rules map[string]any, base, slot int) string {
 	if description == "<nil>" {
 		description = ""
 	}
-	if slot <= base {
+	expression, original, _, ok := spellExpression(rules, base, slot)
+	if !ok || slot <= base || original == "" || !spellScales(rules) {
 		return description
 	}
-	damage, ok := rules["damage"].(map[string]any)
-	if !ok || damage["scalingType"] != "spell-level" {
-		return description
+	if idx := strings.Index(description, original); idx >= 0 {
+		return description[:idx] + expression + description[idx+len(original):]
 	}
-	dice := fmt.Sprint(damage["dice"])
-	match := diceInEffect.FindStringSubmatch(dice)
+	return description + " Aumento automático: " + expression + "."
+}
+
+func spellScales(rules map[string]any) bool {
+	if damage, ok := rules["damage"].(map[string]any); ok {
+		return fmt.Sprint(damage["scalingType"]) == "spell-level"
+	}
+	_, healing := rules["healing"].(string)
+	return healing
+}
+
+func rollSpellEffect(rules map[string]any, base, slot int) (string, []int, int, int) {
+	expression, _, modifier, ok := spellExpression(rules, base, slot)
+	if !ok {
+		return "", nil, 0, 0
+	}
+	match := diceInEffect.FindStringSubmatch(expression)
 	if match == nil {
-		return description
+		return expression, nil, modifier, modifier
+	}
+	count, _ := strconv.Atoi(match[1])
+	sides, _ := strconv.Atoi(match[2])
+	dice := make([]int, count)
+	total := modifier
+	for i := range dice {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
+		if err != nil {
+			return expression, nil, modifier, 0
+		}
+		dice[i] = int(n.Int64()) + 1
+		total += dice[i]
+	}
+	return expression, dice, modifier, total
+}
+
+func spellExpression(rules map[string]any, base, slot int) (string, string, int, bool) {
+	if slot < base {
+		return "", "", 0, false
+	}
+	diceExpression := ""
+	scaling := false
+	if damage, ok := rules["damage"].(map[string]any); ok {
+		diceExpression = strings.TrimSpace(fmt.Sprint(damage["dice"]))
+		scaling = fmt.Sprint(damage["scalingType"]) == "spell-level"
+	} else if healing, ok := rules["healing"].(string); ok {
+		diceExpression = strings.TrimSpace(healing)
+		scaling = true
+	}
+	match := diceInEffect.FindStringSubmatch(diceExpression)
+	if match == nil {
+		return "", "", 0, false
 	}
 	count, _ := strconv.Atoi(match[1])
 	sides := match[2]
-	return fmt.Sprintf("%s Aumento automático: +%dd%s por %d nível(is) de espaço acima do base.", description, count, sides, slot-base)
+	modifier, _ := strconv.Atoi(match[4])
+	if match[3] == "-" {
+		modifier = -modifier
+	}
+	instances := 1
+	if damage, ok := rules["damage"].(map[string]any); ok {
+		if value, ok := damage["instances"].(float64); ok && value > 0 {
+			instances = int(value)
+		}
+	}
+	if scaling && slot > base {
+		if damage, ok := rules["damage"].(map[string]any); ok {
+			if value, ok := damage["scalingInstances"].(float64); ok && value > 0 {
+				instances += (slot - base) * int(value)
+			}
+		}
+		if instances == 1 {
+			increment := 1
+			if value, ok := rules["scalingIncrement"].(float64); ok && value > 0 {
+				increment = int(value)
+			}
+			count += (slot - base) * increment
+		}
+	}
+	modifier *= instances
+	count *= instances
+	expression := fmt.Sprintf("%dd%s", count, sides)
+	if modifier > 0 {
+		expression += fmt.Sprintf("+%d", modifier)
+	} else if modifier < 0 {
+		expression += fmt.Sprintf("%d", modifier)
+	}
+	return expression, match[0], modifier, true
 }
 
 func (r *Repository) isMember(ctx context.Context, campaignID, userID string) (bool, error) {
