@@ -5,6 +5,7 @@ export type ResultadoRolagem = {
 	dados: number[];
 	modificador: number;
 	total: number;
+	label?: string;
 	channel?: 'chat' | 'combat';
 	mode?: 'normal' | 'advantage' | 'disadvantage';
 };

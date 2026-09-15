@@ -734,7 +734,8 @@
 						dados: result.dados,
 						modificador: result.modificador,
 						total: result.total,
-						mode: result.modo
+						mode: result.modo,
+						label: fallbackLabel
 					}
 				}
 			];
@@ -959,7 +960,8 @@
 					canal: 'combat',
 					detalhesRolagem: {
 						...attack,
-						modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0)
+						modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0),
+						label: `${item.name} · ataque`
 					}
 				}
 			];
@@ -988,7 +990,8 @@
 					canal: 'combat',
 					detalhesRolagem: {
 						...damage,
-						modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0)
+						modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0),
+						label: `${item.name} · dano${critical ? ' crítico' : ''}`
 					}
 				}
 			];
@@ -1061,7 +1064,7 @@
 				texto: `${label}${critical ? ' · CRÍTICO!' : ''}`,
 				tipo: 'rolagem',
 				canal: 'combat',
-				detalhesRolagem: { ...attack, modificador: bonus }
+				detalhesRolagem: { ...attack, modificador: bonus, label }
 			}
 		];
 		$diceOverlay = {
@@ -1090,7 +1093,7 @@
 				texto: `${label} · dano${critical ? ' crítico' : ''}`,
 				tipo: 'rolagem',
 				canal: 'combat',
-				detalhesRolagem: { ...result, modificador: mod }
+				detalhesRolagem: { ...result, modificador: mod, label: `${label} · dano` }
 			}
 		];
 		$diceOverlay = {
@@ -1164,7 +1167,8 @@
 						expressao: result.expression || 'magia',
 						dados: result.dados ?? [],
 						modificador: result.modificador ?? 0,
-						total: result.total ?? 0
+						total: result.total ?? 0,
+						label: result.spellName
 					}
 				}
 			];

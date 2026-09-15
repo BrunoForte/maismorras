@@ -44,6 +44,11 @@
 			? $chatMensagens
 			: $chatMensagens.filter((message) => (message.canal ?? 'chat') === channel)
 	);
+	const rollLabel = (message: (typeof $chatMensagens)[number]) =>
+		message.detalhesRolagem?.label ||
+		message.texto.split(' · ')[0] ||
+		message.detalhesRolagem?.expressao ||
+		($appLocale === 'en' ? 'Roll' : 'Rolagem');
 
 	async function reloadMessages() {
 		try {
@@ -197,19 +202,24 @@
 									: 'Converse com o grupo ou use /r 1d20+2.'}
 					</p>{/if}
 				{#each visibleMessages as message (message.id)}
-					<article class:combat={message.canal === 'combat'} class:info={message.canal === 'info'}>
-						<strong>{message.autor}</strong>
-						{#if message.tipo === 'texto'}<span>{message.texto}</span
+					<article
+						class:combat={message.canal === 'combat'}
+						class:info={message.canal === 'info'}
+						class:roll-article={message.tipo === 'rolagem'}
+					>
+						{#if message.tipo === 'texto'}<strong>{message.autor}</strong><span
+								>{message.texto}</span
 							>{#if message.texto.length > 80}<button
 									class="expand"
 									onclick={() => (expanded = { author: message.autor, text: message.texto })}
 									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
 								>{/if}
-						{:else if message.detalhesRolagem}{#if revealedRollIds.has(message.id)}<div
-									class="roll"
-								>
+						{:else if message.detalhesRolagem}<div class="roll-heading">
+								<strong>{message.autor}</strong><span>/</span><small>{rollLabel(message)}</small>
+							</div>
+							{#if revealedRollIds.has(message.id)}<div class="roll">
 									<div>
-										<small>{message.texto || message.detalhesRolagem.expressao}</small
+										<small>{message.detalhesRolagem.expressao}</small
 										>{#if message.detalhesRolagem.dados.length}<em
 												>{message.detalhesRolagem.mode === 'advantage'
 													? $appLocale === 'en'
@@ -368,6 +378,24 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
+	.roll-article {
+		padding-top: 0.45rem;
+	}
+	.roll-heading {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: 0.35rem;
+		text-align: center;
+	}
+	.roll-heading span {
+		color: #806b58;
+	}
+	.roll-heading small {
+		color: #d8bd8e;
+		font-size: 0.68rem;
+		font-weight: 700;
+	}
 	article.combat {
 		border-left-color: #c86b48;
 		background: rgba(105, 45, 34, 0.34);
@@ -383,8 +411,10 @@
 	}
 	.roll {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: center;
+		gap: 0.8rem;
 		border: 1px solid #5e4936;
 		border-radius: 5px;
 		padding: 0.38rem 0.5rem;
@@ -394,6 +424,7 @@
 		display: block;
 		color: #ad9e90;
 		line-height: 1.35;
+		text-align: center;
 	}
 	.roll em {
 		display: block;
@@ -401,10 +432,12 @@
 		color: #d8bd8e;
 		font-size: 0.64rem;
 		font-style: normal;
+		text-align: center;
 	}
 	.roll b {
 		color: #f0cb85;
-		font-size: 1rem;
+		font-size: 1.35rem;
+		line-height: 1;
 	}
 	form {
 		display: flex;

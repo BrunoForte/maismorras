@@ -231,7 +231,7 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 		}
 	}
 	result.Total = kept + result.Modifier
-	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
+	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
 	err = r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
 	return result, err
 }
@@ -327,7 +327,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if _, err = tx.Exec(ctx, `update actors set sheet=$1 where id=$2`, raw, characterID); err != nil {
 		return SpellCastResult{}, err
 	}
-	payload, _ := json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "text": fmt.Sprintf("✨ %s · nível base %d · espaço usado %d · custo: %s · rolagem: %s · resultado: %d · efeito: %s", spell.Name, spell.Level, slotLevel, func() string {
+	payload, _ := json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "label": spell.Name, "text": fmt.Sprintf("✨ %s · nível base %d · espaço usado %d · custo: %s · rolagem: %s · resultado: %d · efeito: %s", spell.Name, spell.Level, slotLevel, func() string {
 		if slotLevel == 0 {
 			return "nenhum"
 		}

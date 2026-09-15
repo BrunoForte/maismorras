@@ -51,6 +51,7 @@ function asMessage(event: StoredEvent): Mensagem | null {
 		text?: string;
 		channel?: 'chat' | 'combat';
 		modo?: 'normal' | 'advantage' | 'disadvantage';
+		label?: string;
 	};
 	return p?.expressao
 		? {
@@ -59,7 +60,7 @@ function asMessage(event: StoredEvent): Mensagem | null {
 				texto: p.text ?? '',
 				tipo: 'rolagem',
 				canal: p.channel ?? 'chat',
-				detalhesRolagem: { ...p, mode: p.mode ?? p.modo }
+				detalhesRolagem: { ...p, mode: p.mode ?? p.modo, label: p.label }
 			}
 		: null;
 }
