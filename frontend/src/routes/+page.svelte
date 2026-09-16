@@ -264,6 +264,23 @@
 			'noopener,noreferrer'
 		);
 	}
+	function publishOverlayScene() {
+		if (!activeCampaign || !activeScene) return;
+		const payload = JSON.stringify({ sceneId: activeScene.id, nonce: crypto.randomUUID() });
+		localStorage.setItem(`maismorras:overlay:${activeCampaign.id}`, payload);
+		if ('BroadcastChannel' in window) {
+			const channel = new BroadcastChannel(`maismorras:overlay:${activeCampaign.id}`);
+			channel.postMessage({ type: 'scene-change', sceneId: activeScene.id });
+			channel.close();
+		}
+	}
+	async function copyLiveOverlayAddress() {
+		if (!activeCampaign || !activeScene) return;
+		await navigator.clipboard.writeText(
+			`${window.location.origin}/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`
+		);
+		inviteStatus = 'Endereço da overlay copiado.';
+	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
 		const name = sceneDraft.trim();
@@ -389,6 +406,16 @@
 							class="scene-overlay-link"
 							onclick={openLiveOverlay}
 							title={$appLocale === 'en' ? 'Open live overlay' : 'Abrir overlay da live'}>◈</button
+						>{/if}
+					{#if activeScene}<button
+							class="scene-overlay-link"
+							onclick={publishOverlayScene}
+							title="Enviar cena atual para a overlay">↻</button
+						>{/if}
+					{#if activeScene}<button
+							class="scene-overlay-link"
+							onclick={() => void copyLiveOverlayAddress()}
+							title="Copiar endereço da overlay">⌘</button
 						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"

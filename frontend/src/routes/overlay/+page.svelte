@@ -15,6 +15,11 @@
 	let error = $state('');
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	let audioSrc = $state('');
+	let audioVolume = $state(0.5);
+	let audio = $state<HTMLAudioElement>();
+	let audioBlocked = $state(false);
+	let cameraUrls = $state<string[]>([]);
 
 	const query = () => new URLSearchParams(window.location.search);
 	const campaignId = () => query().get('campaign') ?? '';
@@ -39,6 +44,21 @@
 			scene = loadedScene.scene;
 			tokens = loadedScene.tokens;
 			const client = supabase;
+			audioVolume = Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100));
+			if (loadedScene.scene.ambientAudioEnabled && loadedScene.scene.ambientAudioPath && client) {
+				const { data } = await client.storage
+					.from('campaign-assets')
+					.createSignedUrl(loadedScene.scene.ambientAudioPath, 3600);
+				audioSrc = data?.signedUrl ?? '';
+				if (audio) {
+					audio.src = audioSrc;
+					audio.volume = audioVolume;
+					void audio.play().catch(() => (audioBlocked = true));
+				}
+			} else {
+				audioSrc = '';
+				if (audio) audio.pause();
+			}
 			if (client) {
 				const signedEntries = await Promise.all(
 					loadedScene.tokens.map(async (token) => {
@@ -69,6 +89,33 @@
 			return;
 		}
 		let disposed = false;
+		const overlayChannel =
+			'BroadcastChannel' in window
+				? new BroadcastChannel(`maismorras:overlay:${campaignId()}`)
+				: null;
+		const applySceneChange = (nextSceneId: string) => {
+			if (!nextSceneId || nextSceneId === sceneId()) return;
+			const next = new URL(window.location.href);
+			next.searchParams.set('scene', nextSceneId);
+			window.history.replaceState({}, '', next);
+			window.location.reload();
+		};
+		overlayChannel?.addEventListener('message', (event) => {
+			if (event.data?.type === 'scene-change') applySceneChange(String(event.data.sceneId));
+		});
+		const onStorage = (event: StorageEvent) => {
+			if (event.key !== `maismorras:overlay:${campaignId()}` || !event.newValue) return;
+			try {
+				applySceneChange(String(JSON.parse(event.newValue).sceneId));
+			} catch {
+				/* invalid event */
+			}
+		};
+		window.addEventListener('storage', onStorage);
+		const params = query();
+		cameraUrls = [1, 2, 3, 4]
+			.map((index) => params.get(`camera${index}`) ?? '')
+			.filter((value) => value.startsWith('https://vdo.ninja/'));
 		supabase.auth.getSession().then(({ data }) => {
 			if (disposed || !data.session) {
 				error = 'Faça login no MaisMorras antes de abrir o overlay.';
@@ -83,10 +130,18 @@
 		});
 		return () => {
 			disposed = true;
+			overlayChannel?.close();
+			window.removeEventListener('storage', onStorage);
 			if (refreshTimer) clearTimeout(refreshTimer);
 			socket?.close();
 		};
 	});
+	async function enableAudio() {
+		if (!audio || !audioSrc) return;
+		audio.volume = audioVolume;
+		await audio.play();
+		audioBlocked = false;
+	}
 
 	const tokenImage = (token: PersistedToken) =>
 		imageUrls[token.id] ||
@@ -118,6 +173,15 @@
 			</div>
 			<small>{visibleTokens().length} personagens em cena</small>
 		</header>
+		{#if audioSrc}<audio
+				bind:this={audio}
+				src={audioSrc}
+				loop
+				preload="auto"
+				oncanplay={() => void audio?.play().catch(() => (audioBlocked = true))}
+			></audio>{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
+					>Ativar áudio da cena</button
+				>{/if}{/if}
 		<section class="token-strip" aria-label="Personagens na cena">
 			{#each visibleTokens() as token (token.id)}<article class="token-card">
 					{#if tokenImage(token)}<img src={tokenImage(token) ?? ''} alt="" />{:else}<div
@@ -139,6 +203,13 @@
 						>
 					</div>{/each}
 			</aside>{/if}
+		{#if cameraUrls.length}<section class="camera-grid" aria-label="Câmeras dos jogadores">
+				{#each cameraUrls as camera, index (camera)}<iframe
+						src={camera}
+						title={`Câmera do jogador ${index + 1}`}
+						allow="camera; microphone; autoplay; fullscreen"
+					></iframe>{/each}
+			</section>{/if}
 	{/if}
 </main>
 
@@ -243,6 +314,32 @@
 		color: #f0cb85;
 		font-size: 1.2rem;
 	}
+	.audio-enable {
+		display: block;
+		margin: 0.7rem auto;
+		border: 1px solid #d8ad67;
+		border-radius: 999px;
+		padding: 0.45rem 0.8rem;
+		color: #2a1b0e;
+		background: #e0b86f;
+		font-size: 0.7rem;
+		font-weight: 800;
+		cursor: pointer;
+	}
+	.camera-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.6rem;
+		max-width: 1100px;
+		margin: 0.8rem auto 0;
+	}
+	.camera-grid iframe {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		border: 1px solid #d8ad6744;
+		border-radius: 8px;
+		background: #0c0a0fdd;
+	}
 	.overlay-error,
 	.overlay-loading {
 		display: grid;
@@ -251,6 +348,11 @@
 		margin: 0;
 		color: #ead8b7;
 		text-align: center;
+	}
+	@media (max-width: 900px) {
+		.camera-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 	@media (max-width: 600px) {
 		.live-overlay {
@@ -262,6 +364,9 @@
 		}
 		.roll-feed {
 			justify-content: start;
+		}
+		.camera-grid {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
