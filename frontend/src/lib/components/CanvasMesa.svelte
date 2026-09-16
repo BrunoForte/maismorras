@@ -181,12 +181,25 @@
 		if (!personagem.persistedId) return;
 		if (!isGM) {
 			if (!personagem.isOwned) return;
-			try { await updateTokenAppearance(session, scene.id, personagem.persistedId, personagem.fotoUrl ?? null, personagem.cor, {
-				...personagem.visibility,
-				imageScale: personagem.fotoEscala,
-				imageOffsetX: personagem.fotoOffsetX,
-				imageOffsetY: personagem.fotoOffsetY
-			}); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível salvar a aparência.'; return; }
+			try {
+				await updateTokenAppearance(
+					session,
+					scene.id,
+					personagem.persistedId,
+					personagem.fotoUrl ?? null,
+					personagem.cor,
+					{
+						...personagem.visibility,
+						imageScale: personagem.fotoEscala,
+						imageOffsetX: personagem.fotoOffsetX,
+						imageOffsetY: personagem.fotoOffsetY
+					}
+				);
+			} catch (error) {
+				persistenceError =
+					error instanceof Error ? error.message : 'Não foi possível salvar a aparência.';
+				return;
+			}
 			sceneSocket?.publishRefresh();
 			return;
 		}
@@ -490,8 +503,9 @@
 	function handleMapTap(worldX: number, worldY: number) {
 		if (pingArmed) {
 			pingArmed = false;
-			motor?.showPing(worldX, worldY);
-			sceneSocket?.publishPing(worldX, worldY);
+			const pingColor = personagemSelecionado?.cor ?? 0xf2cf77;
+			motor?.showPing(worldX, worldY, pingColor);
+			sceneSocket?.publishPing(worldX, worldY, pingColor);
 			return;
 		}
 		void paintFog(worldX, worldY);
@@ -1139,7 +1153,11 @@
 						/></label
 					>
 					<label class="color-control"
-						>Cor <input type="color" value={`#${personagemSelecionado.cor.toString(16).padStart(6, '0')}`} onchange={(event) => alterarCor(event.currentTarget.value)} /></label
+						>Cor <input
+							type="color"
+							value={`#${personagemSelecionado.cor.toString(16).padStart(6, '0')}`}
+							onchange={(event) => alterarCor(event.currentTarget.value)}
+						/></label
 					>
 					<button onclick={alternarFundoTransparente}
 						>{personagemSelecionado.visibility.transparentBackground

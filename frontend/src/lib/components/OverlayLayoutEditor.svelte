@@ -21,6 +21,7 @@
 		]
 	});
 	let layout = $state<Layout>(defaults());
+	let selectedId = $state('map');
 	let status = $state('');
 	const key = () => `maismorras:overlay-layout:${campaignId}:${sceneId}`;
 	$effect(() => {
@@ -43,6 +44,15 @@
 		const x = Math.max(0, Math.min(94, ((event.clientX - rect.left) / rect.width) * 100));
 		const y = Math.max(0, Math.min(94, ((event.clientY - rect.top) / rect.height) * 100));
 		layout.blocks = layout.blocks.map((block) => (block.id === id ? { ...block, x, y } : block));
+		selectedId = id ?? selectedId;
+	}
+	const selected = () => layout.blocks.find((item) => item.id === selectedId);
+	function updateSelected(field: 'x' | 'y', value: string) {
+		const item = selected();
+		const number = Number(value);
+		if (!item || !Number.isFinite(number)) return;
+		item[field] = Math.max(0, Math.min(94, number));
+		layout.blocks = [...layout.blocks];
 	}
 	function save() {
 		localStorage.setItem(key(), JSON.stringify(layout));
@@ -109,14 +119,35 @@
 	>
 		{#each layout.blocks as block (block.id)}<button
 				class="block"
+				class:selected={selectedId === block.id}
 				class:hidden={!block.visible}
 				draggable="true"
+				onclick={() => (selectedId = block.id)}
 				ondragstart={(event) => dragStart(event, block.id)}
 				style={`left:${block.x}%;top:${block.y}%`}
 			>
 				{block.label}
 			</button>{/each}
 	</div>
+	{#if selected()}<div class="properties">
+			<strong>Elemento: {selected()?.label}</strong><label
+				>X (%)<input
+					type="number"
+					min="0"
+					max="94"
+					value={selected()?.x}
+					onchange={(event) => updateSelected('x', event.currentTarget.value)}
+				/></label
+			><label
+				>Y (%)<input
+					type="number"
+					min="0"
+					max="94"
+					value={selected()?.y}
+					onchange={(event) => updateSelected('y', event.currentTarget.value)}
+				/></label
+			>
+		</div>{/if}
 	<div class="visibility">
 		{#each layout.blocks as block (block.id)}<label
 				><input type="checkbox" bind:checked={block.visible} /> {block.label}</label
@@ -213,6 +244,32 @@
 		font-size: 0.7rem;
 		cursor: grab;
 		transform: translate(-50%, -50%);
+	}
+	.block.selected {
+		outline: 2px solid #f0cb85;
+		outline-offset: 2px;
+	}
+	.properties {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		align-items: center;
+		gap: 0.55rem;
+		margin-top: 0.7rem;
+		color: #c4b6a5;
+		font-size: 0.72rem;
+	}
+	.properties label {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.properties input {
+		width: 4.5rem;
+		border: 1px solid #51443a;
+		border-radius: 5px;
+		padding: 0.3rem;
+		color: #eee4d6;
+		background: #211c1e;
 	}
 	.block.hidden {
 		opacity: 0.3;
