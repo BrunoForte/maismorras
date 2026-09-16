@@ -298,6 +298,9 @@
 	}
 	.backdrop section {
 		width: min(100%, 540px);
+		max-height: calc(100dvh - 2rem);
+		display: flex;
+		flex-direction: column;
 		border: 1px solid #765d3d;
 		border-radius: 12px;
 		overflow: hidden;
@@ -334,6 +337,9 @@
 		font-size: 1.4rem;
 	}
 	.backdrop form {
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
 		display: grid;
 		gap: 0.7rem;
 		padding: 1rem;
@@ -373,10 +379,24 @@
 		line-height: 1.45;
 	}
 	.backdrop footer {
+		position: sticky;
+		bottom: -1rem;
+		z-index: 1;
 		display: flex;
 		justify-content: flex-end;
 		gap: 0.7rem;
 		margin-top: 0.4rem;
+		padding: 0.75rem 0 0.25rem;
+		border-top: 1px solid #493c39;
+		background: #1b171a;
+	}
+	@media (max-width: 600px) {
+		.backdrop {
+			padding: 0.5rem;
+		}
+		.backdrop section {
+			max-height: calc(100dvh - 1rem);
+		}
 	}
 	.backdrop footer button {
 		border: 1px solid #765d3d;
