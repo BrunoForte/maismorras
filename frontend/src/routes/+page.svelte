@@ -1553,8 +1553,82 @@
 		display: grid;
 		gap: 1.5rem;
 		min-height: 510px;
+		min-width: 0;
 		padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.25rem, 5vw, 5rem);
 		color: #e9dfd3;
+	}
+	.overlay-settings {
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		border: 1px solid #3a312e;
+		border-radius: 12px;
+		padding: clamp(1rem, 2.5vw, 1.5rem);
+		background: #201b1e;
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+	}
+	.overlay-settings h3 {
+		margin: 0 0 0.45rem;
+		color: #f0e0c8;
+		font:
+			600 clamp(1.1rem, 2vw, 1.35rem) Georgia,
+			serif;
+	}
+	.overlay-settings > p:not(.eyebrow) {
+		margin: 0 0 1rem;
+		max-width: 680px;
+		color: #a99c91;
+		font-size: 0.82rem;
+		line-height: 1.55;
+	}
+	.overlay-camera-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+		gap: 0.75rem;
+		width: 100%;
+		min-width: 0;
+	}
+	.overlay-camera-grid fieldset {
+		display: grid;
+		gap: 0.55rem;
+		min-width: 0;
+		margin: 0;
+		border: 1px solid #51443a;
+		border-radius: 9px;
+		padding: 0.75rem;
+		background: #181417;
+	}
+	.overlay-camera-grid legend {
+		max-width: 100%;
+		padding: 0 0.3rem;
+		color: #d8ad67;
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.overlay-camera-grid input {
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		border: 1px solid #5c5045;
+		border-radius: 7px;
+		padding: 0.55rem 0.6rem;
+		color: #eee4d6;
+		background: #211c1e;
+		font-family: inherit;
+		font-size: 0.76rem;
+	}
+	.overlay-camera-grid input::placeholder {
+		color: #84776d;
+	}
+	.overlay-camera-grid input:focus {
+		border-color: #d8ad67;
+		outline: 2px solid rgba(216, 173, 103, 0.2);
+		outline-offset: 1px;
+	}
+	.overlay-settings > .settings-actions {
+		margin-top: 1rem;
 	}
 	.campaign-settings h2 {
 		margin: 0 0 0.6rem;
@@ -1803,6 +1877,15 @@
 		.campaign-hub {
 			padding-left: 1rem;
 			padding-right: 1rem;
+		}
+		.overlay-settings {
+			padding: 0.85rem;
+		}
+		.overlay-camera-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.overlay-camera-grid fieldset {
+			padding: 0.65rem;
 		}
 		.settings-actions {
 			display: grid;
