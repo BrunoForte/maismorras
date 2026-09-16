@@ -574,6 +574,19 @@
 			motor?.setAreasVisible(areasVisible);
 		}
 	}
+	type MapTool = 'layers' | 'areas' | 'barriers';
+	function toggleMapTool(tool: MapTool) {
+		const wasOpen =
+			tool === 'layers' ? layerToolsOpen : tool === 'areas' ? areaToolsOpen : wallToolsOpen;
+		layerToolsOpen = false;
+		areaToolsOpen = false;
+		wallToolsOpen = false;
+		if (wasOpen) return;
+		window.dispatchEvent(new CustomEvent('maismorras:close-table-tools'));
+		if (tool === 'layers') layerToolsOpen = true;
+		if (tool === 'areas') areaToolsOpen = true;
+		if (tool === 'barriers') wallToolsOpen = true;
+	}
 	function persistirVisaoDaCamera() {
 		if (!motor?.camera) return;
 		cameraZoom = motor.camera.zoom;
@@ -587,11 +600,15 @@
 	onMount(() => {
 		const mapToolHandler = (event: Event) => {
 			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
-			if (tool === 'layers') layerToolsOpen = !layerToolsOpen;
-			if (tool === 'areas') areaToolsOpen = !areaToolsOpen;
-			if (tool === 'barriers') wallToolsOpen = !wallToolsOpen;
+			toggleMapTool(tool);
+		};
+		const closeHandler = () => {
+			layerToolsOpen = false;
+			areaToolsOpen = false;
+			wallToolsOpen = false;
 		};
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
+		window.addEventListener('maismorras:close-map-tools', closeHandler);
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
@@ -673,6 +690,7 @@
 
 		return () => {
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
+			window.removeEventListener('maismorras:close-map-tools', closeHandler);
 			sceneSocket?.close();
 			sceneSocket = null;
 			unsubscribe();
@@ -893,7 +911,7 @@
 				<div class="layer-tool-trigger">
 					<button
 						class:active={layerToolsOpen}
-						onclick={() => (layerToolsOpen = !layerToolsOpen)}
+						onclick={() => toggleMapTool('layers')}
 						aria-label={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
 						title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
 					>{#if layerToolsOpen}<div class="layer-tools">
@@ -924,7 +942,7 @@
 				<div class="area-tool-trigger">
 					<button
 						class:active={areaToolsOpen || saveAreaArmed}
-						onclick={() => (areaToolsOpen = !areaToolsOpen)}
+						onclick={() => toggleMapTool('areas')}
 						aria-label={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}
 						title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button
 					>{#if areaToolsOpen}<div class="area-tools">
@@ -957,7 +975,7 @@
 				<div class="wall-tool-trigger">
 					<button
 						class:active={wallToolsOpen || wallDrawing}
-						onclick={() => (wallToolsOpen = !wallToolsOpen)}
+						onclick={() => toggleMapTool('barriers')}
 						aria-label={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}
 						title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
 					>{#if wallToolsOpen}<div class="wall-tools">
@@ -1591,10 +1609,11 @@
 	.table-tools-gm .layer-tools,
 	.table-tools-gm .area-tools,
 	.table-tools-gm .wall-tools {
-		top: 2.85rem;
-		left: 0;
+		top: 0;
+		left: calc(100% + 0.4rem);
 		right: auto;
 		width: 190px;
+		z-index: 20;
 	}
 	.table-tools-gm .area-tools {
 		width: 180px;
@@ -1642,6 +1661,7 @@
 			top: 2.85rem;
 			left: 50%;
 			transform: translateX(-50%);
+			z-index: 20;
 		}
 		.camera-tools {
 			top: 0.65rem;

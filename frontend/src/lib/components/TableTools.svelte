@@ -146,24 +146,51 @@
 	function setRulerMode(mode: RulerMode) {
 		rulerMode.set(mode);
 	}
+	type TableToolPanel = 'ruler' | 'initiative' | 'dice';
+	function togglePanel(panel: TableToolPanel) {
+		const wasOpen =
+			panel === 'ruler' ? toolsOpen : panel === 'initiative' ? initiativeOpen : diceOpen;
+		toolsOpen = false;
+		initiativeOpen = false;
+		diceOpen = false;
+		if (wasOpen) return;
+		window.dispatchEvent(new CustomEvent('maismorras:close-map-tools'));
+		if (panel === 'ruler') toolsOpen = true;
+		if (panel === 'initiative') initiativeOpen = true;
+		if (panel === 'dice') diceOpen = true;
+	}
 	function toggleMapTool(tool: 'layers' | 'areas' | 'barriers') {
+		toolsOpen = false;
+		initiativeOpen = false;
+		diceOpen = false;
 		window.dispatchEvent(new CustomEvent('maismorras:map-tool', { detail: tool }));
 	}
+	function closePanels() {
+		toolsOpen = false;
+		initiativeOpen = false;
+		diceOpen = false;
+	}
+
+	onMount(() => {
+		const closeHandler = () => closePanels();
+		window.addEventListener('maismorras:close-table-tools', closeHandler);
+		return () => window.removeEventListener('maismorras:close-table-tools', closeHandler);
+	});
 </script>
 
 <div class="table-tools" aria-label={$appLocale === 'en' ? 'Table tools' : 'Ferramentas da mesa'}>
 	<div class="tool-group">
 		<button
 			class:active={toolsOpen}
-			onclick={() => (toolsOpen = !toolsOpen)}
+			onclick={() => togglePanel('ruler')}
 			title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}>📏</button
 		><button
 			class:active={initiativeOpen}
-			onclick={() => (initiativeOpen = !initiativeOpen)}
+			onclick={() => togglePanel('initiative')}
 			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}>⚔️</button
 		><button
 			class:active={diceOpen}
-			onclick={() => (diceOpen = !diceOpen)}
+			onclick={() => togglePanel('dice')}
 			disabled={rolling}
 			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
 		>
