@@ -25,7 +25,7 @@
 	let session = $state<Session | null>(null);
 	let loading = $state(true);
 	let error = $state('');
-	type Campaign = { id: string; name: string; role: 'gm' | 'player' };
+	type Campaign = { id: string; name: string; role: 'gm' | 'player'; isAdmin?: boolean };
 	let campaigns = $state<Campaign[]>([]);
 	let activeCampaign = $state<Campaign | null>(null);
 	let activeScene = $state<Scene | null>(null);
@@ -155,10 +155,18 @@
 		try {
 			const response = await api('/api/v1/campaigns', {}, currentSession);
 			campaigns = response.campaigns.map(
-				(campaign: Campaign & { ID?: string; Name?: string; Role?: 'gm' | 'player' }) => ({
+				(
+					campaign: Campaign & {
+						ID?: string;
+						Name?: string;
+						Role?: 'gm' | 'player';
+						is_admin?: boolean;
+					}
+				) => ({
 					id: campaign.id ?? campaign.ID ?? '',
 					name: campaign.name ?? campaign.Name ?? '',
-					role: campaign.role ?? campaign.Role ?? 'player'
+					role: campaign.role ?? campaign.Role ?? 'player',
+					isAdmin: campaign.isAdmin ?? campaign.is_admin ?? false
 				})
 			);
 		} catch (err) {
@@ -249,6 +257,37 @@
 					: $appLocale === 'en'
 						? 'Could not create the table.'
 						: 'Não foi possível criar a mesa.';
+		}
+	}
+	async function renameCampaign(campaign: Campaign) {
+		if (campaign.role !== 'gm') return;
+		const nextName = window.prompt('Novo nome da campanha', campaign.name)?.trim();
+		if (!nextName || nextName === campaign.name) return;
+		try {
+			const updated = await api(`/api/v1/campaigns/${campaign.id}`, {
+				method: 'PATCH',
+				body: JSON.stringify({ name: nextName })
+			});
+			const normalized = { ...campaign, name: updated.name ?? updated.Name ?? nextName };
+			campaigns = campaigns.map((item) => (item.id === campaign.id ? normalized : item));
+			if (activeCampaign?.id === campaign.id) activeCampaign = normalized;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Não foi possível renomear a campanha.';
+		}
+	}
+	async function deleteCampaign(campaign: Campaign) {
+		if (campaign.role !== 'gm') return;
+		if (!window.confirm(`Excluir a campanha “${campaign.name}”? Esta ação não pode ser desfeita.`))
+			return;
+		try {
+			await api(`/api/v1/campaigns/${campaign.id}`, { method: 'DELETE' });
+			campaigns = campaigns.filter((item) => item.id !== campaign.id);
+			if (activeCampaign?.id === campaign.id) {
+				activeCampaign = null;
+				activeScene = null;
+			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Não foi possível excluir a campanha.';
 		}
 	}
 	async function openCampaign(campaign: Campaign) {
@@ -855,30 +894,40 @@
 									: 'Crie uma mesa acima para convidar seu grupo.'}
 							</p>
 						</div>{:else}<div class="campaign-list">
-							{#each campaigns as campaign (campaign.id)}<button
-									class="campaign"
-									onclick={() => void openCampaign(campaign)}
-									><span class="campaign-emblem">{campaign.name.slice(0, 1).toUpperCase()}</span
-									><span class="campaign-info"
-										><strong>{campaign.name}</strong><small
+							{#each campaigns as campaign (campaign.id)}<div class="campaign">
+									<button class="campaign-open" onclick={() => void openCampaign(campaign)}
+										><span class="campaign-emblem">{campaign.name.slice(0, 1).toUpperCase()}</span
+										><span class="campaign-info"
+											><strong>{campaign.name}</strong><small
+												>{campaign.role === 'gm'
+													? $appLocale === 'en'
+														? 'You run this campaign'
+														: 'Você narra esta campanha'
+													: $appLocale === 'en'
+														? 'You play in this campaign'
+														: 'Você participa desta campanha'}</small
+											></span
+										><span class="role-badge {campaign.role}"
 											>{campaign.role === 'gm'
 												? $appLocale === 'en'
-													? 'You run this campaign'
-													: 'Você narra esta campanha'
+													? 'Game Master'
+													: 'Narrador'
 												: $appLocale === 'en'
-													? 'You play in this campaign'
-													: 'Você participa desta campanha'}</small
-										></span
-									><span class="role-badge {campaign.role}"
-										>{campaign.role === 'gm'
-											? $appLocale === 'en'
-												? 'Game Master'
-												: 'Narrador'
-											: $appLocale === 'en'
-												? 'Player'
-												: 'Jogador'}</span
-									><span class="campaign-arrow" aria-hidden="true">→</span></button
-								>{/each}
+													? 'Player'
+													: 'Jogador'}</span
+										><span class="campaign-arrow" aria-hidden="true">→</span></button
+									>
+									{#if campaign.role === 'gm'}<div class="campaign-actions">
+											<button type="button" onclick={() => void renameCampaign(campaign)}
+												>Renomear</button
+											>
+											<button
+												type="button"
+												class="danger"
+												onclick={() => void deleteCampaign(campaign)}>Excluir</button
+											>
+										</div>{/if}
+								</div>{/each}
 						</div>{/if}
 				</section>
 			</main>
@@ -1309,12 +1358,7 @@
 		gap: 0.75rem;
 	}
 	.campaign {
-		display: grid;
-		grid-template-columns: auto 1fr auto auto;
-		align-items: center;
-		gap: 1rem;
 		width: 100%;
-		padding: 1rem 1.15rem;
 		border: 1px solid #38302f;
 		border-radius: 12px;
 		color: #f4eee4;
@@ -1324,6 +1368,38 @@
 			border 0.18s,
 			transform 0.18s,
 			background 0.18s;
+	}
+	.campaign-open {
+		display: grid;
+		grid-template-columns: auto 1fr auto auto;
+		align-items: center;
+		gap: 1rem;
+		width: 100%;
+		padding: 1rem 1.15rem;
+		border: 0;
+		color: inherit;
+		background: transparent;
+		text-align: left;
+		cursor: pointer;
+	}
+	.campaign-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 0.4rem;
+		padding: 0 1rem 0.8rem;
+	}
+	.campaign-actions button {
+		border: 1px solid #59483b;
+		border-radius: 6px;
+		padding: 0.35rem 0.55rem;
+		color: #d8ad67;
+		background: #211a1d;
+		font-size: 0.7rem;
+		cursor: pointer;
+	}
+	.campaign-actions button.danger {
+		color: #e29a8a;
 	}
 	.campaign:hover {
 		border-color: #9a7544;
@@ -1665,11 +1741,16 @@
 		.create-campaign .primary-button {
 			width: 100%;
 		}
-		.campaign {
+		.campaign-open {
 			grid-template-columns: auto 1fr auto;
+			padding: 0.85rem;
 		}
-		.campaign .role-badge {
+		.campaign-open .role-badge {
 			display: none;
+		}
+		.campaign-actions {
+			justify-content: flex-start;
+			padding: 0 0.85rem 0.75rem;
 		}
 		.game-header {
 			align-items: flex-start;

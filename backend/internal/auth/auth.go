@@ -21,7 +21,11 @@ import (
 	"vtt-backend/internal/apperror"
 )
 
-type Principal struct{ UserID, Email string }
+type Principal struct {
+	UserID  string
+	Email   string
+	IsAdmin bool
+}
 type contextKey struct{}
 
 func FromContext(ctx context.Context) (Principal, bool) {
@@ -78,7 +82,11 @@ func Authenticate(baseURL, secret string, next func(http.ResponseWriter, *http.R
 			return
 		}
 		email, _ := claims["email"].(string)
-		if err := next(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, Principal{id, email}))); err != nil {
+		isAdmin := false
+		if metadata, ok := claims["app_metadata"].(map[string]any); ok {
+			isAdmin, _ = metadata["is_admin"].(bool)
+		}
+		if err := next(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, Principal{UserID: id, Email: email, IsAdmin: isAdmin}))); err != nil {
 			apperror.Write(w, err)
 		}
 	})

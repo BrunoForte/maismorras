@@ -133,12 +133,12 @@ func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
 
 func (r *Repository) memberRole(ctx context.Context, sceneID, userID string) (string, error) {
 	var role string
-	err := r.pool.QueryRow(ctx, `select m.role::text from scenes s join campaign_members m on m.campaign_id=s.campaign_id where s.id=$1 and m.user_id=$2`, sceneID, userID).Scan(&role)
+	err := r.pool.QueryRow(ctx, `select case when exists(select 1 from profiles p where p.id=$2 and p.is_admin) then 'gm' else m.role::text end from scenes s left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 where s.id=$1 and (m.user_id is not null or exists(select 1 from profiles p where p.id=$2 and p.is_admin))`, sceneID, userID).Scan(&role)
 	return role, err
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Scene, error) {
 	var role string
-	if err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role); err != nil {
+	if err := r.pool.QueryRow(ctx, `select case when exists(select 1 from profiles p where p.id=$2 and p.is_admin) then 'gm' else role::text end from campaign_members where campaign_id=$1 and user_id=$2 union all select 'gm' where exists(select 1 from profiles p where p.id=$2 and p.is_admin) limit 1`, campaignID, userID).Scan(&role); err != nil {
 		return nil, ErrForbidden
 	}
 	query := `select id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where campaign_id=$1`

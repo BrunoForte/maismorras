@@ -14,7 +14,7 @@ type Handler struct{ repo *Repository }
 func NewHandler(repo *Repository) *Handler { return &Handler{repo: repo} }
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	items, err := h.repo.List(r.Context(), p.UserID)
+	items, err := h.repo.List(r.Context(), p.UserID, p.IsAdmin)
 	if err != nil {
 		return apperror.Internal(err)
 	}
@@ -124,4 +124,40 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	return json.NewEncoder(w).Encode(item)
+}
+
+func (h *Handler) Rename(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&input); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Name == "" || len([]rune(input.Name)) > 120 {
+		return apperror.BadRequest("INVALID_NAME", "Nome deve ter entre 1 e 120 caracteres.")
+	}
+	item, err := h.repo.Rename(r.Context(), r.PathValue("campaignID"), p.UserID, input.Name)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o criador pode renomear esta campanha.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(item)
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	err := h.repo.Delete(r.Context(), r.PathValue("campaignID"), p.UserID)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o criador pode excluir esta campanha.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
