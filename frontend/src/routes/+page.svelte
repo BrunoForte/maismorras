@@ -35,7 +35,8 @@
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
-	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign';
+	type WorkspaceTab =
+		'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign' | 'overlay';
 	let workspaceTab = $state<WorkspaceTab>('map');
 	let sceneRevision = $state(0);
 	let inviteStatus = $state('');
@@ -59,6 +60,7 @@
 		email: ''
 	});
 	let overlayCameras = $state<OverlayCamera[]>(Array.from({ length: 6 }, emptyOverlayCamera));
+	let overlayEnabled = $state(false);
 	$effect(() => {
 		if (overlayCameras.at(-1)?.url.trim())
 			overlayCameras = [...overlayCameras, emptyOverlayCamera()];
@@ -296,6 +298,7 @@
 		// Tokens pertencem a uma cena. Nunca carregue o estado visual da mesa anterior.
 		personagens.set([]);
 		activeCampaign = campaign;
+		overlayEnabled = localStorage.getItem(`maismorras:overlay-enabled:${campaign.id}`) === 'true';
 		try {
 			const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
 			overlayCameras = saved
@@ -373,8 +376,16 @@
 		personagens.set([]);
 		activeScene = scene;
 	}
+	function toggleOverlay() {
+		if (!activeCampaign) return;
+		overlayEnabled = !overlayEnabled;
+		localStorage.setItem(`maismorras:overlay-enabled:${activeCampaign.id}`, String(overlayEnabled));
+	}
 	function openLiveOverlay() {
-		if (!activeCampaign || !activeScene) return;
+		if (!activeCampaign || !activeScene || !overlayEnabled) {
+			inviteStatus = 'Ative a overlay antes de abrir o painel de transmissão.';
+			return;
+		}
 		// URLSearchParams is local and only used to construct the share URL.
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
@@ -678,6 +689,10 @@
 						onclick={() => (workspaceTab = 'campaign')}
 						>{$appLocale === 'en' ? 'Campaign' : 'Campanha'}</button
 					>{/if}
+				{#if activeCampaign.role === 'gm'}<button
+						class:active={workspaceTab === 'overlay'}
+						onclick={() => (workspaceTab = 'overlay')}>Overlay</button
+					>{/if}
 			</nav>
 			{#if workspaceTab === 'map'}<main class="vtt-workspace">
 					{#if activeScene}{#key `${activeScene.id}:${sceneRevision}`}
@@ -742,6 +757,27 @@
 					{session}
 					ontokencreated={() => void reloadActiveScene()}
 				/>
+			{:else if workspaceTab === 'overlay' && activeCampaign.role === 'gm'}<main
+					class="campaign-settings overlay-workspace"
+				>
+					<section class="overlay-toggle-card">
+						<div>
+							<p class="eyebrow">TRANSMISSÃO</p>
+							<h2>Overlay da live</h2>
+							<p>Ative os recursos de overlay para esta campanha e configure a cena atual.</p>
+						</div>
+						<label class="switch"
+							><input type="checkbox" checked={overlayEnabled} onchange={toggleOverlay} /><span
+							></span>{overlayEnabled ? 'Ativada' : 'Desativada'}</label
+						>
+					</section>
+					{#if overlayEnabled && activeScene}<OverlayLayoutEditor
+							campaignId={activeCampaign.id}
+							sceneId={activeScene.id}
+						/>{:else if !overlayEnabled}<p class="status-message">
+							Ative a overlay para editar seus elementos.
+						</p>{:else}<p class="status-message">Selecione uma cena para editar a overlay.</p>{/if}
+				</main>
 			{:else if workspaceTab === 'campaign' && activeCampaign.role === 'gm'}<main
 					class="campaign-settings"
 				>
@@ -791,10 +827,6 @@
 							>
 						</div>
 					</section>
-					{#if activeScene}<OverlayLayoutEditor
-							campaignId={activeCampaign.id}
-							sceneId={activeScene.id}
-						/>{/if}
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 			{#if sheetOpen && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheet
@@ -1572,6 +1604,64 @@
 		background: #201b1e;
 		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
 	}
+	.overlay-toggle-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		min-width: 0;
+		border: 1px solid #3a312e;
+		border-radius: 12px;
+		padding: clamp(1rem, 2.5vw, 1.5rem);
+		background: #201b1e;
+	}
+	.overlay-toggle-card h2 {
+		margin-bottom: 0.35rem;
+	}
+	.overlay-toggle-card p:not(.eyebrow) {
+		margin: 0;
+		color: #a99c91;
+		font-size: 0.82rem;
+	}
+	.switch {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		color: #d8c9b9;
+		font-size: 0.78rem;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.switch input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.switch span {
+		position: relative;
+		width: 2.5rem;
+		height: 1.35rem;
+		border-radius: 999px;
+		background: #4a3d36;
+		transition: background 0.2s;
+	}
+	.switch span::after {
+		content: '';
+		position: absolute;
+		top: 0.18rem;
+		left: 0.18rem;
+		width: 0.99rem;
+		height: 0.99rem;
+		border-radius: 50%;
+		background: #e9dfd3;
+		transition: transform 0.2s;
+	}
+	.switch input:checked + span {
+		background: #9a6d35;
+	}
+	.switch input:checked + span::after {
+		transform: translateX(1.15rem);
+	}
 	.overlay-settings h3 {
 		margin: 0 0 0.45rem;
 		color: #f0e0c8;
@@ -1885,6 +1975,10 @@
 		}
 		.overlay-settings {
 			padding: 0.85rem;
+		}
+		.overlay-toggle-card {
+			align-items: flex-start;
+			flex-direction: column;
 		}
 		.overlay-camera-grid {
 			grid-template-columns: minmax(0, 1fr);
