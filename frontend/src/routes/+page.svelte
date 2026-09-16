@@ -40,6 +40,15 @@
 	let workspaceTab = $state<WorkspaceTab>('map');
 	let sceneRevision = $state(0);
 	let inviteStatus = $state('');
+	let inviteStatusTimer: number | undefined;
+	function showInviteStatus(message: string) {
+		if (inviteStatusTimer) window.clearTimeout(inviteStatusTimer);
+		inviteStatus = message;
+		inviteStatusTimer = window.setTimeout(() => {
+			inviteStatus = '';
+			inviteStatusTimer = undefined;
+		}, 7000);
+	}
 	let inviteProcessed = false;
 	let participantsOpen = $state(false);
 	let notesOpen = $state(false);
@@ -230,10 +239,11 @@
 			});
 			const link = `${window.location.origin}/?invite=${invite.code}`;
 			await navigator.clipboard.writeText(link);
-			inviteStatus =
+			showInviteStatus(
 				$appLocale === 'en'
-					? 'Invite link copied. It expires in 14 days and can be used once.'
-					: 'Link de convite copiado. Ele expira em 14 dias e pode ser usado uma vez.';
+					? 'Invite link copied. It expires in 24 hours and can be used by multiple players.'
+					: 'Link de convite copiado. Ele expira em 24 horas e pode ser usado por vários jogadores.'
+			);
 		} catch (err) {
 			inviteStatus =
 				err instanceof Error
