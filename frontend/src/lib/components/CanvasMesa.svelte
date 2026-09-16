@@ -143,9 +143,9 @@
 			lightRange: token.lightRange,
 			fotoUrl: imageUrl ?? undefined,
 			tamanho: token.size,
-			fotoEscala: 1,
-			fotoOffsetX: 0,
-			fotoOffsetY: 0,
+			fotoEscala: token.visibility.imageScale ?? 1,
+			fotoOffsetX: token.visibility.imageOffsetX ?? 0,
+			fotoOffsetY: token.visibility.imageOffsetY ?? 0,
 			status: token.statuses as StatusToken[],
 			visibility: token.visibility
 		};
@@ -167,7 +167,12 @@
 			lightRange: personagem.lightRange,
 			statuses: personagem.status ?? [],
 			hidden: false,
-			visibility: personagem.visibility
+			visibility: {
+				...personagem.visibility,
+				imageScale: personagem.fotoEscala,
+				imageOffsetX: personagem.fotoOffsetX,
+				imageOffsetY: personagem.fotoOffsetY
+			}
 		};
 	}
 
@@ -211,6 +216,21 @@
 		if (!personagemSelecionado || !isGM) return;
 		const atualizado = transform(personagemSelecionado);
 		personagens.update((lista) => lista.map((p) => (p.id === atualizado.id ? atualizado : p)));
+	}
+	function alterarAparencia(campo: 'fotoEscala' | 'fotoOffsetX' | 'fotoOffsetY', valor: string) {
+		const numero = Number(valor);
+		if (!Number.isFinite(numero)) return;
+		atualizarSelecionado((p) => ({ ...p, [campo]: numero }));
+		if (personagemSelecionado) void persistir({ ...personagemSelecionado, [campo]: numero });
+	}
+	function alternarFundoTransparente() {
+		if (!personagemSelecionado) return;
+		const visibility = {
+			...personagemSelecionado.visibility,
+			transparentBackground: !personagemSelecionado.visibility.transparentBackground
+		};
+		atualizarSelecionado((p) => ({ ...p, visibility }));
+		void persistir({ ...personagemSelecionado, visibility });
 	}
 
 	async function removerTokenSelecionado() {
@@ -1068,6 +1088,44 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
+			{#if isGM}<div class="token-appearance">
+					<strong>Aparência do token</strong>
+					<label
+						>Zoom <input
+							type="range"
+							min="0.5"
+							max="3"
+							step="0.05"
+							value={personagemSelecionado.fotoEscala}
+							onchange={(event) => alterarAparencia('fotoEscala', event.currentTarget.value)}
+						/></label
+					>
+					<label
+						>Horizontal <input
+							type="range"
+							min="-100"
+							max="100"
+							step="1"
+							value={personagemSelecionado.fotoOffsetX}
+							onchange={(event) => alterarAparencia('fotoOffsetX', event.currentTarget.value)}
+						/></label
+					>
+					<label
+						>Vertical <input
+							type="range"
+							min="-100"
+							max="100"
+							step="1"
+							value={personagemSelecionado.fotoOffsetY}
+							onchange={(event) => alterarAparencia('fotoOffsetY', event.currentTarget.value)}
+						/></label
+					>
+					<button onclick={alternarFundoTransparente}
+						>{personagemSelecionado.visibility.transparentBackground
+							? 'Usar fundo colorido'
+							: 'Remover fundo colorido'}</button
+					>
+				</div>{/if}
 			{#if isGM && scene.fogEnabled}<div class="vision-control">
 					<span
 						>{$appLocale === 'en' ? 'Fog vision' : 'Visão na névoa'}
@@ -1714,6 +1772,39 @@
 		background: rgba(27, 22, 27, 0.95);
 		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
 		backdrop-filter: blur(12px);
+	}
+	.token-appearance {
+		display: grid;
+		gap: 0.45rem;
+		margin: 0.7rem 0;
+		border-top: 1px solid #393034;
+		padding-top: 0.65rem;
+	}
+	.token-appearance strong {
+		color: #d8ad67;
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.token-appearance label {
+		display: grid;
+		grid-template-columns: 5.5rem 1fr;
+		align-items: center;
+		gap: 0.5rem;
+		color: #b9aa9b;
+		font-size: 0.7rem;
+	}
+	.token-appearance input[type='range'] {
+		width: 100%;
+		accent-color: #d8ad67;
+	}
+	.token-appearance button {
+		border: 1px solid #765d3d;
+		border-radius: 5px;
+		padding: 0.35rem;
+		color: #e8d3aa;
+		background: #2b211e;
+		font-size: 0.68rem;
 	}
 	.ambient-audio {
 		position: absolute;

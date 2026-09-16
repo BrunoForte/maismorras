@@ -32,6 +32,10 @@ export type TokenVisibility = {
 	showHP: boolean;
 	showAC: boolean;
 	showStatuses: boolean;
+	transparentBackground?: boolean;
+	imageScale?: number;
+	imageOffsetX?: number;
+	imageOffsetY?: number;
 };
 
 export type Personagem = {

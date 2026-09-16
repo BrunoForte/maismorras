@@ -40,6 +40,10 @@ export type PersistedToken = {
 		showHP: boolean;
 		showAC: boolean;
 		showStatuses: boolean;
+		transparentBackground?: boolean;
+		imageScale?: number;
+		imageOffsetX?: number;
+		imageOffsetY?: number;
 	};
 };
 export type SceneEffect = {

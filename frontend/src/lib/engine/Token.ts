@@ -129,7 +129,7 @@ export class Token {
 		// 1. Redesenha a borda/fundo colorido
 		this.circuloFundo.clear();
 		this.circuloFundo.circle(centro, centro, raio + 2);
-		this.circuloFundo.fill(this.dados.cor);
+		if (!this.dados.visibility?.transparentBackground) this.circuloFundo.fill(this.dados.cor);
 		// Condições são discretas, mas perceptíveis mesmo sem abrir o inspector.
 		// A regra completa continua no painel do token; este aro é só um lembrete visual.
 		if (this.dados.status?.length) {
@@ -310,8 +310,5 @@ export class Token {
 
 		this.stage.on('pointerup', soltarToken);
 		this.stage.on('pointerupoutside', soltarToken);
-
-		this.containerPrincipal.on('pointerover', () => (this.textoCoordenada.visible = true));
-		this.containerPrincipal.on('pointerout', () => (this.textoCoordenada.visible = false));
 	}
 }
