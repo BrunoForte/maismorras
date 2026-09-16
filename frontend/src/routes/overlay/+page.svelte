@@ -38,6 +38,14 @@
 		background: '',
 		blocks: []
 	});
+	function loadOverlayLayout() {
+		try {
+			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);
+			if (saved) overlayLayout = JSON.parse(saved);
+		} catch {
+			/* ignore malformed local layout */
+		}
+	}
 	let initialized = false;
 	// This set is a private animation de-duplication cache, not rendered state.
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
@@ -165,12 +173,7 @@
 
 	onMount(() => {
 		setDice3dPreference(true);
-		try {
-			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);
-			if (saved) overlayLayout = JSON.parse(saved);
-		} catch {
-			overlayLayout = { background: '', blocks: [] };
-		}
+		loadOverlayLayout();
 		publicMode = Boolean(query().get('access'));
 		if (publicMode) {
 			cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
@@ -185,6 +188,7 @@
 					(error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.')
 			);
 			publicRefreshTimer = setInterval(() => {
+				loadOverlayLayout();
 				void refreshPublic().catch((err) => {
 					error = err instanceof Error ? err.message : 'Não foi possível atualizar o overlay.';
 					if (publicRefreshTimer) {
@@ -213,6 +217,8 @@
 		};
 		overlayChannel?.addEventListener('message', (event) => {
 			if (event.data?.type === 'scene-change') applySceneChange(String(event.data.sceneId));
+			if (event.data?.type === 'layout-change' && String(event.data.sceneId) === sceneId())
+				loadOverlayLayout();
 		});
 		const onStorage = (event: StorageEvent) => {
 			if (event.key !== `maismorras:overlay:${campaignId()}` || !event.newValue) return;
@@ -294,14 +300,15 @@
 	{#if authRequired}<section class="overlay-auth">
 			<p class="overlay-error">Faça login no MaisMorras para visualizar esta overlay.</p>
 			<button onclick={() => void login()}>Entrar com Google</button>
-		</section>{:else if error}<p class="overlay-error">{error}</p>{:else if !session || !scene}<p
-			class="overlay-loading"
-		>
+		</section>{:else if error}<p class="overlay-error">
+			{error}
+		</p>{:else if !scene || (!session && !publicMode)}<p class="overlay-loading">
 			Carregando overlay…
 		</p>{:else}
 		<header
 			class="overlay-header"
 			class:layout-hidden={block('header')?.visible === false}
+			class:layout-positioned={Boolean(block('header'))}
 			style={blockStyle('header')}
 		>
 			<div>
@@ -322,6 +329,7 @@
 		<section
 			class="map-preview"
 			class:layout-hidden={block('map')?.visible === false}
+			class:layout-positioned={Boolean(block('map'))}
 			aria-label="Mapa da cena"
 			style={`--grid-size: ${scene.gridSize}px; ${blockStyle('map')} background-image: ${mapBackground ? `url("${mapBackground}")` : overlayLayout.background ? `url("${overlayLayout.background}")` : 'none'}`}
 		>
@@ -355,6 +363,7 @@
 		</section>
 		{#if recentRolls().length && block('rolls')?.visible !== false}<aside
 				class="roll-feed"
+				class:layout-positioned={Boolean(block('rolls'))}
 				aria-label="Últimas rolagens"
 				style={blockStyle('rolls')}
 			>
@@ -366,6 +375,7 @@
 			</aside>{/if}
 		{#if cameraSlots.length && block('cameras')?.visible !== false}<section
 				class="camera-grid"
+				class:layout-positioned={Boolean(block('cameras'))}
 				aria-label="Câmeras dos jogadores"
 				style={blockStyle('cameras')}
 			>
@@ -408,6 +418,9 @@
 	}
 	.layout-hidden {
 		display: none !important;
+	}
+	.layout-positioned {
+		transform: translate(calc(var(--overlay-x, 0%) - 4%), calc(var(--overlay-y, 0%) - 4%));
 	}
 	.map-preview {
 		position: relative;

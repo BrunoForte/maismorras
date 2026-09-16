@@ -1608,7 +1608,7 @@
 		display: grid;
 		gap: 0.5rem;
 		top: 0;
-		left: calc(100% + 0.4rem);
+		left: 3rem;
 		right: auto;
 		width: min(300px, calc(100vw - 5rem));
 		max-height: calc(100dvh - 2rem);
@@ -1627,10 +1627,10 @@
 		text-align: left;
 	}
 	.table-tools-gm .area-tools {
-		top: 2.75rem;
+		top: 3rem;
 	}
 	.table-tools-gm .wall-tools {
-		top: 5.5rem;
+		top: 6rem;
 	}
 	.table-tools-gm .layer-tools label,
 	.table-tools-gm .area-tools label,

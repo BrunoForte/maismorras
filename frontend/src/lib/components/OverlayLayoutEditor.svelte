@@ -46,6 +46,11 @@
 	}
 	function save() {
 		localStorage.setItem(key(), JSON.stringify(layout));
+		if ('BroadcastChannel' in window) {
+			const channel = new BroadcastChannel(`maismorras:overlay:${campaignId}`);
+			channel.postMessage({ type: 'layout-change', sceneId });
+			channel.close();
+		}
 		status = 'Layout da overlay salvo para esta cena.';
 	}
 	function reset() {
