@@ -3,6 +3,7 @@ package realtime
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -69,9 +70,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 	sceneID := strings.TrimSpace(r.URL.Query().Get("sceneId"))
+	if sceneID == "" {
+		http.Error(w, "sceneId required", http.StatusBadRequest)
+		return nil
+	}
 	p, _ := auth.FromContext(r.Context())
 	var allowed bool
-	if sceneID == "" || h.pool.QueryRow(r.Context(), `select exists(select 1 from scenes s join campaign_members m on m.campaign_id=s.campaign_id where s.id=$1 and m.user_id=$2)`, sceneID, p.UserID).Scan(&allowed) != nil || !allowed {
+	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from scenes s join campaign_members m on m.campaign_id=s.campaign_id where s.id=$1 and m.user_id=$2)`, sceneID, p.UserID).Scan(&allowed); err != nil {
+		// Do not turn a database outage into a misleading authorization failure.
+		// The client can retry a 503, while a genuine 403 remains actionable.
+		slog.Error("realtime authorization lookup failed", "scene_id", sceneID, "error", err)
+		http.Error(w, "realtime unavailable", http.StatusServiceUnavailable)
+		return nil
+	}
+	if !allowed {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return nil
 	}
