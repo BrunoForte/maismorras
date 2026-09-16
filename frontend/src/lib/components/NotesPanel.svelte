@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { appLocale } from '$lib/stores/locale';
+	import { apiBase } from '$lib/services/apiBase';
 	type Note = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let {
 		campaignId,
@@ -15,7 +16,7 @@
 	let visibility = $state<'gm' | 'players'>('gm');
 	let message = $state('');
 	let loading = $state(true);
-	const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+	const base = apiBase;
 	async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 		const r = await fetch(base + path, {
 			...init,

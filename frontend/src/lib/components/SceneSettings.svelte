@@ -4,6 +4,7 @@
 	import { updateScene, type Scene } from '$lib/services/sceneApi';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
+	import { apiBase } from '$lib/services/apiBase';
 	let {
 		scene,
 		session,
@@ -70,7 +71,7 @@
 		message = '';
 		try {
 			const response = await fetch(
-				`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}/api/v1/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`,
+				`${apiBase}/api/v1/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`,
 				{ headers: { Authorization: `Bearer ${session.access_token}` } }
 			);
 			const data = await response.json();

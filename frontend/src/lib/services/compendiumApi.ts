@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiBase } from './apiBase';
 
 export type CompendiumSource = {
 	id: string;
@@ -24,7 +25,7 @@ export type CompendiumDraft = Pick<
 	CompendiumEntry,
 	'name' | 'summary' | 'rules' | 'translations' | 'isPublished'
 >;
-const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const base = apiBase;
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
 	const response = await fetch(`${base}${path}`, {
 		...init,

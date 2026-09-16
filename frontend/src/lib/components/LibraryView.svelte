@@ -5,6 +5,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
+	import { apiBase } from '$lib/services/apiBase';
 	let {
 		campaignId,
 		session,
@@ -37,17 +38,14 @@
 		void loadHandouts();
 	});
 	async function notesRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-		const response = await fetch(
-			`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
-			{
-				...init,
-				headers: {
-					Authorization: `Bearer ${session.access_token}`,
-					'Content-Type': 'application/json',
-					...init.headers
-				}
+		const response = await fetch(`${apiBase}${path}`, {
+			...init,
+			headers: {
+				Authorization: `Bearer ${session.access_token}`,
+				'Content-Type': 'application/json',
+				...init.headers
 			}
-		);
+		});
 		const data = await response.json();
 		if (!response.ok)
 			throw new Error(

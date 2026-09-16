@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiBase } from './apiBase';
 
-const base = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const base = apiBase;
 async function request(session: Session, path: string, init: RequestInit = {}) {
 	const response = await fetch(`${base}${path}`, {
 		...init,

@@ -20,6 +20,7 @@
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
+	import { apiBase } from '$lib/services/apiBase';
 
 	let session = $state<Session | null>(null);
 	let loading = $state(true);
@@ -47,13 +48,6 @@
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
 	let restoringSession = false;
-	const configuredApiBase = String(import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-	const apiBase =
-		configuredApiBase && !configuredApiBase.includes('maismorras.vercel.app')
-			? configuredApiBase
-			: import.meta.env.DEV
-				? 'http://localhost:8080'
-				: 'https://maismorras-api-454646414754.southamerica-east1.run.app';
 	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
 	const emptyOverlayCamera = (): OverlayCamera => ({
 		url: '',
@@ -61,12 +55,11 @@
 		characterName: '',
 		email: ''
 	});
-	let overlayCameras = $state<OverlayCamera[]>([
-		emptyOverlayCamera(),
-		emptyOverlayCamera(),
-		emptyOverlayCamera(),
-		emptyOverlayCamera()
-	]);
+	let overlayCameras = $state<OverlayCamera[]>(Array.from({ length: 6 }, emptyOverlayCamera));
+	$effect(() => {
+		if (overlayCameras.at(-1)?.url.trim())
+			overlayCameras = [...overlayCameras, emptyOverlayCamera()];
+	});
 
 	onMount(() => {
 		restoreAppLocale();
@@ -257,24 +250,23 @@
 		try {
 			const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
 			overlayCameras = saved
-				? (JSON.parse(saved) as Partial<OverlayCamera>[])
-						.slice(0, 4)
-						.map((camera) => ({ ...emptyOverlayCamera(), ...camera }))
+				? (JSON.parse(saved) as (Partial<OverlayCamera> | string)[])
+						.slice(0, 6)
+						.map((camera) =>
+							typeof camera === 'string'
+								? { ...emptyOverlayCamera(), url: camera }
+								: { ...emptyOverlayCamera(), ...camera }
+						)
 						.concat([
 							emptyOverlayCamera(),
 							emptyOverlayCamera(),
 							emptyOverlayCamera(),
 							emptyOverlayCamera()
 						])
-						.slice(0, 4)
-				: [emptyOverlayCamera(), emptyOverlayCamera(), emptyOverlayCamera(), emptyOverlayCamera()];
+						.slice(0, 6)
+				: Array.from({ length: 6 }, emptyOverlayCamera);
 		} catch {
-			overlayCameras = [
-				emptyOverlayCamera(),
-				emptyOverlayCamera(),
-				emptyOverlayCamera(),
-				emptyOverlayCamera()
-			];
+			overlayCameras = Array.from({ length: 6 }, emptyOverlayCamera);
 		}
 		workspaceTab = 'map';
 		activeScene = null;
@@ -714,12 +706,14 @@
 						<p class="eyebrow">OVERLAY DA LIVE</p>
 						<h3>Link, cena e câmeras</h3>
 						<p>
-							Configure até quatro câmeras VDO.Ninja. Os nomes serão exibidos junto ao vídeo na
-							overlay.
+							Configure cinco câmeras de jogadores e uma do narrador. Os nomes serão exibidos junto
+							ao vídeo na overlay.
 						</p>
 						<div class="overlay-camera-grid">
 							{#each overlayCameras as camera, index (index)}<fieldset>
-									<legend>Câmera {index + 1}</legend>
+									<legend
+										>{index === 5 ? 'Câmera do narrador' : `Câmera do jogador ${index + 1}`}</legend
+									>
 									<input bind:value={camera.url} placeholder="Link https://vdo.ninja/..." />
 									<input bind:value={camera.playerName} placeholder="Nome do jogador" />
 									<input bind:value={camera.characterName} placeholder="Nome do personagem" />

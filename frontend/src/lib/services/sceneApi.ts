@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiBase } from './apiBase';
 
 export type Scene = {
 	id: string;
@@ -77,13 +78,7 @@ export type SceneWall = {
 	open: boolean;
 };
 
-const configuredBase = String(import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-const base =
-	configuredBase && !configuredBase.includes('maismorras.vercel.app')
-		? configuredBase
-		: import.meta.env.DEV
-			? 'http://localhost:8080'
-			: 'https://maismorras-api-454646414754.southamerica-east1.run.app';
+const base = apiBase;
 export async function request<T>(
 	session: Session,
 	path: string,

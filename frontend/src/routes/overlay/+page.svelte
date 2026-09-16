@@ -8,6 +8,7 @@
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
+	import { apiBase } from '$lib/services/apiBase';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -30,7 +31,6 @@
 	const seenRolls = new Set<string>();
 	let publicMode = $state(false);
 	let authRequired = $state(false);
-	const apiBase = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 	const query = () => new URLSearchParams(window.location.search);
 	const campaignId = () => query().get('campaign') ?? '';
@@ -193,7 +193,7 @@
 		};
 		window.addEventListener('storage', onStorage);
 		const params = query();
-		cameraSlots = [1, 2, 3, 4]
+		cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
 			.map((index) => ({
 				url: params.get(`camera${index}`) ?? '',
 				playerName: params.get(`camera${index}Player`) ?? '',

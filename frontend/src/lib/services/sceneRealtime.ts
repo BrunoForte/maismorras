@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiBase } from './apiBase';
 
 type SceneRefresh = { type: 'scene.refresh' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
@@ -19,13 +20,7 @@ export function connectSceneSocket(
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
 	onStatus?: (status: RealtimeStatus) => void
 ): SceneSocket {
-	const configuredApi = String(import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-	const api =
-		configuredApi && !configuredApi.includes('maismorras.vercel.app')
-			? configuredApi
-			: import.meta.env.DEV
-				? 'http://localhost:8080'
-				: 'https://maismorras-api-454646414754.southamerica-east1.run.app';
+	const api = apiBase;
 	const url = new URL('/api/v1/ws', api);
 	url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 	url.searchParams.set('sceneId', sceneId);
