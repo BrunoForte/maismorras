@@ -144,14 +144,18 @@
 		} finally {
 			clearTimeout(timeout);
 		}
-		if (!response.ok)
+		if (!response.ok) {
+			const body = await response.json().catch(() => null);
 			throw new Error(
-				(await response.json()).error?.message ??
+				body?.error?.message ??
 					($appLocale === 'en'
 						? 'Could not communicate with the server.'
 						: 'Erro ao comunicar com o servidor.')
 			);
-		return response.json();
+		}
+		if (response.status === 204) return null;
+		const text = await response.text();
+		return text ? JSON.parse(text) : null;
 	}
 	async function loadCampaigns(currentSession = session) {
 		loadingCampaigns = true;

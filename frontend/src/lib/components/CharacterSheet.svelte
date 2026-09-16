@@ -453,8 +453,14 @@
 	async function savePortrait(blob: Blob, filename: string) {
 		if (!supabase) throw new Error('Supabase não está configurado.');
 		if (blob.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
+		const { data: userData, error: userError } = await supabase.auth.getUser();
+		if (userError || !userData.user) throw new Error('Sua sessão expirou. Faça login novamente.');
+		if (userData.user.id !== session.user.id)
+			throw new Error(
+				'A sessão atual não corresponde ao usuário autenticado. Faça login novamente.'
+			);
 		const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
-		const path = `campaigns/${campaignId}/portraits/${session.user.id}/${crypto.randomUUID()}-${safeName}`;
+		const path = `campaigns/${campaignId}/portraits/${userData.user.id}/${crypto.randomUUID()}-${safeName}`;
 		const { error } = await supabase.storage.from('campaign-assets').upload(path, blob, {
 			contentType: blob.type || 'image/png'
 		});
@@ -632,7 +638,14 @@
 			(entry) =>
 				optionLabel(entry).toLowerCase() === feat.toLowerCase() ||
 				entry.name.toLowerCase() === feat.toLowerCase()
-		)?.summary || 'Talento privado ou sem resumo cadastrado no compêndio.';
+		)?.summary ||
+		String(
+			(
+				optionsFor('feat').find((entry) => optionLabel(entry).toLowerCase() === feat.toLowerCase())
+					?.rules as Record<string, unknown> | undefined
+			)?.description ?? ''
+		) ||
+		'Talento privado ou sem descrição cadastrada no compêndio.';
 	function addFeat() {
 		const feat = newFeat.trim();
 		if (!feat || featList().some((item) => item.toLowerCase() === feat.toLowerCase())) return;
