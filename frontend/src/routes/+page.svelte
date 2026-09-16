@@ -47,6 +47,7 @@
 	let sceneDraft = $state('');
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
+	const sessionTimeoutMs = 10000;
 	let restoringSession = false;
 	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
 	const emptyOverlayCamera = (): OverlayCamera => ({
@@ -71,8 +72,12 @@
 			loading = false;
 			return;
 		}
-		supabase.auth
-			.getSession()
+		Promise.race([
+			supabase.auth.getSession(),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error('A autenticação demorou demais para responder.')), sessionTimeoutMs)
+			)
+		])
 			.then(async ({ data }) => {
 				session = data.session;
 				if (data.session) await restoreSession(data.session);

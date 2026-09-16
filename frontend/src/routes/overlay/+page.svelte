@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
 	import { loadMessages } from '$lib/services/eventApi';
@@ -18,6 +18,7 @@
 	let error = $state('');
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	let publicRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let audioSrc = $state('');
 	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
@@ -31,6 +32,9 @@
 	const seenRolls = new Set<string>();
 	let publicMode = $state(false);
 	let authRequired = $state(false);
+	onDestroy(() => {
+		if (publicRefreshTimer) clearInterval(publicRefreshTimer);
+	});
 
 	const query = () => new URLSearchParams(window.location.search);
 	const campaignId = () => query().get('campaign') ?? '';
@@ -151,7 +155,7 @@
 		setDice3dPreference(true);
 		publicMode = Boolean(query().get('access'));
 		if (publicMode) {
-			cameraSlots = [1, 2, 3, 4]
+			cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
 				.map((index) => ({
 					url: query().get(`camera${index}`) ?? '',
 					playerName: query().get(`camera${index}Player`) ?? '',
@@ -162,6 +166,15 @@
 				(err) =>
 					(error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.')
 			);
+			publicRefreshTimer = setInterval(() => {
+				void refreshPublic().catch((err) => {
+					error = err instanceof Error ? err.message : 'Não foi possível atualizar o overlay.';
+					if (publicRefreshTimer) {
+						clearInterval(publicRefreshTimer);
+						publicRefreshTimer = null;
+					}
+				});
+			}, 5000);
 			return;
 		}
 		if (!supabase) {
@@ -218,6 +231,7 @@
 			overlayChannel?.close();
 			window.removeEventListener('storage', onStorage);
 			if (refreshTimer) clearTimeout(refreshTimer);
+			if (publicRefreshTimer) clearInterval(publicRefreshTimer);
 			socket?.close();
 		};
 	});

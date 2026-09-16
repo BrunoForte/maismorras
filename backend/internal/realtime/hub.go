@@ -84,6 +84,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	if !allowed {
+		slog.Warn("realtime authorization denied", "scene_id", sceneID)
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return nil
 	}
