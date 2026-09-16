@@ -413,9 +413,9 @@
 							title="Enviar cena atual para a overlay">↻</button
 						>{/if}
 					{#if activeScene}<button
-							class="scene-overlay-link"
+							class="scene-overlay-copy"
 							onclick={() => void copyLiveOverlayAddress()}
-							title="Copiar endereço da overlay">⌘</button
+							title="Copiar endereço da overlay">Copiar overlay</button
 						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
@@ -1491,6 +1491,20 @@
 		text-decoration: none;
 	}
 	.scene-overlay-link:hover {
+		border-color: #d8ad67;
+		background: #34271f;
+	}
+	.scene-overlay-copy {
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.35rem 0.5rem;
+		color: #f0cb85;
+		background: #211a1d;
+		font-size: 0.62rem;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.scene-overlay-copy:hover {
 		border-color: #d8ad67;
 		background: #34271f;
 	}
