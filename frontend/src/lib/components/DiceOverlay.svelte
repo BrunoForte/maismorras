@@ -6,6 +6,7 @@
 		diceOverlay,
 		restoreDicePreference
 	} from '$lib/stores/diceOverlayStore';
+	import DiceBox3D from './DiceBox3D.svelte';
 
 	let visible = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -31,6 +32,7 @@
 </script>
 
 {#if $activeDiceRolls.length && visible}
+	{#if $dice3dEnabled}<DiceBox3D />{/if}
 	<div
 		class:dice3d={$dice3dEnabled}
 		class="dice-overlay"
