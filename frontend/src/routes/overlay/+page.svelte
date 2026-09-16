@@ -9,6 +9,7 @@
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 	import { apiBase } from '$lib/services/apiBase';
+	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -27,7 +28,13 @@
 	let cameraSlots = $state<CameraSlot[]>([]);
 	let mapBackground = $state('');
 	type OverlayBlock = { id: string; x: number; y: number; visible: boolean };
-	let overlayLayout = $state<{ background: string; blocks: OverlayBlock[] }>({
+	let overlayLayout = $state<{
+		background: string;
+		blocks: OverlayBlock[];
+		livekitUrl?: string;
+		livekitRoom?: string;
+		livekitToken?: string;
+	}>({
 		background: '',
 		blocks: []
 	});
@@ -370,6 +377,13 @@
 						></iframe><strong>{camera.playerName || `Jogador ${index + 1}`}</strong
 						>{#if camera.characterName}<small>{camera.characterName}</small>{/if}
 					</article>{/each}
+				{#if overlayLayout.livekitUrl && overlayLayout.livekitToken}<article class="camera-card">
+						<LiveKitPreview
+							serverUrl={overlayLayout.livekitUrl}
+							token={overlayLayout.livekitToken}
+						/>
+						<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
+					</article>{/if}
 			</section>{/if}
 	{/if}
 </main>

@@ -1,9 +1,18 @@
 <script lang="ts">
 	let { campaignId, sceneId }: { campaignId: string; sceneId: string } = $props();
 	type Block = { id: string; label: string; x: number; y: number; visible: boolean };
-	type Layout = { background: string; blocks: Block[] };
+	type Layout = {
+		background: string;
+		blocks: Block[];
+		livekitUrl: string;
+		livekitRoom: string;
+		livekitToken: string;
+	};
 	const defaults = (): Layout => ({
 		background: '',
+		livekitUrl: '',
+		livekitRoom: '',
+		livekitToken: '',
 		blocks: [
 			{ id: 'header', label: 'Cabeçalho', x: 4, y: 4, visible: true },
 			{ id: 'map', label: 'Mapa e tokens', x: 4, y: 16, visible: true },
@@ -74,6 +83,17 @@
 	</header>
 	<p class="hint">Arraste os blocos no quadro. Cada cena possui uma configuração independente.</p>
 	<label class="upload">Fundo PNG <input type="file" accept="image/png" onchange={upload} /></label>
+	<div class="livekit-fields">
+		<label>LiveKit URL<input bind:value={layout.livekitUrl} placeholder="wss://..." /></label><label
+			>Sala<input bind:value={layout.livekitRoom} placeholder="mesa-1" /></label
+		><label
+			>Token temporário<input
+				bind:value={layout.livekitToken}
+				type="password"
+				placeholder="JWT de curta duração"
+			/></label
+		>
+	</div>
 	<div
 		class="workspace"
 		role="application"
@@ -144,6 +164,27 @@
 		margin: 0.4rem 0 0.8rem;
 		color: #d8c9b9;
 		font-size: 0.75rem;
+	}
+	.livekit-fields {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 0.55rem;
+		margin-bottom: 0.8rem;
+	}
+	.livekit-fields label {
+		display: grid;
+		gap: 0.25rem;
+		color: #b9aa9b;
+		font-size: 0.68rem;
+	}
+	.livekit-fields input {
+		min-width: 0;
+		border: 1px solid #51443a;
+		border-radius: 7px;
+		padding: 0.45rem 0.55rem;
+		color: #eee4d6;
+		background: #211c1e;
+		font: inherit;
 	}
 	.workspace {
 		position: relative;

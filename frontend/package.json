@@ -39,6 +39,7 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.115.0",
+		"livekit-client": "^2.22.3",
 		"pixi.js": "^8.19.0"
 	}
 }
