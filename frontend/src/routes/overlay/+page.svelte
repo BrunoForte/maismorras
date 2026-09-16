@@ -21,6 +21,7 @@
 	let audioBlocked = $state(false);
 	let cameraUrls = $state<string[]>([]);
 	let publicMode = $state(false);
+	let authRequired = $state(false);
 	const apiBase = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 	const query = () => new URLSearchParams(window.location.search);
@@ -158,6 +159,7 @@
 			.filter((value) => value.startsWith('https://vdo.ninja/'));
 		supabase.auth.getSession().then(({ data }) => {
 			if (disposed || !data.session) {
+				authRequired = true;
 				error = 'Faça login no MaisMorras antes de abrir o overlay.';
 				return;
 			}
@@ -182,6 +184,14 @@
 		await audio.play();
 		audioBlocked = false;
 	}
+	async function login() {
+		if (!supabase) return;
+		const { error: authError } = await supabase.auth.signInWithOAuth({
+			provider: 'google',
+			options: { redirectTo: window.location.href }
+		});
+		if (authError) error = authError.message;
+	}
 
 	const tokenImage = (token: PersistedToken) =>
 		imageUrls[token.id] ||
@@ -201,7 +211,10 @@
 </svelte:head>
 
 <main class="live-overlay" aria-label="Overlay da live">
-	{#if error}<p class="overlay-error">{error}</p>{:else if !session || !scene}<p
+	{#if authRequired}<section class="overlay-auth">
+			<p class="overlay-error">Faça login no MaisMorras para visualizar esta overlay.</p>
+			<button onclick={() => void login()}>Entrar com Google</button>
+		</section>{:else if error}<p class="overlay-error">{error}</p>{:else if !session || !scene}<p
 			class="overlay-loading"
 		>
 			Carregando overlay…
@@ -388,6 +401,23 @@
 		margin: 0;
 		color: #ead8b7;
 		text-align: center;
+	}
+	.overlay-auth {
+		display: grid;
+		place-items: center;
+		align-content: center;
+		gap: 1rem;
+		min-height: 100dvh;
+		text-align: center;
+	}
+	.overlay-auth button {
+		padding: 0.7rem 1.1rem;
+		border: 1px solid #d8ad67;
+		border-radius: 8px;
+		color: #1b1514;
+		background: #d8ad67;
+		font-weight: 700;
+		cursor: pointer;
 	}
 	@media (max-width: 900px) {
 		.camera-grid {

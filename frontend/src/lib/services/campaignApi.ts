@@ -17,19 +17,3 @@ async function request(session: Session, path: string, init: RequestInit = {}) {
 }
 export const removeCampaignMember = (session: Session, campaignId: string, userId: string) =>
 	request(session, `/api/v1/campaigns/${campaignId}/members/${userId}`, { method: 'DELETE' });
-
-export const createOverlayToken = async (session: Session, campaignId: string) => {
-	const response = await fetch(`${base}/api/v1/campaigns/${campaignId}/overlay-token`, {
-		method: 'POST',
-		headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }
-	});
-	if (!response.ok)
-		throw new Error(
-			(await response.json().catch(() => null))?.error?.message ??
-				'Não foi possível gerar o link da overlay.'
-		);
-	return (await response.json()) as { token: string };
-};
-
-export const revokeOverlayToken = (session: Session, campaignId: string) =>
-	request(session, `/api/v1/campaigns/${campaignId}/overlay-token`, { method: 'DELETE' });

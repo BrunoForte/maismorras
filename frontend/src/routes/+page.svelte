@@ -18,7 +18,6 @@
 	import SceneSettings from '$lib/components/SceneSettings.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
-	import { createOverlayToken, revokeOverlayToken } from '$lib/services/campaignApi';
 	import { personagens } from '$lib/stores/gameStore';
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
 
@@ -48,7 +47,6 @@
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
 	let restoringSession = false;
-	let overlayToken = $state('');
 
 	onMount(() => {
 		restoreAppLocale();
@@ -285,10 +283,11 @@
 	}
 	function openLiveOverlay() {
 		if (!activeCampaign || !activeScene) return;
-		const url = overlayToken
-			? `/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}&access=${overlayToken}`
-			: `/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`;
-		window.open(url, '_blank', 'noopener,noreferrer');
+		window.open(
+			`/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`,
+			'_blank',
+			'noopener,noreferrer'
+		);
 	}
 	function publishOverlayScene() {
 		if (!activeCampaign || !activeScene) return;
@@ -301,28 +300,11 @@
 		}
 	}
 	async function copyLiveOverlayAddress() {
-		if (!activeCampaign || !activeScene || !overlayToken) return;
+		if (!activeCampaign || !activeScene) return;
 		await navigator.clipboard.writeText(
-			`${window.location.origin}/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}&access=${overlayToken}`
+			`${window.location.origin}/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`
 		);
 		inviteStatus = 'Endereço da overlay copiado.';
-	}
-	async function generateOverlayLink() {
-		if (!activeCampaign || !session || activeCampaign.role !== 'gm') return;
-		try {
-			const result = await createOverlayToken(session, activeCampaign.id);
-			overlayToken = result.token;
-			await copyLiveOverlayAddress();
-			inviteStatus = 'Link público da overlay gerado e copiado.';
-		} catch (cause) {
-			inviteStatus = cause instanceof Error ? cause.message : 'Não foi possível gerar a overlay.';
-		}
-	}
-	async function revokeOverlayLink() {
-		if (!activeCampaign || !session || !overlayToken) return;
-		await revokeOverlayToken(session, activeCampaign.id);
-		overlayToken = '';
-		inviteStatus = 'Link público da overlay revogado.';
 	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
@@ -457,15 +439,8 @@
 						>{/if}
 					{#if activeScene}<button
 							class="scene-overlay-copy"
-							onclick={() =>
-								overlayToken ? void copyLiveOverlayAddress() : void generateOverlayLink()}
-							title="Gerar ou copiar endereço da overlay"
-							>{overlayToken ? 'Copiar overlay' : 'Gerar overlay'}</button
-						>{/if}
-					{#if activeCampaign?.role === 'gm' && overlayToken}<button
-							class="scene-overlay-copy"
-							onclick={() => void revokeOverlayLink()}
-							title="Revogar link público da overlay">Revogar</button
+							onclick={() => void copyLiveOverlayAddress()}
+							title="Copiar endereço da overlay">Copiar overlay</button
 						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
