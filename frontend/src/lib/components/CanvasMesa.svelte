@@ -1560,21 +1560,17 @@
 	.table-tools-gm {
 		position: absolute;
 		z-index: 6;
-		top: 4.1rem;
-		left: 0.8rem;
+		top: 9.05rem;
+		left: 3.75rem;
 	}
 	.table-tools-gm-buttons {
-		display: flex;
+		display: grid;
 		gap: 0.4rem;
-		padding: 0.25rem;
-		border: 1px solid rgba(216, 173, 103, 0.45);
-		border-radius: 8px;
-		background: rgba(25, 19, 23, 0.92);
-		box-shadow: 0 8px 18px #0004;
-		backdrop-filter: blur(8px);
 	}
 	.table-tools-gm-buttons > div {
 		position: relative;
+		width: 2.35rem;
+		height: 2.35rem;
 		display: grid;
 		place-items: center;
 	}
@@ -1609,14 +1605,19 @@
 	.table-tools-gm .layer-tools,
 	.table-tools-gm .area-tools,
 	.table-tools-gm .wall-tools {
+		box-sizing: border-box;
 		top: 0;
 		left: calc(100% + 0.4rem);
 		right: auto;
-		width: 190px;
+		width: 300px;
+		padding: 0.85rem;
+		border: 1px solid rgba(216, 173, 103, 0.38);
+		border-radius: 10px;
+		color: #eee4d6;
+		background: rgba(25, 19, 23, 0.96);
+		box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+		backdrop-filter: blur(12px);
 		z-index: 20;
-	}
-	.table-tools-gm .area-tools {
-		width: 180px;
 	}
 	.remove-token {
 		border: 1px solid #9b5b4d;
