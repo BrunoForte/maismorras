@@ -1606,10 +1606,14 @@
 	.table-tools-gm .area-tools,
 	.table-tools-gm .wall-tools {
 		box-sizing: border-box;
+		display: grid;
+		gap: 0.5rem;
 		top: 0;
 		left: calc(100% + 0.4rem);
 		right: auto;
-		width: 300px;
+		width: min(300px, calc(100vw - 5rem));
+		max-height: calc(100dvh - 2rem);
+		overflow-y: auto;
 		padding: 0.85rem;
 		border: 1px solid rgba(216, 173, 103, 0.38);
 		border-radius: 10px;
@@ -1618,6 +1622,30 @@
 		box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
 		backdrop-filter: blur(12px);
 		z-index: 20;
+		font-family: inherit;
+		font-size: 0.72rem;
+		line-height: 1.35;
+		text-align: left;
+	}
+	.table-tools-gm .layer-tools label,
+	.table-tools-gm .area-tools label,
+	.table-tools-gm .layer-tools small,
+	.table-tools-gm .area-tools small,
+	.table-tools-gm .wall-tools small,
+	.table-tools-gm .layer-tools strong,
+	.table-tools-gm .area-tools strong,
+	.table-tools-gm .wall-tools strong {
+		width: 100%;
+		text-align: left;
+	}
+	.table-tools-gm .area-tools input,
+	.table-tools-gm .wall-tools select,
+	.table-tools-gm .area-tools button,
+	.table-tools-gm .wall-tools button {
+		width: 100%;
+		font: inherit;
+		font-size: 0.72rem;
+		text-align: left;
 	}
 	.remove-token {
 		border: 1px solid #9b5b4d;
