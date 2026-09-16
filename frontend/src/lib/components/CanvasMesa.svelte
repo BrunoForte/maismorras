@@ -29,6 +29,7 @@
 		rollTokenInitiative,
 		updateFog,
 		updateToken,
+		updateTokenAppearance,
 		type EffectDefinition,
 		type PersistedToken,
 		type SceneEffect,
@@ -177,7 +178,18 @@
 	}
 
 	async function persistir(personagem: Personagem) {
-		if (!isGM || !personagem.persistedId) return;
+		if (!personagem.persistedId) return;
+		if (!isGM) {
+			if (!personagem.isOwned) return;
+			try { await updateTokenAppearance(session, scene.id, personagem.persistedId, personagem.fotoUrl ?? null, {
+				...personagem.visibility,
+				imageScale: personagem.fotoEscala,
+				imageOffsetX: personagem.fotoOffsetX,
+				imageOffsetY: personagem.fotoOffsetY
+			}); } catch (error) { persistenceError = error instanceof Error ? error.message : 'Não foi possível salvar a aparência.'; return; }
+			sceneSocket?.publishRefresh();
+			return;
+		}
 		try {
 			await updateToken(session, scene.id, {
 				id: personagem.persistedId,
@@ -1088,7 +1100,7 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
-			{#if isGM}<div class="token-appearance">
+			{#if isGM || personagemSelecionado.isOwned}<div class="token-appearance">
 					<strong>Aparência do token</strong>
 					<label
 						>Zoom <input

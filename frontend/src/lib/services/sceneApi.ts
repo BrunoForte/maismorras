@@ -236,6 +236,18 @@ export const updateToken = (
 		body: JSON.stringify(token)
 	});
 
+export const updateTokenAppearance = (
+	session: Session,
+	sceneId: string,
+	tokenId: string,
+	imageUrl: string | null,
+	visibility: PersistedToken['visibility']
+) =>
+	request<{ ok: boolean }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/appearance`, {
+		method: 'PATCH',
+		body: JSON.stringify({ imageUrl, visibility })
+	});
+
 export const deleteSceneToken = (session: Session, sceneId: string, tokenId: string) =>
 	request<void>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}`, { method: 'DELETE' });
 
