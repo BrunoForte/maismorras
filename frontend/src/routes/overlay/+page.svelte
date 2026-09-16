@@ -152,6 +152,7 @@
 		if (!response.ok) throw new Error('Overlay inválida ou revogada.');
 		const data = await response.json();
 		scene = data.scene;
+		if (data.layout && Object.keys(data.layout).length) overlayLayout = data.layout;
 		tokens = data.tokens ?? [];
 		messages = (data.events ?? []).map(
 			(event: {

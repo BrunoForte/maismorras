@@ -1,5 +1,11 @@
 <script lang="ts">
-	let { campaignId, sceneId }: { campaignId: string; sceneId: string } = $props();
+	import type { Session } from '@supabase/supabase-js';
+	import { apiBase } from '$lib/services/apiBase';
+	let {
+		campaignId,
+		sceneId,
+		session
+	}: { campaignId: string; sceneId: string; session: Session | null } = $props();
 	type Block = { id: string; label: string; x: number; y: number; visible: boolean };
 	type Layout = {
 		background: string;
@@ -29,10 +35,27 @@
 		try {
 			const saved = localStorage.getItem(key());
 			layout = saved ? { ...defaults(), ...JSON.parse(saved) } : defaults();
+			void loadRemote();
 		} catch {
 			layout = defaults();
 		}
 	});
+	async function loadRemote() {
+		if (!session?.access_token) return;
+		try {
+			const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
+				headers: { Authorization: `Bearer ${session.access_token}` }
+			});
+			if (!response.ok) return;
+			const body = await response.json();
+			if (body.layout && Object.keys(body.layout).length) {
+				layout = { ...defaults(), ...body.layout };
+				localStorage.setItem(key(), JSON.stringify(layout));
+			}
+		} catch {
+			/* local layout remains available offline */
+		}
+	}
 	function dragStart(event: DragEvent, id: string) {
 		event.dataTransfer?.setData('text/plain', id);
 	}
@@ -56,6 +79,15 @@
 	}
 	function save() {
 		localStorage.setItem(key(), JSON.stringify(layout));
+		if (session?.access_token)
+			void fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
+				method: 'PUT',
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(layout)
+			});
 		if ('BroadcastChannel' in window) {
 			const channel = new BroadcastChannel(`maismorras:overlay:${campaignId}`);
 			channel.postMessage({ type: 'layout-change', sceneId });

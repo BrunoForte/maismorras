@@ -788,6 +788,7 @@
 					{#if overlayEnabled && activeScene}<OverlayLayoutEditor
 							campaignId={activeCampaign.id}
 							sceneId={activeScene.id}
+							{session}
 						/>{:else if !overlayEnabled}<p class="status-message">
 							Ative a overlay para editar seus elementos.
 						</p>{:else}<p class="status-message">Selecione uma cena para editar a overlay.</p>{/if}

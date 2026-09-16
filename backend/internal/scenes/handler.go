@@ -66,6 +66,28 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas, "walls": walls})
 }
+func (h *Handler) GetOverlayLayout(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	layout, err := h.repo.GetOverlayLayout(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"layout": layout})
+}
+func (h *Handler) SaveOverlayLayout(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var layout map[string]any
+	if err := decode(w, r, &layout); err != nil {
+		return err
+	}
+	if len(layout) == 0 {
+		return apperror.BadRequest("INVALID_LAYOUT", "O layout não pode ser vazio.")
+	}
+	if err := h.repo.SaveOverlayLayout(r.Context(), r.PathValue("sceneID"), p.UserID, layout); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"layout": layout})
+}
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	state, err := h.repo.Combat(r.Context(), r.PathValue("sceneID"), p.UserID)

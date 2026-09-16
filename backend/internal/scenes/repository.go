@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -134,6 +135,37 @@ type Visibility struct {
 type Repository struct{ pool *pgxpool.Pool }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
+
+func (r *Repository) GetOverlayLayout(ctx context.Context, sceneID, userID string) (map[string]any, error) {
+	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
+		return nil, err
+	}
+	var raw []byte
+	err := r.pool.QueryRow(ctx, `select layout from scene_overlay_layouts where scene_id=$1`, sceneID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return map[string]any{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var layout map[string]any
+	if err := json.Unmarshal(raw, &layout); err != nil {
+		return nil, err
+	}
+	return layout, nil
+}
+
+func (r *Repository) SaveOverlayLayout(ctx context.Context, sceneID, userID string, layout map[string]any) error {
+	if role, err := r.memberRole(ctx, sceneID, userID); err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	raw, err := json.Marshal(layout)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `insert into scene_overlay_layouts(scene_id,campaign_id,layout) select $1,campaign_id,$2 from scenes where id=$1 on conflict(scene_id) do update set layout=excluded.layout,updated_at=now()`, sceneID, raw)
+	return err
+}
 
 func (r *Repository) memberRole(ctx context.Context, sceneID, userID string) (string, error) {
 	var role string

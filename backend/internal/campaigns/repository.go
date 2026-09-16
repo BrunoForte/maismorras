@@ -63,6 +63,7 @@ type PublicOverlay struct {
 	Scene        json.RawMessage `json:"scene"`
 	Tokens       json.RawMessage `json:"tokens"`
 	Events       json.RawMessage `json:"events"`
+	Layout       json.RawMessage `json:"layout"`
 }
 
 func (r *Repository) Create(ctx context.Context, userID, name string) (Campaign, error) {
@@ -229,6 +230,9 @@ func (r *Repository) PublicOverlay(ctx context.Context, token, sceneID string) (
 	}
 	if err := r.pool.QueryRow(ctx, `select jsonb_build_object('id',id::text,'campaignId',campaign_id::text,'name',name,'backgroundUrl',background_url,'ambientAudioPath',ambient_audio_path,'ambientAudioEnabled',ambient_audio_enabled,'ambientAudioVolume',ambient_audio_volume,'gridSize',grid_size,'playerAccess',player_access) from scenes where id=$1 and campaign_id=$2`, sceneID, out.CampaignID).Scan(&out.Scene); err != nil {
 		return out, ErrNotFound
+	}
+	if err := r.pool.QueryRow(ctx, `select coalesce((select layout from scene_overlay_layouts where scene_id=$1),'{}'::jsonb)`, sceneID).Scan(&out.Layout); err != nil {
+		return out, err
 	}
 	if err := r.pool.QueryRow(ctx, `coalesce((select jsonb_agg(jsonb_build_object('id',st.id::text,'name',st.name,'imageUrl',st.image_url,'color',st.color,'x',st.position_x,'y',st.position_y,'size',st.size,'hpCurrent',st.hp_current,'hpMax',st.hp_max,'armorClass',st.armor_class,'initiative',st.initiative,'visibility',st.visibility) order by st.created_at from scene_tokens st where st.scene_id=$1 and st.is_hidden=false),'[]'::jsonb)`, sceneID).Scan(&out.Tokens); err != nil {
 		return out, err
