@@ -45,6 +45,8 @@
 	let sceneCreatorOpen = $state(false);
 	let sceneDraft = $state('');
 	let sceneSettingsOpen = $state(false);
+	const apiTimeoutMs = 15000;
+	let restoringSession = false;
 
 	onMount(() => {
 		restoreAppLocale();
@@ -56,11 +58,16 @@
 			loading = false;
 			return;
 		}
-		supabase.auth.getSession().then(async ({ data }) => {
-			session = data.session;
-			if (data.session) await restoreSession(data.session);
-			loading = false;
-		});
+		supabase.auth
+			.getSession()
+			.then(async ({ data }) => {
+				session = data.session;
+				if (data.session) await restoreSession(data.session);
+			})
+			.catch((cause) => {
+				error = cause instanceof Error ? cause.message : 'Não foi possível restaurar sua sessão.';
+			})
+			.finally(() => (loading = false));
 		const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
 			session = nextSession;
 			if (nextSession) void restoreSession(nextSession);
@@ -92,17 +99,29 @@
 	async function api(path: string, init: RequestInit = {}, currentSession = session) {
 		if (!currentSession)
 			throw new Error($appLocale === 'en' ? 'Session unavailable.' : 'Sessão indisponível.');
-		const response = await fetch(
-			`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
-			{
-				...init,
-				headers: {
-					...init.headers,
-					Authorization: `Bearer ${currentSession.access_token}`,
-					'Content-Type': 'application/json'
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), apiTimeoutMs);
+		let response: Response;
+		try {
+			response = await fetch(
+				`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
+				{
+					...init,
+					signal: controller.signal,
+					headers: {
+						...init.headers,
+						Authorization: `Bearer ${currentSession.access_token}`,
+						'Content-Type': 'application/json'
+					}
 				}
-			}
-		);
+			);
+		} catch (cause) {
+			if (cause instanceof DOMException && cause.name === 'AbortError')
+				throw new Error('O servidor demorou demais para responder. Tente novamente.', { cause });
+			throw cause;
+		} finally {
+			clearTimeout(timeout);
+		}
 		if (!response.ok)
 			throw new Error(
 				(await response.json()).error?.message ??
@@ -159,9 +178,15 @@
 		}
 	}
 	async function restoreSession(currentSession: Session) {
-		const invitedCampaign = await acceptPendingInvite(currentSession);
-		await loadCampaigns(currentSession);
-		if (invitedCampaign) await openCampaign(invitedCampaign);
+		if (restoringSession) return;
+		restoringSession = true;
+		try {
+			const invitedCampaign = await acceptPendingInvite(currentSession);
+			await loadCampaigns(currentSession);
+			if (invitedCampaign) await openCampaign(invitedCampaign);
+		} finally {
+			restoringSession = false;
+		}
 	}
 	async function createInvite() {
 		if (!activeCampaign || !session) return;
