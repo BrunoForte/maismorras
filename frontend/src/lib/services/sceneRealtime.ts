@@ -19,7 +19,13 @@ export function connectSceneSocket(
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
 	onStatus?: (status: RealtimeStatus) => void
 ): SceneSocket {
-	const api = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+	const configuredApi = String(import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
+	const api =
+		configuredApi && !configuredApi.includes('maismorras.vercel.app')
+			? configuredApi
+			: import.meta.env.DEV
+				? 'http://localhost:8080'
+				: 'https://maismorras-api-454646414754.southamerica-east1.run.app';
 	const url = new URL('/api/v1/ws', api);
 	url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 	url.searchParams.set('sceneId', sceneId);

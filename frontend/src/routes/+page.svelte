@@ -47,6 +47,13 @@
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
 	let restoringSession = false;
+	const configuredApiBase = String(import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
+	const apiBase =
+		configuredApiBase && !configuredApiBase.includes('maismorras.vercel.app')
+			? configuredApiBase
+			: import.meta.env.DEV
+				? 'http://localhost:8080'
+				: 'https://maismorras-api-454646414754.southamerica-east1.run.app';
 	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
 	const emptyOverlayCamera = (): OverlayCamera => ({
 		url: '',
@@ -116,18 +123,15 @@
 		const timeout = setTimeout(() => controller.abort(), apiTimeoutMs);
 		let response: Response;
 		try {
-			response = await fetch(
-				`${import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}${path}`,
-				{
-					...init,
-					signal: controller.signal,
-					headers: {
-						...init.headers,
-						Authorization: `Bearer ${currentSession.access_token}`,
-						'Content-Type': 'application/json'
-					}
+			response = await fetch(`${apiBase}${path}`, {
+				...init,
+				signal: controller.signal,
+				headers: {
+					...init.headers,
+					Authorization: `Bearer ${currentSession.access_token}`,
+					'Content-Type': 'application/json'
 				}
-			);
+			});
 		} catch (cause) {
 			if (cause instanceof DOMException && cause.name === 'AbortError')
 				throw new Error('O servidor demorou demais para responder. Tente novamente.', { cause });
