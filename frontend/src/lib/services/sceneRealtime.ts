@@ -27,6 +27,7 @@ export function connectSceneSocket(
 	let socket: WebSocket | null = null;
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	let reconnectAttempt = 0;
+	let failedAttempts = 0;
 	let manuallyClosed = false;
 
 	function scheduleReconnect() {
@@ -45,6 +46,7 @@ export function connectSceneSocket(
 		socket = new WebSocket(url, ['maismorras-auth', session.access_token]);
 		socket.onopen = () => {
 			reconnectAttempt = 0;
+			failedAttempts = 0;
 			onStatus?.('connected');
 		};
 		socket.onmessage = (event) => {
@@ -56,7 +58,14 @@ export function connectSceneSocket(
 				// Ignore malformed peer events.
 			}
 		};
-		socket.onclose = () => scheduleReconnect();
+		socket.onclose = () => {
+			failedAttempts += 1;
+			if (failedAttempts >= 5) {
+				onStatus?.('disconnected');
+				return;
+			}
+			scheduleReconnect();
+		};
 	}
 
 	connect();

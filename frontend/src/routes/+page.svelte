@@ -47,7 +47,19 @@
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
 	let restoringSession = false;
-	let overlayCameras = $state<string[]>(['', '', '', '']);
+	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
+	const emptyOverlayCamera = (): OverlayCamera => ({
+		url: '',
+		playerName: '',
+		characterName: '',
+		email: ''
+	});
+	let overlayCameras = $state<OverlayCamera[]>([
+		emptyOverlayCamera(),
+		emptyOverlayCamera(),
+		emptyOverlayCamera(),
+		emptyOverlayCamera()
+	]);
 
 	onMount(() => {
 		restoreAppLocale();
@@ -241,10 +253,24 @@
 		try {
 			const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
 			overlayCameras = saved
-				? (JSON.parse(saved) as string[]).slice(0, 4).concat(['', '', '', '']).slice(0, 4)
-				: ['', '', '', ''];
+				? (JSON.parse(saved) as Partial<OverlayCamera>[])
+						.slice(0, 4)
+						.map((camera) => ({ ...emptyOverlayCamera(), ...camera }))
+						.concat([
+							emptyOverlayCamera(),
+							emptyOverlayCamera(),
+							emptyOverlayCamera(),
+							emptyOverlayCamera()
+						])
+						.slice(0, 4)
+				: [emptyOverlayCamera(), emptyOverlayCamera(), emptyOverlayCamera(), emptyOverlayCamera()];
 		} catch {
-			overlayCameras = ['', '', '', ''];
+			overlayCameras = [
+				emptyOverlayCamera(),
+				emptyOverlayCamera(),
+				emptyOverlayCamera(),
+				emptyOverlayCamera()
+			];
 		}
 		workspaceTab = 'map';
 		activeScene = null;
@@ -292,8 +318,15 @@
 	}
 	function openLiveOverlay() {
 		if (!activeCampaign || !activeScene) return;
+		// URLSearchParams is local and only used to construct the share URL.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
-		overlayCameras.forEach((url, index) => url && params.set(`camera${index + 1}`, url));
+		overlayCameras.forEach((camera, index) => {
+			if (!camera.url) return;
+			params.set(`camera${index + 1}`, camera.url);
+			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
+			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
+		});
 		window.open(`/overlay?${params.toString()}`, '_blank', 'noopener,noreferrer');
 	}
 	function publishOverlayScene() {
@@ -308,24 +341,25 @@
 	}
 	async function copyLiveOverlayAddress() {
 		if (!activeCampaign || !activeScene) return;
+		// URLSearchParams is local and only used to construct the share URL.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
-		overlayCameras.forEach((url, index) => url && params.set(`camera${index + 1}`, url));
+		overlayCameras.forEach((camera, index) => {
+			if (!camera.url) return;
+			params.set(`camera${index + 1}`, camera.url);
+			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
+			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
+		});
 		await navigator.clipboard.writeText(`${window.location.origin}/overlay?${params.toString()}`);
 		inviteStatus = 'Endereço da overlay copiado.';
 	}
-	function configureOverlayCameras() {
-		const next = overlayCameras.map(
-			(current, index) =>
-				window.prompt(`URL VDO.Ninja da câmera ${index + 1} (vazio para remover):`, current) ??
-				current
-		);
-		overlayCameras = next.map((url) => url.trim());
+	function saveOverlayCameras() {
 		if (activeCampaign)
 			localStorage.setItem(
 				`maismorras:overlay-cameras:${activeCampaign.id}`,
 				JSON.stringify(overlayCameras)
 			);
-		inviteStatus = 'Câmeras da overlay atualizadas.';
+		inviteStatus = 'Câmeras da overlay salvas.';
 	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
@@ -450,23 +484,8 @@
 					</div>
 					{#if activeScene}<button
 							class="scene-overlay-link"
-							onclick={openLiveOverlay}
-							title={$appLocale === 'en' ? 'Open live overlay' : 'Abrir overlay da live'}>◈</button
-						>{/if}
-					{#if activeScene}<button
-							class="scene-overlay-link"
 							onclick={publishOverlayScene}
 							title="Enviar cena atual para a overlay">↻</button
-						>{/if}
-					{#if activeScene}<button
-							class="scene-overlay-copy"
-							onclick={() => void copyLiveOverlayAddress()}
-							title="Copiar endereço da overlay">Copiar overlay</button
-						>{/if}
-					{#if activeScene}<button
-							class="scene-overlay-copy"
-							onclick={configureOverlayCameras}
-							title="Configurar câmeras da overlay">Câmeras</button
 						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
@@ -687,6 +706,30 @@
 							>{$appLocale === 'en' ? 'NPCs' : 'NPCs'}</button
 						>
 					</div>
+					<section class="overlay-settings">
+						<p class="eyebrow">OVERLAY DA LIVE</p>
+						<h3>Link, cena e câmeras</h3>
+						<p>
+							Configure até quatro câmeras VDO.Ninja. Os nomes serão exibidos junto ao vídeo na
+							overlay.
+						</p>
+						<div class="overlay-camera-grid">
+							{#each overlayCameras as camera, index (index)}<fieldset>
+									<legend>Câmera {index + 1}</legend>
+									<input bind:value={camera.url} placeholder="Link https://vdo.ninja/..." />
+									<input bind:value={camera.playerName} placeholder="Nome do jogador" />
+									<input bind:value={camera.characterName} placeholder="Nome do personagem" />
+									<input bind:value={camera.email} type="email" placeholder="E-mail (opcional)" />
+								</fieldset>{/each}
+						</div>
+						<div class="settings-actions">
+							<button class="primary-button" onclick={saveOverlayCameras}>Salvar câmeras</button>
+							<button class="secondary-button" onclick={openLiveOverlay}>Abrir overlay</button>
+							<button class="secondary-button" onclick={() => void copyLiveOverlayAddress()}
+								>Copiar link da overlay</button
+							>
+						</div>
+					</section>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 			{#if sheetOpen && activeScene}<CharacterSheet

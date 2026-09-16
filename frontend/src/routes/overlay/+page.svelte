@@ -7,7 +7,7 @@
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
-import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
+	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -21,9 +21,12 @@ import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
 	let audioBlocked = $state(false);
-	let cameraUrls = $state<string[]>([]);
+	type CameraSlot = { url: string; playerName: string; characterName: string };
+	let cameraSlots = $state<CameraSlot[]>([]);
 	let mapBackground = $state('');
 	let initialized = false;
+	// This set is a private animation de-duplication cache, not rendered state.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const seenRolls = new Set<string>();
 	let publicMode = $state(false);
 	let authRequired = $state(false);
@@ -148,9 +151,13 @@ import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 		setDice3dPreference(true);
 		publicMode = Boolean(query().get('access'));
 		if (publicMode) {
-			cameraUrls = [1, 2, 3, 4]
-				.map((index) => query().get(`camera${index}`) ?? '')
-				.filter((value) => value.startsWith('https://vdo.ninja/'));
+			cameraSlots = [1, 2, 3, 4]
+				.map((index) => ({
+					url: query().get(`camera${index}`) ?? '',
+					playerName: query().get(`camera${index}Player`) ?? '',
+					characterName: query().get(`camera${index}Character`) ?? ''
+				}))
+				.filter((camera) => camera.url.startsWith('https://vdo.ninja/'));
 			void refreshPublic().catch(
 				(err) =>
 					(error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.')
@@ -186,9 +193,13 @@ import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 		};
 		window.addEventListener('storage', onStorage);
 		const params = query();
-		cameraUrls = [1, 2, 3, 4]
-			.map((index) => params.get(`camera${index}`) ?? '')
-			.filter((value) => value.startsWith('https://vdo.ninja/'));
+		cameraSlots = [1, 2, 3, 4]
+			.map((index) => ({
+				url: params.get(`camera${index}`) ?? '',
+				playerName: params.get(`camera${index}Player`) ?? '',
+				characterName: params.get(`camera${index}Character`) ?? ''
+			}))
+			.filter((camera) => camera.url.startsWith('https://vdo.ninja/'));
 		supabase.auth.getSession().then(({ data }) => {
 			if (disposed || !data.session) {
 				authRequired = true;
@@ -303,12 +314,15 @@ import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 						>
 					</div>{/each}
 			</aside>{/if}
-		{#if cameraUrls.length}<section class="camera-grid" aria-label="Câmeras dos jogadores">
-				{#each cameraUrls as camera, index (camera)}<iframe
-						src={camera}
-						title={`Câmera do jogador ${index + 1}`}
-						allow="camera; microphone; autoplay; fullscreen"
-					></iframe>{/each}
+		{#if cameraSlots.length}<section class="camera-grid" aria-label="Câmeras dos jogadores">
+				{#each cameraSlots as camera, index (camera.url)}<article class="camera-card">
+						<iframe
+							src={camera.url}
+							title={`Câmera do jogador ${index + 1}`}
+							allow="camera; microphone; autoplay; fullscreen"
+						></iframe><strong>{camera.playerName || `Jogador ${index + 1}`}</strong
+						>{#if camera.characterName}<small>{camera.characterName}</small>{/if}
+					</article>{/each}
 			</section>{/if}
 	{/if}
 </main>
@@ -472,6 +486,15 @@ import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 		border: 1px solid #d8ad6744;
 		border-radius: 8px;
 		background: #0c0a0fdd;
+	}
+	.camera-card {
+		display: grid;
+		gap: 0.25rem;
+		color: #f0cb85;
+		font-size: 0.72rem;
+	}
+	.camera-card small {
+		color: #cdbda9;
 	}
 	.overlay-error,
 	.overlay-loading {
