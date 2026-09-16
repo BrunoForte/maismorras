@@ -292,11 +292,20 @@
 				];
 			}
 			activeScene = availableScenes[0] ?? null;
-			if (!activeScene)
-				error =
-					$appLocale === 'en'
-						? 'The Game Master has not created a scene for this campaign yet.'
-						: 'O narrador ainda não criou uma cena para esta campanha.';
+			if (!activeScene) {
+				if (campaign.role === 'gm') {
+					error =
+						$appLocale === 'en'
+							? 'Create a scene to start the table.'
+							: 'Crie uma cena para iniciar a mesa.';
+				} else {
+					error = '';
+					inviteStatus =
+						$appLocale === 'en'
+							? 'Waiting for the Game Master to create a scene.'
+							: 'Aguardando o narrador criar uma cena.';
+				}
+			}
 		} catch (err) {
 			error =
 				err instanceof Error
@@ -738,9 +747,9 @@
 					</section>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
-			{#if sheetOpen && activeScene}<CharacterSheet
+			{#if sheetOpen && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheet
 					campaignId={activeCampaign.id}
-					sceneId={activeScene.id}
+					sceneId={activeScene?.id ?? ''}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					characterId={editingCharacter?.id}

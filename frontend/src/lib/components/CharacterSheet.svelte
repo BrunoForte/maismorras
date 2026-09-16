@@ -415,15 +415,18 @@
 			previousLevel = sheet.level;
 			syncProgression();
 			if (sheet.portraitPath) void refreshPortraitPreview();
-			const scene = await loadScene(session, sceneId);
-			const token = characterId
-				? scene.tokens.find((item) => item.actorId === characterId)
-				: scene.tokens.find((item) => item.isOwner);
-			if (token) {
-				const effects = await listSceneEffects(session, sceneId);
-				activeConditions = effects.effects
-					.filter((effect) => effect.tokenId === token.id)
-					.map((effect) => effect.name);
+			activeConditions = [];
+			if (sceneId) {
+				const scene = await loadScene(session, sceneId);
+				const token = characterId
+					? scene.tokens.find((item) => item.actorId === characterId)
+					: scene.tokens.find((item) => item.isOwner);
+				if (token) {
+					const effects = await listSceneEffects(session, sceneId);
+					activeConditions = effects.effects
+						.filter((effect) => effect.tokenId === token.id)
+						.map((effect) => effect.name);
+				}
 			}
 		} catch (error) {
 			if (!characterId && (error as Error & { status?: number }).status === 404)
@@ -1228,6 +1231,10 @@
 	}
 	async function createBoardToken() {
 		if (!isGM) return;
+		if (!sceneId) {
+			message = 'O narrador ainda não criou uma cena para vincular o personagem.';
+			return;
+		}
 		saving = true;
 		message = '';
 		try {
