@@ -22,10 +22,29 @@
 	let name = $state('');
 	let hp = $state(10);
 	let ca = $state(10);
+	let level = $state(1);
+	let gender = $state<'masculino' | 'feminino' | 'unisex'>('unisex');
 	let loading = $state(true);
 	let saving = $state(false);
 	let placing = $state<string | null>(null);
 	let message = $state('');
+	const names = {
+		masculino: ['Aldren', 'Borin', 'Cael', 'Darian', 'Eron', 'Garrik'],
+		feminino: ['Althea', 'Brina', 'Celeste', 'Dagna', 'Elora', 'Farya'],
+		unisex: ['Ari', 'Bex', 'Cris', 'Lumen', 'Neri', 'Solen']
+	};
+	const classes = ['guerreiro', 'ladino', 'mago', 'clérigo'];
+	function randomName() {
+		name = names[gender][Math.floor(Math.random() * names[gender].length)];
+	}
+	function randomNPC() {
+		const chosenClass = classes[Math.floor(Math.random() * classes.length)];
+		const hpBase = chosenClass === 'guerreiro' ? 12 : chosenClass === 'mago' ? 6 : 9;
+		const maxHp = hpBase + Math.max(0, level - 1) * (chosenClass === 'guerreiro' ? 7 : 5);
+		name = `${chosenClass[0].toUpperCase()}${chosenClass.slice(1)} ${level}`;
+		hp = maxHp;
+		ca = 10 + Math.min(8, Math.floor(level / 2)) + (chosenClass === 'guerreiro' ? 2 : 0);
+	}
 	onMount(async () => {
 		try {
 			npcs = (await listNPCs(session, campaignId)).npcs;
@@ -161,6 +180,16 @@
 			/>
 			<label>PV <input bind:value={hp} type="number" min="1" max="9999" /></label>
 			<label>CA <input bind:value={ca} type="number" min="0" max="99" /></label>
+			<label>Nível <input bind:value={level} type="number" min="1" max="20" /></label>
+			<label
+				>Nome <select bind:value={gender}
+					><option value="unisex">Unisex</option><option value="masculino">Masculino</option><option
+						value="feminino">Feminino</option
+					></select
+				></label
+			>
+			<button type="button" class="secondary" onclick={randomName}>Gerar nome</button>
+			<button type="button" class="secondary" onclick={randomNPC}>NPC aleatório</button>
 			<button disabled={saving}
 				>{saving
 					? $appLocale === 'en'
@@ -250,10 +279,22 @@
 	}
 	form {
 		display: grid;
-		grid-template-columns: 1fr auto auto auto;
+		grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 		gap: 0.55rem;
 		padding: 1rem;
 		border-bottom: 1px solid #403536;
+	}
+	form > input:first-child {
+		grid-column: span 2;
+	}
+	form button {
+		min-height: 2.2rem;
+	}
+	.secondary {
+		border: 1px solid #806039;
+		border-radius: 7px;
+		color: #f0cb85;
+		background: #2b211e;
 	}
 	input {
 		min-width: 0;

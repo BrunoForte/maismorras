@@ -16,6 +16,7 @@
 	import CompendiumView from '$lib/components/CompendiumView.svelte';
 	import BestiaryView from '$lib/components/BestiaryView.svelte';
 	import SceneSettings from '$lib/components/SceneSettings.svelte';
+	import OverlayLayoutEditor from '$lib/components/OverlayLayoutEditor.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -790,6 +791,10 @@
 							>
 						</div>
 					</section>
+					{#if activeScene}<OverlayLayoutEditor
+							campaignId={activeCampaign.id}
+							sceneId={activeScene.id}
+						/>{/if}
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 			{#if sheetOpen && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheet

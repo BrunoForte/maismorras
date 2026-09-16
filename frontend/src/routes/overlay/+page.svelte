@@ -26,6 +26,11 @@
 	type CameraSlot = { url: string; playerName: string; characterName: string };
 	let cameraSlots = $state<CameraSlot[]>([]);
 	let mapBackground = $state('');
+	type OverlayBlock = { id: string; x: number; y: number; visible: boolean };
+	let overlayLayout = $state<{ background: string; blocks: OverlayBlock[] }>({
+		background: '',
+		blocks: []
+	});
 	let initialized = false;
 	// This set is a private animation de-duplication cache, not rendered state.
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
@@ -153,6 +158,12 @@
 
 	onMount(() => {
 		setDice3dPreference(true);
+		try {
+			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);
+			if (saved) overlayLayout = JSON.parse(saved);
+		} catch {
+			overlayLayout = { background: '', blocks: [] };
+		}
 		publicMode = Boolean(query().get('access'));
 		if (publicMode) {
 			cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
@@ -260,6 +271,11 @@
 		message.texto.split(' · ')[0] ||
 		message.detalhesRolagem?.expressao ||
 		'Rolagem';
+	const block = (id: string) => overlayLayout.blocks.find((item) => item.id === id);
+	const blockStyle = (id: string) => {
+		const item = block(id);
+		return item ? `--overlay-x:${item.x}%;--overlay-y:${item.y}%;` : '';
+	};
 </script>
 
 <svelte:head>
@@ -276,7 +292,11 @@
 		>
 			Carregando overlay…
 		</p>{:else}
-		<header class="overlay-header">
+		<header
+			class="overlay-header"
+			class:layout-hidden={block('header')?.visible === false}
+			style={blockStyle('header')}
+		>
 			<div>
 				<span>MAISMORRAS · LIVE</span>
 				<h1>{scene.name}</h1>
@@ -294,8 +314,9 @@
 				>{/if}{/if}
 		<section
 			class="map-preview"
+			class:layout-hidden={block('map')?.visible === false}
 			aria-label="Mapa da cena"
-			style={`--grid-size: ${scene.gridSize}px; background-image: ${mapBackground ? `url("${mapBackground}")` : 'none'}`}
+			style={`--grid-size: ${scene.gridSize}px; ${blockStyle('map')} background-image: ${mapBackground ? `url("${mapBackground}")` : overlayLayout.background ? `url("${overlayLayout.background}")` : 'none'}`}
 		>
 			<div class="map-grid" aria-hidden="true"></div>
 			{#each visibleTokens() as token (token.id)}<div
@@ -307,7 +328,11 @@
 				</div>{/each}
 			<DiceOverlay />
 		</section>
-		<section class="token-strip" aria-label="Personagens na cena">
+		<section
+			class:hidden={block('map')?.visible === false}
+			class="token-strip"
+			aria-label="Personagens na cena"
+		>
 			{#each visibleTokens() as token (token.id)}<article class="token-card">
 					{#if tokenImage(token)}<img src={tokenImage(token) ?? ''} alt="" />{:else}<div
 							class="token-fallback"
@@ -321,14 +346,22 @@
 					</div>
 				</article>{/each}
 		</section>
-		{#if recentRolls().length}<aside class="roll-feed" aria-label="Últimas rolagens">
+		{#if recentRolls().length && block('rolls')?.visible !== false}<aside
+				class="roll-feed"
+				aria-label="Últimas rolagens"
+				style={blockStyle('rolls')}
+			>
 				{#each recentRolls() as message (message.id)}<div class="roll-item">
 						<small>{message.autor} / {rollLabel(message)}</small><strong
 							>{message.detalhesRolagem?.total ?? '—'}</strong
 						>
 					</div>{/each}
 			</aside>{/if}
-		{#if cameraSlots.length}<section class="camera-grid" aria-label="Câmeras dos jogadores">
+		{#if cameraSlots.length && block('cameras')?.visible !== false}<section
+				class="camera-grid"
+				aria-label="Câmeras dos jogadores"
+				style={blockStyle('cameras')}
+			>
 				{#each cameraSlots as camera, index (camera.url)}<article class="camera-card">
 						<iframe
 							src={camera.url}
@@ -358,6 +391,9 @@
 		background:
 			radial-gradient(circle at 15% 0%, #53341caa, transparent 32%),
 			linear-gradient(180deg, #08070bd9, transparent 32%, #08070bd9);
+	}
+	.layout-hidden {
+		display: none !important;
 	}
 	.map-preview {
 		position: relative;
