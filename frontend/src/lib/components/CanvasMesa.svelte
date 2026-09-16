@@ -181,7 +181,7 @@
 		if (!personagem.persistedId) return;
 		if (!isGM) {
 			if (!personagem.isOwned) return;
-			try { await updateTokenAppearance(session, scene.id, personagem.persistedId, personagem.fotoUrl ?? null, {
+			try { await updateTokenAppearance(session, scene.id, personagem.persistedId, personagem.fotoUrl ?? null, personagem.cor, {
 				...personagem.visibility,
 				imageScale: personagem.fotoEscala,
 				imageOffsetX: personagem.fotoOffsetX,
@@ -243,6 +243,12 @@
 		};
 		atualizarSelecionado((p) => ({ ...p, visibility }));
 		void persistir({ ...personagemSelecionado, visibility });
+	}
+	function alterarCor(valor: string) {
+		const color = Number.parseInt(valor.replace('#', ''), 16);
+		if (!Number.isFinite(color)) return;
+		atualizarSelecionado((p) => ({ ...p, cor: color }));
+		if (personagemSelecionado) void persistir({ ...personagemSelecionado, cor: color });
 	}
 
 	async function removerTokenSelecionado() {
@@ -1131,6 +1137,9 @@
 							value={personagemSelecionado.fotoOffsetY}
 							onchange={(event) => alterarAparencia('fotoOffsetY', event.currentTarget.value)}
 						/></label
+					>
+					<label class="color-control"
+						>Cor <input type="color" value={`#${personagemSelecionado.cor.toString(16).padStart(6, '0')}`} onchange={(event) => alterarCor(event.currentTarget.value)} /></label
 					>
 					<button onclick={alternarFundoTransparente}
 						>{personagemSelecionado.visibility.transparentBackground

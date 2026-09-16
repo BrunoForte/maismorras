@@ -241,11 +241,12 @@ export const updateTokenAppearance = (
 	sceneId: string,
 	tokenId: string,
 	imageUrl: string | null,
+	color: number,
 	visibility: PersistedToken['visibility']
 ) =>
 	request<{ ok: boolean }>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/appearance`, {
 		method: 'PATCH',
-		body: JSON.stringify({ imageUrl, visibility })
+		body: JSON.stringify({ imageUrl, color, visibility })
 	});
 
 export const deleteSceneToken = (session: Session, sceneId: string, tokenId: string) =>

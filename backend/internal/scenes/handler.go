@@ -269,6 +269,24 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, token)
 }
+func (h *Handler) UpdateTokenAppearance(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		ImageURL   *string    `json:"imageUrl"`
+		Color      int        `json:"color"`
+		Visibility Visibility `json:"visibility"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	if in.Color < 0 || in.Color > 16777215 || in.Visibility.ImageScale < 0.5 || in.Visibility.ImageScale > 3 || in.Visibility.ImageOffsetX < -100 || in.Visibility.ImageOffsetX > 100 || in.Visibility.ImageOffsetY < -100 || in.Visibility.ImageOffsetY > 100 {
+		return apperror.BadRequest("INVALID_APPEARANCE", "A aparência do token está fora dos limites permitidos.")
+	}
+	if err := h.repo.UpdateTokenAppearance(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, in.ImageURL, in.Color, in.Visibility); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"ok": true})
+}
 func (h *Handler) SetTokenInitiative(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var input struct {

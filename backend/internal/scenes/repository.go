@@ -122,10 +122,14 @@ type Token struct {
 // The server applies this policy before serialising the response; the browser never
 // receives hidden HP, AC or conditions and therefore cannot reveal them locally.
 type Visibility struct {
-	ShowName     bool `json:"showName"`
-	ShowHP       bool `json:"showHP"`
-	ShowAC       bool `json:"showAC"`
-	ShowStatuses bool `json:"showStatuses"`
+	ShowName              bool    `json:"showName"`
+	ShowHP                bool    `json:"showHP"`
+	ShowAC                bool    `json:"showAC"`
+	ShowStatuses          bool    `json:"showStatuses"`
+	TransparentBackground bool    `json:"transparentBackground"`
+	ImageScale            float64 `json:"imageScale"`
+	ImageOffsetX          float64 `json:"imageOffsetX"`
+	ImageOffsetY          float64 `json:"imageOffsetY"`
 }
 type Repository struct{ pool *pgxpool.Pool }
 
@@ -1084,6 +1088,22 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 		}
 	}
 	return t, nil
+}
+
+func (r *Repository) UpdateTokenAppearance(ctx context.Context, sceneID, tokenID, userID string, imageURL *string, color int, visibility Visibility) error {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return err
+	}
+	var ownerID *string
+	if err = r.pool.QueryRow(ctx, `select owner_id::text from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&ownerID); err != nil {
+		return err
+	}
+	if role != "gm" && (ownerID == nil || *ownerID != userID) {
+		return ErrForbidden
+	}
+	_, err = r.pool.Exec(ctx, `update scene_tokens set image_url=$1,color=$2,visibility=jsonb_set(jsonb_set(jsonb_set(visibility,'{transparentBackground}',to_jsonb($3::boolean),true),'{imageScale}',to_jsonb($4::numeric),true),'{imageOffsetX}',to_jsonb($5::numeric),true)||jsonb_build_object('imageOffsetY',$6::numeric),updated_at=now() where id=$7 and scene_id=$8`, imageURL, color, visibility.TransparentBackground, visibility.ImageScale, visibility.ImageOffsetX, visibility.ImageOffsetY, tokenID, sceneID)
+	return err
 }
 
 // SetTokenInitiative stores a GM's manual initiative edit without requiring
