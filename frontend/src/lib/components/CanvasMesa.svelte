@@ -1560,19 +1560,18 @@
 	.table-tools-gm {
 		position: absolute;
 		z-index: 6;
-		top: 9.05rem;
-		left: 3.75rem;
+		top: 0.8rem;
+		left: 0.9rem;
+		width: 0;
+		height: 0;
 	}
 	.table-tools-gm-buttons {
-		display: grid;
-		gap: 0.4rem;
+		display: block;
 	}
 	.table-tools-gm-buttons > div {
 		position: relative;
-		width: 2.35rem;
-		height: 2.35rem;
-		display: grid;
-		place-items: center;
+		width: 0;
+		height: 0;
 	}
 	.table-tools-gm-buttons .layer-tool-trigger,
 	.table-tools-gm-buttons .area-tool-trigger,
@@ -1627,6 +1626,12 @@
 		line-height: 1.35;
 		text-align: left;
 	}
+	.table-tools-gm .area-tools {
+		top: 2.75rem;
+	}
+	.table-tools-gm .wall-tools {
+		top: 5.5rem;
+	}
 	.table-tools-gm .layer-tools label,
 	.table-tools-gm .area-tools label,
 	.table-tools-gm .layer-tools small,
@@ -1675,7 +1680,7 @@
 		}
 		/* Four compact controls in one row: ruler, initiative, dice, and areas. */
 		.table-tools-gm {
-			top: 4.05rem;
+			top: 0.75rem;
 			left: 50%;
 			transform: translateX(-50%);
 		}
@@ -1687,7 +1692,7 @@
 		.table-tools-gm .layer-tools,
 		.table-tools-gm .area-tools,
 		.table-tools-gm .wall-tools {
-			top: 2.85rem;
+			top: 3.55rem;
 			left: 50%;
 			transform: translateX(-50%);
 			z-index: 20;
