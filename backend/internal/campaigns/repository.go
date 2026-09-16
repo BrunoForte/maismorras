@@ -79,6 +79,12 @@ func (r *Repository) Create(ctx context.Context, userID, name string) (Campaign,
 	if _, err = tx.Exec(ctx, `insert into campaign_members (campaign_id,user_id,role) values ($1,$2,'gm')`, item.ID, userID); err != nil {
 		return Campaign{}, err
 	}
+	// Every new campaign starts with an empty scene visible to invited players.
+	// Keeping this in the same transaction prevents campaigns without a playable
+	// entry scene when the API is called outside the web client.
+	if _, err = tx.Exec(ctx, `insert into scenes (campaign_id,name,player_access) values ($1,$2,'available')`, item.ID, "Cena principal"); err != nil {
+		return Campaign{}, err
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return Campaign{}, err
 	}

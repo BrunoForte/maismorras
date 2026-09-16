@@ -31,6 +31,7 @@
 	let activeScene = $state<Scene | null>(null);
 	let campaignName = $state('');
 	let loadingCampaigns = $state(false);
+	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
 	type WorkspaceTab = 'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign';
@@ -318,6 +319,7 @@
 		workspaceTab = 'map';
 		activeScene = null;
 		if (!session) return;
+		loadingScene = true;
 		try {
 			const response = await listScenes(session, campaign.id);
 			availableScenes = response.scenes;
@@ -352,6 +354,8 @@
 					: $appLocale === 'en'
 						? 'Could not open the scene.'
 						: 'Não foi possível abrir a cena.';
+		} finally {
+			loadingScene = false;
 		}
 	}
 	function openMySheet() {
@@ -707,7 +711,9 @@
 										onadded={() => reloadActiveScene()}
 									/>{/if}
 							</div>
-						{/key}{:else}<p class="status-message">Carregando cena…</p>{/if}
+						{/key}{:else}<p class="status-message">
+							{loadingScene ? 'Carregando cena…' : inviteStatus || 'Nenhuma cena disponível.'}
+						</p>{/if}
 				</main>
 			{:else if workspaceTab === 'sheets'}<CampaignSheets
 					campaignId={activeCampaign.id}
