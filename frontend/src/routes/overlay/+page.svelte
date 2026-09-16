@@ -6,6 +6,8 @@
 	import type { Mensagem } from '$lib/stores/chatStore';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
+	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
+import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -20,6 +22,9 @@
 	let audio = $state<HTMLAudioElement>();
 	let audioBlocked = $state(false);
 	let cameraUrls = $state<string[]>([]);
+	let mapBackground = $state('');
+	let initialized = false;
+	const seenRolls = new Set<string>();
 	let publicMode = $state(false);
 	let authRequired = $state(false);
 	const apiBase = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -63,6 +68,19 @@
 				if (audio) audio.pause();
 			}
 			if (client) {
+				if (loadedScene.scene.backgroundUrl) {
+					if (
+						loadedScene.scene.backgroundUrl.startsWith('http') ||
+						loadedScene.scene.backgroundUrl.startsWith('data:')
+					)
+						mapBackground = loadedScene.scene.backgroundUrl;
+					else {
+						const { data } = await client.storage
+							.from('campaign-assets')
+							.createSignedUrl(loadedScene.scene.backgroundUrl, 3600);
+						mapBackground = data?.signedUrl ?? '';
+					}
+				}
 				const signedEntries = await Promise.all(
 					loadedScene.tokens.map(async (token) => {
 						if (
@@ -80,6 +98,19 @@
 				imageUrls = Object.fromEntries(signedEntries);
 			}
 			messages = loadedMessages;
+			for (const message of loadedMessages.filter((item) => item.tipo === 'rolagem')) {
+				if (!initialized) seenRolls.add(message.id);
+				else if (!seenRolls.has(message.id) && message.detalhesRolagem) {
+					seenRolls.add(message.id);
+					diceOverlay.set({
+						expression: message.detalhesRolagem.expressao,
+						total: message.detalhesRolagem.total,
+						dice: message.detalhesRolagem.dados,
+						nonce: message.id
+					});
+				}
+			}
+			initialized = true;
 			error = '';
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.';
@@ -114,6 +145,7 @@
 	}
 
 	onMount(() => {
+		setDice3dPreference(true);
 		publicMode = Boolean(query().get('access'));
 		if (publicMode) {
 			cameraUrls = [1, 2, 3, 4]
@@ -235,6 +267,21 @@
 			></audio>{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
 					>Ativar áudio da cena</button
 				>{/if}{/if}
+		<section
+			class="map-preview"
+			aria-label="Mapa da cena"
+			style={`--grid-size: ${scene.gridSize}px; background-image: ${mapBackground ? `url("${mapBackground}")` : 'none'}`}
+		>
+			<div class="map-grid" aria-hidden="true"></div>
+			{#each visibleTokens() as token (token.id)}<div
+					class="map-token"
+					style={`left:${token.x}px;top:${token.y}px;width:${token.size}px;height:${token.size}px;background:${token.color ? `#${token.color.toString(16).padStart(6, '0')}` : '#7b4b37'}`}
+					title={token.name}
+				>
+					{token.name.slice(0, 1).toUpperCase()}
+				</div>{/each}
+			<DiceOverlay />
+		</section>
 		<section class="token-strip" aria-label="Personagens na cena">
 			{#each visibleTokens() as token (token.id)}<article class="token-card">
 					{#if tokenImage(token)}<img src={tokenImage(token) ?? ''} alt="" />{:else}<div
@@ -283,6 +330,39 @@
 		background:
 			radial-gradient(circle at 15% 0%, #53341caa, transparent 32%),
 			linear-gradient(180deg, #08070bd9, transparent 32%, #08070bd9);
+	}
+	.map-preview {
+		position: relative;
+		isolation: isolate;
+		width: min(1100px, 100%);
+		height: min(60dvh, 680px);
+		margin: 0 auto;
+		border: 1px solid #d8ad6755;
+		border-radius: 10px;
+		background-color: #151019;
+		background-position: center;
+		background-size: cover;
+		overflow: hidden;
+	}
+	.map-grid {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background-image:
+			linear-gradient(#d8ad6733 1px, transparent 1px),
+			linear-gradient(90deg, #d8ad6733 1px, transparent 1px);
+		background-size: var(--grid-size) var(--grid-size);
+	}
+	.map-token {
+		position: absolute;
+		display: grid;
+		place-items: center;
+		border: 2px solid #f7dfaa;
+		border-radius: 50%;
+		color: #fff4da;
+		font-weight: 800;
+		text-shadow: 0 1px 3px #000;
+		box-shadow: 0 3px 10px #000b;
 	}
 	.overlay-header {
 		display: flex;

@@ -47,6 +47,7 @@
 	let sceneSettingsOpen = $state(false);
 	const apiTimeoutMs = 15000;
 	let restoringSession = false;
+	let overlayCameras = $state<string[]>(['', '', '', '']);
 
 	onMount(() => {
 		restoreAppLocale();
@@ -237,6 +238,14 @@
 		// Tokens pertencem a uma cena. Nunca carregue o estado visual da mesa anterior.
 		personagens.set([]);
 		activeCampaign = campaign;
+		try {
+			const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
+			overlayCameras = saved
+				? (JSON.parse(saved) as string[]).slice(0, 4).concat(['', '', '', '']).slice(0, 4)
+				: ['', '', '', ''];
+		} catch {
+			overlayCameras = ['', '', '', ''];
+		}
 		workspaceTab = 'map';
 		activeScene = null;
 		if (!session) return;
@@ -283,11 +292,9 @@
 	}
 	function openLiveOverlay() {
 		if (!activeCampaign || !activeScene) return;
-		window.open(
-			`/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`,
-			'_blank',
-			'noopener,noreferrer'
-		);
+		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
+		overlayCameras.forEach((url, index) => url && params.set(`camera${index + 1}`, url));
+		window.open(`/overlay?${params.toString()}`, '_blank', 'noopener,noreferrer');
 	}
 	function publishOverlayScene() {
 		if (!activeCampaign || !activeScene) return;
@@ -301,10 +308,24 @@
 	}
 	async function copyLiveOverlayAddress() {
 		if (!activeCampaign || !activeScene) return;
-		await navigator.clipboard.writeText(
-			`${window.location.origin}/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`
-		);
+		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
+		overlayCameras.forEach((url, index) => url && params.set(`camera${index + 1}`, url));
+		await navigator.clipboard.writeText(`${window.location.origin}/overlay?${params.toString()}`);
 		inviteStatus = 'Endereço da overlay copiado.';
+	}
+	function configureOverlayCameras() {
+		const next = overlayCameras.map(
+			(current, index) =>
+				window.prompt(`URL VDO.Ninja da câmera ${index + 1} (vazio para remover):`, current) ??
+				current
+		);
+		overlayCameras = next.map((url) => url.trim());
+		if (activeCampaign)
+			localStorage.setItem(
+				`maismorras:overlay-cameras:${activeCampaign.id}`,
+				JSON.stringify(overlayCameras)
+			);
+		inviteStatus = 'Câmeras da overlay atualizadas.';
 	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
@@ -441,6 +462,11 @@
 							class="scene-overlay-copy"
 							onclick={() => void copyLiveOverlayAddress()}
 							title="Copiar endereço da overlay">Copiar overlay</button
+						>{/if}
+					{#if activeScene}<button
+							class="scene-overlay-copy"
+							onclick={configureOverlayCameras}
+							title="Configurar câmeras da overlay">Câmeras</button
 						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
