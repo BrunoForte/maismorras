@@ -29,7 +29,11 @@ class SharedSceneConnection {
 	private readonly subscribers = new Set<Subscriber>();
 	private readonly url: URL;
 
-	constructor(private readonly key: string, sceneId: string, session: Session) {
+	constructor(
+		private readonly key: string,
+		sceneId: string,
+		session: Session
+	) {
 		this.token = session.access_token;
 		this.url = new URL('/api/v1/ws', apiBase);
 		this.url.protocol = this.url.protocol === 'https:' ? 'wss:' : 'ws:';

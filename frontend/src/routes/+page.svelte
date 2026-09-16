@@ -75,7 +75,10 @@
 		Promise.race([
 			supabase.auth.getSession(),
 			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new Error('A autenticação demorou demais para responder.')), sessionTimeoutMs)
+				setTimeout(
+					() => reject(new Error('A autenticação demorou demais para responder.')),
+					sessionTimeoutMs
+				)
 			)
 		])
 			.then(async ({ data }) => {
