@@ -1,3 +1,4 @@
+<!-- eslint-disable svelte/no-navigation-without-resolve -- overlay intentionally opens in a separate tab. -->
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
@@ -255,6 +256,14 @@
 		personagens.set([]);
 		activeScene = scene;
 	}
+	function openLiveOverlay() {
+		if (!activeCampaign || !activeScene) return;
+		window.open(
+			`/overlay?campaign=${activeCampaign.id}&scene=${activeScene.id}`,
+			'_blank',
+			'noopener,noreferrer'
+		);
+	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
 		const name = sceneDraft.trim();
@@ -376,6 +385,11 @@
 								title={$appLocale === 'en' ? 'Configure scene' : 'Configurar cena'}>⚙</button
 							>{/if}
 					</div>
+					{#if activeScene}<button
+							class="scene-overlay-link"
+							onclick={openLiveOverlay}
+							title={$appLocale === 'en' ? 'Open live overlay' : 'Abrir overlay da live'}>◈</button
+						>{/if}
 					{#if activeCampaign.role === 'gm' && sceneCreatorOpen}<form
 							class="scene-creator"
 							onsubmit={(event) => {
@@ -1436,6 +1450,22 @@
 	}
 	.scene-board {
 		position: relative;
+	}
+	.scene-overlay-link {
+		display: inline-grid;
+		place-items: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		color: #f0cb85;
+		background: #211a1d;
+		font-size: 0.8rem;
+		text-decoration: none;
+	}
+	.scene-overlay-link:hover {
+		border-color: #d8ad67;
+		background: #34271f;
 	}
 	@media (max-width: 760px) {
 		.app-shell {
