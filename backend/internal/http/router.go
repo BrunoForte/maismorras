@@ -31,6 +31,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
 	mux.Handle("GET /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.List))
 	mux.Handle("POST /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Create))
+	mux.Handle("PATCH /api/v1/campaigns/{campaignID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Rename))
+	mux.Handle("DELETE /api/v1/campaigns/{campaignID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Delete))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/invites", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.CreateInvite))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/overlay-token", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.CreateOverlayToken))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/overlay-token", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.RevokeOverlayToken))
