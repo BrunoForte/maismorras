@@ -20,6 +20,8 @@
 	let audio = $state<HTMLAudioElement>();
 	let audioBlocked = $state(false);
 	let cameraUrls = $state<string[]>([]);
+	let publicMode = $state(false);
+	const apiBase = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 	const query = () => new URLSearchParams(window.location.search);
 	const campaignId = () => query().get('campaign') ?? '';
@@ -82,8 +84,46 @@
 			error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.';
 		}
 	}
+	async function refreshPublic() {
+		const token = query().get('access');
+		if (!token || !sceneId()) return;
+		const response = await fetch(
+			`${apiBase}/api/v1/overlay/${encodeURIComponent(token)}?scene=${encodeURIComponent(sceneId())}`
+		);
+		if (!response.ok) throw new Error('Overlay inválida ou revogada.');
+		const data = await response.json();
+		scene = data.scene;
+		tokens = data.tokens ?? [];
+		messages = (data.events ?? []).map(
+			(event: {
+				id: number;
+				author: string;
+				type: string;
+				payload: unknown;
+				createdAt: string;
+			}) => ({
+				id: String(event.id),
+				autor: event.author,
+				tipo: event.type === 'dice.roll' ? 'rolagem' : 'sistema',
+				texto: '',
+				detalhesRolagem: event.payload
+			})
+		);
+		error = '';
+	}
 
 	onMount(() => {
+		publicMode = Boolean(query().get('access'));
+		if (publicMode) {
+			cameraUrls = [1, 2, 3, 4]
+				.map((index) => query().get(`camera${index}`) ?? '')
+				.filter((value) => value.startsWith('https://vdo.ninja/'));
+			void refreshPublic().catch(
+				(err) =>
+					(error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.')
+			);
+			return;
+		}
 		if (!supabase) {
 			error = 'Supabase não está configurado.';
 			return;
