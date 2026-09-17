@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { apiBase } from '$lib/services/apiBase';
 	import { supabase } from '$lib/services/supabase';
@@ -173,7 +174,7 @@
 		activeProfile = Object.keys(profiles)[0];
 		layout = profiles[activeProfile];
 	}
-	$effect(() => {
+	onMount(() => {
 		if (!campaignId || !sceneId || typeof localStorage === 'undefined') return;
 		try {
 			const saved = localStorage.getItem(key());

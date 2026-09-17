@@ -29,6 +29,7 @@
 		spellSlots
 	} from '$lib/data/classProgression';
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
+	import { calculateArmorClass } from '$lib/utils/armorClass';
 
 	let {
 		campaignId,
@@ -1046,10 +1047,14 @@
 		];
 		selectedSpellId = '';
 	}
+	const calculatedArmorClass = () =>
+		calculateArmorClass(sheet.abilityScores, sheet.class, sheet.inventory);
 	const equippedDefense = () =>
-		sheet.inventory
-			.filter((item) => item.equipped)
-			.reduce((total, item) => total + Number(item.rules.armorClassBonus ?? 0), 0);
+		calculatedArmorClass() - (10 + modifier(sheet.abilityScores.dexterity));
+	$effect(() => {
+		const armorClass = calculatedArmorClass();
+		if (sheet.armorClass !== armorClass) sheet.armorClass = armorClass;
+	});
 	function updateScore(key: keyof Sheet['abilityScores'], value: string) {
 		sheet.abilityScores[key] = Math.max(1, Math.min(30, Number(value) || 1));
 	}
@@ -1222,6 +1227,8 @@
 		saving = true;
 		message = '';
 		try {
+			// CA is derived from the authoritative sheet data; never persist a manual override.
+			sheet.armorClass = calculatedArmorClass();
 			sheet = (
 				characterId
 					? await saveCharacterForGM(session, campaignId, characterId, sheet)
@@ -1251,6 +1258,7 @@
 		saving = true;
 		message = '';
 		try {
+			sheet.armorClass = calculatedArmorClass();
 			const character = characterId
 				? await saveCharacterForGM(session, campaignId, characterId, sheet)
 				: await saveMyCharacter(session, campaignId, sheet);
@@ -1629,9 +1637,14 @@
 								type="number"
 								min="0"
 								max="99"
-								bind:value={sheet.armorClass}
-								oninput={syncTokenSoon}
+								value={calculatedArmorClass()}
+								readonly
+								aria-describedby="armor-class-help"
 							/></label
+						><small id="armor-class-help" class="field-hint"
+							>{$appLocale === 'en'
+								? 'Calculated from ability scores and equipped armor/shield.'
+								: 'Calculada pelos atributos e armaduras/escudos equipados.'}</small
 						><label
 							>{$appLocale === 'en' ? 'Speed (ft)' : 'Deslocamento (m)'}<input
 								type="number"

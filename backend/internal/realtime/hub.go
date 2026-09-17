@@ -76,7 +76,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 	}
 	p, _ := auth.FromContext(r.Context())
 	var allowed bool
-	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 where s.id=$1 and (m.user_id is not null or c.owner_id=$2))`, sceneID, p.UserID).Scan(&allowed); err != nil {
+	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (m.user_id is not null or c.owner_id=$2 or coalesce(pr.is_admin,false)))`, sceneID, p.UserID).Scan(&allowed); err != nil {
 		// Do not turn a database outage into a misleading authorization failure.
 		// The client can retry a 503, while a genuine 403 remains actionable.
 		slog.Error("realtime authorization lookup failed", "scene_id", sceneID, "error", err)

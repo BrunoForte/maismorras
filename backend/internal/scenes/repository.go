@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/characters"
 	"vtt-backend/internal/npcs"
@@ -142,6 +143,13 @@ func (r *Repository) GetOverlayLayout(ctx context.Context, sceneID, userID strin
 	}
 	var raw []byte
 	err := r.pool.QueryRow(ctx, `select layout from scene_overlay_layouts where scene_id=$1`, sceneID).Scan(&raw)
+	// Keep older deployments usable until migration 0033 is applied. The editor
+	// can still use its local layout and will report a save error instead of
+	// repeatedly failing during initialization.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "42P01" {
+		return map[string]any{}, nil
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return map[string]any{}, nil
 	}

@@ -374,15 +374,28 @@
 		const nextURL = data.signedUrl;
 		if (!ambientAudioURL) {
 			ambientAudioURL = nextURL;
-			void tentarIniciarTrilha();
+			const audio = activeAudio();
+			if (audio && audio.src !== nextURL) {
+				audio.src = nextURL;
+				audio.currentTime = 0;
+			}
+			setTimeout(() => void tentarIniciarTrilha(), 0);
 			return;
 		}
 		if (ambientAudioURL !== nextURL && ambientPlaying) await crossfade(nextURL);
 		ambientAudioURL = nextURL;
+		// The first reactive load can happen before <audio> is mounted. Retry once
+		// after assigning the signed URL so the control is ready for a user gesture.
+		void tentarIniciarTrilha();
 	}
 	async function tentarIniciarTrilha() {
 		const audio = activeAudio();
 		if (!audio || !ambientAudioURL || ambientPlaying) return;
+		if (audio.dataset.userStopped === 'true') return;
+		if (!audio.paused) {
+			ambientPlaying = true;
+			return;
+		}
 		if (!audio.src) audio.src = ambientAudioURL;
 		audio.volume = targetVolume();
 		try {
@@ -428,12 +441,14 @@
 		if (!audio || !ambientAudioURL) return;
 		try {
 			if (audio.paused) {
+				audio.dataset.userStopped = 'false';
 				if (!audio.src) audio.src = ambientAudioURL;
 				audio.volume = 0;
 				await audio.play();
 				await fade(audio, targetVolume());
 				ambientPlaying = true;
 			} else {
+				audio.dataset.userStopped = 'true';
 				await fade(audio, 0);
 				audio.pause();
 				ambientPlaying = false;
@@ -666,6 +681,10 @@
 	}
 
 	onMount(() => {
+		ambientAudioA =
+			(document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null) ?? undefined;
+		ambientAudioB =
+			(document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null) ?? undefined;
 		const audioGesture = () => void tentarIniciarTrilha();
 		const mapToolHandler = (event: Event) => {
 			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
@@ -943,10 +962,11 @@
 			? 'Interactive game map. Focus it to use keyboard shortcuts.'
 			: 'Mapa interativo da mesa. Foque nele para usar atalhos do teclado.'}
 	></canvas>
-	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => (ambientPlaying = true)}
-		></audio><audio bind:this={ambientAudioB} loop></audio>
-		<div class="ambient-audio">
-			<button onclick={() => void (audioNeedsGesture ? tentarIniciarTrilha() : toggleTrilha())}
+	{#if ambientAudioURL}<div class="ambient-audio">
+			<button
+				onclick={() => void (audioNeedsGesture ? tentarIniciarTrilha() : toggleTrilha())}
+				disabled={!isGM}
+				title={!isGM ? 'Somente o narrador controla a trilha' : 'Controlar trilha da mesa'}
 				>{audioNeedsGesture
 					? '♫ Ativar trilha'
 					: ambientPlaying

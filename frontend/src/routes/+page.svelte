@@ -531,6 +531,10 @@
 	</main>
 {:else}
 	<div class:game-mode={activeCampaign} class="app-shell">
+		<div class="persistent-audio" aria-hidden="true">
+			<audio id="maismorras-ambient-a" loop preload="auto"></audio>
+			<audio id="maismorras-ambient-b" loop preload="auto"></audio>
+		</div>
 		<header class="app-header">
 			<button
 				class="brand-lockup brand-button"
