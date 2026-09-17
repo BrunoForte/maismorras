@@ -103,12 +103,19 @@
 	let ambientAudioURL = $state<string | null>(null);
 	let ambientPlaying = $state(false);
 	let audioNeedsGesture = $state(false);
+	let audioCurrent = $state(0);
+	let audioDuration = $state(0);
+	let audioVolume = $state<number | null>(null);
 	let activeDeck = $state<'a' | 'b'>('a');
 	let tokenRefreshTimer: number | undefined;
 	const fadeDuration = 900;
 	const activeAudio = () => (activeDeck === 'a' ? ambientAudioA : ambientAudioB);
 	const inactiveAudio = () => (activeDeck === 'a' ? ambientAudioB : ambientAudioA);
 	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
+	const timeLabel = (value: number) => {
+		if (!Number.isFinite(value) || value < 0) return '0:00';
+		return `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
+	};
 	$effect(() => {
 		if (scene.ambientAudioEnabled && scene.ambientAudioPath) void carregarTrilha();
 	});
@@ -397,7 +404,8 @@
 			return;
 		}
 		if (!audio.src) audio.src = ambientAudioURL;
-		audio.volume = targetVolume();
+		audioVolume ??= Math.min(0.7, targetVolume());
+		audio.volume = audioVolume;
 		try {
 			await audio.play();
 			audioNeedsGesture = false;
@@ -445,7 +453,7 @@
 				if (!audio.src) audio.src = ambientAudioURL;
 				audio.volume = 0;
 				await audio.play();
-				await fade(audio, targetVolume());
+				await fade(audio, audioVolume ?? targetVolume());
 				ambientPlaying = true;
 			} else {
 				audio.dataset.userStopped = 'true';
@@ -457,6 +465,22 @@
 			persistenceError =
 				'O navegador bloqueou a reprodução automática. Clique novamente para iniciar a trilha.';
 		}
+	}
+	function updateAudioTime(event: Event) {
+		const audio = event.currentTarget as HTMLAudioElement;
+		audioCurrent = audio.currentTime;
+		audioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+	}
+	function seekAudio(event: Event) {
+		const audio = activeAudio();
+		if (!audio) return;
+		audio.currentTime = Number((event.currentTarget as HTMLInputElement).value);
+		audioCurrent = audio.currentTime;
+	}
+	function changeAudioVolume(event: Event) {
+		audioVolume = Number((event.currentTarget as HTMLInputElement).value);
+		const audio = activeAudio();
+		if (audio) audio.volume = audioVolume;
 	}
 
 	async function aplicarCondicaoOficial() {
@@ -685,6 +709,17 @@
 			(document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null) ?? undefined;
 		ambientAudioB =
 			(document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null) ?? undefined;
+		const audioTime = () => {
+			const audio = activeAudio();
+			if (audio) {
+				audioCurrent = audio.currentTime;
+				audioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+			}
+		};
+		ambientAudioA?.addEventListener('timeupdate', audioTime);
+		ambientAudioA?.addEventListener('loadedmetadata', audioTime);
+		ambientAudioB?.addEventListener('timeupdate', audioTime);
+		ambientAudioB?.addEventListener('loadedmetadata', audioTime);
 		const audioGesture = () => void tentarIniciarTrilha();
 		const mapToolHandler = (event: Event) => {
 			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
@@ -786,6 +821,10 @@
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);
 			window.removeEventListener('pointerdown', audioGesture);
+			ambientAudioA?.removeEventListener('timeupdate', audioTime);
+			ambientAudioA?.removeEventListener('loadedmetadata', audioTime);
+			ambientAudioB?.removeEventListener('timeupdate', audioTime);
+			ambientAudioB?.removeEventListener('loadedmetadata', audioTime);
 			sceneSocket?.close();
 			sceneSocket = null;
 			unsubscribe();
@@ -972,7 +1011,28 @@
 					: ambientPlaying
 						? '❚❚ Pausar trilha'
 						: '♫ Tocar trilha'}</button
-			><span>{scene.ambientAudioVolume}%</span>
+			><span class="audio-time">{timeLabel(audioCurrent)} / {timeLabel(audioDuration)}</span>
+			<input
+				class="audio-seek"
+				type="range"
+				min="0"
+				max={audioDuration || 1}
+				step="0.1"
+				value={audioCurrent}
+				oninput={seekAudio}
+				aria-label="Posição da trilha"
+			/>
+			<label class="audio-volume"
+				>🔊 <input
+					type="range"
+					min="0"
+					max="1"
+					step="0.01"
+					value={audioVolume ?? targetVolume()}
+					oninput={changeAudioVolume}
+					aria-label="Volume da trilha"
+				/></label
+			>
 		</div>{/if}
 	<div class="ping-tool">
 		<button class:active={pingArmed} onclick={() => (pingArmed = !pingArmed)}
@@ -1897,14 +1957,15 @@
 	.ambient-audio {
 		position: absolute;
 		z-index: 3;
-		bottom: 1rem;
-		left: 1rem;
+		bottom: 0;
+		left: 0;
+		right: 0;
 		display: flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.7rem;
 		border: 1px solid rgba(216, 173, 103, 0.42);
-		border-radius: 8px;
-		padding: 0.42rem 0.55rem;
+		border-radius: 8px 8px 0 0;
+		padding: 0.65rem 1rem;
 		color: #d6c0a0;
 		background: rgba(27, 22, 27, 0.92);
 		backdrop-filter: blur(8px);
@@ -1923,6 +1984,40 @@
 		border-left: 1px solid #5c4b40;
 		padding-left: 0.45rem;
 		color: #a99c91;
+	}
+	.ambient-audio .audio-time {
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	}
+	.ambient-audio input[type='range'] {
+		accent-color: #d8ad67;
+	}
+	.ambient-audio .audio-seek {
+		flex: 1;
+		min-width: 5rem;
+	}
+	.ambient-audio .audio-volume {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: #e8d3aa;
+	}
+	.ambient-audio .audio-volume input {
+		width: 8rem;
+	}
+	@media (max-width: 640px) {
+		.ambient-audio {
+			flex-wrap: wrap;
+			padding: 0.5rem 0.65rem;
+			gap: 0.45rem;
+		}
+		.ambient-audio .audio-seek {
+			order: 3;
+			flex-basis: 100%;
+		}
+		.ambient-audio .audio-volume input {
+			width: 5rem;
+		}
 	}
 	.token-inspector header {
 		display: flex;
