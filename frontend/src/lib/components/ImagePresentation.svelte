@@ -12,9 +12,15 @@
 	}: { sceneId: string; session: Session; isGM?: boolean } = $props();
 	let item = $state({ assetPath: '', title: '', visible: false });
 	let url = $state('');
+	let dismissedPath = $state('');
 	let socket: SceneSocket | null = null;
 	async function closePresentation(event: Event) {
 		if (!isGM || event.target !== event.currentTarget) return;
+		// Hide immediately so a transient API error cannot trap the narrator
+		// behind the presentation modal.
+		item = { ...item, visible: false };
+		dismissedPath = item.assetPath;
+		url = '';
 		try {
 			await savePresentation(session, sceneId, { assetPath: '', title: '', visible: false });
 			socket?.publishRefresh();
@@ -25,6 +31,11 @@
 	async function load() {
 		try {
 			item = await getPresentation(session, sceneId);
+			if (item.assetPath !== dismissedPath) dismissedPath = '';
+			if (item.visible && item.assetPath === dismissedPath) {
+				url = '';
+				return;
+			}
 			if (item.visible && item.assetPath && supabase) {
 				const { data } = await supabase.storage
 					.from('campaign-assets')

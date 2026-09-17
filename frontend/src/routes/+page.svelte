@@ -439,8 +439,13 @@
 	}
 	async function hidePresentedAsset() {
 		if (!activeScene || !session || activeCampaign?.role !== 'gm') return;
-		await savePresentation(session, activeScene.id, { assetPath: '', title: '', visible: false });
-		publishOverlayScene();
+		try {
+			await savePresentation(session, activeScene.id, { assetPath: '', title: '', visible: false });
+			publishOverlayScene();
+			inviteStatus = 'Imagem ocultada para os jogadores.';
+		} catch (error) {
+			inviteStatus = error instanceof Error ? error.message : 'Não foi possível ocultar a imagem.';
+		}
 	}
 	async function copyLiveOverlayAddress() {
 		if (!activeCampaign || !activeScene) return;
@@ -555,6 +560,7 @@
 		{#if activeCampaign && activeScene && session}<ImagePresentation
 				sceneId={activeScene.id}
 				{session}
+				isGM={activeCampaign.role === 'gm'}
 			/>{/if}
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="auto"></audio>
