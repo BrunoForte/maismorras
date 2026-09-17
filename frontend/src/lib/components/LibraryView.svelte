@@ -197,6 +197,26 @@
 		);
 		assets = listed.filter((asset): asset is Asset => asset !== null);
 	}
+	async function optimizeImage(file: File) {
+		if (!file.type.startsWith('image/'))
+			return { file, extension: file.name.split('.').pop() ?? 'bin' };
+		const bitmap = await createImageBitmap(file);
+		const maxDimension = 2048;
+		const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+		const canvas = document.createElement('canvas');
+		canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+		canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+		canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+		bitmap.close();
+		const blob = await new Promise<Blob | null>((resolve) =>
+			canvas.toBlob(resolve, 'image/webp', 0.82)
+		);
+		if (!blob) return { file, extension: file.name.split('.').pop() ?? 'bin' };
+		return {
+			file: new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, { type: 'image/webp' }),
+			extension: 'webp'
+		};
+	}
 	async function upload(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -217,10 +237,13 @@
 		uploading = true;
 		message = '';
 		try {
-			const name = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+			const optimized = await optimizeImage(file);
+			const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
 			const { error } = await supabase.storage
 				.from('campaign-assets')
-				.upload(`${folder()}/${crypto.randomUUID()}-${name}`, file, { contentType: file.type });
+				.upload(`${folder()}/${crypto.randomUUID()}-${name}`, optimized.file, {
+					contentType: optimized.file.type
+				});
 			if (error) throw error;
 			await loadAssets();
 		} catch (error) {

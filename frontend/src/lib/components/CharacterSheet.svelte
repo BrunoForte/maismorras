@@ -15,7 +15,12 @@
 		type InventoryItem
 	} from '$lib/services/characterApi';
 	import { createTokenFromCharacter, listSceneEffects, loadScene } from '$lib/services/sceneApi';
-	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
+	import {
+		createCompendiumEntry,
+		getCompendium,
+		type CompendiumEntry,
+		type CompendiumSource
+	} from '$lib/services/compendiumApi';
 	import { rollDice } from '$lib/services/eventApi';
 	import { beginDiceBatch, diceOverlay, finishDiceBatch } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
@@ -58,6 +63,7 @@
 	let message = $state('');
 	let isNewCharacter = $state(false);
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
+	let compendiumSources = $state<CompendiumSource[]>([]);
 	let selectedItemId = $state('');
 	let selectedSpellId = $state('');
 	let customItemName = $state('');
@@ -406,6 +412,7 @@
 		// private references and homebrew without exposing unpublished entries.
 		void getCompendium(session, campaignId)
 			.then((data) => {
+				compendiumSources = data.sources;
 				compendiumEntries = data.entries;
 				syncProgression();
 			})
@@ -964,7 +971,7 @@
 		];
 		selectedItemId = '';
 	}
-	function addCustomInventoryItem() {
+	async function addCustomInventoryItem() {
 		const name = customItemName.trim();
 		if (!name) return;
 		if (customItemCategory === 'weapon') {
@@ -984,6 +991,33 @@
 			rules.ac = String(Math.max(0, Math.round(customItemDefense)));
 		} else if (customItemCategory === 'consumable') {
 			rules.quantity = Math.max(1, Math.round(customItemQuantity));
+		}
+		const privateSource = compendiumSources.find((source) => source.slug === 'campaign-private');
+		const alreadyInCompendium = compendiumEntries.some(
+			(entry) =>
+				entry.entryType === 'item' &&
+				entry.name.toLowerCase() === name.toLowerCase() &&
+				entry.rules.custom === true
+		);
+		if (privateSource && !alreadyInCompendium) {
+			try {
+				const entry = await createCompendiumEntry(session, campaignId, {
+					sourceId: privateSource.id,
+					entryType: 'item',
+					name,
+					summary: 'Item personalizado da ficha.',
+					rules,
+					translations: { 'pt-BR': name },
+					isPublished: true
+				});
+				compendiumEntries = [...compendiumEntries, entry];
+			} catch (error) {
+				message =
+					error instanceof Error
+						? error.message
+						: 'Não foi possível adicionar o item ao compêndio.';
+				return;
+			}
 		}
 		sheet.inventory = [
 			...sheet.inventory,

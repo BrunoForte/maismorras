@@ -146,7 +146,9 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 	if err != nil {
 		return Entry{}, err
 	}
-	if role != "gm" {
+	// Players may publish only custom inventory items they created from the
+	// character sheet. All other compendium mutations remain GM-only.
+	if role != "gm" && !(item.EntryType == "item" && customItemRules(item.Rules)) {
 		return Entry{}, ErrForbidden
 	}
 	var readOnly bool
@@ -171,6 +173,15 @@ func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string,
 		return Entry{}, fmt.Errorf("create compendium entry: %w", err)
 	}
 	return item, nil
+}
+
+func customItemRules(raw json.RawMessage) bool {
+	var rules map[string]any
+	if len(raw) == 0 || json.Unmarshal(raw, &rules) != nil {
+		return false
+	}
+	value, ok := rules["custom"].(bool)
+	return ok && value
 }
 
 func (r *Repository) UpdateEntry(ctx context.Context, campaignID, userID string, item Entry) (Entry, error) {
