@@ -2,13 +2,26 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import type { Session } from '@supabase/supabase-js';
-	import { getPresentation } from '$lib/services/presentationApi';
+	import { getPresentation, savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { supabase } from '$lib/services/supabase';
-	let { sceneId, session }: { sceneId: string; session: Session } = $props();
+	let {
+		sceneId,
+		session,
+		isGM = false
+	}: { sceneId: string; session: Session; isGM?: boolean } = $props();
 	let item = $state({ assetPath: '', title: '', visible: false });
 	let url = $state('');
 	let socket: SceneSocket | null = null;
+	async function closePresentation(event: Event) {
+		if (!isGM || event.target !== event.currentTarget) return;
+		try {
+			await savePresentation(session, sceneId, { assetPath: '', title: '', visible: false });
+			socket?.publishRefresh();
+		} catch {
+			/* Keep the current presentation if the server is temporarily unavailable. */
+		}
+	}
 	async function load() {
 		try {
 			item = await getPresentation(session, sceneId);
@@ -36,6 +49,11 @@
 {#if item.visible && url}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
+		onclick={(event) => void closePresentation(event)}
+		onkeydown={(event) => {
+			if (event.key === 'Escape') void closePresentation(event);
+		}}
+		tabindex="0"
 		role="dialog"
 		aria-modal="true"
 		aria-label={item.title || 'Imagem apresentada'}
