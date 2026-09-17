@@ -60,6 +60,11 @@
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let selectedItemId = $state('');
 	let selectedSpellId = $state('');
+	let customItemName = $state('');
+	let customItemCategory = $state<'weapon' | 'armor' | 'consumable' | 'gear'>('gear');
+	let customItemDamage = $state('');
+	let customItemDefense = $state(10);
+	let customItemQuantity = $state(1);
 	let spellCircle = $state('all');
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
 		'profile'
@@ -535,6 +540,16 @@
 			(item) => inventoryFilter === 'all' || equipmentCategory(item) === inventoryFilter
 		);
 	const itemLabel = (item: InventoryItem) => item.name;
+	const itemDetail = (item: InventoryItem) => {
+		const category = equipmentCategory(item);
+		if (category === 'weapon' && item.rules.damage)
+			return `${$appLocale === 'en' ? 'Damage' : 'Dano'} ${item.rules.damage}`;
+		if (category === 'armor' && (item.rules.ac || item.rules.armorClass))
+			return `${$appLocale === 'en' ? 'Base AC' : 'Defesa base'} ${item.rules.ac ?? item.rules.armorClass}`;
+		if (category === 'consumable')
+			return `${$appLocale === 'en' ? 'Qty.' : 'Qtd.'} ${item.quantity}`;
+		return '';
+	};
 	const modifierText = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
 	function canonicalClass(value: string) {
 		const normalized = value
@@ -948,6 +963,43 @@
 			}
 		];
 		selectedItemId = '';
+	}
+	function addCustomInventoryItem() {
+		const name = customItemName.trim();
+		if (!name) return;
+		if (customItemCategory === 'weapon') {
+			const damage = customItemDamage.trim();
+			if (!/^\d+d\d+(?:\s*[+-]\s*\d+)?$/i.test(damage)) {
+				message =
+					$appLocale === 'en'
+						? 'Enter weapon damage as NdN (e.g. 1d8).'
+						: 'Informe o dano da arma como NdN (ex.: 1d8).';
+				return;
+			}
+		}
+		const rules: Record<string, unknown> = { category: customItemCategory, custom: true };
+		if (customItemCategory === 'weapon') {
+			if (customItemDamage.trim()) rules.damage = customItemDamage.trim();
+		} else if (customItemCategory === 'armor') {
+			rules.ac = String(Math.max(0, Math.round(customItemDefense)));
+		} else if (customItemCategory === 'consumable') {
+			rules.quantity = Math.max(1, Math.round(customItemQuantity));
+		}
+		sheet.inventory = [
+			...sheet.inventory,
+			{
+				entryId: `custom-${crypto.randomUUID()}`,
+				name,
+				quantity:
+					customItemCategory === 'consumable' ? Math.max(1, Math.round(customItemQuantity)) : 1,
+				equipped: false,
+				rules
+			}
+		];
+		customItemName = '';
+		customItemDamage = '';
+		customItemDefense = 10;
+		customItemQuantity = 1;
 	}
 	function removeInventoryItem(index: number) {
 		sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index);
@@ -1857,12 +1909,56 @@
 								>{$appLocale === 'en' ? 'Add' : 'Adicionar'}</button
 							>
 						</div>
+						<div class="custom-item-form">
+							<strong>{$appLocale === 'en' ? 'Custom item' : 'Item personalizado'}</strong>
+							<input
+								bind:value={customItemName}
+								placeholder={$appLocale === 'en' ? 'Item name' : 'Nome do item'}
+								maxlength="120"
+							/>
+							<select bind:value={customItemCategory} aria-label="Categoria do item">
+								<option value="gear">{$appLocale === 'en' ? 'Other' : 'Outro'}</option>
+								<option value="weapon">{$appLocale === 'en' ? 'Weapon' : 'Arma'}</option>
+								<option value="armor">{$appLocale === 'en' ? 'Armor' : 'Armadura'}</option>
+								<option value="consumable"
+									>{$appLocale === 'en' ? 'Consumable' : 'Consumível'}</option
+								>
+							</select>
+							{#if customItemCategory === 'weapon'}<input
+									bind:value={customItemDamage}
+									placeholder={$appLocale === 'en' ? 'Damage (e.g. 1d8)' : 'Dano (ex.: 1d8)'}
+									maxlength="40"
+								/>{:else if customItemCategory === 'armor'}<label
+									>{$appLocale === 'en' ? 'Base AC' : 'Defesa base'}<input
+										type="number"
+										min="0"
+										max="99"
+										bind:value={customItemDefense}
+									/></label
+								>
+							{:else if customItemCategory === 'consumable'}<label
+									>{$appLocale === 'en' ? 'Quantity' : 'Quantidade'}<input
+										type="number"
+										min="1"
+										max="9999"
+										bind:value={customItemQuantity}
+									/></label
+								>
+							{/if}<button
+								type="button"
+								onclick={addCustomInventoryItem}
+								disabled={!customItemName.trim()}
+								>{$appLocale === 'en' ? 'Add custom item' : 'Adicionar item personalizado'}</button
+							>
+						</div>
 						{#if visibleInventory().length}<div class="inventory-list">
 								{#each visibleInventory() as item}<div class="inventory-item">
 										<label
 											><input type="checkbox" bind:checked={item.equipped} />
 											{$appLocale === 'en' ? 'equipped' : 'equipado'}</label
-										><strong>{itemLabel(item)}</strong><input
+										><strong>{itemLabel(item)}</strong>{#if itemDetail(item)}<small
+												class="item-detail">{itemDetail(item)}</small
+											>{/if}<input
 											type="number"
 											min="0"
 											max="9999"
@@ -2794,6 +2890,65 @@
 		color: #e8c786;
 		background: #2a211e;
 		font-size: 0.72rem;
+	}
+	.custom-item-form {
+		display: grid;
+		grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(100px, 0.7fr) auto;
+		align-items: center;
+		gap: 0.45rem;
+		margin-bottom: 0.7rem;
+		padding: 0.55rem;
+		border: 1px dashed #554841;
+		border-radius: 6px;
+		background: #151214;
+	}
+	.custom-item-form strong {
+		color: #d8ad67;
+		font-size: 0.72rem;
+	}
+	.custom-item-form input,
+	.custom-item-form select {
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.5rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.custom-item-form label {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: #b9aa9b;
+		font-size: 0.72rem;
+	}
+	.custom-item-form label input {
+		width: 4.5rem;
+	}
+	.custom-item-form button {
+		border: 1px solid #725a3b;
+		border-radius: 6px;
+		padding: 0.45rem 0.6rem;
+		color: #e8c786;
+		background: #2a211e;
+		font-size: 0.72rem;
+	}
+	.item-detail {
+		color: #b9aa9b;
+		font-size: 0.68rem;
+		white-space: nowrap;
+	}
+	@media (max-width: 640px) {
+		.custom-item-form {
+			grid-template-columns: 1fr 1fr;
+		}
+		.custom-item-form strong {
+			grid-column: 1 / -1;
+		}
+		.custom-item-form button {
+			grid-column: 1 / -1;
+		}
 	}
 	.inventory-list {
 		display: grid;

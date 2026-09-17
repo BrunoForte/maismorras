@@ -101,6 +101,8 @@
 	let ambientAudioA = $state<HTMLAudioElement>();
 	let ambientAudioB = $state<HTMLAudioElement>();
 	let ambientAudioURL = $state<string | null>(null);
+	let ambientAudioSourcePath = $state<string | null>(null);
+	let ambientAudioSignedAt = $state(0);
 	let ambientPlaying = $state(false);
 	let audioNeedsGesture = $state(false);
 	let audioCurrent = $state(0);
@@ -378,6 +380,12 @@
 	}
 	async function carregarTrilha() {
 		if (!scene.ambientAudioEnabled || !scene.ambientAudioPath || !supabase) return;
+		if (
+			ambientAudioSourcePath === scene.ambientAudioPath &&
+			ambientAudioURL &&
+			Date.now() - ambientAudioSignedAt < 50 * 60 * 1000
+		)
+			return;
 		const { data, error } = await supabase.storage
 			.from('campaign-assets')
 			.createSignedUrl(scene.ambientAudioPath, 3600);
@@ -386,6 +394,10 @@
 			return;
 		}
 		const nextURL = data.signedUrl;
+		const pathChanged = ambientAudioSourcePath !== scene.ambientAudioPath;
+		ambientAudioSourcePath = scene.ambientAudioPath;
+		ambientAudioSignedAt = Date.now();
+		if (pathChanged && ambientAudioURL) ambientAudioURL = null;
 		if (!ambientAudioURL) {
 			ambientAudioURL = nextURL;
 			const audio = activeAudio();
@@ -784,7 +796,18 @@
 			await carregarTrilha();
 		});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
-		tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 4000);
+		tokenRefreshTimer = window.setInterval(() => {
+			void carregarTokens();
+			void loadScene(session, scene.id).then((fresh) => {
+				const previousPath = scene.ambientAudioPath;
+				Object.assign(scene, fresh.scene);
+				if (
+					previousPath !== scene.ambientAudioPath ||
+					Date.now() - ambientAudioSignedAt > 50 * 60 * 1000
+				)
+					void carregarTrilha();
+			});
+		}, 4000);
 		sceneSocket = connectSceneSocket(
 			session,
 			scene.id,
