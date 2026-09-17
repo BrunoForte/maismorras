@@ -148,6 +148,10 @@ func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string
 	}
 	var p Presentation
 	err := r.pool.QueryRow(ctx, `select asset_path,title,visible from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Visible)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "42P01" {
+		return Presentation{}, nil
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Presentation{}, nil
 	}
@@ -1219,7 +1223,7 @@ func (r *Repository) MoveToken(ctx context.Context, sceneID, tokenID, userID str
 	var allowed, enforceTurnOrder bool
 	var activeTokenID *string
 	var t Token
-	err = r.pool.QueryRow(ctx, `select st.owner_id::text,st.position_x,st.position_y,st.size,st.is_hidden,st.vision_range,st.light_range,st.movement_limit,s.allow_player_movement,s.enforce_turn_order,s.active_token_id::text,s.grid_size from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&t.OwnerID, &t.X, &t.Y, &t.Size, &t.Hidden, &t.VisionRange, &t.LightRange, &t.MovementLimit, &allowed, &enforceTurnOrder, &activeTokenID, new(int))
+	err = r.pool.QueryRow(ctx, `select coalesce(st.owner_id,a.owner_id)::text,st.position_x,st.position_y,st.size,st.is_hidden,st.vision_range,st.light_range,st.movement_limit,s.allow_player_movement,s.enforce_turn_order,s.active_token_id::text,s.grid_size from scene_tokens st join scenes s on s.id=st.scene_id left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&t.OwnerID, &t.X, &t.Y, &t.Size, &t.Hidden, &t.VisionRange, &t.LightRange, &t.MovementLimit, &allowed, &enforceTurnOrder, &activeTokenID, new(int))
 	if err != nil {
 		return Token{}, fmt.Errorf("load token movement: %w", err)
 	}
