@@ -102,7 +102,9 @@
 	let ambientAudioB = $state<HTMLAudioElement>();
 	let ambientAudioURL = $state<string | null>(null);
 	let ambientPlaying = $state(false);
+	let audioNeedsGesture = $state(false);
 	let activeDeck = $state<'a' | 'b'>('a');
+	let tokenRefreshTimer: number | undefined;
 	const fadeDuration = 900;
 	const activeAudio = () => (activeDeck === 'a' ? ambientAudioA : ambientAudioB);
 	const inactiveAudio = () => (activeDeck === 'a' ? ambientAudioB : ambientAudioA);
@@ -372,10 +374,24 @@
 		const nextURL = data.signedUrl;
 		if (!ambientAudioURL) {
 			ambientAudioURL = nextURL;
+			void tentarIniciarTrilha();
 			return;
 		}
 		if (ambientAudioURL !== nextURL && ambientPlaying) await crossfade(nextURL);
 		ambientAudioURL = nextURL;
+	}
+	async function tentarIniciarTrilha() {
+		const audio = activeAudio();
+		if (!audio || !ambientAudioURL || ambientPlaying) return;
+		if (!audio.src) audio.src = ambientAudioURL;
+		audio.volume = targetVolume();
+		try {
+			await audio.play();
+			audioNeedsGesture = false;
+			ambientPlaying = true;
+		} catch {
+			audioNeedsGesture = true;
+		}
 	}
 	function fade(audio: HTMLAudioElement, to: number, duration = fadeDuration) {
 		const from = audio.volume,
@@ -650,6 +666,7 @@
 	}
 
 	onMount(() => {
+		const audioGesture = () => void tentarIniciarTrilha();
 		const mapToolHandler = (event: Event) => {
 			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
 			toggleMapTool(tool);
@@ -661,6 +678,7 @@
 		};
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
 		window.addEventListener('maismorras:close-map-tools', closeHandler);
+		window.addEventListener('pointerdown', audioGesture, { passive: true });
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
@@ -702,12 +720,17 @@
 			await carregarTrilha();
 		});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
+		tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 4000);
 		sceneSocket = connectSceneSocket(
 			session,
 			scene.id,
 			() => {
 				void carregarTokens();
 				void carregarEfeitos();
+				void loadScene(session, scene.id).then((fresh) => {
+					Object.assign(scene, fresh.scene);
+					void carregarTrilha();
+				});
 			},
 			(ping) => motor?.showPing(ping.x, ping.y, ping.color),
 			() => {}
@@ -743,11 +766,13 @@
 		return () => {
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);
+			window.removeEventListener('pointerdown', audioGesture);
 			sceneSocket?.close();
 			sceneSocket = null;
 			unsubscribe();
 			observer.disconnect();
 			window.clearInterval(cameraPersistenceTimer);
+			if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
 			motor?.destroy();
 			motor = null;
 		};
@@ -921,8 +946,12 @@
 	{#if ambientAudioURL}<audio bind:this={ambientAudioA} loop onplay={() => (ambientPlaying = true)}
 		></audio><audio bind:this={ambientAudioB} loop></audio>
 		<div class="ambient-audio">
-			<button onclick={() => void toggleTrilha()}
-				>{ambientPlaying ? '❚❚ Pausar trilha' : '♫ Tocar trilha'}</button
+			<button onclick={() => void (audioNeedsGesture ? tentarIniciarTrilha() : toggleTrilha())}
+				>{audioNeedsGesture
+					? '♫ Ativar trilha'
+					: ambientPlaying
+						? '❚❚ Pausar trilha'
+						: '♫ Tocar trilha'}</button
 			><span>{scene.ambientAudioVolume}%</span>
 		</div>{/if}
 	<div class="ping-tool">

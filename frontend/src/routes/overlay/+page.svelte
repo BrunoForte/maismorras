@@ -18,6 +18,7 @@
 	let error = $state('');
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	let fallbackRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let audioSrc = $state('');
 	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
@@ -231,12 +232,14 @@
 				if (refreshTimer) clearTimeout(refreshTimer);
 				refreshTimer = setTimeout(() => void refresh(data.session), 180);
 			});
+			fallbackRefreshTimer = setInterval(() => void refresh(data.session), 5000);
 		});
 		return () => {
 			disposed = true;
 			overlayChannel?.close();
 			window.removeEventListener('storage', onStorage);
 			if (refreshTimer) clearTimeout(refreshTimer);
+			if (fallbackRefreshTimer) clearInterval(fallbackRefreshTimer);
 			socket?.close();
 		};
 	});

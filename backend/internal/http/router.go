@@ -113,15 +113,21 @@ func withError(next errorHandler) http.Handler {
 }
 
 func cors(origin string) func(http.Handler) http.Handler {
+	allowedOrigins := map[string]struct{}{}
+	for _, item := range strings.Split(origin, ",") {
+		if value := strings.TrimSpace(item); value != "" {
+			allowedOrigins[value] = struct{}{}
+		}
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			requestOrigin := r.Header.Get("Origin")
-			if requestOrigin != "" && requestOrigin != origin {
-				http.Error(w, "origin not allowed", http.StatusForbidden)
-				return
-			}
-			if requestOrigin == origin && validOrigin(origin) {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
+			if requestOrigin != "" {
+				if _, ok := allowedOrigins[requestOrigin]; !ok {
+					http.Error(w, "origin not allowed", http.StatusForbidden)
+					return
+				}
+				w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
 				w.Header().Set("Vary", "Origin")
 			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
