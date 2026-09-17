@@ -2,10 +2,6 @@ package campaigns
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -24,9 +20,6 @@ type Invite struct {
 	Code       string    `json:"code"`
 	CampaignID string    `json:"campaignId"`
 	ExpiresAt  time.Time `json:"expiresAt"`
-}
-type OverlayToken struct {
-	Token string `json:"token"`
 }
 
 var (
@@ -55,15 +48,6 @@ func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]C
 		items = append(items, item)
 	}
 	return items, rows.Err()
-}
-
-type PublicOverlay struct {
-	CampaignID   string          `json:"campaignId"`
-	CampaignName string          `json:"campaignName"`
-	Scene        json.RawMessage `json:"scene"`
-	Tokens       json.RawMessage `json:"tokens"`
-	Events       json.RawMessage `json:"events"`
-	Layout       json.RawMessage `json:"layout"`
 }
 
 func (r *Repository) Create(ctx context.Context, userID, name string) (Campaign, error) {
@@ -189,56 +173,4 @@ func (r *Repository) RemoveMember(ctx context.Context, campaignID, memberID, use
 		return ErrNotFound
 	}
 	return tx.Commit(ctx)
-}
-
-func (r *Repository) CreateOverlayToken(ctx context.Context, campaignID, userID string) (string, error) {
-	var owner string
-	if err := r.pool.QueryRow(ctx, `select owner_id::text from campaigns where id=$1`, campaignID).Scan(&owner); err != nil {
-		return "", ErrNotFound
-	}
-	if owner != userID {
-		return "", ErrForbidden
-	}
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	token := base64.RawURLEncoding.EncodeToString(bytes)
-	hash := sha256.Sum256([]byte(token))
-	_, err := r.pool.Exec(ctx, `update campaigns set overlay_token_hash=$1,overlay_token_created_at=now() where id=$2`, fmt.Sprintf("%x", hash), campaignID)
-	return token, err
-}
-
-func (r *Repository) RevokeOverlayToken(ctx context.Context, campaignID, userID string) error {
-	var owner string
-	if err := r.pool.QueryRow(ctx, `select owner_id::text from campaigns where id=$1`, campaignID).Scan(&owner); err != nil {
-		return ErrNotFound
-	}
-	if owner != userID {
-		return ErrForbidden
-	}
-	_, err := r.pool.Exec(ctx, `update campaigns set overlay_token_hash=null,overlay_token_created_at=null where id=$1`, campaignID)
-	return err
-}
-
-func (r *Repository) PublicOverlay(ctx context.Context, token, sceneID string) (PublicOverlay, error) {
-	hash := sha256.Sum256([]byte(token))
-	var out PublicOverlay
-	var ownerID string
-	if err := r.pool.QueryRow(ctx, `select c.id::text,c.name,c.owner_id::text from campaigns c where c.overlay_token_hash=$1`, fmt.Sprintf("%x", hash)).Scan(&out.CampaignID, &out.CampaignName, &ownerID); err != nil {
-		return out, ErrNotFound
-	}
-	if err := r.pool.QueryRow(ctx, `select jsonb_build_object('id',id::text,'campaignId',campaign_id::text,'name',name,'backgroundUrl',background_url,'ambientAudioPath',ambient_audio_path,'ambientAudioEnabled',ambient_audio_enabled,'ambientAudioVolume',ambient_audio_volume,'gridSize',grid_size,'playerAccess',player_access) from scenes where id=$1 and campaign_id=$2`, sceneID, out.CampaignID).Scan(&out.Scene); err != nil {
-		return out, ErrNotFound
-	}
-	if err := r.pool.QueryRow(ctx, `select coalesce((select layout from scene_overlay_layouts where scene_id=$1),'{}'::jsonb)`, sceneID).Scan(&out.Layout); err != nil {
-		return out, err
-	}
-	if err := r.pool.QueryRow(ctx, `coalesce((select jsonb_agg(jsonb_build_object('id',st.id::text,'name',st.name,'imageUrl',st.image_url,'color',st.color,'x',st.position_x,'y',st.position_y,'size',st.size,'hpCurrent',st.hp_current,'hpMax',st.hp_max,'armorClass',st.armor_class,'initiative',st.initiative,'visibility',st.visibility) order by st.created_at from scene_tokens st where st.scene_id=$1 and st.is_hidden=false),'[]'::jsonb)`, sceneID).Scan(&out.Tokens); err != nil {
-		return out, err
-	}
-	if err := r.pool.QueryRow(ctx, `coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'author',coalesce(p.display_name,'Mesa'),'type',e.event_type,'payload',e.payload,'createdAt',e.created_at::text) order by e.id) from game_events e left join profiles p on p.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info') and e.id > greatest((select coalesce(max(id),0)-100 from game_events where campaign_id=$1),0)),'[]'::jsonb)`, out.CampaignID).Scan(&out.Events); err != nil {
-		return out, err
-	}
-	return out, nil
 }

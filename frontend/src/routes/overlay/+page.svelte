@@ -8,7 +8,6 @@
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
-	import { apiBase } from '$lib/services/apiBase';
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 
 	let session = $state<Session | null>(null);
@@ -19,7 +18,6 @@
 	let error = $state('');
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-	let publicRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let audioSrc = $state('');
 	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
@@ -27,7 +25,21 @@
 	type CameraSlot = { url: string; playerName: string; characterName: string };
 	let cameraSlots = $state<CameraSlot[]>([]);
 	let mapBackground = $state('');
-	type OverlayBlock = { id: string; x: number; y: number; visible: boolean };
+	type OverlayBlock = {
+		id: string;
+		x: number;
+		y: number;
+		width?: number;
+		height?: number;
+		fontSize?: number;
+		color?: string;
+		opacity?: number;
+		borderColor?: string;
+		borderWidth?: number;
+		shadow?: boolean;
+		visible: boolean;
+		locked?: boolean;
+	};
 	let overlayLayout = $state<{
 		background: string;
 		blocks: OverlayBlock[];
@@ -38,10 +50,35 @@
 		background: '',
 		blocks: []
 	});
+	let overlayBackground = $state('');
+	function applyLayoutDocument(value: unknown) {
+		const document = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+		if (document.profiles && typeof document.profiles === 'object') {
+			const profiles = document.profiles as Record<string, typeof overlayLayout>;
+			const active = String(document.activeProfile ?? Object.keys(profiles)[0] ?? 'Principal');
+			overlayLayout = profiles[active] ?? { background: '', blocks: [] };
+		} else if (value && typeof value === 'object') overlayLayout = value as typeof overlayLayout;
+		void resolveOverlayBackground(overlayLayout.background);
+	}
+	async function resolveOverlayBackground(path: string) {
+		if (!path) {
+			overlayBackground = '';
+			return;
+		}
+		if (path.startsWith('http') || path.startsWith('data:')) {
+			overlayBackground = path;
+			return;
+		}
+		if (!supabase || !session) return;
+		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(path, 3600);
+		overlayBackground = data?.signedUrl ?? '';
+	}
 	function loadOverlayLayout() {
 		try {
 			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);
-			if (saved) overlayLayout = JSON.parse(saved);
+			if (saved) {
+				applyLayoutDocument(JSON.parse(saved));
+			}
 		} catch {
 			/* ignore malformed local layout */
 		}
@@ -50,11 +87,8 @@
 	// This set is a private animation de-duplication cache, not rendered state.
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const seenRolls = new Set<string>();
-	let publicMode = $state(false);
 	let authRequired = $state(false);
-	onDestroy(() => {
-		if (publicRefreshTimer) clearInterval(publicRefreshTimer);
-	});
+	onDestroy(() => {});
 
 	const query = () => new URLSearchParams(window.location.search);
 	const campaignId = () => query().get('campaign') ?? '';
@@ -143,63 +177,9 @@
 			error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.';
 		}
 	}
-	async function refreshPublic() {
-		const token = query().get('access');
-		if (!token || !sceneId()) return;
-		const response = await fetch(
-			`${apiBase}/api/v1/overlay/${encodeURIComponent(token)}?scene=${encodeURIComponent(sceneId())}`
-		);
-		if (!response.ok) throw new Error('Overlay inválida ou revogada.');
-		const data = await response.json();
-		scene = data.scene;
-		if (data.layout && Object.keys(data.layout).length) overlayLayout = data.layout;
-		tokens = data.tokens ?? [];
-		messages = (data.events ?? []).map(
-			(event: {
-				id: number;
-				author: string;
-				type: string;
-				payload: unknown;
-				createdAt: string;
-			}) => ({
-				id: String(event.id),
-				autor: event.author,
-				tipo: event.type === 'dice.roll' ? 'rolagem' : 'sistema',
-				texto: '',
-				detalhesRolagem: event.payload
-			})
-		);
-		error = '';
-	}
-
 	onMount(() => {
 		setDice3dPreference(true);
 		loadOverlayLayout();
-		publicMode = Boolean(query().get('access'));
-		if (publicMode) {
-			cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
-				.map((index) => ({
-					url: query().get(`camera${index}`) ?? '',
-					playerName: query().get(`camera${index}Player`) ?? '',
-					characterName: query().get(`camera${index}Character`) ?? ''
-				}))
-				.filter((camera) => camera.url.startsWith('https://vdo.ninja/'));
-			void refreshPublic().catch(
-				(err) =>
-					(error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.')
-			);
-			publicRefreshTimer = setInterval(() => {
-				loadOverlayLayout();
-				void refreshPublic().catch((err) => {
-					error = err instanceof Error ? err.message : 'Não foi possível atualizar o overlay.';
-					if (publicRefreshTimer) {
-						clearInterval(publicRefreshTimer);
-						publicRefreshTimer = null;
-					}
-				});
-			}, 5000);
-			return;
-		}
 		if (!supabase) {
 			error = 'Supabase não está configurado.';
 			return;
@@ -245,6 +225,7 @@
 				return;
 			}
 			session = data.session;
+			loadOverlayLayout();
 			void refresh(data.session);
 			socket = connectSceneSocket(data.session, sceneId(), () => {
 				if (refreshTimer) clearTimeout(refreshTimer);
@@ -256,7 +237,6 @@
 			overlayChannel?.close();
 			window.removeEventListener('storage', onStorage);
 			if (refreshTimer) clearTimeout(refreshTimer);
-			if (publicRefreshTimer) clearInterval(publicRefreshTimer);
 			socket?.close();
 		};
 	});
@@ -288,7 +268,9 @@
 	const block = (id: string) => overlayLayout.blocks.find((item) => item.id === id);
 	const blockStyle = (id: string) => {
 		const item = block(id);
-		return item ? `--overlay-x:${item.x}%;--overlay-y:${item.y}%;` : '';
+		return item
+			? `--overlay-x:${item.x}%;--overlay-y:${item.y}%;--overlay-width:${item.width ?? 20}%;--overlay-height:${item.height ?? 20}%;--overlay-font:${item.fontSize ?? 1}rem;--overlay-color:${item.color ?? '#f0e0c8'};--overlay-opacity:${(item.opacity ?? 100) / 100};--overlay-border:${item.borderColor ?? '#d8ad67'};--overlay-border-width:${item.borderWidth ?? 1}px;--overlay-shadow:${item.shadow === false ? 'none' : '0 10px 24px #0008'};`
+			: '';
 	};
 </script>
 
@@ -303,9 +285,7 @@
 			<button onclick={() => void login()}>Entrar com Google</button>
 		</section>{:else if error}<p class="overlay-error">
 			{error}
-		</p>{:else if !scene || (!session && !publicMode)}<p class="overlay-loading">
-			Carregando overlay…
-		</p>{:else}
+		</p>{:else if !scene || !session}<p class="overlay-loading">Carregando overlay…</p>{:else}
 		<header
 			class="overlay-header"
 			class:layout-hidden={block('header')?.visible === false}
@@ -332,7 +312,7 @@
 			class:layout-hidden={block('map')?.visible === false}
 			class:layout-positioned={Boolean(block('map'))}
 			aria-label="Mapa da cena"
-			style={`--grid-size: ${scene.gridSize}px; ${blockStyle('map')} background-image: ${mapBackground ? `url("${mapBackground}")` : overlayLayout.background ? `url("${overlayLayout.background}")` : 'none'}`}
+			style={`--grid-size: ${scene.gridSize}px; ${blockStyle('map')} background-image: ${mapBackground ? `url("${mapBackground}")` : overlayBackground ? `url("${overlayBackground}")` : 'none'}`}
 		>
 			<div class="map-grid" aria-hidden="true"></div>
 			{#each visibleTokens() as token (token.id)}<div
@@ -421,7 +401,18 @@
 		display: none !important;
 	}
 	.layout-positioned {
-		transform: translate(calc(var(--overlay-x, 0%) - 4%), calc(var(--overlay-y, 0%) - 4%));
+		position: absolute !important;
+		left: var(--overlay-x, 0%);
+		top: var(--overlay-y, 0%);
+		width: var(--overlay-width, auto);
+		min-height: var(--overlay-height, auto);
+		transform: none;
+		color: var(--overlay-color, inherit);
+		font-size: var(--overlay-font, inherit);
+		opacity: var(--overlay-opacity, 1);
+		box-sizing: border-box;
+		border: var(--overlay-border-width, 0) solid var(--overlay-border, transparent);
+		box-shadow: var(--overlay-shadow, none);
 	}
 	.map-preview {
 		position: relative;

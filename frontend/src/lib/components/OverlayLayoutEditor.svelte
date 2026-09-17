@@ -1,12 +1,28 @@
 <script lang="ts">
 	import type { Session } from '@supabase/supabase-js';
 	import { apiBase } from '$lib/services/apiBase';
+	import { supabase } from '$lib/services/supabase';
 	let {
 		campaignId,
 		sceneId,
 		session
 	}: { campaignId: string; sceneId: string; session: Session | null } = $props();
-	type Block = { id: string; label: string; x: number; y: number; visible: boolean };
+	type Block = {
+		id: string;
+		label: string;
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		fontSize: number;
+		color: string;
+		opacity: number;
+		borderColor: string;
+		borderWidth: number;
+		shadow: boolean;
+		visible: boolean;
+		locked: boolean;
+	};
 	type Layout = {
 		background: string;
 		blocks: Block[];
@@ -20,21 +36,149 @@
 		livekitRoom: '',
 		livekitToken: '',
 		blocks: [
-			{ id: 'header', label: 'Cabeçalho', x: 4, y: 4, visible: true },
-			{ id: 'map', label: 'Mapa e tokens', x: 4, y: 16, visible: true },
-			{ id: 'cameras', label: 'Câmeras', x: 4, y: 78, visible: true },
-			{ id: 'rolls', label: 'Rolagens', x: 76, y: 16, visible: true }
+			{
+				id: 'header',
+				label: 'Cabeçalho',
+				x: 4,
+				y: 4,
+				width: 42,
+				height: 10,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'map',
+				label: 'Mapa e tokens',
+				x: 4,
+				y: 16,
+				width: 68,
+				height: 58,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'cameras',
+				label: 'Câmeras',
+				x: 4,
+				y: 78,
+				width: 68,
+				height: 18,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'rolls',
+				label: 'Rolagens',
+				x: 76,
+				y: 16,
+				width: 20,
+				height: 58,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			}
 		]
 	});
 	let layout = $state<Layout>(defaults());
+	let profiles = $state<Record<string, Layout>>({ Principal: defaults() });
+	let activeProfile = $state('Principal');
+	let snapToGrid = $state(true);
 	let selectedId = $state('map');
 	let status = $state('');
+	let saving = $state(false);
+	let backgroundPreview = $state('');
 	const key = () => `maismorras:overlay-layout:${campaignId}:${sceneId}`;
+	function normalize(value: Partial<Layout>): Layout {
+		const base = defaults();
+		return {
+			...base,
+			...value,
+			blocks: base.blocks.map((fallback) => ({
+				...fallback,
+				...(value.blocks ?? []).find((item) => item.id === fallback.id)
+			}))
+		};
+	}
+	function loadDocument(value: unknown) {
+		const document = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+		if (document.profiles && typeof document.profiles === 'object') {
+			profiles = Object.fromEntries(
+				Object.entries(document.profiles).map(([name, item]) => [
+					name,
+					normalize(item as Partial<Layout>)
+				])
+			);
+			activeProfile = profiles[String(document.activeProfile)]
+				? String(document.activeProfile)
+				: (Object.keys(profiles)[0] ?? 'Principal');
+			layout = profiles[activeProfile] ?? defaults();
+		} else {
+			layout = normalize(document as Partial<Layout>);
+			profiles = { Principal: layout };
+			activeProfile = 'Principal';
+		}
+	}
+	function selectProfile(name: string) {
+		profiles[activeProfile] = layout;
+		activeProfile = name;
+		layout = profiles[name] ?? defaults();
+	}
+	function createProfile() {
+		const name = window
+			.prompt('Nome do novo layout', `Layout ${Object.keys(profiles).length + 1}`)
+			?.trim();
+		if (!name || profiles[name]) return;
+		profiles[activeProfile] = layout;
+		profiles[name] = structuredClone(layout);
+		activeProfile = name;
+		layout = profiles[name];
+	}
+	function renameProfile() {
+		const name = window.prompt('Novo nome do layout', activeProfile)?.trim();
+		if (!name || name === activeProfile || profiles[name]) return;
+		profiles[name] = profiles[activeProfile];
+		delete profiles[activeProfile];
+		activeProfile = name;
+	}
+	function deleteProfile() {
+		if (
+			Object.keys(profiles).length <= 1 ||
+			!window.confirm(`Excluir o layout “${activeProfile}”?`)
+		)
+			return;
+		delete profiles[activeProfile];
+		activeProfile = Object.keys(profiles)[0];
+		layout = profiles[activeProfile];
+	}
 	$effect(() => {
 		if (!campaignId || !sceneId || typeof localStorage === 'undefined') return;
 		try {
 			const saved = localStorage.getItem(key());
-			layout = saved ? { ...defaults(), ...JSON.parse(saved) } : defaults();
+			loadDocument(saved ? JSON.parse(saved) : {});
+			void resolveBackground(layout.background);
 			void loadRemote();
 		} catch {
 			layout = defaults();
@@ -49,12 +193,26 @@
 			if (!response.ok) return;
 			const body = await response.json();
 			if (body.layout && Object.keys(body.layout).length) {
-				layout = { ...defaults(), ...body.layout };
-				localStorage.setItem(key(), JSON.stringify(layout));
+				loadDocument(body.layout);
+				void resolveBackground(layout.background);
+				localStorage.setItem(key(), JSON.stringify({ activeProfile, profiles }));
 			}
 		} catch {
 			/* local layout remains available offline */
 		}
+	}
+	async function resolveBackground(path: string) {
+		if (!path) {
+			backgroundPreview = '';
+			return;
+		}
+		if (path.startsWith('data:') || path.startsWith('http')) {
+			backgroundPreview = path;
+			return;
+		}
+		if (!supabase) return;
+		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(path, 3600);
+		backgroundPreview = data?.signedUrl ?? '';
 	}
 	function dragStart(event: DragEvent, id: string) {
 		event.dataTransfer?.setData('text/plain', id);
@@ -66,52 +224,127 @@
 		const rect = target.getBoundingClientRect();
 		const x = Math.max(0, Math.min(94, ((event.clientX - rect.left) / rect.width) * 100));
 		const y = Math.max(0, Math.min(94, ((event.clientY - rect.top) / rect.height) * 100));
-		layout.blocks = layout.blocks.map((block) => (block.id === id ? { ...block, x, y } : block));
+		const snappedX = snapToGrid ? Math.round(x / 2) * 2 : x;
+		const snappedY = snapToGrid ? Math.round(y / 2) * 2 : y;
+		layout.blocks = layout.blocks.map((block) =>
+			block.id === id && !block.locked ? { ...block, x: snappedX, y: snappedY } : block
+		);
 		selectedId = id ?? selectedId;
 	}
+	function resizeStart(event: PointerEvent, id: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		const item = layout.blocks.find((block) => block.id === id);
+		const workspace = (event.target as HTMLElement | null)?.closest(
+			'.workspace'
+		) as HTMLElement | null;
+		if (!item || item.locked || !workspace) return;
+		const rect = workspace.getBoundingClientRect();
+		const move = (moveEvent: PointerEvent) => {
+			item.width = Math.max(
+				8,
+				Math.min(96, ((moveEvent.clientX - rect.left) / rect.width) * 100 - item.x)
+			);
+			item.height = Math.max(
+				6,
+				Math.min(96, ((moveEvent.clientY - rect.top) / rect.height) * 100 - item.y)
+			);
+			layout.blocks = [...layout.blocks];
+		};
+		const stop = () => {
+			window.removeEventListener('pointermove', move);
+			window.removeEventListener('pointerup', stop);
+		};
+		window.addEventListener('pointermove', move);
+		window.addEventListener('pointerup', stop, { once: true });
+	}
 	const selected = () => layout.blocks.find((item) => item.id === selectedId);
-	function updateSelected(field: 'x' | 'y', value: string) {
+	function updateSelected(
+		field: 'x' | 'y' | 'width' | 'height' | 'fontSize' | 'opacity',
+		value: string
+	) {
 		const item = selected();
 		const number = Number(value);
 		if (!item || !Number.isFinite(number)) return;
-		item[field] = Math.max(0, Math.min(94, number));
+		const max =
+			field === 'fontSize'
+				? 3
+				: field === 'opacity'
+					? 100
+					: field === 'width' || field === 'height'
+						? 100
+						: 94;
+		item[field] = Math.max(field === 'fontSize' ? 0.5 : 0, Math.min(max, number));
 		layout.blocks = [...layout.blocks];
 	}
-	function save() {
-		localStorage.setItem(key(), JSON.stringify(layout));
-		if (session?.access_token)
-			void fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
-				method: 'PUT',
-				headers: {
-					Authorization: `Bearer ${session.access_token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(layout)
-			});
-		if ('BroadcastChannel' in window) {
-			const channel = new BroadcastChannel(`maismorras:overlay:${campaignId}`);
-			channel.postMessage({ type: 'layout-change', sceneId });
-			channel.close();
+	async function save() {
+		if (saving) return;
+		saving = true;
+		profiles[activeProfile] = layout;
+		const document = { activeProfile, profiles };
+		localStorage.setItem(key(), JSON.stringify(document));
+		try {
+			if (session?.access_token) {
+				const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
+					method: 'PUT',
+					headers: {
+						Authorization: `Bearer ${session.access_token}`,
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(document)
+				});
+				if (!response.ok)
+					throw new Error(
+						response.status === 403
+							? 'Você não tem permissão para editar esta overlay.'
+							: 'Não foi possível salvar a overlay no servidor.'
+					);
+			}
+			if ('BroadcastChannel' in window) {
+				const channel = new BroadcastChannel(`maismorras:overlay:${campaignId}`);
+				channel.postMessage({ type: 'layout-change', sceneId });
+				channel.close();
+			}
+			status = 'Layout da overlay salvo para esta cena.';
+		} catch (error) {
+			status = error instanceof Error ? error.message : 'Não foi possível salvar a overlay.';
+		} finally {
+			saving = false;
 		}
-		status = 'Layout da overlay salvo para esta cena.';
 	}
 	function reset() {
 		layout = defaults();
+		profiles = { Principal: layout };
+		activeProfile = 'Principal';
 		localStorage.removeItem(key());
 		status = 'Layout restaurado.';
 	}
-	function upload(event: Event) {
+	async function upload(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
-		if (!file || !file.type.startsWith('image/png')) {
+		if (!file || file.type !== 'image/png') {
 			status = 'Escolha um arquivo PNG.';
 			return;
 		}
-		const reader = new FileReader();
-		reader.onload = () => {
-			layout.background = String(reader.result);
-			status = 'Fundo carregado. Salve para aplicar.';
-		};
-		reader.readAsDataURL(file);
+		if (file.size > 8 * 1024 * 1024) {
+			status = 'O fundo deve ter no máximo 8 MB.';
+			return;
+		}
+		if (supabase && session?.user.id) {
+			status = 'Enviando fundo…';
+			const path = `campaigns/${campaignId}/overlays/${sceneId}/${crypto.randomUUID()}.png`;
+			const { error } = await supabase.storage
+				.from('campaign-assets')
+				.upload(path, file, { contentType: 'image/png', upsert: false });
+			if (error) {
+				status = 'Não foi possível enviar o fundo.';
+				return;
+			}
+			layout.background = path;
+			backgroundPreview = URL.createObjectURL(file);
+			status = 'Fundo enviado. Salve para aplicar.';
+			return;
+		}
+		status = 'Faça login para enviar o fundo da overlay.';
 	}
 </script>
 
@@ -124,11 +357,32 @@
 		<div class="actions">
 			<button class="secondary-button" onclick={reset}>Restaurar</button><button
 				class="primary-button"
-				onclick={save}>Salvar layout</button
+				onclick={() => void save()}
+				disabled={saving}>{saving ? 'Salvando…' : 'Salvar layout'}</button
 			>
 		</div>
 	</header>
+	<div class="profile-bar" aria-label="Perfis de layout">
+		<label
+			>Perfil ativo<select
+				value={activeProfile}
+				onchange={(event) => selectProfile(event.currentTarget.value)}
+				>{#each Object.keys(profiles) as name (name)}<option value={name}>{name}</option
+					>{/each}</select
+			></label
+		>
+		<button class="secondary-button" onclick={createProfile}>Duplicar</button>
+		<button class="secondary-button" onclick={renameProfile}>Renomear</button>
+		<button
+			class="secondary-button danger"
+			onclick={deleteProfile}
+			disabled={Object.keys(profiles).length <= 1}>Excluir</button
+		>
+	</div>
 	<p class="hint">Arraste os blocos no quadro. Cada cena possui uma configuração independente.</p>
+	<label class="snap-toggle"
+		><input type="checkbox" bind:checked={snapToGrid} /> Alinhar à grade</label
+	>
 	<label class="upload">Fundo PNG <input type="file" accept="image/png" onchange={upload} /></label>
 	<div class="livekit-fields">
 		<label>LiveKit URL<input bind:value={layout.livekitUrl} placeholder="wss://..." /></label><label
@@ -147,7 +401,7 @@
 		aria-label="Área para posicionar os blocos da overlay"
 		ondragover={(event) => event.preventDefault()}
 		ondrop={drop}
-		style:background-image={layout.background ? `url(${layout.background})` : undefined}
+		style:background-image={backgroundPreview ? `url(${backgroundPreview})` : undefined}
 	>
 		{#each layout.blocks as block (block.id)}<button
 				class="block"
@@ -156,9 +410,19 @@
 				draggable="true"
 				onclick={() => (selectedId = block.id)}
 				ondragstart={(event) => dragStart(event, block.id)}
-				style={`left:${block.x}%;top:${block.y}%`}
+				style={`left:${block.x}%;top:${block.y}%;width:${block.width}%;height:${block.height}%;font-size:${block.fontSize}rem;color:${block.color};opacity:${block.opacity / 100};border-color:${block.borderColor};border-width:${block.borderWidth}px;box-shadow:${block.shadow ? '0 10px 24px #0008' : 'none'}`}
 			>
 				{block.label}
+				<span
+					class="resize-handle"
+					aria-label="Redimensionar"
+					role="slider"
+					tabindex="0"
+					aria-valuenow={block.width}
+					aria-valuemin="8"
+					aria-valuemax="96"
+					onpointerdown={(event) => resizeStart(event, block.id)}
+				></span>
 			</button>{/each}
 	</div>
 	{#if selected()}<div class="properties">
@@ -178,6 +442,101 @@
 					value={selected()?.y}
 					onchange={(event) => updateSelected('y', event.currentTarget.value)}
 				/></label
+			><label>
+				Largura (%)<input
+					type="number"
+					min="1"
+					max="100"
+					value={selected()?.width}
+					onchange={(event) => updateSelected('width', event.currentTarget.value)}
+				/></label
+			><label>
+				Altura (%)<input
+					type="number"
+					min="1"
+					max="100"
+					value={selected()?.height}
+					onchange={(event) => updateSelected('height', event.currentTarget.value)}
+				/></label
+			><label>
+				Fonte (rem)<input
+					type="number"
+					min="0.5"
+					max="3"
+					step="0.1"
+					value={selected()?.fontSize}
+					onchange={(event) => updateSelected('fontSize', event.currentTarget.value)}
+				/></label
+			><label>
+				Opacidade (%)<input
+					type="number"
+					min="0"
+					max="100"
+					value={selected()?.opacity}
+					onchange={(event) => updateSelected('opacity', event.currentTarget.value)}
+				/></label
+			><label>
+				Cor<input
+					type="color"
+					value={selected()?.color}
+					onchange={(event) => {
+						const item = selected();
+						if (item) {
+							item.color = event.currentTarget.value;
+							layout.blocks = [...layout.blocks];
+						}
+					}}
+				/></label
+			><label>
+				Borda (px)<input
+					type="number"
+					min="0"
+					max="8"
+					value={selected()?.borderWidth}
+					onchange={(event) => {
+						const item = selected();
+						if (item) {
+							item.borderWidth = Number(event.currentTarget.value);
+							layout.blocks = [...layout.blocks];
+						}
+					}}
+				/>
+			</label><label>
+				Cor da borda<input
+					type="color"
+					value={selected()?.borderColor}
+					onchange={(event) => {
+						const item = selected();
+						if (item) {
+							item.borderColor = event.currentTarget.value;
+							layout.blocks = [...layout.blocks];
+						}
+					}}
+				/>
+			</label><label class="lock">
+				<input
+					type="checkbox"
+					checked={selected()?.shadow}
+					onchange={(event) => {
+						const item = selected();
+						if (item) {
+							item.shadow = event.currentTarget.checked;
+							layout.blocks = [...layout.blocks];
+						}
+					}}
+				/> Sombra
+			</label><label class="lock"
+				><input
+					type="checkbox"
+					checked={selected()?.locked}
+					onchange={(event) => {
+						const item = selected();
+						if (item) {
+							item.locked = event.currentTarget.checked;
+							layout.blocks = [...layout.blocks];
+						}
+					}}
+				/> Bloquear posição</label
 			>
 		</div>{/if}
 	<div class="visibility">
@@ -220,10 +579,42 @@
 		color: #a99c91;
 		font-size: 0.78rem;
 	}
+	.snap-toggle {
+		display: inline-flex;
+		gap: 0.35rem;
+		align-items: center;
+		color: #c4b6a5;
+		font-size: 0.72rem;
+		margin-bottom: 0.5rem;
+	}
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+	.profile-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: end;
+		gap: 0.45rem;
+		margin: 0.8rem 0;
+	}
+	.profile-bar label {
+		display: grid;
+		gap: 0.2rem;
+		color: #b9aa9b;
+		font-size: 0.68rem;
+	}
+	.profile-bar select {
+		min-width: 10rem;
+		border: 1px solid #51443a;
+		border-radius: 6px;
+		padding: 0.4rem;
+		color: #eee4d6;
+		background: #211c1e;
+	}
+	.profile-bar .danger {
+		color: #efaaa0;
 	}
 	.upload {
 		display: inline-flex;
@@ -276,6 +667,17 @@
 		font-size: 0.7rem;
 		cursor: grab;
 		transform: translate(-50%, -50%);
+		box-sizing: border-box;
+	}
+	.resize-handle {
+		position: absolute;
+		right: 2px;
+		bottom: 2px;
+		width: 10px;
+		height: 10px;
+		border-right: 2px solid #f0cb85;
+		border-bottom: 2px solid #f0cb85;
+		cursor: nwse-resize;
 	}
 	.block.selected {
 		outline: 2px solid #f0cb85;
@@ -283,12 +685,34 @@
 	}
 	.properties {
 		display: grid;
-		grid-template-columns: 1fr auto auto;
+		grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 		align-items: center;
 		gap: 0.55rem;
 		margin-top: 0.7rem;
 		color: #c4b6a5;
 		font-size: 0.72rem;
+	}
+	.properties strong {
+		grid-column: 1 / -1;
+	}
+	.properties label {
+		display: grid;
+		gap: 0.2rem;
+		color: #b9aa9b;
+		font-size: 0.68rem;
+	}
+	.properties input {
+		min-width: 0;
+		border: 1px solid #51443a;
+		border-radius: 6px;
+		padding: 0.3rem;
+		color: #eee4d6;
+		background: #211c1e;
+	}
+	.properties .lock {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
 	}
 	.properties label {
 		display: flex;

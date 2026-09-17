@@ -34,53 +34,6 @@ func (h *Handler) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	w.WriteHeader(http.StatusCreated)
 	return json.NewEncoder(w).Encode(invite)
 }
-func (h *Handler) CreateOverlayToken(w http.ResponseWriter, r *http.Request) error {
-	p, _ := auth.FromContext(r.Context())
-	token, err := h.repo.CreateOverlayToken(r.Context(), r.PathValue("campaignID"), p.UserID)
-	if errors.Is(err, ErrForbidden) {
-		return apperror.Forbidden("Somente o narrador pode gerar o link da overlay.")
-	}
-	if errors.Is(err, ErrNotFound) {
-		return apperror.NotFound("CAMPAIGN_NOT_FOUND", "Campanha não encontrada.")
-	}
-	if err != nil {
-		return apperror.Internal(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(map[string]string{"token": token})
-}
-func (h *Handler) RevokeOverlayToken(w http.ResponseWriter, r *http.Request) error {
-	p, _ := auth.FromContext(r.Context())
-	err := h.repo.RevokeOverlayToken(r.Context(), r.PathValue("campaignID"), p.UserID)
-	if errors.Is(err, ErrForbidden) {
-		return apperror.Forbidden("Somente o narrador pode revogar o link da overlay.")
-	}
-	if errors.Is(err, ErrNotFound) {
-		return apperror.NotFound("CAMPAIGN_NOT_FOUND", "Campanha não encontrada.")
-	}
-	if err != nil {
-		return apperror.Internal(err)
-	}
-	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-func (h *Handler) PublicOverlay(w http.ResponseWriter, r *http.Request) error {
-	token := strings.TrimSpace(r.PathValue("token"))
-	sceneID := strings.TrimSpace(r.URL.Query().Get("scene"))
-	if token == "" || sceneID == "" {
-		return apperror.BadRequest("INVALID_OVERLAY", "Link de overlay inválido.")
-	}
-	item, err := h.repo.PublicOverlay(r.Context(), token, sceneID)
-	if errors.Is(err, ErrNotFound) {
-		return apperror.NotFound("OVERLAY_NOT_FOUND", "Overlay inválida ou revogada.")
-	}
-	if err != nil {
-		return apperror.Internal(err)
-	}
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(item)
-}
 func (h *Handler) AcceptInvite(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaign, err := h.repo.AcceptInvite(r.Context(), r.PathValue("code"), p.UserID)
