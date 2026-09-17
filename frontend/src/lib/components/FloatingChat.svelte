@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { chatMensagens } from '$lib/stores/chatStore';
@@ -20,6 +20,7 @@
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
 	let sceneSocket: SceneSocket | null = null;
+	let messagesElement = $state<HTMLDivElement>();
 	let initialized = false;
 	const knownMessageIds = new SvelteSet<string>();
 	const revealedRollIds = new SvelteSet<string>();
@@ -44,6 +45,15 @@
 			? $chatMensagens
 			: $chatMensagens.filter((message) => (message.canal ?? 'chat') === channel)
 	);
+	$effect(() => {
+		visibleMessages.length;
+		revealedRollIds.size;
+		if (open && messagesElement) {
+			void tick().then(() => {
+				if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
+			});
+		}
+	});
 	const rollLabel = (message: (typeof $chatMensagens)[number]) =>
 		message.detalhesRolagem?.label ||
 		message.texto.split(' · ')[0] ||
@@ -96,9 +106,13 @@
 	onMount(() => {
 		void reloadMessages();
 		sceneSocket = connectSceneSocket(session, sceneId, () => void reloadMessages());
+		// Roll endpoints may complete without a websocket publish; polling keeps
+		// the chat current even when another tab or client performed the roll.
+		const refreshTimer = window.setInterval(() => void reloadMessages(), 2000);
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;
+			window.clearInterval(refreshTimer);
 			for (const timer of revealTimers.values()) clearTimeout(timer);
 			revealTimers.clear();
 		};
@@ -187,7 +201,7 @@
 					>{$appLocale === 'en' ? 'Info' : 'Info'}</button
 				>
 			</nav>
-			<div class="messages" aria-live="polite">
+			<div class="messages" bind:this={messagesElement} aria-live="polite">
 				{#if visibleMessages.length === 0}<p class="empty">
 						{channel === 'combat'
 							? $appLocale === 'en'
