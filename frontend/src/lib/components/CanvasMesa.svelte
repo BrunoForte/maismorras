@@ -117,7 +117,14 @@
 		return `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 	};
 	$effect(() => {
-		if (scene.ambientAudioEnabled && scene.ambientAudioPath) void carregarTrilha();
+		if (scene.ambientAudioEnabled && scene.ambientAudioPath) {
+			void carregarTrilha();
+		} else {
+			ambientAudioA?.pause();
+			ambientAudioB?.pause();
+			ambientPlaying = false;
+			ambientAudioURL = null;
+		}
 	});
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
@@ -404,7 +411,7 @@
 			return;
 		}
 		if (!audio.src) audio.src = ambientAudioURL;
-		audioVolume ??= Math.min(0.7, targetVolume());
+		audioVolume ??= Number(audio.dataset.volume) || Math.min(0.7, targetVolume());
 		audio.volume = audioVolume;
 		try {
 			await audio.play();
@@ -480,7 +487,10 @@
 	function changeAudioVolume(event: Event) {
 		audioVolume = Number((event.currentTarget as HTMLInputElement).value);
 		const audio = activeAudio();
-		if (audio) audio.volume = audioVolume;
+		if (audio) {
+			audio.volume = audioVolume;
+			audio.dataset.volume = String(audioVolume);
+		}
 	}
 
 	async function aplicarCondicaoOficial() {
@@ -1004,8 +1014,8 @@
 	{#if ambientAudioURL}<div class="ambient-audio">
 			<button
 				onclick={() => void (audioNeedsGesture ? tentarIniciarTrilha() : toggleTrilha())}
-				disabled={!isGM}
-				title={!isGM ? 'Somente o narrador controla a trilha' : 'Controlar trilha da mesa'}
+				disabled={!isGM && !audioNeedsGesture}
+				title={!isGM ? 'Clique para autorizar o áudio neste navegador' : 'Controlar trilha da mesa'}
 				>{audioNeedsGesture
 					? '♫ Ativar trilha'
 					: ambientPlaying
