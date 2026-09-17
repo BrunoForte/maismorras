@@ -42,6 +42,7 @@ export type CharacterSheet = {
 	skillProficiencies: string[];
 	skillExpertise: string[];
 	armorClass: number;
+	initiative: number;
 	speed: number;
 	hitPointsCurrent: number;
 	hitPointsMax: number;
@@ -110,7 +111,10 @@ function normalizeCharacter(character: Character): Character {
 		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
 		automaticTraits: character.sheet.automaticTraits ?? [],
-		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0
+		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0,
+		initiative:
+			character.sheet.initiative ??
+			Math.floor(((character.sheet.abilityScores?.dexterity ?? 10) - 10) / 2)
 	};
 	return character;
 }
@@ -215,6 +219,7 @@ export function createEmptySheet(): CharacterSheet {
 		skillProficiencies: [],
 		skillExpertise: [],
 		armorClass: 10,
+		initiative: 0,
 		speed: 9,
 		hitPointsCurrent: 10,
 		hitPointsMax: 10,

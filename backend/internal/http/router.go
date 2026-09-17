@@ -66,6 +66,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Detail))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/overlay-layout", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.GetOverlayLayout))
 	mux.Handle("PUT /api/v1/scenes/{sceneID}/overlay-layout", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SaveOverlayLayout))
+	mux.Handle("GET /api/v1/scenes/{sceneID}/presentation", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.GetPresentation))
+	mux.Handle("PUT /api/v1/scenes/{sceneID}/presentation", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SavePresentation))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateScene))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/combat", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Combat))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/effects", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Effects))

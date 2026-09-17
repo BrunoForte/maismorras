@@ -134,8 +134,36 @@ type Visibility struct {
 	ImageOffsetY          float64 `json:"imageOffsetY"`
 }
 type Repository struct{ pool *pgxpool.Pool }
+type Presentation struct {
+	AssetPath string `json:"assetPath"`
+	Title     string `json:"title"`
+	Visible   bool   `json:"visible"`
+}
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
+
+func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string) (Presentation, error) {
+	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
+		return Presentation{}, err
+	}
+	var p Presentation
+	err := r.pool.QueryRow(ctx, `select asset_path,title,visible from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Visible)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Presentation{}, nil
+	}
+	return p, err
+}
+func (r *Repository) SavePresentation(ctx context.Context, sceneID, userID string, p Presentation) error {
+	if role, err := r.memberRole(ctx, sceneID, userID); err != nil || role != "gm" {
+		return ErrForbidden
+	}
+	if strings.TrimSpace(p.AssetPath) == "" {
+		_, err := r.pool.Exec(ctx, `delete from scene_presentations where scene_id=$1`, sceneID)
+		return err
+	}
+	_, err := r.pool.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,visible) select $1,campaign_id,$2,$3,$4 from scenes where id=$1 on conflict(scene_id) do update set asset_path=excluded.asset_path,title=excluded.title,visible=excluded.visible,updated_at=now()`, sceneID, p.AssetPath, p.Title, p.Visible)
+	return err
+}
 
 func (r *Repository) GetOverlayLayout(ctx context.Context, sceneID, userID string) (map[string]any, error) {
 	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {

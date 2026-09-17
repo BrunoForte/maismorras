@@ -561,6 +561,12 @@
 			)[normalized] ?? normalized
 		);
 	}
+	const normalizedClassName = (value: string) =>
+		value
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.trim();
 	function onClassChanged() {
 		const hitDice = classHitDice[canonicalClass(sheet.class)];
 		if (hitDice) sheet.hitDice = hitDice;
@@ -579,7 +585,14 @@
 			.filter(
 				(entry) =>
 					entry.entryType === 'subclass' &&
-					(!entry.rules.classId || String(entry.rules.classId) === progressionClass(sheet.class))
+					((!entry.rules.classId && !entry.rules.className && !entry.rules.parentClass) ||
+						[entry.rules.classId, entry.rules.className, entry.rules.parentClass]
+							.filter(Boolean)
+							.some(
+								(value) =>
+									canonicalClass(String(value)) === progressionClass(sheet.class) ||
+									normalizedClassName(String(value)) === normalizedClassName(sheet.class)
+							))
 			)
 			.map((entry) => entry.name);
 	const subclassOptions = () =>
@@ -602,8 +615,25 @@
 			})
 			.filter((feature) => feature.name);
 		const subclassEntry = compendiumEntries.find(
-			(entry) => entry.entryType === 'subclass' && entry.name === sheet.subclass
+			(entry) =>
+				entry.entryType === 'subclass' &&
+				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
+		const customFeatures = compendiumEntries
+			.filter((entry) => entry.entryType === 'feature')
+			.flatMap((entry) =>
+				Array.isArray(entry.rules.features)
+					? entry.rules.features
+					: [{ name: entry.name, description: entry.summary, level: entry.rules.level ?? 1 }]
+			)
+			.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level)
+			.map((feature, index) => ({
+				id: `custom-${index}`,
+				level: Number((feature as Record<string, unknown>).level ?? 1),
+				name: String((feature as Record<string, unknown>).name ?? ''),
+				description: String((feature as Record<string, unknown>).description ?? '')
+			}))
+			.filter((feature) => feature.name);
 		const subclassFeatures = Array.isArray(subclassEntry?.rules.features)
 			? subclassEntry.rules.features
 			: [];
@@ -619,8 +649,8 @@
 				};
 			})
 			.filter((feature) => feature.name);
-		return classResult.length
-			? [...classResult, ...subclassResult].sort(
+		return classResult.length || subclassResult.length || customFeatures.length
+			? [...classResult, ...subclassResult, ...customFeatures].sort(
 					(a, b) => a.level - b.level || a.name.localeCompare(b.name)
 				)
 			: classFeatures(sheet.class, sheet.level, sheet.subclass).map((feature, index) => ({
@@ -684,6 +714,14 @@
 		sheet.automaticTraits = activeSpeciesTraits();
 		const hitDie = classHitDice[canonicalClass(sheet.class)];
 		if (hitDie) sheet.hitDice = hitDie;
+		if (!Number.isFinite(sheet.initiative))
+			sheet.initiative = modifier(sheet.abilityScores.dexterity);
+		if (sheet.level === 1 && sheet.hitPointsMax === 10) {
+			const die = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8);
+			const hp = Math.max(1, die + modifier(sheet.abilityScores.constitution));
+			sheet.hitPointsMax = hp;
+			sheet.hitPointsCurrent = hp;
+		}
 		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);
 		sheet.resources = defaults.map((resource) => ({
 			...resource,
@@ -1645,6 +1683,14 @@
 							>{$appLocale === 'en'
 								? 'Calculated from ability scores and equipped armor/shield.'
 								: 'Calculada pelos atributos e armaduras/escudos equipados.'}</small
+						><label
+							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
+								type="number"
+								min="-20"
+								max="20"
+								bind:value={sheet.initiative}
+								oninput={syncTokenSoon}
+							/></label
 						><label
 							>{$appLocale === 'en' ? 'Speed (ft)' : 'Deslocamento (m)'}<input
 								type="number"

@@ -10,8 +10,17 @@
 		campaignId,
 		session,
 		isGM,
-		onnotes
-	}: { campaignId: string; session: Session; isGM: boolean; onnotes: () => void } = $props();
+		onnotes,
+		onpresent,
+		onhide
+	}: {
+		campaignId: string;
+		session: Session;
+		isGM: boolean;
+		onnotes: () => void;
+		onpresent: (asset: { path: string; name: string }) => void;
+		onhide: () => void;
+	} = $props();
 	type Asset = {
 		name: string;
 		path: string;
@@ -261,6 +270,9 @@
 				><button onclick={onnotes}
 					>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button
 				>
+				{#if isGM}<button onclick={onhide}
+						>{$appLocale === 'en' ? 'Hide presentation' : 'Ocultar imagem exibida'}</button
+					>{/if}
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
@@ -366,7 +378,10 @@
 								title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
 								onclick={() => void deleteAsset(asset)}
 								disabled={deletingAsset === asset.path}>×</button
-							>{/if}
+							>{#if asset.type === 'image' || asset.type === 'map'}<button
+									class="asset-present"
+									onclick={() => onpresent({ path: asset.path, name: asset.name })}>👁</button
+								>{/if}{/if}
 					</div>
 				</article>{/each}
 		</section>{:else}<div class="empty">

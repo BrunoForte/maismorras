@@ -13,6 +13,8 @@
 	import NPCsPanel from '$lib/components/NPCsPanel.svelte';
 	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
 	import LibraryView from '$lib/components/LibraryView.svelte';
+	import ImagePresentation from '$lib/components/ImagePresentation.svelte';
+	import { savePresentation } from '$lib/services/presentationApi';
 	import CompendiumView from '$lib/components/CompendiumView.svelte';
 	import BestiaryView from '$lib/components/BestiaryView.svelte';
 	import SceneSettings from '$lib/components/SceneSettings.svelte';
@@ -421,6 +423,25 @@
 			channel.close();
 		}
 	}
+	async function presentAsset(asset: { path: string; name: string }) {
+		if (!activeCampaign || !activeScene || activeCampaign.role !== 'gm' || !session) return;
+		try {
+			await savePresentation(session, activeScene.id, {
+				assetPath: asset.path,
+				title: asset.name,
+				visible: true
+			});
+			inviteStatus = 'Imagem exibida para os jogadores.';
+			publishOverlayScene();
+		} catch (e) {
+			inviteStatus = e instanceof Error ? e.message : 'Não foi possível exibir a imagem.';
+		}
+	}
+	async function hidePresentedAsset() {
+		if (!activeScene || !session || activeCampaign?.role !== 'gm') return;
+		await savePresentation(session, activeScene.id, { assetPath: '', title: '', visible: false });
+		publishOverlayScene();
+	}
 	async function copyLiveOverlayAddress() {
 		if (!activeCampaign || !activeScene) return;
 		// URLSearchParams is local and only used to construct the share URL.
@@ -531,6 +552,10 @@
 	</main>
 {:else}
 	<div class:game-mode={activeCampaign} class="app-shell">
+		{#if activeCampaign && activeScene && session}<ImagePresentation
+				sceneId={activeScene.id}
+				{session}
+			/>{/if}
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="auto"></audio>
 			<audio id="maismorras-ambient-b" loop preload="auto"></audio>
@@ -761,6 +786,8 @@
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					onnotes={() => (notesOpen = true)}
+					onpresent={(asset) => void presentAsset(asset)}
+					onhide={() => void hidePresentedAsset()}
 				/>
 			{:else if workspaceTab === 'compendium'}<CompendiumView
 					campaignId={activeCampaign.id}

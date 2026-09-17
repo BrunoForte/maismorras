@@ -88,6 +88,28 @@ func (h *Handler) SaveOverlayLayout(w http.ResponseWriter, r *http.Request) erro
 	}
 	return write(w, http.StatusOK, map[string]any{"layout": layout})
 }
+func (h *Handler) GetPresentation(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	item, err := h.repo.GetPresentation(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, item)
+}
+func (h *Handler) SavePresentation(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var item Presentation
+	if err := decode(w, r, &item); err != nil {
+		return err
+	}
+	if len(item.AssetPath) > 500 || len(item.Title) > 200 {
+		return apperror.BadRequest("INVALID_PRESENTATION", "Imagem inválida.")
+	}
+	if err := h.repo.SavePresentation(r.Context(), r.PathValue("sceneID"), p.UserID, item); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, item)
+}
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	state, err := h.repo.Combat(r.Context(), r.PathValue("sceneID"), p.UserID)
