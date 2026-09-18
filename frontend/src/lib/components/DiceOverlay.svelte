@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import {
 		activeDiceRolls,
-		dice3dEnabled,
+		diceRendererEffective,
 		diceOverlay,
 		restoreDicePreference
 	} from '$lib/stores/diceOverlayStore';
@@ -12,7 +12,7 @@
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
 	void $activeDiceRolls;
-	void $dice3dEnabled;
+	void $diceRendererEffective;
 	restoreDicePreference();
 	$effect(() => {
 		if (!$activeDiceRolls.length) {
@@ -22,6 +22,8 @@
 		visible = false;
 		void tick().then(() => (visible = true));
 		if (timer) clearTimeout(timer);
+		// O modo persistente limpa apenas o cartão/estado ativo; o DiceBox continua
+		// montado e mantém os dados físicos que já pararam na mesa.
 		timer = setTimeout(() => {
 			visible = false;
 			diceOverlay.set(null);
@@ -31,12 +33,14 @@
 		Number(expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
 </script>
 
+{#if $diceRendererEffective !== '2d'}
+	<DiceBox3D mode={$diceRendererEffective} />
+{/if}
 {#if $activeDiceRolls.length && visible}
-	{#if $dice3dEnabled}<DiceBox3D />{/if}
 	<div class="dice-overlay" aria-live="polite" aria-label="Rolagens recentes">
 		{#each $activeDiceRolls as result (result.nonce ?? `${result.expression}-${result.total}-${result.dice.join(',')}`)}<article
 			>
-				{#if !$dice3dEnabled}<div class={`die d${sides(result.expression)}`}>
+				{#if $diceRendererEffective === '2d'}<div class={`die d${sides(result.expression)}`}>
 						d{sides(result.expression)}
 					</div>{/if}
 				<div class="result">

@@ -5,10 +5,10 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
 	import {
-		dice3dEnabled,
 		diceBatchOpen,
 		diceOverlay,
-		setDice3dPreference
+		diceRendererMode,
+		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
@@ -181,10 +181,16 @@
 			>
 				<label class="dice-preference"
 					>Dados <select
-						value={$dice3dEnabled ? '3d' : '2d'}
-						onchange={(event) => setDice3dPreference(event.currentTarget.value === '3d')}
-						aria-label="Renderização dos dados"
-						><option value="2d">2D</option><option value="3d">3D</option></select
+						value={$diceRendererMode}
+						onchange={(event) =>
+							setDiceRendererMode(
+								event.currentTarget.value as 'auto' | '2d' | '3d-overlay' | '3d-table'
+							)}
+						aria-label="Modo de renderização dos dados"
+						><option value="auto">Automático</option><option value="2d">Somente efeito 2D</option
+						><option value="3d-overlay">Dados 3D temporários</option><option value="3d-table"
+							>Dados 3D persistentes</option
+						></select
 					></label
 				>
 				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}

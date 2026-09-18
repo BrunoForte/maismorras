@@ -10,7 +10,8 @@
 	import {
 		diceOverlay,
 		restoreDicePreference,
-		setDice3dPreference
+		setDice3dPreference,
+		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
@@ -207,8 +208,16 @@
 	}
 	onMount(() => {
 		restoreDicePreference();
+		const diceMode = query().get('diceMode');
+		if (
+			diceMode === 'auto' ||
+			diceMode === '2d' ||
+			diceMode === '3d-overlay' ||
+			diceMode === '3d-table'
+		)
+			setDiceRendererMode(diceMode);
 		const dicePreference = query().get('dice3d');
-		if (dicePreference === '1' || dicePreference === '0')
+		if (!diceMode && (dicePreference === '1' || dicePreference === '0'))
 			setDice3dPreference(dicePreference === '1');
 		void loadOverlayLayout();
 		if (!supabase) {

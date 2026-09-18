@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { activeDiceRolls } from '$lib/stores/diceOverlayStore';
+	import { activeDiceRolls, diceRendererEffective } from '$lib/stores/diceOverlayStore';
+
+	let { mode = '3d-overlay' }: { mode?: '3d-overlay' | '3d-table' } = $props();
 
 	let host = $state<HTMLDivElement>();
 	let box: {
 		init: () => Promise<unknown>;
 		roll: (notation: string) => unknown;
+		add: (notation: string) => unknown;
 		clear?: () => void;
 	} | null = null;
 	let initialized = false;
@@ -24,13 +27,15 @@
 				offscreen: false,
 				scale: 6
 			});
-			box = instance;
+			// A versão instalada expõe `add` em runtime, embora a tipagem publicada não o declare.
+			box = instance as unknown as NonNullable<typeof box>;
 			await instance.init();
 			initialized = true;
 			for (const result of $activeDiceRolls) play(result);
 		} catch {
 			// WebGL/worker indisponível: o DiceOverlay continua como fallback visual.
 			initialized = false;
+			diceRendererEffective.set('2d');
 		}
 	});
 
@@ -39,7 +44,10 @@
 		const id = result.nonce ?? `${result.expression}`;
 		if (seen.has(id)) return;
 		seen.add(id);
-		box.roll(result.expression.replace(/\s+/g, ''));
+		const notation = result.expression.replace(/\s+/g, '');
+		// `roll` limpa a mesa; `add` preserva os dados já parados no modo persistente.
+		if (mode === '3d-table') box.add(notation);
+		else box.roll(notation);
 		if (seen.size > 100) seen.delete(seen.values().next().value as string);
 	}
 
@@ -49,7 +57,12 @@
 	onDestroy(() => box?.clear?.());
 </script>
 
-<div bind:this={host} class="dice-box-3d" aria-label="Dados 3D rolando na mesa"></div>
+<div
+	bind:this={host}
+	class:dice-table={mode === '3d-table'}
+	class="dice-box-3d"
+	aria-label={mode === '3d-table' ? 'Dados 3D persistentes na mesa' : 'Dados 3D rolando'}
+></div>
 
 <style>
 	.dice-box-3d {

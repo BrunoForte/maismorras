@@ -1,4 +1,7 @@
-import { writable, type Writable } from 'svelte/store';
+import { derived, writable, type Writable } from 'svelte/store';
+
+export type DiceRendererMode = 'auto' | '2d' | '3d-overlay' | '3d-table';
+export type EffectiveDiceRenderer = Exclude<DiceRendererMode, 'auto'>;
 
 export type DiceOverlayResult = {
 	expression: string;
@@ -8,22 +11,77 @@ export type DiceOverlayResult = {
 };
 const state = writable<DiceOverlayResult | null>(null);
 export const activeDiceRolls = writable<DiceOverlayResult[]>([]);
-export const dice3dEnabled = writable(false);
+export const diceRendererMode = writable<DiceRendererMode>('auto');
+export const diceRendererEffective = writable<EffectiveDiceRenderer>('2d');
+export const dice3dEnabled = derived(diceRendererEffective, (mode) => mode !== '2d');
 export const diceBatchOpen = writable(false);
 let current: DiceOverlayResult | null = null;
 const pending: DiceOverlayResult[] = [];
 let flushScheduled = false;
 let batchDepth = 0;
+let rollSequence = 0;
+
+function withNonce(value: DiceOverlayResult): DiceOverlayResult {
+	if (value.nonce) return value;
+	const nonce =
+		typeof crypto !== 'undefined' && 'randomUUID' in crypto
+			? crypto.randomUUID()
+			: `roll-${Date.now()}-${rollSequence++}`;
+	return { ...value, nonce };
+}
 
 export function restoreDicePreference() {
 	if (typeof localStorage === 'undefined') return;
-	dice3dEnabled.set(localStorage.getItem('maismorras:dice-renderer') === '3d');
+	const saved = localStorage.getItem('maismorras:dice-renderer-mode');
+	if (saved === 'auto' || saved === '2d' || saved === '3d-overlay' || saved === '3d-table') {
+		setDiceRendererMode(saved);
+		return;
+	}
+	// Compatibilidade com a preferência binária usada nas versões anteriores.
+	const legacy = localStorage.getItem('maismorras:dice-renderer');
+	setDiceRendererMode(legacy === '3d' ? '3d-overlay' : 'auto');
+}
+
+function canUseWebGL() {
+	if (typeof window === 'undefined') return false;
+	if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+	const device = navigator as Navigator & {
+		connection?: { saveData?: boolean };
+		deviceMemory?: number;
+	};
+	if (device.connection?.saveData) return false;
+	if (
+		(device.deviceMemory !== undefined && device.deviceMemory <= 1) ||
+		navigator.hardwareConcurrency <= 2
+	)
+		return false;
+	try {
+		const canvas = document.createElement('canvas');
+		return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+	} catch {
+		return false;
+	}
+}
+
+function detectAutomaticMode(): EffectiveDiceRenderer {
+	return canUseWebGL() ? '3d-overlay' : '2d';
+}
+
+function applyRendererMode(mode: DiceRendererMode) {
+	diceRendererEffective.set(mode === 'auto' ? detectAutomaticMode() : mode);
+}
+
+export function setDiceRendererMode(mode: DiceRendererMode) {
+	diceRendererMode.set(mode);
+	applyRendererMode(mode);
+	if (typeof localStorage !== 'undefined') {
+		localStorage.setItem('maismorras:dice-renderer-mode', mode);
+		localStorage.removeItem('maismorras:dice-renderer');
+	}
 }
 
 export function setDice3dPreference(enabled: boolean) {
-	dice3dEnabled.set(enabled);
-	if (typeof localStorage !== 'undefined')
-		localStorage.setItem('maismorras:dice-renderer', enabled ? '3d' : '2d');
+	setDiceRendererMode(enabled ? '3d-overlay' : '2d');
 }
 
 export function beginDiceBatch() {
@@ -63,7 +121,7 @@ export const diceOverlay: Writable<DiceOverlayResult | null> = {
 	subscribe: state.subscribe,
 	set(value) {
 		if (value) {
-			pending.push(value);
+			pending.push(withNonce(value));
 			schedulePromotion();
 			return;
 		}
