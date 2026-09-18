@@ -18,10 +18,26 @@
 	let loadedPath = $state('');
 	let needsGesture = $state(false);
 	let fading = $state(false);
+	let currentTime = $state(0);
+	let duration = $state(0);
 	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
 	onMount(() => {
 		void loadTracks();
+		const element = audio();
+		const updateTime = () => {
+			if (!element) return;
+			currentTime = element.currentTime;
+			duration = Number.isFinite(element.duration) ? element.duration : 0;
+		};
+		element?.addEventListener('timeupdate', updateTime);
+		element?.addEventListener('loadedmetadata', updateTime);
+		return () => {
+			element?.removeEventListener('timeupdate', updateTime);
+			element?.removeEventListener('loadedmetadata', updateTime);
+		};
 	});
+	const timeLabel = (value: number) =>
+		`${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 	async function loadTracks() {
 		if (!supabase) return;
 		const { data } = await supabase.storage
@@ -103,25 +119,29 @@
 	class="ambient-player"
 	aria-label={$appLocale === 'en' ? 'Campaign music player' : 'Player de música da campanha'}
 >
-	<select
-		value={scene.ambientAudioPath ?? ''}
-		onchange={(event) => void selectTrack(event)}
-		disabled={!isGM}
-	>
-		<option value=""
-			>{$appLocale === 'en' ? 'Select campaign music…' : 'Selecionar música da campanha…'}</option
+	{#if isGM}<select
+			value={scene.ambientAudioPath ?? ''}
+			onchange={(event) => void selectTrack(event)}
 		>
-		{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
-	</select>
-	{#if scene.ambientAudioPath}<button
-			onclick={() => void toggle()}
-			disabled={!isGM && !needsGesture}
-			>{needsGesture
-				? '♫ Ativar música'
-				: scene.ambientAudioEnabled
-					? '❚❚ Parar'
-					: '♫ Tocar'}</button
-		>{/if}
+			<option value=""
+				>{$appLocale === 'en' ? 'Select campaign music…' : 'Selecionar música da campanha…'}</option
+			>
+			{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
+		</select>
+		{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
+				>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+			>{/if}
+	{:else}<div class="listener-status">
+			<strong
+				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
+					'Nenhuma música'}</strong
+			>
+			<span
+				>{scene.ambientAudioEnabled
+					? `${timeLabel(currentTime)} / ${timeLabel(duration)}`
+					: 'Pausada'}</span
+			>
+		</div>{/if}
 </div>
 
 <style>
@@ -150,6 +170,26 @@
 		padding: 0.5rem;
 		color: #eee4d6;
 		background: #121012;
+	}
+	.listener-status {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		min-width: 0;
+		color: #eee4d6;
+	}
+	.listener-status strong {
+		overflow: hidden;
+		color: #e8c786;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.listener-status span {
+		flex: 0 0 auto;
+		color: #b9aa9b;
+		font-variant-numeric: tabular-nums;
 	}
 	.ambient-player button {
 		border: 1px solid #765d3d;
