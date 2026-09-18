@@ -54,6 +54,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries/{entryID}/translate", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.TranslateMissing))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/assets/signed-url", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SignedURL))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.ListPermissions))
+	mux.Handle("PUT /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SavePermissions))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/notes/{noteID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Update))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/notes/{noteID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Delete))

@@ -463,7 +463,23 @@
 		}
 		portraitPreview = (await getSignedAssetUrl(session, campaignId, sheet.portraitPath)) ?? null;
 	}
+	async function optimizePortrait(blob: Blob): Promise<Blob> {
+		if (!blob.type.startsWith('image/') || typeof createImageBitmap === 'undefined') return blob;
+		const bitmap = await createImageBitmap(blob);
+		const maxDimension = 1536;
+		const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+		const canvas = document.createElement('canvas');
+		canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+		canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+		canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+		bitmap.close();
+		return (
+			(await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))) ??
+			blob
+		);
+	}
 	async function savePortrait(blob: Blob, filename: string) {
+		blob = await optimizePortrait(blob);
 		if (!supabase) throw new Error('Supabase não está configurado.');
 		if (blob.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
 		const { data: userData, error: userError } = await supabase.auth.getUser();

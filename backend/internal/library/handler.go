@@ -42,9 +42,16 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	if in.Path == "" || !strings.HasPrefix(in.Path, prefix) || strings.Contains(in.Path, "..") || path.IsAbs(in.Path) {
 		return apperror.BadRequest("INVALID_ASSET", "Arquivo inválido para esta campanha.")
 	}
-	var allowed bool
-	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, p.UserID).Scan(&allowed); err != nil || !allowed {
+	var role string
+	if err := h.pool.QueryRow(r.Context(), "select role::text from campaign_members where campaign_id=$1 and user_id=$2", campaignID, p.UserID).Scan(&role); err != nil {
 		return apperror.Forbidden("Você não participa desta campanha.")
+	}
+	if role != "gm" && isAudioPath(in.Path) {
+		return apperror.Forbidden("Músicas são controladas pelo narrador.")
+	}
+	var allowed bool
+	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from campaign_members m where m.campaign_id=$1 and m.user_id=$2 and (m.role='gm'::public.campaign_role or not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$3) or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$3 and lp.user_id=$2)))`, campaignID, p.UserID, in.Path).Scan(&allowed); err != nil || !allowed {
+		return apperror.Forbidden("Você não tem acesso a este item.")
 	}
 	if h.cfg.SupabaseURL == "" || h.cfg.SupabaseSecretKey == "" {
 		return apperror.ServiceUnavailable("Storage seguro não está configurado no servidor.")
@@ -74,6 +81,16 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]string{"url": out.SignedURL})
 }
+func isAudioPath(value string) bool {
+	value = strings.ToLower(value)
+	for _, extension := range []string{".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac"} {
+		if strings.HasSuffix(value, extension) {
+			return true
+		}
+	}
+	return false
+}
+
 func write(w http.ResponseWriter, status int, value any) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

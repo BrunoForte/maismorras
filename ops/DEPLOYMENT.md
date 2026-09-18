@@ -16,6 +16,7 @@ Em **Settings → Secrets and variables → Actions**, cadastre:
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: recurso do provedor OIDC do Google Cloud;
 - `GCP_SERVICE_ACCOUNT`: service account autorizada a fazer deploy no Cloud Run;
 - `GCP_PROJECT_ID`: ID do projeto Google Cloud;
+- `CLOUD_RUN_SERVICE`: nome real do serviço Cloud Run, obtido com `gcloud run services list`;
 - `VERCEL_TOKEN`: token de deploy da Vercel;
 - `VERCEL_ORG_ID`: ID da organização/conta Vercel;
 - `VERCEL_PROJECT_ID`: ID do projeto Vercel.

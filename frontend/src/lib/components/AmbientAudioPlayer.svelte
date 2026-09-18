@@ -19,8 +19,6 @@
 	let loadedPath = $state('');
 	let needsGesture = $state(false);
 	let syncedEnabled = $state<boolean | undefined>();
-	let currentTime = $state(0);
-	let duration = $state(0);
 	let sceneSocket: SceneSocket | null = null;
 	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
 	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
@@ -28,18 +26,9 @@
 		void loadTracks();
 		sceneSocket = connectSceneSocket(session, scene.id, () => void refreshScene());
 		const element = audio();
-		const updateTime = () => {
-			if (!element) return;
-			currentTime = element.currentTime;
-			duration = Number.isFinite(element.duration) ? element.duration : 0;
-		};
-		element?.addEventListener('timeupdate', updateTime);
-		element?.addEventListener('loadedmetadata', updateTime);
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;
-			element?.removeEventListener('timeupdate', updateTime);
-			element?.removeEventListener('loadedmetadata', updateTime);
 		};
 	});
 	async function refreshScene() {
@@ -50,8 +39,6 @@
 			// A transient realtime refresh must not interrupt the audio already playing.
 		}
 	}
-	const timeLabel = (value: number) =>
-		`${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 	async function loadTracks() {
 		if (!supabase) return;
 		const { data } = await supabase.storage
@@ -203,11 +190,6 @@
 					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
 						'Música selecionada'}</strong
 				>
-				<span
-					>{scene.ambientAudioEnabled
-						? `${timeLabel(currentTime)} / ${timeLabel(duration)}`
-						: 'Pausada'}</span
-				>
 				<button onclick={() => void toggle()}
 					>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
 				>
@@ -217,13 +199,8 @@
 				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
 					'Nenhuma música'}</strong
 			>
-			<span
-				>{scene.ambientAudioEnabled
-					? `${timeLabel(currentTime)} / ${timeLabel(duration)}`
-					: 'Pausada'}</span
-			>
-			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
-					>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}>
+					{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 				>{/if}
 		</div>{/if}
 </div>
@@ -271,11 +248,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.listener-status span {
-		flex: 0 0 auto;
-		color: #b9aa9b;
-		font-variant-numeric: tabular-nums;
-	}
 	.gm-status {
 		display: flex;
 		flex: 1;
@@ -288,11 +260,6 @@
 		color: #e8c786;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-	.gm-status span {
-		flex: 0 0 auto;
-		color: #b9aa9b;
-		font-variant-numeric: tabular-nums;
 	}
 	.ambient-player button {
 		border: 1px solid #765d3d;

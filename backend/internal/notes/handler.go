@@ -28,10 +28,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	}
 	q := `select id::text,title,body,visibility::text from notes where campaign_id=$1`
 	if role != "gm" {
-		q += ` and visibility='players'`
+		q += ` and visibility='players' and (not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text) or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text and lp.user_id=$2))`
 	}
 	q += ` order by updated_at desc`
-	rows, err := h.pool.Query(r.Context(), q, cid)
+	rows, err := h.pool.Query(r.Context(), q, cid, p.UserID)
 	if err != nil {
 		return apperror.Internal(err)
 	}

@@ -104,6 +104,7 @@
 	let areasVisible = $state(true);
 	let layerToolsOpen = $state(false);
 	let tokenRefreshTimer: number | undefined;
+	const tokenImageCache = new Map<string, { path: string | null; url: string | null }>();
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -301,9 +302,15 @@
 			motor?.setWalls(response.walls);
 			motor?.setWallsVisible(wallsVisible);
 			const carregados = await Promise.all(
-				response.tokens.map(async (token, index) =>
-					asPersonagem(token, index, await resolverImagemToken(token.imageUrl))
-				)
+				response.tokens.map(async (token, index) => {
+					const cached = tokenImageCache.get(token.id);
+					const imageUrl =
+						cached?.path === token.imageUrl
+							? (cached.url ?? undefined)
+							: await resolverImagemToken(token.imageUrl);
+					tokenImageCache.set(token.id, { path: token.imageUrl, url: imageUrl ?? null });
+					return asPersonagem(token, index, imageUrl);
+				})
 			);
 			savedSnapshots.clear();
 			carregados.forEach((personagem) => {

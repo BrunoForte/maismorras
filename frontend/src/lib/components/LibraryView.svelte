@@ -7,6 +7,10 @@
 	import { appLocale } from '$lib/stores/locale';
 	import { apiBase } from '$lib/services/apiBase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import {
+		loadLibraryPermissions,
+		saveLibraryPermissions
+	} from '$lib/services/libraryPermissionsApi';
 	let {
 		campaignId,
 		session,
@@ -123,6 +127,25 @@
 		handoutVisibility = handout.visibility;
 		handoutOpen = true;
 	}
+	async function editPermissions(itemType: 'asset' | 'note', itemKey: string, label: string) {
+		if (!isGM) return;
+		try {
+			const current = await loadLibraryPermissions(session, campaignId, itemType, itemKey);
+			const entered = window.prompt(
+				`Usuários autorizados para ${label} (UUIDs separados por vírgula):`,
+				current.userIds.join(', ')
+			);
+			if (entered === null) return;
+			const userIds = entered
+				.split(',')
+				.map((id) => id.trim())
+				.filter(Boolean);
+			await saveLibraryPermissions(session, campaignId, itemType, itemKey, userIds);
+			message = 'Permissões atualizadas.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível salvar as permissões.';
+		}
+	}
 	async function deleteHandout(handout: Handout) {
 		try {
 			await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, {
@@ -176,6 +199,7 @@
 		}
 		const listed = await Promise.all(
 			(data ?? []).map(async (file) => {
+				if (!isGM && file.metadata?.mimetype?.startsWith('audio/')) return null;
 				const signed = await getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
 				return signed
 					? {
@@ -194,7 +218,9 @@
 					: null;
 			})
 		);
-		assets = listed.filter((asset): asset is Asset => asset !== null);
+		assets = listed.filter(
+			(asset): asset is Asset => asset !== null && (isGM || asset.type !== 'audio')
+		);
 	}
 	async function optimizeImage(file: File) {
 		if (!file.type.startsWith('image/'))
@@ -356,6 +382,8 @@
 						{#if isGM}<div class="handout-actions">
 								<button onclick={() => editHandout(handout)}
 									>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button
+								><button onclick={() => void editPermissions('note', handout.id, handout.title)}
+									>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
 								><button onclick={() => void deleteHandout(handout)}
 									>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
 								>
@@ -401,6 +429,11 @@
 								title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
 								onclick={() => void deleteAsset(asset)}
 								disabled={deletingAsset === asset.path}>×</button
+							>{#if isGM}<button
+									class="asset-present"
+									onclick={() => void editPermissions('asset', asset.path, asset.name)}
+									>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
+								>{/if}
 							>{#if asset.type === 'image' || asset.type === 'map'}<button
 									class="asset-present"
 									onclick={() => onpresent({ path: asset.path, name: asset.name })}>👁</button
