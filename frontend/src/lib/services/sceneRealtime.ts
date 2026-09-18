@@ -24,7 +24,6 @@ class SharedSceneConnection {
 	private socket: WebSocket | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectAttempt = 0;
-	private failedAttempts = 0;
 	private closed = false;
 	private token: string;
 	private readonly subscribers = new Set<Subscriber>();
@@ -53,10 +52,6 @@ class SharedSceneConnection {
 
 	add(session: Session, subscriber: Subscriber): SceneSocket {
 		this.token = session.access_token;
-		if (this.failedAttempts >= 5) {
-			this.failedAttempts = 0;
-			this.reconnectAttempt = 0;
-		}
 		this.subscribers.add(subscriber);
 		if (!this.socket && !this.closed) this.connect();
 		return {
@@ -72,7 +67,7 @@ class SharedSceneConnection {
 
 	private scheduleReconnect() {
 		if (this.closed || this.reconnectTimer || this.subscribers.size === 0) return;
-		const delay = Math.min(10_000, 500 * 2 ** this.reconnectAttempt++);
+		const delay = Math.min(30_000, 500 * 2 ** this.reconnectAttempt++);
 		this.notify('reconnecting');
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
@@ -87,7 +82,6 @@ class SharedSceneConnection {
 		this.socket = socket;
 		socket.onopen = () => {
 			this.reconnectAttempt = 0;
-			this.failedAttempts = 0;
 			this.notify('connected');
 		};
 		socket.onmessage = (event) => {
@@ -105,12 +99,7 @@ class SharedSceneConnection {
 		};
 		socket.onclose = () => {
 			if (this.socket === socket) this.socket = null;
-			this.failedAttempts += 1;
 			if (this.closed || this.subscribers.size === 0) return;
-			if (this.failedAttempts >= 5) {
-				this.notify('disconnected');
-				return;
-			}
 			this.scheduleReconnect();
 		};
 		socket.onerror = () => {

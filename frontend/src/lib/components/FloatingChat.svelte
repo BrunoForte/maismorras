@@ -46,8 +46,8 @@
 			: $chatMensagens.filter((message) => (message.canal ?? 'chat') === channel)
 	);
 	$effect(() => {
-		visibleMessages.length;
-		revealedRollIds.size;
+		void visibleMessages.length;
+		void revealedRollIds.size;
 		if (open && messagesElement) {
 			void tick().then(() => {
 				if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
@@ -108,7 +108,8 @@
 		sceneSocket = connectSceneSocket(session, sceneId, () => void reloadMessages());
 		// Roll endpoints may complete without a websocket publish; polling keeps
 		// the chat current even when another tab or client performed the roll.
-		const refreshTimer = window.setInterval(() => void reloadMessages(), 2000);
+		// WebSocket is the primary path; polling is only a low-frequency fallback.
+		const refreshTimer = window.setInterval(() => void reloadMessages(), 10000);
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;

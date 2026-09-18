@@ -47,7 +47,8 @@
 	onMount(() => {
 		void load();
 		socket = connectSceneSocket(session, sceneId, () => void load());
-		const timer = window.setInterval(() => void load(), 3000);
+		// WebSocket is the primary path; polling is only a low-frequency fallback.
+		const timer = window.setInterval(() => void load(), 10000);
 		return () => {
 			socket?.close();
 			window.clearInterval(timer);

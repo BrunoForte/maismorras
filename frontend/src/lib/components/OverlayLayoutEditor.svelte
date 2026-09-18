@@ -318,12 +318,12 @@
 			saving = false;
 		}
 	}
-	function reset() {
+	async function reset() {
 		layout = defaults();
 		profiles = { Principal: layout };
 		activeProfile = 'Principal';
-		localStorage.removeItem(key());
-		status = 'Layout restaurado.';
+		await save();
+		status = 'Layout restaurado e salvo para a overlay.';
 	}
 	async function upload(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];

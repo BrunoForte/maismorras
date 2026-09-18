@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import CanvasMesa from '$lib/components/CanvasMesa.svelte';
 	import FloatingChat from '$lib/components/FloatingChat.svelte';
 	import ActorDrawer from '$lib/components/ActorDrawer.svelte';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
@@ -27,8 +26,17 @@
 	import { apiBase } from '$lib/services/apiBase';
 
 	let session = $state<Session | null>(null);
+	type CanvasMesaComponentType = typeof import('$lib/components/CanvasMesa.svelte').default;
+	let CanvasMesaComponent = $state<CanvasMesaComponentType | null>(null);
 	let loading = $state(true);
 	let error = $state('');
+	async function ensureCanvasMesa() {
+		if (CanvasMesaComponent) return;
+		CanvasMesaComponent = (await import('$lib/components/CanvasMesa.svelte')).default;
+	}
+	$effect(() => {
+		if (workspaceTab === 'map' && activeScene) void ensureCanvasMesa();
+	});
 	type Campaign = { id: string; name: string; role: 'gm' | 'player'; isAdmin?: boolean };
 	let campaigns = $state<Campaign[]>([]);
 	let activeCampaign = $state<Campaign | null>(null);
@@ -794,13 +802,13 @@
 								>
 							</div>
 							<div class="scene-board">
-								<CanvasMesa
-									scene={activeScene}
-									{session}
-									isGM={activeCampaign.role === 'gm'}
-									onopensheet={(actorId) =>
-										activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
-								/>
+								{#if CanvasMesaComponent}<CanvasMesaComponent
+										scene={activeScene}
+										{session}
+										isGM={activeCampaign.role === 'gm'}
+										onopensheet={(actorId) =>
+											activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
+									/>{:else}<p class="status-message">Carregando mapa…</p>{/if}
 								<DiceOverlay />
 								<TableTools
 									campaignId={activeCampaign.id}
