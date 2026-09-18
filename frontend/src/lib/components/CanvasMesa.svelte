@@ -2007,7 +2007,7 @@
 		font-size: 0.68rem;
 	}
 	.ambient-audio {
-		display: none;
+		display: none !important;
 		position: absolute;
 		z-index: 3;
 		bottom: 0;

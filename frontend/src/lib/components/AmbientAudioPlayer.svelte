@@ -128,9 +128,20 @@
 			>
 			{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
 		</select>
-		{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
-				>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
-			>{/if}
+		{#if scene.ambientAudioPath}<div class="gm-status">
+				<strong
+					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
+						'Música selecionada'}</strong
+				>
+				<span
+					>{scene.ambientAudioEnabled
+						? `${timeLabel(currentTime)} / ${timeLabel(duration)}`
+						: 'Pausada'}</span
+				>
+				<button onclick={() => void toggle()}
+					>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+				>
+			</div>{/if}
 	{:else}<div class="listener-status">
 			<strong
 				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
@@ -150,9 +161,9 @@
 		z-index: 45;
 		box-sizing: border-box;
 		min-height: 3.5rem;
-		right: 0;
-		bottom: 0;
-		left: 0;
+		inset-inline: 0;
+		inset-block-end: 0;
+		width: 100vw;
 		display: flex;
 		gap: 0.5rem;
 		align-items: center;
@@ -179,6 +190,7 @@
 		gap: 1rem;
 		min-width: 0;
 		color: #eee4d6;
+		pointer-events: none;
 	}
 	.listener-status strong {
 		overflow: hidden;
@@ -187,6 +199,24 @@
 		white-space: nowrap;
 	}
 	.listener-status span {
+		flex: 0 0 auto;
+		color: #b9aa9b;
+		font-variant-numeric: tabular-nums;
+	}
+	.gm-status {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		gap: 1rem;
+		min-width: 0;
+	}
+	.gm-status strong {
+		overflow: hidden;
+		color: #e8c786;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.gm-status span {
 		flex: 0 0 auto;
 		color: #b9aa9b;
 		font-variant-numeric: tabular-nums;
@@ -205,6 +235,10 @@
 		}
 		.ambient-player select {
 			min-width: 100%;
+		}
+		.gm-status {
+			width: 100%;
+			justify-content: space-between;
 		}
 	}
 </style>
