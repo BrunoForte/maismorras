@@ -1240,6 +1240,7 @@
 	}
 	.app-shell {
 		min-height: 100vh;
+		padding-bottom: 3.5rem;
 		background:
 			radial-gradient(circle at 65% -10%, rgba(126, 82, 40, 0.15), transparent 26%), #141114;
 	}
@@ -1941,7 +1942,7 @@
 	}
 	@media (max-width: 760px) {
 		.app-shell {
-			padding-bottom: env(safe-area-inset-bottom);
+			padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
 		}
 		.app-header {
 			position: sticky;

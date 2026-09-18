@@ -2,6 +2,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
+	import { apiBase } from '$lib/services/apiBase';
 	import type { Session } from '@supabase/supabase-js';
 	import { GameEngine } from '$lib/engine/GameEngine';
 	import {
@@ -342,13 +343,31 @@
 	async function resolverImagemDeFundo(value: string | null) {
 		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`) || !supabase)
 			return value;
-		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(value, 3600);
-		return data?.signedUrl ?? null;
+		return resolverAssetAssinado(value);
 	}
 	async function resolverImagemToken(value: string | null) {
 		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/`) || !supabase) return value;
-		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(value, 3600);
-		return data?.signedUrl ?? null;
+		return resolverAssetAssinado(value);
+	}
+	async function resolverAssetAssinado(path: string) {
+		try {
+			const response = await fetch(
+				`${apiBase}/api/v1/campaigns/${scene.campaignId}/assets/signed-url`,
+				{
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${session.access_token}`,
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ path })
+				}
+			);
+			if (!response.ok) return null;
+			const data = (await response.json()) as { url?: string };
+			return data.url ?? null;
+		} catch {
+			return null;
+		}
 	}
 
 	async function carregarEfeitos() {
@@ -1502,7 +1521,7 @@
 		overflow: hidden;
 		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
 		width: 100%;
-		height: min(calc(100dvh - 165px), 900px);
+		height: min(calc(100dvh - 221px), 900px);
 		min-height: 500px;
 	}
 

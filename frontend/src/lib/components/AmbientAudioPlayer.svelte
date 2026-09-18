@@ -15,6 +15,7 @@
 	type Track = { path: string; name: string };
 	let tracks = $state<Track[]>([]);
 	let url = $state('');
+	let loadedPath = $state('');
 	let needsGesture = $state(false);
 	let fading = $state(false);
 	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
@@ -63,6 +64,7 @@
 		const next = { ...scene, ambientAudioPath: path || null, ambientAudioEnabled: false };
 		await save(next);
 		url = path ? await signed(path) : '';
+		loadedPath = path;
 		const element = audio();
 		if (element) {
 			element.pause();
@@ -88,8 +90,12 @@
 		}
 	}
 	$effect(() => {
-		if (scene.ambientAudioPath && !url)
-			void signed(scene.ambientAudioPath).then((value) => (url = value));
+		const path = scene.ambientAudioPath ?? '';
+		if (path !== loadedPath) {
+			loadedPath = path;
+			url = '';
+			if (path) void signed(path).then((value) => (url = value));
+		}
 	});
 </script>
 
@@ -122,6 +128,8 @@
 	.ambient-player {
 		position: fixed;
 		z-index: 45;
+		box-sizing: border-box;
+		min-height: 3.5rem;
 		right: 0;
 		bottom: 0;
 		left: 0;
