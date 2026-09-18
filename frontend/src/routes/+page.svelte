@@ -2,23 +2,9 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import FloatingChat from '$lib/components/FloatingChat.svelte';
-	import ActorDrawer from '$lib/components/ActorDrawer.svelte';
-	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
-	import TableTools from '$lib/components/TableTools.svelte';
-	import CharacterSheet from '$lib/components/CharacterSheet.svelte';
-	import ParticipantsPanel from '$lib/components/ParticipantsPanel.svelte';
-	import NotesPanel from '$lib/components/NotesPanel.svelte';
-	import NPCsPanel from '$lib/components/NPCsPanel.svelte';
-	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
-	import LibraryView from '$lib/components/LibraryView.svelte';
 	import AmbientAudioPlayer from '$lib/components/AmbientAudioPlayer.svelte';
 	import ImagePresentation from '$lib/components/ImagePresentation.svelte';
 	import { savePresentation } from '$lib/services/presentationApi';
-	import CompendiumView from '$lib/components/CompendiumView.svelte';
-	import BestiaryView from '$lib/components/BestiaryView.svelte';
-	import SceneSettings from '$lib/components/SceneSettings.svelte';
-	import OverlayLayoutEditor from '$lib/components/OverlayLayoutEditor.svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -28,14 +14,86 @@
 	let session = $state<Session | null>(null);
 	type CanvasMesaComponentType = typeof import('$lib/components/CanvasMesa.svelte').default;
 	let CanvasMesaComponent = $state<CanvasMesaComponentType | null>(null);
+	type DiceOverlayComponentType = typeof import('$lib/components/DiceOverlay.svelte').default;
+	type CharacterSheetComponentType = typeof import('$lib/components/CharacterSheet.svelte').default;
+	type CampaignSheetsComponentType = typeof import('$lib/components/CampaignSheets.svelte').default;
+	type LibraryViewComponentType = typeof import('$lib/components/LibraryView.svelte').default;
+	type CompendiumViewComponentType = typeof import('$lib/components/CompendiumView.svelte').default;
+	type BestiaryViewComponentType = typeof import('$lib/components/BestiaryView.svelte').default;
+	type OverlayLayoutEditorComponentType =
+		typeof import('$lib/components/OverlayLayoutEditor.svelte').default;
+	type ParticipantsPanelComponentType =
+		typeof import('$lib/components/ParticipantsPanel.svelte').default;
+	type NotesPanelComponentType = typeof import('$lib/components/NotesPanel.svelte').default;
+	type NPCsPanelComponentType = typeof import('$lib/components/NPCsPanel.svelte').default;
+	type SceneSettingsComponentType = typeof import('$lib/components/SceneSettings.svelte').default;
+	type FloatingChatComponentType = typeof import('$lib/components/FloatingChat.svelte').default;
+	type ActorDrawerComponentType = typeof import('$lib/components/ActorDrawer.svelte').default;
+	type TableToolsComponentType = typeof import('$lib/components/TableTools.svelte').default;
+	let DiceOverlayComponent = $state<DiceOverlayComponentType | null>(null);
+	let CharacterSheetComponent = $state<CharacterSheetComponentType | null>(null);
+	let CampaignSheetsComponent = $state<CampaignSheetsComponentType | null>(null);
+	let LibraryViewComponent = $state<LibraryViewComponentType | null>(null);
+	let CompendiumViewComponent = $state<CompendiumViewComponentType | null>(null);
+	let BestiaryViewComponent = $state<BestiaryViewComponentType | null>(null);
+	let OverlayLayoutEditorComponent = $state<OverlayLayoutEditorComponentType | null>(null);
+	let ParticipantsPanelComponent = $state<ParticipantsPanelComponentType | null>(null);
+	let NotesPanelComponent = $state<NotesPanelComponentType | null>(null);
+	let NPCsPanelComponent = $state<NPCsPanelComponentType | null>(null);
+	let SceneSettingsComponent = $state<SceneSettingsComponentType | null>(null);
+	let FloatingChatComponent = $state<FloatingChatComponentType | null>(null);
+	let ActorDrawerComponent = $state<ActorDrawerComponentType | null>(null);
+	let TableToolsComponent = $state<TableToolsComponentType | null>(null);
 	let loading = $state(true);
 	let error = $state('');
-	async function ensureCanvasMesa() {
-		if (CanvasMesaComponent) return;
-		CanvasMesaComponent = (await import('$lib/components/CanvasMesa.svelte')).default;
+	async function ensureMapComponents() {
+		const [canvas, dice, table, chat] = await Promise.all([
+			import('$lib/components/CanvasMesa.svelte'),
+			import('$lib/components/DiceOverlay.svelte'),
+			import('$lib/components/TableTools.svelte'),
+			import('$lib/components/FloatingChat.svelte')
+		]);
+		CanvasMesaComponent ??= canvas.default;
+		DiceOverlayComponent ??= dice.default;
+		TableToolsComponent ??= table.default;
+		FloatingChatComponent ??= chat.default;
+	}
+	async function ensureTabComponent(tab: WorkspaceTab) {
+		if (tab === 'sheets')
+			CampaignSheetsComponent ??= (await import('$lib/components/CampaignSheets.svelte')).default;
+		if (tab === 'library')
+			LibraryViewComponent ??= (await import('$lib/components/LibraryView.svelte')).default;
+		if (tab === 'compendium')
+			CompendiumViewComponent ??= (await import('$lib/components/CompendiumView.svelte')).default;
+		if (tab === 'bestiary')
+			BestiaryViewComponent ??= (await import('$lib/components/BestiaryView.svelte')).default;
+		if (tab === 'overlay')
+			OverlayLayoutEditorComponent ??= (await import('$lib/components/OverlayLayoutEditor.svelte'))
+				.default;
+	}
+	async function ensureSheetComponent() {
+		CharacterSheetComponent ??= (await import('$lib/components/CharacterSheet.svelte')).default;
+	}
+	async function ensureDrawerComponents() {
+		const [participants, notes, npcs, settings, actor] = await Promise.all([
+			import('$lib/components/ParticipantsPanel.svelte'),
+			import('$lib/components/NotesPanel.svelte'),
+			import('$lib/components/NPCsPanel.svelte'),
+			import('$lib/components/SceneSettings.svelte'),
+			import('$lib/components/ActorDrawer.svelte')
+		]);
+		ParticipantsPanelComponent ??= participants.default;
+		NotesPanelComponent ??= notes.default;
+		NPCsPanelComponent ??= npcs.default;
+		SceneSettingsComponent ??= settings.default;
+		ActorDrawerComponent ??= actor.default;
 	}
 	$effect(() => {
-		if (workspaceTab === 'map' && activeScene) void ensureCanvasMesa();
+		if (workspaceTab === 'map' && activeScene) void ensureMapComponents();
+		if (workspaceTab !== 'map') void ensureTabComponent(workspaceTab);
+		if (sheetOpen) void ensureSheetComponent();
+		if (participantsOpen || notesOpen || npcsOpen || sceneSettingsOpen)
+			void ensureDrawerComponents();
 	});
 	type Campaign = { id: string; name: string; role: 'gm' | 'player'; isAdmin?: boolean };
 	let campaigns = $state<Campaign[]>([]);
@@ -809,15 +867,19 @@
 										onopensheet={(actorId) =>
 											activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
 									/>{:else}<p class="status-message">Carregando mapa…</p>{/if}
-								<DiceOverlay />
-								<TableTools
-									campaignId={activeCampaign.id}
-									sceneId={activeScene.id}
-									{session}
-									isGM={activeCampaign.role === 'gm'}
-								/>
-								<FloatingChat campaignId={activeCampaign.id} sceneId={activeScene.id} {session} />
-								{#if activeCampaign.role === 'gm'}<ActorDrawer
+								{#if DiceOverlayComponent}<DiceOverlayComponent />{/if}
+								{#if TableToolsComponent}<TableToolsComponent
+										campaignId={activeCampaign.id}
+										sceneId={activeScene.id}
+										{session}
+										isGM={activeCampaign.role === 'gm'}
+									/>{/if}
+								{#if FloatingChatComponent}<FloatingChatComponent
+										campaignId={activeCampaign.id}
+										sceneId={activeScene.id}
+										{session}
+									/>{/if}
+								{#if activeCampaign.role === 'gm' && ActorDrawerComponent}<ActorDrawerComponent
 										campaignId={activeCampaign.id}
 										sceneId={activeScene.id}
 										{session}
@@ -828,14 +890,14 @@
 							{loadingScene ? 'Carregando cena…' : inviteStatus || 'Nenhuma cena disponível.'}
 						</p>{/if}
 				</main>
-			{:else if workspaceTab === 'sheets'}<CampaignSheets
+			{:else if workspaceTab === 'sheets' && CampaignSheetsComponent}<CampaignSheetsComponent
 					campaignId={activeCampaign.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					onopenmine={openMySheet}
 					onopencharacter={openCharacter}
 				/>
-			{:else if workspaceTab === 'library'}<LibraryView
+			{:else if workspaceTab === 'library' && LibraryViewComponent}<LibraryViewComponent
 					campaignId={activeCampaign.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
@@ -843,14 +905,14 @@
 					onpresent={(asset) => void presentAsset(asset)}
 					onhide={() => void hidePresentedAsset()}
 				/>
-			{:else if workspaceTab === 'compendium'}<CompendiumView
+			{:else if workspaceTab === 'compendium' && CompendiumViewComponent}<CompendiumViewComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene?.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					ontokencreated={() => void reloadActiveScene()}
 				/>
-			{:else if workspaceTab === 'bestiary' && activeCampaign.role === 'gm'}<BestiaryView
+			{:else if workspaceTab === 'bestiary' && activeCampaign.role === 'gm' && BestiaryViewComponent}<BestiaryViewComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene?.id}
 					{session}
@@ -870,7 +932,7 @@
 							></span>{overlayEnabled ? 'Ativada' : 'Desativada'}</label
 						>
 					</section>
-					{#if overlayEnabled && activeScene}<OverlayLayoutEditor
+					{#if overlayEnabled && activeScene && OverlayLayoutEditorComponent}<OverlayLayoutEditorComponent
 							campaignId={activeCampaign.id}
 							sceneId={activeScene.id}
 							{session}
@@ -932,7 +994,7 @@
 					</section>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
-			{#if sheetOpen && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheet
+			{#if sheetOpen && CharacterSheetComponent && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheetComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene?.id ?? ''}
 					{session}
@@ -943,27 +1005,27 @@
 					onclose={() => (sheetOpen = false)}
 					onTokenCreated={() => void reloadActiveScene()}
 				/>{/if}
-			{#if participantsOpen && activeScene}<ParticipantsPanel
+			{#if participantsOpen && ParticipantsPanelComponent && activeScene}<ParticipantsPanelComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene.id}
 					{session}
 					onclose={() => (participantsOpen = false)}
 					ontokencreated={() => void reloadActiveScene()}
 				/>{/if}
-			{#if notesOpen}<NotesPanel
+			{#if notesOpen && NotesPanelComponent}<NotesPanelComponent
 					campaignId={activeCampaign.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
 					onclose={() => (notesOpen = false)}
 				/>{/if}
-			{#if npcsOpen && activeScene}<NPCsPanel
+			{#if npcsOpen && NPCsPanelComponent && activeScene}<NPCsPanelComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene.id}
 					{session}
 					onclose={() => (npcsOpen = false)}
 					ontokencreated={() => void reloadActiveScene()}
 				/>{/if}
-			{#if sceneSettingsOpen && activeScene}<SceneSettings
+			{#if sceneSettingsOpen && SceneSettingsComponent && activeScene}<SceneSettingsComponent
 					scene={activeScene}
 					{session}
 					onclose={() => (sceneSettingsOpen = false)}
