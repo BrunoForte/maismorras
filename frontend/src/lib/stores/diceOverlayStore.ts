@@ -1,4 +1,4 @@
-import { derived, writable, type Writable } from 'svelte/store';
+import { derived, get, writable, type Writable } from 'svelte/store';
 
 export type DiceRendererMode = 'auto' | '2d' | '3d-overlay' | '3d-table';
 export type EffectiveDiceRenderer = Exclude<DiceRendererMode, 'auto'>;
@@ -8,12 +8,15 @@ export type DiceOverlayResult = {
 	total: number;
 	dice: number[];
 	nonce?: string;
+	color?: string;
+	slot?: string;
 };
 const state = writable<DiceOverlayResult | null>(null);
 export const activeDiceRolls = writable<DiceOverlayResult[]>([]);
 export const diceRendererMode = writable<DiceRendererMode>('auto');
 export const diceRendererEffective = writable<EffectiveDiceRenderer>('2d');
 export const dice3dEnabled = derived(diceRendererEffective, (mode) => mode !== '2d');
+export const diceColor = writable<string | undefined>(undefined);
 export const diceBatchOpen = writable(false);
 let current: DiceOverlayResult | null = null;
 const pending: DiceOverlayResult[] = [];
@@ -22,12 +25,30 @@ let batchDepth = 0;
 let rollSequence = 0;
 
 function withNonce(value: DiceOverlayResult): DiceOverlayResult {
-	if (value.nonce) return value;
+	if (value.nonce && value.color) return value;
 	const nonce =
 		typeof crypto !== 'undefined' && 'randomUUID' in crypto
 			? crypto.randomUUID()
 			: `roll-${Date.now()}-${rollSequence++}`;
-	return { ...value, nonce };
+	return {
+		...value,
+		nonce: value.nonce ?? nonce,
+		color: value.color ?? get(diceColor),
+		slot: value.slot ?? value.expression
+	};
+}
+
+export function setDiceColor(value: number | string | null | undefined) {
+	if (value === null || value === undefined || value === '') {
+		diceColor.set(undefined);
+		return;
+	}
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		diceColor.set(`#${Math.max(0, Math.round(value)).toString(16).padStart(6, '0').slice(-6)}`);
+		return;
+	}
+	const text = String(value).trim();
+	diceColor.set(text.startsWith('#') ? text : `#${text}`);
 }
 
 export function restoreDicePreference() {

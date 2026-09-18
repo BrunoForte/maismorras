@@ -338,9 +338,11 @@
 		if (supabase && session?.user.id) {
 			status = 'Enviando fundo…';
 			const path = `campaigns/${campaignId}/overlays/${sceneId}/${crypto.randomUUID()}.png`;
-			const { error } = await supabase.storage
-				.from('campaign-assets')
-				.upload(path, file, { contentType: 'image/png', upsert: false });
+			const { error } = await supabase.storage.from('campaign-assets').upload(path, file, {
+				contentType: 'image/png',
+				cacheControl: '3600',
+				upsert: false
+			});
 			if (error) {
 				status = 'Não foi possível enviar o fundo.';
 				return;

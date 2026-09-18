@@ -84,7 +84,7 @@
 			const path = `campaigns/${scene.campaignId}/media/${crypto.randomUUID()}-mapa-gerado.png`;
 			const { error } = await supabase.storage
 				.from('campaign-assets')
-				.upload(path, blob, { contentType: 'image/png' });
+				.upload(path, blob, { contentType: 'image/png', cacheControl: '3600' });
 			if (error) throw error;
 			imageFiles = [{ path, name: `Mapa gerado · ${mapPrompt.slice(0, 40)}` }, ...imageFiles];
 			draft.backgroundUrl = path;

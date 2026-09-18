@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import type { Scene } from '$lib/services/sceneApi';
-	import { updateScene } from '$lib/services/sceneApi';
+	import { loadScene, updateScene } from '$lib/services/sceneApi';
+	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
@@ -20,10 +21,12 @@
 	let syncedEnabled = $state<boolean | undefined>();
 	let currentTime = $state(0);
 	let duration = $state(0);
+	let sceneSocket: SceneSocket | null = null;
 	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
 	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
 	onMount(() => {
 		void loadTracks();
+		sceneSocket = connectSceneSocket(session, scene.id, () => void refreshScene());
 		const element = audio();
 		const updateTime = () => {
 			if (!element) return;
@@ -33,10 +36,20 @@
 		element?.addEventListener('timeupdate', updateTime);
 		element?.addEventListener('loadedmetadata', updateTime);
 		return () => {
+			sceneSocket?.close();
+			sceneSocket = null;
 			element?.removeEventListener('timeupdate', updateTime);
 			element?.removeEventListener('loadedmetadata', updateTime);
 		};
 	});
+	async function refreshScene() {
+		try {
+			const loaded = await loadScene(session, scene.id);
+			if (loaded.scene.id === scene.id) onSceneUpdate(loaded.scene);
+		} catch {
+			// A transient realtime refresh must not interrupt the audio already playing.
+		}
+	}
 	const timeLabel = (value: number) =>
 		`${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 	async function loadTracks() {
@@ -60,6 +73,7 @@
 	async function save(next: Scene) {
 		const saved = await updateScene(session, next);
 		onSceneUpdate(saved);
+		sceneSocket?.publishRefresh();
 		return saved;
 	}
 	async function selectTrack(event: Event) {
@@ -135,6 +149,17 @@
 			await save({ ...scene, ambientAudioEnabled: false });
 		}
 	}
+	async function enableAudio() {
+		const element = audio();
+		if (!element || !url) return;
+		try {
+			element.volume = targetVolume();
+			await element.play();
+			needsGesture = false;
+		} catch {
+			needsGesture = true;
+		}
+	}
 	$effect(() => {
 		const path = scene.ambientAudioPath ?? '';
 		if (path !== loadedPath) {
@@ -197,6 +222,9 @@
 					? `${timeLabel(currentTime)} / ${timeLabel(duration)}`
 					: 'Pausada'}</span
 			>
+			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
+					>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+				>{/if}
 		</div>{/if}
 </div>
 

@@ -65,10 +65,11 @@ function asMessage(event: StoredEvent): Mensagem | null {
 			}
 		: null;
 }
-export async function loadMessages(session: Session, campaignId: string) {
+export async function loadMessages(session: Session, campaignId: string, afterId?: number) {
+	const cursor = afterId && afterId > 0 ? `?after=${encodeURIComponent(afterId)}` : '';
 	const result = await request<{ events: StoredEvent[] }>(
 		session,
-		`/api/v1/campaigns/${campaignId}/events`
+		`/api/v1/campaigns/${campaignId}/events${cursor}`
 	);
 	return result.events.map(asMessage).filter((m): m is Mensagem => m !== null);
 }

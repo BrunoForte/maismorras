@@ -241,7 +241,8 @@
 			const { error } = await supabase.storage
 				.from('campaign-assets')
 				.upload(`${folder()}/${crypto.randomUUID()}-${name}`, optimized.file, {
-					contentType: optimized.file.type
+					contentType: optimized.file.type,
+					cacheControl: '3600'
 				});
 			if (error) throw error;
 			await loadAssets();

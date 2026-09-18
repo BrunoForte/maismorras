@@ -38,6 +38,14 @@ func NewHandler(pool *pgxpool.Pool) *Handler { return &Handler{pool: pool} }
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
+	afterID := int64(0)
+	if raw := strings.TrimSpace(r.URL.Query().Get("after")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed < 0 {
+			return apperror.BadRequest("INVALID_CURSOR", "Cursor de eventos inválido.")
+		}
+		afterID = parsed
+	}
 	var role string
 	if err := h.pool.QueryRow(r.Context(), `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, p.UserID).Scan(&role); err != nil {
 		return apperror.Forbidden("Você não participa desta campanha.")
@@ -49,7 +57,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	if role == "gm" {
 		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info')`
 	}
-	rows, err := h.pool.Query(r.Context(), query+` order by e.id desc limit 100`, campaignID)
+	args := []any{campaignID}
+	if afterID > 0 {
+		query += ` and e.id > $2`
+		args = append(args, afterID)
+		query += ` order by e.id asc limit 100`
+	} else {
+		query += ` order by e.id desc limit 100`
+	}
+	rows, err := h.pool.Query(r.Context(), query, args...)
 	if err != nil {
 		return apperror.Internal(err)
 	}
@@ -62,8 +78,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 		}
 		items = append(items, item)
 	}
-	for left, right := 0, len(items)-1; left < right; left, right = left+1, right-1 {
-		items[left], items[right] = items[right], items[left]
+	if afterID == 0 {
+		for left, right := 0, len(items)-1; left < right; left, right = left+1, right-1 {
+			items[left], items[right] = items[right], items[left]
+		}
 	}
 	return write(w, http.StatusOK, map[string]any{"events": items})
 }

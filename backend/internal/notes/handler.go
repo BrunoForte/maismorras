@@ -77,21 +77,37 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 }
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	var in struct { Title string `json:"title"`; Body string `json:"body"`; Visibility string `json:"visibility"` }
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&in); err != nil { return apperror.BadRequest("INVALID_BODY", "JSON inválido.") }
+	var in struct {
+		Title      string `json:"title"`
+		Body       string `json:"body"`
+		Visibility string `json:"visibility"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
 	in.Title = strings.TrimSpace(in.Title)
-	if in.Title == "" || len([]rune(in.Title)) > 120 { return apperror.BadRequest("INVALID_NOTE", "A nota precisa de um título válido.") }
-	if in.Visibility != "players" { in.Visibility = "gm" }
+	if in.Title == "" || len([]rune(in.Title)) > 120 {
+		return apperror.BadRequest("INVALID_NOTE", "A nota precisa de um título válido.")
+	}
+	if in.Visibility != "players" {
+		in.Visibility = "gm"
+	}
 	var n Note
 	err := h.pool.QueryRow(r.Context(), `update notes set title=$1,body=$2,visibility=$3::note_visibility,updated_at=now() where id=$4 and author_id=$5 returning id::text,title,body,visibility::text`, in.Title, in.Body, in.Visibility, r.PathValue("noteID"), p.UserID).Scan(&n.ID, &n.Title, &n.Body, &n.Visibility)
-	if err != nil { return apperror.NotFound("NOTE_NOT_FOUND", "Nota não encontrada ou sem permissão.") }
+	if err != nil {
+		return apperror.NotFound("NOTE_NOT_FOUND", "Nota não encontrada ou sem permissão.")
+	}
 	return write(w, http.StatusOK, n)
 }
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	result, err := h.pool.Exec(r.Context(), `delete from notes where id=$1 and author_id=$2`, r.PathValue("noteID"), p.UserID)
-	if err != nil { return apperror.Internal(err) }
-	if result.RowsAffected() != 1 { return apperror.NotFound("NOTE_NOT_FOUND", "Nota não encontrada ou sem permissão.") }
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	if result.RowsAffected() != 1 {
+		return apperror.NotFound("NOTE_NOT_FOUND", "Nota não encontrada ou sem permissão.")
+	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

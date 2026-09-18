@@ -26,6 +26,7 @@
 	let tokens = $state<PersistedToken[]>([]);
 	let imageUrls = $state<Record<string, string>>({});
 	let messages = $state<Mensagem[]>([]);
+	let lastEventId = 0;
 	let error = $state('');
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -135,7 +136,7 @@
 		try {
 			const [loadedScene, loadedMessages] = await Promise.all([
 				loadScene(currentSession, sceneId()),
-				loadMessages(currentSession, campaignId())
+				loadMessages(currentSession, campaignId(), initialized ? lastEventId : undefined)
 			]);
 			scene = loadedScene.scene;
 			tokens = loadedScene.tokens;
@@ -191,7 +192,12 @@
 				);
 				imageUrls = Object.fromEntries(signedEntries);
 			}
-			messages = loadedMessages;
+			if (initialized) messages = [...messages, ...loadedMessages].slice(-100);
+			else messages = loadedMessages;
+			for (const message of loadedMessages) {
+				const numericId = Number(message.id);
+				if (Number.isSafeInteger(numericId)) lastEventId = Math.max(lastEventId, numericId);
+			}
 			for (const message of loadedMessages.filter((item) => item.tipo === 'rolagem')) {
 				if (!initialized) seenRolls.add(message.id);
 				else if (!seenRolls.has(message.id) && message.detalhesRolagem) {

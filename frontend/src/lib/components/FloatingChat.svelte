@@ -26,6 +26,7 @@
 	let sceneSocket: SceneSocket | null = null;
 	let messagesElement = $state<HTMLDivElement>();
 	let initialized = false;
+	let lastEventId = 0;
 	const knownMessageIds = new SvelteSet<string>();
 	const revealedRollIds = new SvelteSet<string>();
 	const waitingRollIds = new SvelteSet<string>();
@@ -66,12 +67,17 @@
 
 	async function reloadMessages() {
 		try {
-			const nextMessages = await loadMessages(session, campaignId);
+			const nextMessages = await loadMessages(
+				session,
+				campaignId,
+				initialized ? lastEventId : undefined
+			);
 			if (!initialized) {
 				nextMessages.forEach((message) => {
 					knownMessageIds.add(message.id);
 					if (message.tipo === 'rolagem') revealedRollIds.add(message.id);
 				});
+				$chatMensagens = nextMessages;
 				initialized = true;
 			} else {
 				for (const message of nextMessages) {
@@ -86,8 +92,12 @@
 							nonce: crypto.randomUUID()
 						};
 				}
+				if (nextMessages.length) $chatMensagens = [...$chatMensagens, ...nextMessages].slice(-100);
 			}
-			$chatMensagens = nextMessages;
+			for (const message of nextMessages) {
+				const numericId = Number(message.id);
+				if (Number.isSafeInteger(numericId)) lastEventId = Math.max(lastEventId, numericId);
+			}
 		} catch (error) {
 			console.error('Falha ao carregar histórico do chat:', error);
 		}

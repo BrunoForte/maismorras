@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -88,7 +89,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return nil
 	}
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover, Subprotocols: []string{"maismorras-auth"}})
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		CompressionMode: websocket.CompressionContextTakeover,
+		Subprotocols:    []string{"maismorras-auth"},
+		OriginPatterns:  originPatterns(h.cfg.CORSOrigin),
+	})
 	if err != nil {
 		return nil
 	}
@@ -141,6 +146,26 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			h.hub.broadcast(sceneID, payload)
 		}
 	}
+}
+
+// originPatterns converts the same explicit origins used by HTTP CORS into
+// host patterns accepted by nhooyr's WebSocket origin check. Cloud Run and
+// Vercel are different hosts, so relying on the default same-origin rule
+// would reject every browser handshake with 403.
+func originPatterns(raw string) []string {
+	patterns := make([]string, 0, 2)
+	for _, item := range strings.Split(raw, ",") {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		if parsed, err := url.Parse(value); err == nil && parsed.Hostname() != "" {
+			patterns = append(patterns, parsed.Host)
+			continue
+		}
+		patterns = append(patterns, value)
+	}
+	return patterns
 }
 func (h *Hub) join(room string, p *peer) bool {
 	h.mu.Lock()

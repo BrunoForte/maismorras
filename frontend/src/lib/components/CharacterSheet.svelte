@@ -22,7 +22,12 @@
 		type CompendiumSource
 	} from '$lib/services/compendiumApi';
 	import { rollDice } from '$lib/services/eventApi';
-	import { beginDiceBatch, diceOverlay, finishDiceBatch } from '$lib/stores/diceOverlayStore';
+	import {
+		beginDiceBatch,
+		diceOverlay,
+		finishDiceBatch,
+		setDiceColor
+	} from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { supabase } from '$lib/services/supabase';
@@ -436,6 +441,7 @@
 					? scene.tokens.find((item) => item.actorId === characterId)
 					: scene.tokens.find((item) => item.isOwner);
 				if (token) {
+					setDiceColor(token.color);
 					const effects = await listSceneEffects(session, sceneId);
 					activeConditions = effects.effects
 						.filter((effect) => effect.tokenId === token.id)
@@ -469,7 +475,8 @@
 		const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
 		const path = `campaigns/${campaignId}/portraits/${userData.user.id}/${crypto.randomUUID()}-${safeName}`;
 		const { error } = await supabase.storage.from('campaign-assets').upload(path, blob, {
-			contentType: blob.type || 'image/png'
+			contentType: blob.type || 'image/png',
+			cacheControl: '3600'
 		});
 		if (error) throw error;
 		sheet.portraitPath = path;

@@ -7,13 +7,17 @@
 	let host = $state<HTMLDivElement>();
 	let box: {
 		init: () => Promise<unknown>;
-		roll: (notation: string) => unknown;
-		add: (notation: string) => unknown;
+		roll: (notation: string, options?: { themeColor?: string }) => unknown;
+		add: (notation: string, options?: { themeColor?: string }) => unknown;
+		reroll?: (die: Record<string, unknown>, options?: { remove?: boolean }) => unknown;
+		getRollResults?: () => Array<{ rolls?: Array<Record<string, unknown>> }>;
 		clear?: () => void;
 	} | null = null;
 	let initialized = false;
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- private de-duplication cache
 	const seen = new Set<string>();
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- private DiceBox descriptor cache
+	const persistentDice = new Map<string, Record<string, unknown>>();
 
 	onMount(async () => {
 		if (!host) return;
@@ -39,15 +43,33 @@
 		}
 	});
 
-	function play(result: { expression: string; nonce?: string }) {
+	async function play(result: {
+		expression: string;
+		nonce?: string;
+		color?: string;
+		slot?: string;
+	}) {
 		if (!initialized || !box) return;
 		const id = result.nonce ?? `${result.expression}`;
 		if (seen.has(id)) return;
 		seen.add(id);
 		const notation = result.expression.replace(/\s+/g, '');
 		// `roll` limpa a mesa; `add` preserva os dados já parados no modo persistente.
-		if (mode === '3d-table') box.add(notation);
-		else box.roll(notation);
+		const options = result.color ? { themeColor: result.color } : undefined;
+		if (mode === '3d-table') {
+			const slot = result.slot ?? result.expression;
+			const previous = persistentDice.get(slot);
+			if (previous && box.reroll) {
+				await box.reroll(previous, { remove: true });
+				const die = box.getRollResults?.().at(-1)?.rolls?.[0];
+				if (die) persistentDice.set(slot, die);
+			} else {
+				await box.add(notation, options);
+				const groups = box.getRollResults?.() ?? [];
+				const die = groups.at(-1)?.rolls?.[0];
+				if (die) persistentDice.set(slot, die);
+			}
+		} else box.roll(notation, options);
 		if (seen.size > 100) seen.delete(seen.values().next().value as string);
 	}
 
