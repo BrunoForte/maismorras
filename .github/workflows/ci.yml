@@ -4,6 +4,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -46,3 +47,95 @@ jobs:
       - run: npm run check
       - run: npm test -- --run
       - run: npm run build
+
+  deploy-production:
+    name: Deploy production (Supabase → Cloud Run → Vercel)
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.67.1
+
+      - name: Apply pending Supabase migrations
+        shell: pwsh
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SUPABASE_ACCESS_TOKEN) -or
+              [string]::IsNullOrWhiteSpace($env:SUPABASE_DB_PASSWORD) -or
+              [string]::IsNullOrWhiteSpace($env:SUPABASE_PROJECT_REF)) {
+            throw 'Configure SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD and SUPABASE_PROJECT_REF in GitHub Actions secrets.'
+          }
+          supabase link --project-ref $env:SUPABASE_PROJECT_REF --password $env:SUPABASE_DB_PASSWORD
+          supabase db push --linked --include-all --yes
+
+      - name: Authenticate Google Cloud with Workload Identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Install gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Redeploy backend to Cloud Run
+        shell: pwsh
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: southamerica-east1
+          CLOUD_RUN_SERVICE: maismorras-api-454646414754
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GCP_PROJECT_ID)) {
+            throw 'Configure GCP_PROJECT_ID in GitHub Actions secrets.'
+          }
+          gcloud run deploy $env:CLOUD_RUN_SERVICE `
+            --source backend `
+            --project $env:GCP_PROJECT_ID `
+            --region $env:GCP_REGION `
+            --quiet
+
+      - name: Verify Cloud Run health
+        shell: pwsh
+        env:
+          BACKEND_URL: https://maismorras-api-454646414754.southamerica-east1.run.app
+        run: |
+          $response = Invoke-WebRequest -Uri "$env:BACKEND_URL/health" -UseBasicParsing
+          if ($response.StatusCode -ne 200) {
+            throw "Cloud Run health returned HTTP $($response.StatusCode)."
+          }
+          $payload = $response.Content | ConvertFrom-Json
+          if ($payload.status -ne 'ok') {
+            throw "Unexpected Cloud Run health payload: $($response.Content)"
+          }
+
+      - name: Install Vercel CLI
+        shell: pwsh
+        run: npm install --global vercel@48.1.2
+
+      - name: Build and publish frontend to Vercel
+        shell: pwsh
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VERCEL_TOKEN) -or
+              [string]::IsNullOrWhiteSpace($env:VERCEL_ORG_ID) -or
+              [string]::IsNullOrWhiteSpace($env:VERCEL_PROJECT_ID)) {
+            throw 'Configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID in GitHub Actions secrets.'
+          }
+          vercel pull --yes --environment=production --token $env:VERCEL_TOKEN
+          vercel build --prod --token $env:VERCEL_TOKEN
+          vercel deploy --prebuilt --prod --token $env:VERCEL_TOKEN
