@@ -13,6 +13,7 @@
 	import NPCsPanel from '$lib/components/NPCsPanel.svelte';
 	import CampaignSheets from '$lib/components/CampaignSheets.svelte';
 	import LibraryView from '$lib/components/LibraryView.svelte';
+	import AmbientAudioPlayer from '$lib/components/AmbientAudioPlayer.svelte';
 	import ImagePresentation from '$lib/components/ImagePresentation.svelte';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import CompendiumView from '$lib/components/CompendiumView.svelte';
@@ -63,6 +64,7 @@
 	const apiTimeoutMs = 15000;
 	const sessionTimeoutMs = 10000;
 	let restoringSession = false;
+	let restoredSessionId = '';
 	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
 	const emptyOverlayCamera = (): OverlayCamera => ({
 		url: '',
@@ -98,16 +100,27 @@
 		])
 			.then(async ({ data }) => {
 				session = data.session;
-				if (data.session) await restoreSession(data.session);
+				if (data.session) {
+					restoredSessionId = data.session.user.id;
+					await restoreSession(data.session);
+				}
 			})
 			.catch((cause) => {
 				error = cause instanceof Error ? cause.message : 'Não foi possível restaurar sua sessão.';
 			})
 			.finally(() => (loading = false));
 		const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+			if (
+				nextSession?.user.id === restoredSessionId &&
+				session?.access_token === nextSession.access_token
+			)
+				return;
 			session = nextSession;
-			if (nextSession) void restoreSession(nextSession);
-			else {
+			if (nextSession) {
+				restoredSessionId = nextSession.user.id;
+				void restoreSession(nextSession);
+			} else {
+				restoredSessionId = '';
 				campaigns = [];
 				activeCampaign = null;
 			}
@@ -561,6 +574,12 @@
 				sceneId={activeScene.id}
 				{session}
 				isGM={activeCampaign.role === 'gm'}
+			/>{/if}
+		{#if activeCampaign && activeScene && session}<AmbientAudioPlayer
+				scene={activeScene}
+				{session}
+				isGM={activeCampaign.role === 'gm'}
+				onSceneUpdate={(next) => (activeScene = next)}
 			/>{/if}
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="auto"></audio>

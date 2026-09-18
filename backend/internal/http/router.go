@@ -16,6 +16,7 @@ import (
 	"vtt-backend/internal/compendium"
 	"vtt-backend/internal/config"
 	"vtt-backend/internal/events"
+	"vtt-backend/internal/library"
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
 	"vtt-backend/internal/scenes"
@@ -24,7 +25,7 @@ import (
 
 type errorHandler func(http.ResponseWriter, *http.Request) error
 
-func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, realtimeHandler http.Handler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, libraryHandler *library.Handler, realtimeHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/tokens/gerar", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.Generate))
 	mux.Handle("GET /api/v1/scenes/generate-background", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.GenerateMap))
@@ -52,6 +53,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/import", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.ImportEntries))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries/{entryID}/translate", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.TranslateMissing))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/assets/signed-url", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SignedURL))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/notes/{noteID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Update))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/notes/{noteID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Delete))

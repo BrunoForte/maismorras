@@ -119,9 +119,9 @@
 		return `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 	};
 	$effect(() => {
-		if (scene.ambientAudioEnabled && scene.ambientAudioPath) {
+		if (scene.ambientAudioPath) {
 			void carregarTrilha();
-		} else {
+		} else if (!scene.ambientAudioPath) {
 			ambientAudioA?.pause();
 			ambientAudioB?.pause();
 			ambientPlaying = false;
@@ -379,7 +379,7 @@
 		}
 	}
 	async function carregarTrilha() {
-		if (!scene.ambientAudioEnabled || !scene.ambientAudioPath || !supabase) return;
+		if (!scene.ambientAudioPath || !supabase) return;
 		if (
 			ambientAudioSourcePath === scene.ambientAudioPath &&
 			ambientAudioURL &&
@@ -405,14 +405,14 @@
 				audio.src = nextURL;
 				audio.currentTime = 0;
 			}
-			setTimeout(() => void tentarIniciarTrilha(), 0);
+			if (scene.ambientAudioEnabled) setTimeout(() => void tentarIniciarTrilha(), 0);
 			return;
 		}
 		if (ambientAudioURL !== nextURL && ambientPlaying) await crossfade(nextURL);
 		ambientAudioURL = nextURL;
 		// The first reactive load can happen before <audio> is mounted. Retry once
 		// after assigning the signed URL so the control is ready for a user gesture.
-		void tentarIniciarTrilha();
+		if (scene.ambientAudioEnabled) void tentarIniciarTrilha();
 	}
 	async function tentarIniciarTrilha() {
 		const audio = activeAudio();
@@ -1988,6 +1988,7 @@
 		font-size: 0.68rem;
 	}
 	.ambient-audio {
+		display: none;
 		position: absolute;
 		z-index: 3;
 		bottom: 0;

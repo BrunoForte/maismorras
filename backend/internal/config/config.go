@@ -22,6 +22,7 @@ type Config struct {
 	DatabaseURL         string
 	SupabaseJWTSecret   string
 	SupabaseURL         string
+	SupabaseSecretKey   string
 }
 
 func Load() Config {
@@ -39,7 +40,17 @@ func Load() Config {
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
 		SupabaseJWTSecret:   os.Getenv("SUPABASE_JWT_SECRET"),
 		SupabaseURL:         strings.TrimRight(os.Getenv("SUPABASE_URL"), "/"),
+		SupabaseSecretKey:   firstEnv("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
 	}
+}
+
+func firstEnv(keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func env(key, fallback string) string {
