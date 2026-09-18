@@ -37,8 +37,12 @@
 		type SceneWall,
 		type Scene
 	} from '$lib/services/sceneApi';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
-	import { diceOverlay } from '$lib/stores/diceOverlayStore';
+	import {
+		connectSceneSocket,
+		type RealtimeStatus,
+		type SceneSocket
+	} from '$lib/services/sceneRealtime';
+	import { diceOverlay, setDiceColor } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
@@ -67,6 +71,7 @@
 	let personagemSelecionado = $derived(
 		$personagens.find((personagem) => personagem.id === tokenSelecionadoId)
 	);
+	$effect(() => setDiceColor(personagemSelecionado?.cor));
 	let atoresNPC = $state<NPC[]>([]);
 	let npcSelecionado = $derived(
 		personagemSelecionado?.actorId
@@ -623,7 +628,15 @@
 			await carregarNPCs();
 		});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
-		tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 15000);
+		const updateTokenFallback = (status: RealtimeStatus) => {
+			if (status === 'connected') {
+				if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
+				tokenRefreshTimer = undefined;
+				return;
+			}
+			if (!tokenRefreshTimer)
+				tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 60_000);
+		};
 		sceneSocket = connectSceneSocket(
 			session,
 			scene.id,
@@ -632,7 +645,7 @@
 				void carregarEfeitos();
 			},
 			(ping) => motor?.showPing(ping.x, ping.y, ping.color),
-			() => {}
+			updateTokenFallback
 		);
 
 		const unsubscribe = personagens.subscribe((lista) => {

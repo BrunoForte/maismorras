@@ -2,18 +2,17 @@
 
 O workflow `.github/workflows/ci.yml` publica automaticamente depois que os jobs de backend e frontend passam em um push para `main`. A ordem é deliberada:
 
-1. migrations pendentes no Supabase;
+1. validação do backend e frontend;
 2. redeploy da API no Cloud Run;
 3. verificação de `/health`;
 4. build prebuilt e publicação do frontend na Vercel.
+
+As migrations do Supabase são publicadas pela integração GitHub do próprio Supabase. Não mantenha simultaneamente um segundo deploy de migrations pelo GitHub Actions, pois isso pode gerar concorrência entre os dois processos.
 
 ## Secrets necessários no GitHub
 
 Em **Settings → Secrets and variables → Actions**, cadastre:
 
-- `SUPABASE_ACCESS_TOKEN`: access token pessoal do Supabase usado apenas pelo CLI;
-- `SUPABASE_DB_PASSWORD`: senha do banco do projeto Supabase;
-- `SUPABASE_PROJECT_REF`: `mulzxzzeauudovlojdcy`;
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: recurso do provedor OIDC do Google Cloud;
 - `GCP_SERVICE_ACCOUNT`: service account autorizada a fazer deploy no Cloud Run;
 - `GCP_PROJECT_ID`: ID do projeto Google Cloud;

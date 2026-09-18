@@ -3,7 +3,11 @@
 	import { fade } from 'svelte/transition';
 	import type { Session } from '@supabase/supabase-js';
 	import { getPresentation, savePresentation } from '$lib/services/presentationApi';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import {
+		connectSceneSocket,
+		type RealtimeStatus,
+		type SceneSocket
+	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	let {
 		sceneId,
@@ -46,12 +50,19 @@
 	}
 	onMount(() => {
 		void load();
-		socket = connectSceneSocket(session, sceneId, () => void load());
-		// WebSocket is the primary path; polling is only a low-frequency fallback.
-		const timer = window.setInterval(() => void load(), 10000);
+		let fallbackTimer: number | undefined;
+		const updateFallback = (status: RealtimeStatus) => {
+			if (status === 'connected') {
+				if (fallbackTimer) window.clearInterval(fallbackTimer);
+				fallbackTimer = undefined;
+				return;
+			}
+			if (!fallbackTimer) fallbackTimer = window.setInterval(() => void load(), 60_000);
+		};
+		socket = connectSceneSocket(session, sceneId, () => void load(), undefined, updateFallback);
 		return () => {
 			socket?.close();
-			window.clearInterval(timer);
+			if (fallbackTimer) window.clearInterval(fallbackTimer);
 		};
 	});
 </script>

@@ -4,7 +4,11 @@
 	import { supabase } from '$lib/services/supabase';
 	import { loadMessages } from '$lib/services/eventApi';
 	import type { Mensagem } from '$lib/stores/chatStore';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import {
+		connectSceneSocket,
+		type RealtimeStatus,
+		type SceneSocket
+	} from '$lib/services/sceneRealtime';
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import {
@@ -267,17 +271,31 @@
 			session = data.session;
 			void loadOverlayLayout(data.session);
 			void refresh(data.session);
-			socket = connectSceneSocket(data.session, sceneId(), () => {
-				if (refreshTimer) clearTimeout(refreshTimer);
-				refreshTimer = setTimeout(() => {
-					void refresh(data.session);
-					void loadOverlayLayout(data.session);
-				}, 180);
-			});
-			fallbackRefreshTimer = setInterval(() => {
-				void refresh(data.session);
-				void loadOverlayLayout(data.session);
-			}, 5000);
+			const updateFallback = (status: RealtimeStatus) => {
+				if (status === 'connected') {
+					if (fallbackRefreshTimer) clearInterval(fallbackRefreshTimer);
+					fallbackRefreshTimer = null;
+					return;
+				}
+				if (!fallbackRefreshTimer)
+					fallbackRefreshTimer = setInterval(() => {
+						void refresh(data.session);
+						void loadOverlayLayout(data.session);
+					}, 60_000);
+			};
+			socket = connectSceneSocket(
+				data.session,
+				sceneId(),
+				() => {
+					if (refreshTimer) clearTimeout(refreshTimer);
+					refreshTimer = setTimeout(() => {
+						void refresh(data.session);
+						void loadOverlayLayout(data.session);
+					}, 180);
+				},
+				undefined,
+				updateFallback
+			);
 		});
 		return () => {
 			disposed = true;

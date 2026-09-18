@@ -10,7 +10,11 @@
 		diceRendererMode,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import {
+		connectSceneSocket,
+		type RealtimeStatus,
+		type SceneSocket
+	} from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
 
 	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } =
@@ -105,15 +109,26 @@
 
 	onMount(() => {
 		void reloadMessages();
-		sceneSocket = connectSceneSocket(session, sceneId, () => void reloadMessages());
-		// Roll endpoints may complete without a websocket publish; polling keeps
-		// the chat current even when another tab or client performed the roll.
-		// WebSocket is the primary path; polling is only a low-frequency fallback.
-		const refreshTimer = window.setInterval(() => void reloadMessages(), 10000);
+		let fallbackTimer: number | undefined;
+		const updateFallback = (status: RealtimeStatus) => {
+			if (status === 'connected') {
+				if (fallbackTimer) window.clearInterval(fallbackTimer);
+				fallbackTimer = undefined;
+				return;
+			}
+			if (!fallbackTimer) fallbackTimer = window.setInterval(() => void reloadMessages(), 60_000);
+		};
+		sceneSocket = connectSceneSocket(
+			session,
+			sceneId,
+			() => void reloadMessages(),
+			undefined,
+			updateFallback
+		);
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;
-			window.clearInterval(refreshTimer);
+			if (fallbackTimer) window.clearInterval(fallbackTimer);
 			for (const timer of revealTimers.values()) clearTimeout(timer);
 			revealTimers.clear();
 		};
