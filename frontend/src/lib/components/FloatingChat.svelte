@@ -291,7 +291,10 @@
 		position: fixed;
 		z-index: 8;
 		right: 1rem;
-		bottom: 1rem;
+		bottom: 4.25rem;
+		min-height: 9rem;
+		max-height: min(70vh, 560px);
+		resize: both;
 		width: min(360px, calc(100% - 2rem));
 		border: 1px solid rgba(216, 173, 103, 0.4);
 		border-radius: 12px;
@@ -487,7 +490,7 @@
 	@media (max-width: 650px) {
 		.floating-chat {
 			right: 0.6rem;
-			bottom: 0.6rem;
+			bottom: 4.25rem;
 			width: calc(100% - 1.2rem);
 		}
 		.chat-body {

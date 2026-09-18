@@ -422,7 +422,7 @@
 			const audio = activeAudio();
 			if (audio && audio.src !== nextURL) {
 				audio.src = nextURL;
-				audio.currentTime = 0;
+				if (pathChanged) audio.currentTime = 0;
 			}
 			if (scene.ambientAudioEnabled) setTimeout(() => void tentarIniciarTrilha(), 0);
 			return;
@@ -1521,7 +1521,7 @@
 		overflow: hidden;
 		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
 		width: 100%;
-		height: min(calc(100dvh - 221px), 900px);
+		height: min(calc(100dvh - 165px), 900px);
 		min-height: 500px;
 	}
 

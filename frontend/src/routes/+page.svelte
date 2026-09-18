@@ -65,6 +65,11 @@
 	const sessionTimeoutMs = 10000;
 	let restoringSession = false;
 	let restoredSessionId = '';
+	type InstallPromptEvent = Event & {
+		prompt: () => Promise<void>;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	};
+	let installPrompt = $state<InstallPromptEvent | null>(null);
 	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
 	const emptyOverlayCamera = (): OverlayCamera => ({
 		url: '',
@@ -81,6 +86,13 @@
 
 	onMount(() => {
 		restoreAppLocale();
+		const rememberInstallPrompt = (event: Event) => {
+			event.preventDefault();
+			installPrompt = event as InstallPromptEvent;
+		};
+		const clearInstallPrompt = () => (installPrompt = null);
+		window.addEventListener('beforeinstallprompt', rememberInstallPrompt);
+		window.addEventListener('appinstalled', clearInstallPrompt);
 		if (!supabase) {
 			error =
 				$appLocale === 'en'
@@ -125,8 +137,17 @@
 				activeCampaign = null;
 			}
 		});
-		return () => data.subscription.unsubscribe();
+		return () => {
+			data.subscription.unsubscribe();
+			window.removeEventListener('beforeinstallprompt', rememberInstallPrompt);
+			window.removeEventListener('appinstalled', clearInstallPrompt);
+		};
 	});
+	async function installApp() {
+		if (!installPrompt) return;
+		await installPrompt.prompt();
+		if ((await installPrompt.userChoice).outcome === 'accepted') installPrompt = null;
+	}
 
 	async function login() {
 		if (!supabase) return;
@@ -871,6 +892,9 @@
 						><button class="secondary-button" onclick={() => (npcsOpen = true)}
 							>{$appLocale === 'en' ? 'NPCs' : 'NPCs'}</button
 						>
+						{#if installPrompt}<button class="secondary-button" onclick={() => void installApp()}
+								>{$appLocale === 'en' ? 'Install MaisMorras' : 'Instalar MaisMorras'}</button
+							>{/if}
 					</div>
 					<section class="overlay-settings">
 						<p class="eyebrow">OVERLAY DA LIVE</p>

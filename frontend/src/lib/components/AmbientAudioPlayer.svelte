@@ -143,8 +143,8 @@
 		box-shadow: 0 -5px 20px #0008;
 	}
 	.ambient-player select {
-		min-width: min(28rem, 70vw);
-		flex: 1;
+		width: min(24rem, 55vw);
+		min-width: 12rem;
 		border: 1px solid #5a493b;
 		border-radius: 6px;
 		padding: 0.5rem;

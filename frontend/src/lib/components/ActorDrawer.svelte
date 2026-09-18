@@ -157,7 +157,7 @@
 		position: fixed;
 		z-index: 8;
 		left: 1rem;
-		bottom: 1rem;
+		bottom: 4.25rem;
 		width: min(330px, calc(100% - 2rem));
 		overflow: hidden;
 		border: 1px solid rgba(216, 173, 103, 0.4);
