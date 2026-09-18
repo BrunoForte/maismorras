@@ -7,7 +7,11 @@
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
-	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
+	import {
+		diceOverlay,
+		restoreDicePreference,
+		setDice3dPreference
+	} from '$lib/stores/diceOverlayStore';
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { apiBase } from '$lib/services/apiBase';
@@ -202,7 +206,10 @@
 		}
 	}
 	onMount(() => {
-		setDice3dPreference(true);
+		restoreDicePreference();
+		const dicePreference = query().get('dice3d');
+		if (dicePreference === '1' || dicePreference === '0')
+			setDice3dPreference(dicePreference === '1');
 		void loadOverlayLayout();
 		if (!supabase) {
 			error = 'Supabase não está configurado.';

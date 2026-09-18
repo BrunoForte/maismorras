@@ -9,6 +9,7 @@
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
+	import { dice3dEnabled } from '$lib/stores/diceOverlayStore';
 	import { apiBase } from '$lib/services/apiBase';
 
 	let session = $state<Session | null>(null);
@@ -505,6 +506,7 @@
 		// URLSearchParams is local and only used to construct the share URL.
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
+		params.set('dice3d', $dice3dEnabled ? '1' : '0');
 		overlayCameras.forEach((camera, index) => {
 			if (!camera.url) return;
 			params.set(`camera${index + 1}`, camera.url);
