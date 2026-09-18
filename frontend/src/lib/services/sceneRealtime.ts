@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
+import { supabase } from './supabase';
 
 type SceneRefresh = { type: 'scene.refresh' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
@@ -28,6 +29,7 @@ class SharedSceneConnection {
 	private token: string;
 	private readonly subscribers = new Set<Subscriber>();
 	private readonly url: URL;
+	private authSubscription?: { unsubscribe: () => void };
 
 	constructor(
 		private readonly key: string,
@@ -38,6 +40,15 @@ class SharedSceneConnection {
 		this.url = new URL('/api/v1/ws', apiBase);
 		this.url.protocol = this.url.protocol === 'https:' ? 'wss:' : 'ws:';
 		this.url.searchParams.set('sceneId', sceneId);
+		this.authSubscription = supabase?.auth.onAuthStateChange((_event, nextSession) => {
+			const nextToken = nextSession?.access_token;
+			if (!nextToken || nextToken === this.token) return;
+			this.token = nextToken;
+			if (this.socket) {
+				this.socket.close(1000, 'session refreshed');
+				this.socket = null;
+			}
+		}).data.subscription;
 	}
 
 	add(session: Session, subscriber: Subscriber): SceneSocket {
@@ -119,6 +130,8 @@ class SharedSceneConnection {
 		this.reconnectTimer = null;
 		this.socket?.close();
 		this.socket = null;
+		this.authSubscription?.unsubscribe();
+		this.authSubscription = undefined;
 		sharedConnections.delete(this.key);
 		subscriber.onStatus?.('disconnected');
 	}

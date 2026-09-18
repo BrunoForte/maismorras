@@ -26,6 +26,7 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { supabase } from '$lib/services/supabase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import {
 		classData,
 		classFeatures,
@@ -454,14 +455,7 @@
 			portraitPreview = null;
 			return;
 		}
-		const { data, error } = await supabase.storage
-			.from('campaign-assets')
-			.createSignedUrl(sheet.portraitPath, 3600);
-		if (error) {
-			message = error.message;
-			return;
-		}
-		portraitPreview = data.signedUrl;
+		portraitPreview = (await getSignedAssetUrl(session, campaignId, sheet.portraitPath)) ?? null;
 	}
 	async function savePortrait(blob: Blob, filename: string) {
 		if (!supabase) throw new Error('Supabase não está configurado.');

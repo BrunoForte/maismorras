@@ -4,12 +4,13 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { getPresentation, savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
-	import { supabase } from '$lib/services/supabase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	let {
 		sceneId,
+		campaignId,
 		session,
 		isGM = false
-	}: { sceneId: string; session: Session; isGM?: boolean } = $props();
+	}: { sceneId: string; campaignId: string; session: Session; isGM?: boolean } = $props();
 	let item = $state({ assetPath: '', title: '', visible: false });
 	let url = $state('');
 	let dismissedPath = $state('');
@@ -36,11 +37,8 @@
 				url = '';
 				return;
 			}
-			if (item.visible && item.assetPath && supabase) {
-				const { data } = await supabase.storage
-					.from('campaign-assets')
-					.createSignedUrl(item.assetPath, 3600);
-				url = data?.signedUrl ?? '';
+			if (item.visible && item.assetPath) {
+				url = (await getSignedAssetUrl(session, campaignId, item.assetPath)) ?? '';
 			} else url = '';
 		} catch {
 			/* presentation is optional */

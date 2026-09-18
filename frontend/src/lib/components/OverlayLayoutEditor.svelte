@@ -3,6 +3,8 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { apiBase } from '$lib/services/apiBase';
 	import { supabase } from '$lib/services/supabase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	let {
 		campaignId,
 		sceneId,
@@ -111,6 +113,7 @@
 	let status = $state('');
 	let saving = $state(false);
 	let backgroundPreview = $state('');
+	let layoutSocket: SceneSocket | null = null;
 	const key = () => `maismorras:overlay-layout:${campaignId}:${sceneId}`;
 	function normalize(value: Partial<Layout>): Layout {
 		const base = defaults();
@@ -181,9 +184,11 @@
 			loadDocument(saved ? JSON.parse(saved) : {});
 			void resolveBackground(layout.background);
 			void loadRemote();
+			if (session) layoutSocket = connectSceneSocket(session, sceneId, () => {});
 		} catch {
 			layout = defaults();
 		}
+		return () => layoutSocket?.close();
 	});
 	async function loadRemote() {
 		if (!session?.access_token) return;
@@ -211,9 +216,8 @@
 			backgroundPreview = path;
 			return;
 		}
-		if (!supabase) return;
-		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(path, 3600);
-		backgroundPreview = data?.signedUrl ?? '';
+		if (!session) return;
+		backgroundPreview = (await getSignedAssetUrl(session, campaignId, path)) ?? '';
 	}
 	function dragStart(event: DragEvent, id: string) {
 		event.dataTransfer?.setData('text/plain', id);
@@ -306,6 +310,7 @@
 				channel.postMessage({ type: 'layout-change', sceneId });
 				channel.close();
 			}
+			layoutSocket?.publishRefresh();
 			status = 'Layout da overlay salvo para esta cena.';
 		} catch (error) {
 			status = error instanceof Error ? error.message : 'Não foi possível salvar a overlay.';

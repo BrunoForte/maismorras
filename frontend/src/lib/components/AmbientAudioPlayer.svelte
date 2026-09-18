@@ -5,7 +5,7 @@
 	import { updateScene } from '$lib/services/sceneApi';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
-	import { apiBase } from '$lib/services/apiBase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	let { scene, session, isGM, onSceneUpdate } = $props<{
 		scene: Scene;
 		session: Session;
@@ -17,10 +17,11 @@
 	let url = $state('');
 	let loadedPath = $state('');
 	let needsGesture = $state(false);
-	let fading = $state(false);
+	let syncedEnabled = $state<boolean | undefined>();
 	let currentTime = $state(0);
 	let duration = $state(0);
 	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
+	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
 	onMount(() => {
 		void loadTracks();
 		const element = audio();
@@ -54,20 +55,7 @@
 			}));
 	}
 	async function signed(path: string) {
-		const response = await fetch(
-			`${apiBase}/api/v1/campaigns/${scene.campaignId}/assets/signed-url`,
-			{
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${session.access_token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ path })
-			}
-		);
-		if (!response.ok) return '';
-		const data = (await response.json()) as { url?: string };
-		return data.url ?? '';
+		return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
 	}
 	async function save(next: Scene) {
 		const saved = await updateScene(session, next);
@@ -79,13 +67,52 @@
 		const path = (event.currentTarget as HTMLSelectElement).value;
 		const next = { ...scene, ambientAudioPath: path || null, ambientAudioEnabled: false };
 		await save(next);
-		url = path ? await signed(path) : '';
-		loadedPath = path;
+		await applyPath(path);
+	}
+	async function fadeTo(element: HTMLAudioElement, target: number, duration = 350) {
+		const initial = element.volume;
+		const started = performance.now();
+		await new Promise<void>((resolve) => {
+			const step = (now: number) => {
+				const progress = Math.min(1, (now - started) / duration);
+				element.volume = initial + (target - initial) * progress;
+				if (progress < 1) requestAnimationFrame(step);
+				else resolve();
+			};
+			requestAnimationFrame(step);
+		});
+	}
+	async function applyPath(path: string) {
 		const element = audio();
-		if (element) {
-			element.pause();
-			element.currentTime = 0;
-			element.src = url;
+		if (!path) {
+			if (element) {
+				element.pause();
+				element.removeAttribute('src');
+				element.currentTime = 0;
+			}
+			url = '';
+			loadedPath = '';
+			return;
+		}
+		loadedPath = path;
+		url = '';
+		const nextUrl = await signed(path);
+		if (path !== scene.ambientAudioPath) return;
+		url = nextUrl;
+		syncedEnabled = scene.ambientAudioEnabled;
+		if (!element || !nextUrl) return;
+		element.pause();
+		element.currentTime = 0;
+		element.volume = 0;
+		element.src = nextUrl;
+		if (scene.ambientAudioEnabled) {
+			try {
+				await element.play();
+				await fadeTo(element, targetVolume());
+				needsGesture = false;
+			} catch {
+				needsGesture = true;
+			}
 		}
 	}
 	async function toggle() {
@@ -94,13 +121,16 @@
 		if (!element || !url) return;
 		if (element.paused) {
 			try {
+				element.volume = 0;
 				await element.play();
+				await fadeTo(element, targetVolume());
 				needsGesture = false;
 				await save({ ...scene, ambientAudioEnabled: true });
 			} catch {
 				needsGesture = true;
 			}
 		} else {
+			await fadeTo(element, 0);
 			element.pause();
 			await save({ ...scene, ambientAudioEnabled: false });
 		}
@@ -108,10 +138,25 @@
 	$effect(() => {
 		const path = scene.ambientAudioPath ?? '';
 		if (path !== loadedPath) {
-			loadedPath = path;
-			url = '';
-			if (path) void signed(path).then((value) => (url = value));
+			void applyPath(path);
+			return;
 		}
+		const enabled = scene.ambientAudioEnabled;
+		if (enabled === syncedEnabled || !url) return;
+		syncedEnabled = enabled;
+		const element = audio();
+		if (!element) return;
+		if (!enabled) {
+			element.pause();
+			element.currentTime = 0;
+			return;
+		}
+		element.volume = 0;
+		void element
+			.play()
+			.then(() => fadeTo(element, targetVolume()))
+			.then(() => (needsGesture = false))
+			.catch(() => (needsGesture = true));
 	});
 </script>
 

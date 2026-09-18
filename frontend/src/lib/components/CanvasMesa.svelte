@@ -2,7 +2,6 @@
 <script lang="ts">
 	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
-	import { apiBase } from '$lib/services/apiBase';
 	import type { Session } from '@supabase/supabase-js';
 	import { GameEngine } from '$lib/engine/GameEngine';
 	import {
@@ -43,8 +42,8 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
-	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 
 	let {
 		scene,
@@ -99,36 +98,7 @@
 	let wallsVisible = $state(true);
 	let areasVisible = $state(true);
 	let layerToolsOpen = $state(false);
-	let ambientAudioA = $state<HTMLAudioElement>();
-	let ambientAudioB = $state<HTMLAudioElement>();
-	let ambientAudioURL = $state<string | null>(null);
-	let ambientAudioSourcePath = $state<string | null>(null);
-	let ambientAudioSignedAt = $state(0);
-	let ambientPlaying = $state(false);
-	let audioNeedsGesture = $state(false);
-	let audioCurrent = $state(0);
-	let audioDuration = $state(0);
-	let audioVolume = $state<number | null>(null);
-	let activeDeck = $state<'a' | 'b'>('a');
 	let tokenRefreshTimer: number | undefined;
-	const fadeDuration = 900;
-	const activeAudio = () => (activeDeck === 'a' ? ambientAudioA : ambientAudioB);
-	const inactiveAudio = () => (activeDeck === 'a' ? ambientAudioB : ambientAudioA);
-	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
-	const timeLabel = (value: number) => {
-		if (!Number.isFinite(value) || value < 0) return '0:00';
-		return `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
-	};
-	$effect(() => {
-		if (scene.ambientAudioPath) {
-			void carregarTrilha();
-		} else if (!scene.ambientAudioPath) {
-			ambientAudioA?.pause();
-			ambientAudioB?.pause();
-			ambientPlaying = false;
-			ambientAudioURL = null;
-		}
-	});
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -310,6 +280,7 @@
 	async function carregarTokens() {
 		try {
 			const response = await loadScene(session, scene.id);
+			Object.assign(scene, response.scene);
 			urlMapa.set(await resolverImagemDeFundo(response.scene.backgroundUrl));
 			motor?.setFog(
 				response.scene.fogEnabled,
@@ -341,33 +312,15 @@
 		}
 	}
 	async function resolverImagemDeFundo(value: string | null) {
-		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`) || !supabase)
-			return value;
+		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`)) return value;
 		return resolverAssetAssinado(value);
 	}
 	async function resolverImagemToken(value: string | null) {
-		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/`) || !supabase) return value;
+		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/`)) return value;
 		return resolverAssetAssinado(value);
 	}
 	async function resolverAssetAssinado(path: string) {
-		try {
-			const response = await fetch(
-				`${apiBase}/api/v1/campaigns/${scene.campaignId}/assets/signed-url`,
-				{
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${session.access_token}`,
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({ path })
-				}
-			);
-			if (!response.ok) return null;
-			const data = (await response.json()) as { url?: string };
-			return data.url ?? null;
-		} catch {
-			return null;
-		}
+		return getSignedAssetUrl(session, scene.campaignId, path);
 	}
 
 	async function carregarEfeitos() {
@@ -397,133 +350,6 @@
 				error instanceof Error ? error.message : 'Não foi possível carregar ações do NPC.';
 		}
 	}
-	async function carregarTrilha() {
-		if (!scene.ambientAudioPath || !supabase) return;
-		if (
-			ambientAudioSourcePath === scene.ambientAudioPath &&
-			ambientAudioURL &&
-			Date.now() - ambientAudioSignedAt < 50 * 60 * 1000
-		)
-			return;
-		const { data, error } = await supabase.storage
-			.from('campaign-assets')
-			.createSignedUrl(scene.ambientAudioPath, 3600);
-		if (error || !data?.signedUrl) {
-			persistenceError = error?.message ?? 'Não foi possível carregar a trilha da cena.';
-			return;
-		}
-		const nextURL = data.signedUrl;
-		const pathChanged = ambientAudioSourcePath !== scene.ambientAudioPath;
-		ambientAudioSourcePath = scene.ambientAudioPath;
-		ambientAudioSignedAt = Date.now();
-		if (pathChanged && ambientAudioURL) ambientAudioURL = null;
-		if (!ambientAudioURL) {
-			ambientAudioURL = nextURL;
-			const audio = activeAudio();
-			if (audio && audio.src !== nextURL) {
-				audio.src = nextURL;
-				if (pathChanged) audio.currentTime = 0;
-			}
-			if (scene.ambientAudioEnabled) setTimeout(() => void tentarIniciarTrilha(), 0);
-			return;
-		}
-		if (ambientAudioURL !== nextURL && ambientPlaying) await crossfade(nextURL);
-		ambientAudioURL = nextURL;
-		// The first reactive load can happen before <audio> is mounted. Retry once
-		// after assigning the signed URL so the control is ready for a user gesture.
-		if (scene.ambientAudioEnabled) void tentarIniciarTrilha();
-	}
-	async function tentarIniciarTrilha() {
-		const audio = activeAudio();
-		if (!audio || !ambientAudioURL || ambientPlaying) return;
-		if (audio.dataset.userStopped === 'true') return;
-		if (!audio.paused) {
-			ambientPlaying = true;
-			return;
-		}
-		if (!audio.src) audio.src = ambientAudioURL;
-		audioVolume ??= Number(audio.dataset.volume) || Math.min(0.7, targetVolume());
-		audio.volume = audioVolume;
-		try {
-			await audio.play();
-			audioNeedsGesture = false;
-			ambientPlaying = true;
-		} catch {
-			audioNeedsGesture = true;
-		}
-	}
-	function fade(audio: HTMLAudioElement, to: number, duration = fadeDuration) {
-		const from = audio.volume,
-			started = performance.now();
-		return new Promise<void>((resolve) => {
-			const step = (now: number) => {
-				const progress = Math.min(1, (now - started) / duration);
-				audio.volume = from + (to - from) * progress;
-				if (progress < 1) requestAnimationFrame(step);
-				else resolve();
-			};
-			requestAnimationFrame(step);
-		});
-	}
-	async function crossfade(nextURL: string) {
-		const outgoing = activeAudio(),
-			incoming = inactiveAudio();
-		if (!outgoing || !incoming) return;
-		incoming.src = nextURL;
-		incoming.currentTime = 0;
-		incoming.volume = 0;
-		try {
-			await incoming.play();
-			await Promise.all([fade(outgoing, 0), fade(incoming, targetVolume())]);
-			outgoing.pause();
-			outgoing.currentTime = 0;
-			activeDeck = activeDeck === 'a' ? 'b' : 'a';
-		} catch {
-			persistenceError = 'Clique em tocar trilha para autorizar áudio neste navegador.';
-		}
-	}
-	async function toggleTrilha() {
-		const audio = activeAudio();
-		if (!audio || !ambientAudioURL) return;
-		try {
-			if (audio.paused) {
-				audio.dataset.userStopped = 'false';
-				if (!audio.src) audio.src = ambientAudioURL;
-				audio.volume = 0;
-				await audio.play();
-				await fade(audio, audioVolume ?? targetVolume());
-				ambientPlaying = true;
-			} else {
-				audio.dataset.userStopped = 'true';
-				await fade(audio, 0);
-				audio.pause();
-				ambientPlaying = false;
-			}
-		} catch {
-			persistenceError =
-				'O navegador bloqueou a reprodução automática. Clique novamente para iniciar a trilha.';
-		}
-	}
-	function updateAudioTime(event: Event) {
-		const audio = event.currentTarget as HTMLAudioElement;
-		audioCurrent = audio.currentTime;
-		audioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-	}
-	function seekAudio(event: Event) {
-		const audio = activeAudio();
-		if (!audio) return;
-		audio.currentTime = Number((event.currentTarget as HTMLInputElement).value);
-		audioCurrent = audio.currentTime;
-	}
-	function changeAudioVolume(event: Event) {
-		audioVolume = Number((event.currentTarget as HTMLInputElement).value);
-		const audio = activeAudio();
-		if (audio) {
-			audio.volume = audioVolume;
-			audio.dataset.volume = String(audioVolume);
-		}
-	}
-
 	async function aplicarCondicaoOficial() {
 		if (!isGM || !personagemSelecionado?.persistedId || !efeitoSelecionado) return;
 		const parsedDuration = Number(duracaoEfeito);
@@ -746,22 +572,6 @@
 	}
 
 	onMount(() => {
-		ambientAudioA =
-			(document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null) ?? undefined;
-		ambientAudioB =
-			(document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null) ?? undefined;
-		const audioTime = () => {
-			const audio = activeAudio();
-			if (audio) {
-				audioCurrent = audio.currentTime;
-				audioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-			}
-		};
-		ambientAudioA?.addEventListener('timeupdate', audioTime);
-		ambientAudioA?.addEventListener('loadedmetadata', audioTime);
-		ambientAudioB?.addEventListener('timeupdate', audioTime);
-		ambientAudioB?.addEventListener('loadedmetadata', audioTime);
-		const audioGesture = () => void tentarIniciarTrilha();
 		const mapToolHandler = (event: Event) => {
 			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
 			toggleMapTool(tool);
@@ -773,7 +583,6 @@
 		};
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
 		window.addEventListener('maismorras:close-map-tools', closeHandler);
-		window.addEventListener('pointerdown', audioGesture, { passive: true });
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
@@ -812,31 +621,15 @@
 			await carregarTokens();
 			await carregarEfeitos();
 			await carregarNPCs();
-			await carregarTrilha();
 		});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
-		tokenRefreshTimer = window.setInterval(() => {
-			void carregarTokens();
-			void loadScene(session, scene.id).then((fresh) => {
-				const previousPath = scene.ambientAudioPath;
-				Object.assign(scene, fresh.scene);
-				if (
-					previousPath !== scene.ambientAudioPath ||
-					Date.now() - ambientAudioSignedAt > 50 * 60 * 1000
-				)
-					void carregarTrilha();
-			});
-		}, 4000);
+		tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 15000);
 		sceneSocket = connectSceneSocket(
 			session,
 			scene.id,
 			() => {
 				void carregarTokens();
 				void carregarEfeitos();
-				void loadScene(session, scene.id).then((fresh) => {
-					Object.assign(scene, fresh.scene);
-					void carregarTrilha();
-				});
 			},
 			(ping) => motor?.showPing(ping.x, ping.y, ping.color),
 			() => {}
@@ -872,11 +665,6 @@
 		return () => {
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);
-			window.removeEventListener('pointerdown', audioGesture);
-			ambientAudioA?.removeEventListener('timeupdate', audioTime);
-			ambientAudioA?.removeEventListener('loadedmetadata', audioTime);
-			ambientAudioB?.removeEventListener('timeupdate', audioTime);
-			ambientAudioB?.removeEventListener('loadedmetadata', audioTime);
 			sceneSocket?.close();
 			sceneSocket = null;
 			unsubscribe();
@@ -1053,39 +841,6 @@
 			? 'Interactive game map. Focus it to use keyboard shortcuts.'
 			: 'Mapa interativo da mesa. Foque nele para usar atalhos do teclado.'}
 	></canvas>
-	{#if ambientAudioURL}<div class="ambient-audio">
-			<button
-				onclick={() => void (audioNeedsGesture ? tentarIniciarTrilha() : toggleTrilha())}
-				disabled={!isGM && !audioNeedsGesture}
-				title={!isGM ? 'Clique para autorizar o áudio neste navegador' : 'Controlar trilha da mesa'}
-				>{audioNeedsGesture
-					? '♫ Ativar trilha'
-					: ambientPlaying
-						? '❚❚ Pausar trilha'
-						: '♫ Tocar trilha'}</button
-			><span class="audio-time">{timeLabel(audioCurrent)} / {timeLabel(audioDuration)}</span>
-			<input
-				class="audio-seek"
-				type="range"
-				min="0"
-				max={audioDuration || 1}
-				step="0.1"
-				value={audioCurrent}
-				oninput={seekAudio}
-				aria-label="Posição da trilha"
-			/>
-			<label class="audio-volume"
-				>🔊 <input
-					type="range"
-					min="0"
-					max="1"
-					step="0.01"
-					value={audioVolume ?? targetVolume()}
-					oninput={changeAudioVolume}
-					aria-label="Volume da trilha"
-				/></label
-			>
-		</div>{/if}
 	<div class="ping-tool">
 		<button class:active={pingArmed} onclick={() => (pingArmed = !pingArmed)}
 			>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button
@@ -2005,72 +1760,6 @@
 		color: #e8d3aa;
 		background: #2b211e;
 		font-size: 0.68rem;
-	}
-	.ambient-audio {
-		display: none !important;
-		position: absolute;
-		z-index: 3;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		border: 1px solid rgba(216, 173, 103, 0.42);
-		border-radius: 8px 8px 0 0;
-		padding: 0.65rem 1rem;
-		color: #d6c0a0;
-		background: rgba(27, 22, 27, 0.92);
-		backdrop-filter: blur(8px);
-		font-size: 0.65rem;
-	}
-	.ambient-audio button {
-		border: 0;
-		padding: 0;
-		color: #f0d29d;
-		background: transparent;
-		font: inherit;
-		font-weight: 750;
-		cursor: pointer;
-	}
-	.ambient-audio span {
-		border-left: 1px solid #5c4b40;
-		padding-left: 0.45rem;
-		color: #a99c91;
-	}
-	.ambient-audio .audio-time {
-		white-space: nowrap;
-		font-variant-numeric: tabular-nums;
-	}
-	.ambient-audio input[type='range'] {
-		accent-color: #d8ad67;
-	}
-	.ambient-audio .audio-seek {
-		flex: 1;
-		min-width: 5rem;
-	}
-	.ambient-audio .audio-volume {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		color: #e8d3aa;
-	}
-	.ambient-audio .audio-volume input {
-		width: 8rem;
-	}
-	@media (max-width: 640px) {
-		.ambient-audio {
-			flex-wrap: wrap;
-			padding: 0.5rem 0.65rem;
-			gap: 0.45rem;
-		}
-		.ambient-audio .audio-seek {
-			order: 3;
-			flex-basis: 100%;
-		}
-		.ambient-audio .audio-volume input {
-			width: 5rem;
-		}
 	}
 	.token-inspector header {
 		display: flex;

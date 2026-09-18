@@ -593,6 +593,7 @@
 	<div class:game-mode={activeCampaign} class="app-shell">
 		{#if activeCampaign && activeScene && session}<ImagePresentation
 				sceneId={activeScene.id}
+				campaignId={activeCampaign.id}
 				{session}
 				isGM={activeCampaign.role === 'gm'}
 			/>{/if}
@@ -604,7 +605,6 @@
 			/>{/if}
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="auto"></audio>
-			<audio id="maismorras-ambient-b" loop preload="auto"></audio>
 		</div>
 		<header class="app-header">
 			<button

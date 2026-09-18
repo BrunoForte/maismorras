@@ -6,6 +6,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { apiBase } from '$lib/services/apiBase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	let {
 		campaignId,
 		session,
@@ -175,14 +176,12 @@
 		}
 		const listed = await Promise.all(
 			(data ?? []).map(async (file) => {
-				const signed = await client.storage
-					.from('campaign-assets')
-					.createSignedUrl(`${folder()}/${file.name}`, 3600);
-				return signed.data?.signedUrl
+				const signed = await getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
+				return signed
 					? {
 							name: file.name.replace(/^[a-f0-9-]+-/, ''),
 							path: `${folder()}/${file.name}`,
-							url: signed.data.signedUrl,
+							url: signed,
 							type: file.metadata?.mimetype?.startsWith('audio/')
 								? ('audio' as const)
 								: file.metadata?.mimetype === 'application/pdf' ||

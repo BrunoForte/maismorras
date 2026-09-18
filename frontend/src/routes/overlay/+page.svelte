@@ -9,6 +9,8 @@
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import { diceOverlay, setDice3dPreference } from '$lib/stores/diceOverlayStore';
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { apiBase } from '$lib/services/apiBase';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -70,12 +72,27 @@
 			overlayBackground = path;
 			return;
 		}
-		if (!supabase || !session) return;
-		const { data } = await supabase.storage.from('campaign-assets').createSignedUrl(path, 3600);
-		overlayBackground = data?.signedUrl ?? '';
+		if (!session) return;
+		overlayBackground = (await getSignedAssetUrl(session, campaignId(), path)) ?? '';
 	}
-	function loadOverlayLayout() {
+	async function loadOverlayLayout(currentSession: Session | null = session) {
 		try {
+			if (currentSession) {
+				const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId()}/overlay-layout`, {
+					headers: { Authorization: `Bearer ${currentSession.access_token}` }
+				});
+				if (response.ok) {
+					const body = (await response.json()) as { layout?: unknown };
+					if (body.layout && Object.keys(body.layout as object).length) {
+						applyLayoutDocument(body.layout);
+						localStorage.setItem(
+							`maismorras:overlay-layout:${campaignId()}:${sceneId()}`,
+							JSON.stringify(body.layout)
+						);
+						return;
+					}
+				}
+			}
 			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);
 			if (saved) {
 				applyLayoutDocument(JSON.parse(saved));
@@ -116,14 +133,19 @@
 			const client = supabase;
 			audioVolume = Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100));
 			if (loadedScene.scene.ambientAudioEnabled && loadedScene.scene.ambientAudioPath && client) {
-				const { data } = await client.storage
-					.from('campaign-assets')
-					.createSignedUrl(loadedScene.scene.ambientAudioPath, 3600);
-				audioSrc = data?.signedUrl ?? '';
+				audioSrc =
+					(await getSignedAssetUrl(
+						currentSession,
+						campaignId(),
+						loadedScene.scene.ambientAudioPath
+					)) ?? '';
 				if (audio) {
-					audio.src = audioSrc;
+					if (audio.src !== audioSrc) {
+						audio.src = audioSrc;
+						audio.currentTime = 0;
+					}
 					audio.volume = audioVolume;
-					void audio.play().catch(() => (audioBlocked = true));
+					if (audio.paused) void audio.play().catch(() => (audioBlocked = true));
 				}
 			} else {
 				audioSrc = '';
@@ -136,12 +158,13 @@
 						loadedScene.scene.backgroundUrl.startsWith('data:')
 					)
 						mapBackground = loadedScene.scene.backgroundUrl;
-					else {
-						const { data } = await client.storage
-							.from('campaign-assets')
-							.createSignedUrl(loadedScene.scene.backgroundUrl, 3600);
-						mapBackground = data?.signedUrl ?? '';
-					}
+					else
+						mapBackground =
+							(await getSignedAssetUrl(
+								currentSession,
+								campaignId(),
+								loadedScene.scene.backgroundUrl
+							)) ?? '';
 				}
 				const signedEntries = await Promise.all(
 					loadedScene.tokens.map(async (token) => {
@@ -151,10 +174,10 @@
 							token.imageUrl.startsWith('data:')
 						)
 							return [token.id, token.imageUrl ?? ''] as const;
-						const { data } = await client.storage
-							.from('campaign-assets')
-							.createSignedUrl(token.imageUrl, 3600);
-						return [token.id, data?.signedUrl ?? ''] as const;
+						return [
+							token.id,
+							(await getSignedAssetUrl(currentSession, campaignId(), token.imageUrl)) ?? ''
+						] as const;
 					})
 				);
 				imageUrls = Object.fromEntries(signedEntries);
@@ -180,7 +203,7 @@
 	}
 	onMount(() => {
 		setDice3dPreference(true);
-		loadOverlayLayout();
+		void loadOverlayLayout();
 		if (!supabase) {
 			error = 'Supabase não está configurado.';
 			return;
@@ -200,7 +223,7 @@
 		overlayChannel?.addEventListener('message', (event) => {
 			if (event.data?.type === 'scene-change') applySceneChange(String(event.data.sceneId));
 			if (event.data?.type === 'layout-change' && String(event.data.sceneId) === sceneId())
-				loadOverlayLayout();
+				void loadOverlayLayout();
 		});
 		const onStorage = (event: StorageEvent) => {
 			if (event.key !== `maismorras:overlay:${campaignId()}` || !event.newValue) return;
@@ -226,13 +249,19 @@
 				return;
 			}
 			session = data.session;
-			loadOverlayLayout();
+			void loadOverlayLayout(data.session);
 			void refresh(data.session);
 			socket = connectSceneSocket(data.session, sceneId(), () => {
 				if (refreshTimer) clearTimeout(refreshTimer);
-				refreshTimer = setTimeout(() => void refresh(data.session), 180);
+				refreshTimer = setTimeout(() => {
+					void refresh(data.session);
+					void loadOverlayLayout(data.session);
+				}, 180);
 			});
-			fallbackRefreshTimer = setInterval(() => void refresh(data.session), 5000);
+			fallbackRefreshTimer = setInterval(() => {
+				void refresh(data.session);
+				void loadOverlayLayout(data.session);
+			}, 5000);
 		});
 		return () => {
 			disposed = true;
