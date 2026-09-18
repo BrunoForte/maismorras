@@ -2551,7 +2551,12 @@
 		top: 5.8rem;
 		left: 1rem;
 		width: min(390px, calc(100vw - 2rem));
+		min-width: min(320px, calc(100vw - 2rem));
+		max-width: calc(100vw - 1rem);
+		min-height: 320px;
 		max-height: calc(100vh - 7rem);
+		resize: both;
+		overflow: auto;
 		pointer-events: auto;
 		box-shadow: 0 18px 48px #000a;
 	}

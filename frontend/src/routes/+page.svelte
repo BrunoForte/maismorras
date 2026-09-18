@@ -1762,6 +1762,15 @@
 		padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.25rem, 5vw, 5rem);
 		color: #e9dfd3;
 	}
+	.overlay-workspace {
+		min-width: 0;
+		overflow-x: hidden;
+	}
+	.overlay-workspace > * {
+		min-width: 0;
+		max-width: 100%;
+		box-sizing: border-box;
+	}
 	.overlay-settings {
 		width: 100%;
 		min-width: 0;

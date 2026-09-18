@@ -432,7 +432,11 @@
 				aria-label="Câmeras dos jogadores"
 				style={blockStyle('cameras')}
 			>
-				{#each cameraSlots as camera, index (camera.url)}<article class="camera-card">
+				{#each cameraSlots as camera, index (camera.url)}<article
+						class="camera-card"
+						class:layout-positioned={Boolean(block(`camera-${index + 1}`))}
+						style={blockStyle(`camera-${index + 1}`)}
+					>
 						<iframe
 							src={camera.url}
 							title={`Câmera do jogador ${index + 1}`}
@@ -620,6 +624,11 @@
 		gap: 0.6rem;
 		max-width: 1100px;
 		margin: 0.8rem auto 0;
+	}
+	.camera-grid > .camera-card.layout-positioned {
+		position: absolute;
+		margin: 0;
+		max-width: none;
 	}
 	.camera-grid iframe {
 		width: 100%;

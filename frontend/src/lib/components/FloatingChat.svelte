@@ -336,6 +336,15 @@
 		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
 		backdrop-filter: blur(12px);
 	}
+	.floating-chat.closed {
+		width: min(220px, calc(100% - 2rem));
+		min-height: 0;
+		height: auto;
+		resize: none;
+	}
+	.floating-chat.closed .chat-body {
+		display: none;
+	}
 	.chat-toggle {
 		display: flex;
 		align-items: center;

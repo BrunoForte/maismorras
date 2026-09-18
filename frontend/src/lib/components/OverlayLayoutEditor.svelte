@@ -73,11 +73,11 @@
 			},
 			{
 				id: 'cameras',
-				label: 'Câmeras',
-				x: 4,
-				y: 78,
-				width: 68,
-				height: 18,
+				label: 'Área das câmeras',
+				x: 2,
+				y: 76,
+				width: 96,
+				height: 22,
 				fontSize: 1,
 				color: '#f0e0c8',
 				opacity: 100,
@@ -87,6 +87,22 @@
 				visible: true,
 				locked: false
 			},
+			...Array.from({ length: 6 }, (_, index) => ({
+				id: 'camera-' + (index + 1),
+				label: 'Câmera ' + (index + 1),
+				x: 4 + (index % 3) * 23,
+				y: 78 + Math.floor(index / 3) * 18,
+				width: 20,
+				height: 15,
+				fontSize: 0.8,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			})),
 			{
 				id: 'rolls',
 				label: 'Rolagens',
@@ -222,17 +238,40 @@
 	function dragStart(event: DragEvent, id: string) {
 		event.dataTransfer?.setData('text/plain', id);
 	}
+	function snapPosition(id: string | undefined, x: number, y: number) {
+		const item = layout.blocks.find((block) => block.id === id);
+		if (!item) return { x, y };
+		const others = layout.blocks.filter((block) => block.id !== id);
+		const halfW = item.width / 2;
+		const halfH = item.height / 2;
+		const xs = [halfW, 50, 100 - halfW];
+		const ys = [halfH, 50, 100 - halfH];
+		for (const other of others) {
+			xs.push(other.x - other.width / 2, other.x + other.width / 2, other.x);
+			ys.push(other.y - other.height / 2, other.y + other.height / 2, other.y);
+		}
+		const nearest = (value: number, values: number[]) => {
+			const candidate = values.reduce((best, current) =>
+				Math.abs(current - value) < Math.abs(best - value) ? current : best
+			);
+			return Math.abs(candidate - value) <= 1.5 ? candidate : value;
+		};
+		return {
+			x: Math.max(halfW, Math.min(100 - halfW, nearest(x, xs))),
+			y: Math.max(halfH, Math.min(100 - halfH, nearest(y, ys)))
+		};
+	}
 	function drop(event: DragEvent) {
 		event.preventDefault();
 		const id = event.dataTransfer?.getData('text/plain');
-		const target = event.currentTarget as HTMLElement;
-		const rect = target.getBoundingClientRect();
-		const x = Math.max(0, Math.min(94, ((event.clientX - rect.left) / rect.width) * 100));
-		const y = Math.max(0, Math.min(94, ((event.clientY - rect.top) / rect.height) * 100));
-		const snappedX = snapToGrid ? Math.round(x / 2) * 2 : x;
-		const snappedY = snapToGrid ? Math.round(y / 2) * 2 : y;
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const rawX = ((event.clientX - rect.left) / rect.width) * 100;
+		const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+		const x = snapToGrid ? Math.round(rawX / 2) * 2 : rawX;
+		const y = snapToGrid ? Math.round(rawY / 2) * 2 : rawY;
+		const snapped = snapPosition(id, x, y);
 		layout.blocks = layout.blocks.map((block) =>
-			block.id === id && !block.locked ? { ...block, x: snappedX, y: snappedY } : block
+			block.id === id && !block.locked ? { ...block, x: snapped.x, y: snapped.y } : block
 		);
 		selectedId = id ?? selectedId;
 	}
@@ -656,7 +695,10 @@
 	.workspace {
 		position: relative;
 		width: 100%;
-		min-height: 270px;
+		aspect-ratio: 16 / 9;
+		height: auto;
+		min-height: 0;
+		max-height: none;
 		overflow: hidden;
 		border: 1px dashed #806039;
 		border-radius: 10px;

@@ -167,6 +167,13 @@
 		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
 		backdrop-filter: blur(12px);
 	}
+	.actor-drawer.closed {
+		width: min(220px, calc(100% - 2rem));
+		height: auto;
+	}
+	.actor-drawer.closed .drawer-body {
+		display: none;
+	}
 	.drawer-toggle {
 		display: flex;
 		align-items: center;
