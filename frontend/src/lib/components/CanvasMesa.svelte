@@ -104,7 +104,10 @@
 	let areasVisible = $state(true);
 	let layerToolsOpen = $state(false);
 	let tokenRefreshTimer: number | undefined;
-	const tokenImageCache = new Map<string, { path: string | null; url: string | null }>();
+	const tokenImageCache = new Map<
+		string,
+		{ path: string | null; url: string | null; expiresAt: number }
+	>();
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -305,10 +308,14 @@
 				response.tokens.map(async (token, index) => {
 					const cached = tokenImageCache.get(token.id);
 					const imageUrl =
-						cached?.path === token.imageUrl
+						cached?.path === token.imageUrl && cached.expiresAt > Date.now()
 							? (cached.url ?? undefined)
 							: await resolverImagemToken(token.imageUrl);
-					tokenImageCache.set(token.id, { path: token.imageUrl, url: imageUrl ?? null });
+					tokenImageCache.set(token.id, {
+						path: token.imageUrl,
+						url: imageUrl ?? null,
+						expiresAt: Date.now() + 45 * 60 * 1000
+					});
 					return asPersonagem(token, index, imageUrl);
 				})
 			);

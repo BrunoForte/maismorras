@@ -24,7 +24,9 @@
 		try {
 			const module = await import('@3d-dice/dice-box');
 			const DiceBox = module.default;
-			const instance = new DiceBox(host, {
+			const DiceBoxConstructor = DiceBox as unknown as new (config: Record<string, unknown>) => NonNullable<typeof box>;
+			const instance = new DiceBoxConstructor({
+				container: host,
 				assetPath: '/assets/dice-box/',
 				theme: 'default',
 				sounds: false,

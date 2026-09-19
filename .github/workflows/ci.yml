@@ -84,6 +84,8 @@ jobs:
             --source backend `
             --project $env:GCP_PROJECT_ID `
             --region $env:GCP_REGION `
+            --no-use-http2 `
+            --timeout 3600 `
             --quiet
 
       - name: Verify Cloud Run health
