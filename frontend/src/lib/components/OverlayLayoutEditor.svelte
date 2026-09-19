@@ -595,6 +595,12 @@
 </section>
 
 <style>
+	.overlay-editor button,
+	.overlay-editor input,
+	.overlay-editor select {
+		box-sizing: border-box;
+		max-width: 100%;
+	}
 	.overlay-editor {
 		min-width: 0;
 		border: 1px solid #3a312e;

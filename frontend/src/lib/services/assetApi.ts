@@ -23,7 +23,10 @@ export async function getSignedAssetUrl(
 			},
 			body: JSON.stringify({ path })
 		});
-		if (!response.ok) return null;
+		if (!response.ok) {
+			signedUrlCache.delete(cacheKey);
+			return null;
+		}
 		const body = (await response.json()) as { url?: string };
 		if (!body.url) return null;
 		signedUrlCache.set(cacheKey, { url: body.url, expiresAt: Date.now() + cacheLifetimeMs });
