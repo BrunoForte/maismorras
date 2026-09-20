@@ -6,6 +6,9 @@ import { supabase } from './supabase';
 type SceneRefresh = { type: 'scene.refresh' };
 type AudioStateEvent = { type: 'audio.state'; state: AudioPlaybackState };
 type PresentationUpdated = { type: 'presentation.updated' };
+type LayoutUpdated = { type: 'overlay.layout.updated' };
+type TokenUpdated = { type: 'token.updated' };
+type CombatUpdated = { type: 'combat.updated' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
 export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 export type SceneSocket = {
@@ -13,6 +16,9 @@ export type SceneSocket = {
 	publishPing: (x: number, y: number, color?: number) => void;
 	publishAudioState: (state: AudioPlaybackState) => void;
 	publishPresentationUpdated: () => void;
+	publishLayoutUpdated: () => void;
+	publishTokenUpdated: () => void;
+	publishCombatUpdated: () => void;
 	close: () => void;
 };
 type Subscriber = {
@@ -20,6 +26,9 @@ type Subscriber = {
 	onPing?: (ping: Omit<MapPing, 'type'>) => void;
 	onAudio?: (state: AudioPlaybackState) => void;
 	onPresentation?: () => void;
+	onLayout?: () => void;
+	onTokens?: () => void;
+	onCombat?: () => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
 const sharedConnections = new Map<string, SharedSceneConnection>();
@@ -31,7 +40,13 @@ class SharedSceneConnection {
 	private token: string;
 	private readonly subscribers = new Set<Subscriber>();
 	private readonly pendingPayloads: (
-		SceneRefresh | AudioStateEvent | PresentationUpdated | MapPing
+		| SceneRefresh
+		| AudioStateEvent
+		| PresentationUpdated
+		| LayoutUpdated
+		| TokenUpdated
+		| CombatUpdated
+		| MapPing
 	)[] = [];
 	private readonly url: URL;
 	private readonly authSubscription?: { unsubscribe: () => void };
@@ -61,6 +76,9 @@ class SharedSceneConnection {
 			publishPing: (x, y, color = 0xf2cf77) => this.publish({ type: 'map.ping', x, y, color }),
 			publishAudioState: (state) => this.publish({ type: 'audio.state', state }),
 			publishPresentationUpdated: () => this.publish({ type: 'presentation.updated' }),
+			publishLayoutUpdated: () => this.publish({ type: 'overlay.layout.updated' }),
+			publishTokenUpdated: () => this.publish({ type: 'token.updated' }),
+			publishCombatUpdated: () => this.publish({ type: 'combat.updated' }),
 			close: () => this.remove(subscriber)
 		};
 	}
@@ -89,13 +107,25 @@ class SharedSceneConnection {
 		socket.onmessage = (event) => {
 			try {
 				const payload = JSON.parse(String(event.data)) as
-					SceneRefresh | AudioStateEvent | PresentationUpdated | MapPing;
+					| SceneRefresh
+					| AudioStateEvent
+					| PresentationUpdated
+					| LayoutUpdated
+					| TokenUpdated
+					| CombatUpdated
+					| MapPing;
 				if (payload.type === 'scene.refresh')
 					for (const subscriber of this.subscribers) subscriber.onRefresh();
 				if (payload.type === 'presentation.updated')
 					for (const subscriber of this.subscribers) subscriber.onPresentation?.();
 				if (payload.type === 'audio.state')
 					for (const subscriber of this.subscribers) subscriber.onAudio?.(payload.state);
+				if (payload.type === 'overlay.layout.updated')
+					for (const subscriber of this.subscribers) subscriber.onLayout?.();
+				if (payload.type === 'token.updated')
+					for (const subscriber of this.subscribers) subscriber.onTokens?.();
+				if (payload.type === 'combat.updated')
+					for (const subscriber of this.subscribers) subscriber.onCombat?.();
 				if (payload.type === 'map.ping')
 					for (const subscriber of this.subscribers) subscriber.onPing?.(payload);
 			} catch {
@@ -110,7 +140,16 @@ class SharedSceneConnection {
 			/* onclose owns retries */
 		};
 	}
-	private publish(payload: SceneRefresh | AudioStateEvent | PresentationUpdated | MapPing) {
+	private publish(
+		payload:
+			| SceneRefresh
+			| AudioStateEvent
+			| PresentationUpdated
+			| LayoutUpdated
+			| TokenUpdated
+			| CombatUpdated
+			| MapPing
+	) {
 		if (
 			payload.type === 'scene.refresh' &&
 			this.pendingPayloads.some((item) => item.type === 'scene.refresh')
@@ -143,7 +182,10 @@ export function connectSceneSocket(
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
 	onStatus?: (status: RealtimeStatus) => void,
 	onAudio?: (state: AudioPlaybackState) => void,
-	onPresentation?: () => void
+	onPresentation?: () => void,
+	onLayout?: () => void,
+	onTokens?: () => void,
+	onCombat?: () => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -151,5 +193,14 @@ export function connectSceneSocket(
 		connection = new SharedSceneConnection(key, sceneId, session);
 		sharedConnections.set(key, connection);
 	}
-	return connection.add(session, { onRefresh, onPing, onStatus, onAudio, onPresentation });
+	return connection.add(session, {
+		onRefresh,
+		onPing,
+		onStatus,
+		onAudio,
+		onPresentation,
+		onLayout,
+		onTokens,
+		onCombat
+	});
 }

@@ -148,6 +148,18 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			if peer.canControl {
 				h.hub.broadcast(sceneID, []byte(`{"type":"presentation.updated"}`))
 			}
+		case "overlay.layout.updated":
+			if peer.canControl {
+				h.hub.broadcast(sceneID, []byte(`{"type":"overlay.layout.updated"}`))
+			}
+		case "token.updated":
+			if peer.canControl {
+				h.hub.broadcast(sceneID, []byte(`{"type":"token.updated"}`))
+			}
+		case "combat.updated":
+			if peer.canControl {
+				h.hub.broadcast(sceneID, []byte(`{"type":"combat.updated"}`))
+			}
 		case "audio.state":
 			if !peer.canControl || event.State == nil || len(event.State.Path) > 500 || event.State.Volume < 0 || event.State.Volume > 1 || event.State.Position < 0 || event.State.Position > 24*60*60*1000 || event.State.StartedAt < 0 {
 				continue

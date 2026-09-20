@@ -84,13 +84,13 @@
 		const combat = await setCombat(session, sceneId, next.persistedId);
 		activeTokenId = combat.activeTokenId;
 		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
-		sceneSocket?.publishRefresh();
+		sceneSocket?.publishCombatUpdated();
 	}
 	async function endCombat() {
 		const combat = await setCombat(session, sceneId, null);
 		activeTokenId = combat.activeTokenId;
 		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
-		sceneSocket?.publishRefresh();
+		sceneSocket?.publishCombatUpdated();
 	}
 	async function rollAllInitiative() {
 		if (!isGM || rollingInitiative) return;
@@ -104,7 +104,7 @@
 					: token
 			);
 			$chatMensagens = await loadMessages(session, campaignId);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishCombatUpdated();
 		} finally {
 			rollingInitiative = false;
 		}
@@ -118,7 +118,7 @@
 				item.persistedId === result.tokenId ? { ...item, iniciativa: result.initiative } : item
 			);
 			$chatMensagens = await loadMessages(session, campaignId);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishCombatUpdated();
 		} finally {
 			rollingInitiative = false;
 		}
@@ -128,7 +128,7 @@
 		const combat = await setCombat(session, sceneId, tokenId);
 		activeTokenId = combat.activeTokenId;
 		if (combat.message) $chatMensagens = await loadMessages(session, campaignId);
-		sceneSocket?.publishRefresh();
+		sceneSocket?.publishCombatUpdated();
 	}
 	async function setInitiative(id: number, tokenId: string | undefined, value: string) {
 		const initiative = Number(value);
@@ -138,7 +138,7 @@
 		);
 		try {
 			await setTokenInitiative(session, sceneId, tokenId, initiative);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishCombatUpdated();
 		} catch (error) {
 			console.error('Falha ao salvar iniciativa:', error);
 		}

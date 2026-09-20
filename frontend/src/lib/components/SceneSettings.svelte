@@ -5,6 +5,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { apiBase } from '$lib/services/apiBase';
+	import { optimizeImage } from '$lib/services/imageProcessing';
 	let {
 		scene,
 		session,
@@ -81,10 +82,14 @@
 						($appLocale === 'en' ? 'Could not generate the map.' : 'Não foi possível gerar o mapa.')
 				);
 			const blob = await (await fetch(data.fotoUrl)).blob();
+			const optimized = await optimizeImage(blob, 2048, 0.82);
 			const path = `campaigns/${scene.campaignId}/media/${crypto.randomUUID()}-mapa-gerado.png`;
 			const { error } = await supabase.storage
 				.from('campaign-assets')
-				.upload(path, blob, { contentType: 'image/png', cacheControl: '3600' });
+				.upload(path, optimized.file, {
+					contentType: optimized.file.type,
+					cacheControl: '31536000'
+				});
 			if (error) throw error;
 			imageFiles = [{ path, name: `Mapa gerado · ${mapPrompt.slice(0, 40)}` }, ...imageFiles];
 			draft.backgroundUrl = path;

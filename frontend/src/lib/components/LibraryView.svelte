@@ -6,7 +6,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { apiBase } from '$lib/services/apiBase';
-	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import {
 		loadLibraryPermissions,
@@ -175,6 +175,7 @@
 		try {
 			const { error } = await supabase.storage.from('campaign-assets').remove([asset.path]);
 			if (error) throw error;
+			clearSignedAssetCache();
 			assets = assets.filter((item) => item.path !== asset.path);
 			if (preview?.path === asset.path) preview = null;
 		} catch (error) {

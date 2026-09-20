@@ -6,7 +6,8 @@
 		diceOverlay,
 		restoreDicePreference
 	} from '$lib/stores/diceOverlayStore';
-	import DiceBox3D from './DiceBox3D.svelte';
+	type DiceBoxComponent = typeof import('./DiceBox3D.svelte').default;
+	let DiceBox3DComponent = $state<DiceBoxComponent | null>(null);
 
 	let visible = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -14,6 +15,12 @@
 	void $activeDiceRolls;
 	void $diceRendererEffective;
 	restoreDicePreference();
+	$effect(() => {
+		if ($diceRendererEffective === '2d' || !$activeDiceRolls.length || DiceBox3DComponent) return;
+		void import('./DiceBox3D.svelte').then((module) => {
+			DiceBox3DComponent = module.default;
+		});
+	});
 	$effect(() => {
 		if (!$activeDiceRolls.length) {
 			visible = false;
@@ -33,8 +40,8 @@
 		Number(expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
 </script>
 
-{#if $diceRendererEffective !== '2d'}
-	<DiceBox3D mode={$diceRendererEffective} />
+{#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
+	<DiceBox3DComponent mode={$diceRendererEffective} />
 {/if}
 {#if $activeDiceRolls.length && visible}
 	<div class="dice-overlay" aria-live="polite" aria-label="Rolagens recentes">

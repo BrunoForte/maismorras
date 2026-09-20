@@ -156,8 +156,11 @@
 				path: loadedScene.scene.ambientAudioPath,
 				playing: loadedScene.scene.ambientAudioEnabled,
 				volume: Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100)),
-				positionMs: 0,
-				startedAt: loadedScene.scene.ambientAudioEnabled ? Date.now() : 0
+				positionMs: loadedScene.scene.ambientAudioPositionMs ?? 0,
+				startedAt: loadedScene.scene.ambientAudioStartedAt
+					? Date.parse(loadedScene.scene.ambientAudioStartedAt)
+					: 0,
+				revision: loadedScene.scene.ambientAudioRevision ?? 0
 			});
 			if (client) {
 				if (loadedScene.scene.backgroundUrl) {

@@ -199,7 +199,7 @@
 					error instanceof Error ? error.message : 'Não foi possível salvar a aparência.';
 				return;
 			}
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishTokenUpdated();
 			return;
 		}
 		try {
@@ -208,7 +208,7 @@
 				...asPersisted(personagem)
 			});
 			savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishTokenUpdated();
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -223,7 +223,7 @@
 		if (!personagem.persistedId) return;
 		try {
 			await moveToken(session, scene.id, personagem.persistedId, x, y);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishTokenUpdated();
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -276,7 +276,7 @@
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
 			persistenceError = '';
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishTokenUpdated();
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -660,7 +660,10 @@
 				void carregarEfeitos();
 			},
 			(ping) => motor?.showPing(ping.x, ping.y, ping.color),
-			updateTokenFallback
+			updateTokenFallback,
+			undefined,
+			undefined,
+			() => void carregarTokens()
 		);
 
 		const unsubscribe = personagens.subscribe((lista) => {
@@ -744,7 +747,7 @@
 			persistenceError = result.open
 				? 'Você abriu uma porta próxima.'
 				: 'Você fechou uma porta próxima.';
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishTokenUpdated();
 			await carregarTokens();
 		} catch (error) {
 			persistenceError =

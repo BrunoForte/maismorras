@@ -197,11 +197,12 @@ func valueOrEmpty(value *string) string {
 }
 
 func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string) (Presentation, error) {
-	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
 		return Presentation{}, err
 	}
 	var p Presentation
-	err := r.pool.QueryRow(ctx, `select asset_path,title,visible from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Visible)
+	err = r.pool.QueryRow(ctx, `select asset_path,title,visible from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Visible)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "42P01" {
 		return Presentation{}, nil
@@ -209,7 +210,28 @@ func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Presentation{}, nil
 	}
-	return p, err
+	if err != nil {
+		return Presentation{}, err
+	}
+	if !p.Visible || role == "gm" {
+		return p, nil
+	}
+	var allowed bool
+	err = r.pool.QueryRow(ctx, `select exists(
+		select 1 from scenes s
+		join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2
+		where s.id=$1 and (
+			not exists (select 1 from library_item_permissions lp where lp.campaign_id=s.campaign_id and lp.item_type='asset'::public.library_item_type and lp.item_key=$3)
+			or exists (select 1 from library_item_permissions lp where lp.campaign_id=s.campaign_id and lp.item_type='asset'::public.library_item_type and lp.item_key=$3 and lp.user_id=$2)
+		)
+	)`, sceneID, userID, p.AssetPath).Scan(&allowed)
+	if err != nil {
+		return Presentation{}, err
+	}
+	if !allowed {
+		return Presentation{}, nil
+	}
+	return p, nil
 }
 func (r *Repository) SavePresentation(ctx context.Context, sceneID, userID string, p Presentation) error {
 	if role, err := r.memberRole(ctx, sceneID, userID); err != nil || role != "gm" {

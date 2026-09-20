@@ -28,14 +28,22 @@ export async function request<T>(
 	init: RequestInit = {},
 	fallback = 'Não foi possível concluir a operação.'
 ): Promise<T> {
-	const response = await fetch(`${apiBase}${path}`, {
-		...init,
-		headers: {
-			Authorization: `Bearer ${session.access_token}`,
-			'Content-Type': 'application/json',
-			...init.headers
-		}
-	});
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15_000);
+	let response: Response;
+	try {
+		response = await fetch(`${apiBase}${path}`, {
+			...init,
+			signal: init.signal ?? controller.signal,
+			headers: {
+				Authorization: `Bearer ${session.access_token}`,
+				'Content-Type': 'application/json',
+				...init.headers
+			}
+		});
+	} finally {
+		clearTimeout(timeout);
+	}
 	const body = await readBody(response);
 	if (!response.ok) {
 		const message =

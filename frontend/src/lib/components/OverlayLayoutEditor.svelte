@@ -202,7 +202,17 @@
 			loadDocument(saved ? JSON.parse(saved) : {});
 			void resolveBackground(layout.background);
 			void loadRemote();
-			if (session) layoutSocket = connectSceneSocket(session, sceneId, () => {});
+			if (session)
+				layoutSocket = connectSceneSocket(
+					session,
+					sceneId,
+					() => {},
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					() => void loadRemote()
+				);
 		} catch {
 			layout = defaults();
 		}
@@ -351,7 +361,7 @@
 				channel.postMessage({ type: 'layout-change', sceneId });
 				channel.close();
 			}
-			layoutSocket?.publishRefresh();
+			layoutSocket?.publishLayoutUpdated();
 			status = 'Layout da overlay salvo para esta cena.';
 		} catch (error) {
 			status = error instanceof Error ? error.message : 'Não foi possível salvar a overlay.';
