@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+
+	import { optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import { apiBase } from '$lib/services/apiBase';
 	import { supabase } from '$lib/services/supabase';
@@ -366,8 +368,8 @@
 	}
 	async function upload(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
-		if (!file || file.type !== 'image/png') {
-			status = 'Escolha um arquivo PNG.';
+		if (!file || !file.type.startsWith('image/')) {
+			status = 'Escolha uma imagem.';
 			return;
 		}
 		if (file.size > 8 * 1024 * 1024) {
@@ -376,18 +378,21 @@
 		}
 		if (supabase && session?.user.id) {
 			status = 'Enviando fundo…';
-			const path = `campaigns/${campaignId}/overlays/${sceneId}/${crypto.randomUUID()}.png`;
-			const { error } = await supabase.storage.from('campaign-assets').upload(path, file, {
-				contentType: 'image/png',
-				cacheControl: '3600',
-				upsert: false
-			});
+			const optimized = await optimizeImage(file);
+			const path = `campaigns/${campaignId}/overlays/${sceneId}/${crypto.randomUUID()}.webp`;
+			const { error } = await supabase.storage
+				.from('campaign-assets')
+				.upload(path, optimized.file, {
+					contentType: 'image/webp',
+					cacheControl: '3600',
+					upsert: false
+				});
 			if (error) {
 				status = 'Não foi possível enviar o fundo.';
 				return;
 			}
 			layout.background = path;
-			backgroundPreview = URL.createObjectURL(file);
+			backgroundPreview = URL.createObjectURL(optimized.file);
 			status = 'Fundo enviado. Salve para aplicar.';
 			return;
 		}
@@ -430,7 +435,7 @@
 	<label class="snap-toggle"
 		><input type="checkbox" bind:checked={snapToGrid} /> Alinhar à grade</label
 	>
-	<label class="upload">Fundo PNG <input type="file" accept="image/png" onchange={upload} /></label>
+	<label class="upload">Fundo <input type="file" accept="image/*" onchange={upload} /></label>
 	<div class="livekit-fields">
 		<label>LiveKit URL<input bind:value={layout.livekitUrl} placeholder="wss://..." /></label><label
 			>Sala<input bind:value={layout.livekitRoom} placeholder="mesa-1" /></label

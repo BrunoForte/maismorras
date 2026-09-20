@@ -28,7 +28,7 @@
 		url = '';
 		try {
 			await savePresentation(session, sceneId, { assetPath: '', title: '', visible: false });
-			socket?.publishRefresh();
+			socket?.publishPresentationUpdated();
 		} catch {
 			/* Keep the current presentation if the server is temporarily unavailable. */
 		}
@@ -59,7 +59,15 @@
 			}
 			if (!fallbackTimer) fallbackTimer = window.setInterval(() => void load(), 60_000);
 		};
-		socket = connectSceneSocket(session, sceneId, () => void load(), undefined, updateFallback);
+		socket = connectSceneSocket(
+			session,
+			sceneId,
+			() => void load(),
+			undefined,
+			updateFallback,
+			undefined,
+			() => void load()
+		);
 		return () => {
 			socket?.close();
 			if (fallbackTimer) window.clearInterval(fallbackTimer);

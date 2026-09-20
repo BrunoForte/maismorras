@@ -4,7 +4,9 @@ Backend do Virtual Tabletop escrito em Go. A escolha favorece o próximo passo d
 
 ## Núcleo multiplayer V1
 
-O modelo de dados base está em `migrations/0001_vtt_core.sql`, pronto para Supabase/PostgreSQL. Execute também `migrations/0002_create_profiles_on_signup.sql` para criar perfis automaticamente a cada login Google:
+> As migrations de produção agora vivem em `../supabase/migrations`. A pasta `backend/migrations` é somente histórica e não deve receber novos arquivos.
+
+O modelo de dados base e as evoluções estão em `../supabase/migrations`, prontas para Supabase/PostgreSQL. Aplique-as pela integração do projeto com o Supabase (ou pelo pipeline de migrations), preservando a ordem e o histórico:
 
 - `profiles`: identidade proveniente do Google Auth/Supabase;
 - `campaigns` e `campaign_members`: uma campanha possui um GM e jogadores;
@@ -12,7 +14,7 @@ O modelo de dados base está em `migrations/0001_vtt_core.sql`, pronto para Supa
 - `notes`: anotações privadas do GM ou compartilhadas;
 - `game_events`: trilha persistente para movimentos, rolagens e eventos de mesa.
 
-Execute a migration pelo SQL Editor do Supabase antes de conectar os módulos protegidos. Nunca exponha `SUPABASE_JWT_SECRET` ou a Service Role Key ao frontend. A camada `internal/auth` valida o JWT recebido do Supabase e a camada `internal/database` abre um pool PostgreSQL com `DATABASE_URL`.
+Aplique as migrations pelo fluxo oficial do Supabase antes de conectar os módulos protegidos. Nunca exponha `SUPABASE_JWT_SECRET` ou a Service Role Key ao frontend. A camada `internal/auth` valida o JWT recebido do Supabase e a camada `internal/database` abre um pool PostgreSQL com `DATABASE_URL`.
 
 ### Política de migrations
 

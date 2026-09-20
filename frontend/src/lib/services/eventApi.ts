@@ -1,22 +1,9 @@
 import type { Session } from '@supabase/supabase-js';
-import { apiBase } from './apiBase';
+import { request as httpRequest } from './httpClient';
 import type { Mensagem } from '$lib/stores/chatStore';
 
-const base = apiBase;
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
-	const response = await fetch(`${base}${path}`, {
-		...init,
-		headers: {
-			Authorization: `Bearer ${session.access_token}`,
-			'Content-Type': 'application/json',
-			...init.headers
-		}
-	});
-	if (!response.ok)
-		throw new Error(
-			(await response.json()).error?.message ?? 'Não foi possível acessar o histórico.'
-		);
-	return response.json() as Promise<T>;
+	return httpRequest<T>(session, path, init);
 }
 type StoredEvent = {
 	id: number;

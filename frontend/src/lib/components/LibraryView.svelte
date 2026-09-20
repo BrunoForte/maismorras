@@ -7,6 +7,7 @@
 	import { appLocale } from '$lib/stores/locale';
 	import { apiBase } from '$lib/services/apiBase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { optimizeImage } from '$lib/services/imageProcessing';
 	import {
 		loadLibraryPermissions,
 		saveLibraryPermissions
@@ -221,26 +222,6 @@
 		assets = listed.filter(
 			(asset): asset is Asset => asset !== null && (isGM || asset.type !== 'audio')
 		);
-	}
-	async function optimizeImage(file: File) {
-		if (!file.type.startsWith('image/'))
-			return { file, extension: file.name.split('.').pop() ?? 'bin' };
-		const bitmap = await createImageBitmap(file);
-		const maxDimension = 2048;
-		const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-		const canvas = document.createElement('canvas');
-		canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-		canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-		canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-		bitmap.close();
-		const blob = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, 'image/webp', 0.82)
-		);
-		if (!blob) return { file, extension: file.name.split('.').pop() ?? 'bin' };
-		return {
-			file: new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, { type: 'image/webp' }),
-			extension: 'webp'
-		};
 	}
 	async function upload(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;

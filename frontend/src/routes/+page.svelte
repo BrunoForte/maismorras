@@ -11,6 +11,7 @@
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
 	import { diceRendererMode } from '$lib/stores/diceOverlayStore';
 	import { apiBase } from '$lib/services/apiBase';
+	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
 
 	let session = $state<Session | null>(null);
 	type CanvasMesaComponentType = typeof import('$lib/components/CanvasMesa.svelte').default;
@@ -416,26 +417,42 @@
 		personagens.set([]);
 		activeCampaign = campaign;
 		overlayEnabled = localStorage.getItem(`maismorras:overlay-enabled:${campaign.id}`) === 'true';
+		let remoteOverlayLoaded = false;
 		try {
-			const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
-			overlayCameras = saved
-				? (JSON.parse(saved) as (Partial<OverlayCamera> | string)[])
-						.slice(0, 6)
-						.map((camera) =>
-							typeof camera === 'string'
-								? { ...emptyOverlayCamera(), url: camera }
-								: { ...emptyOverlayCamera(), ...camera }
-						)
-						.concat([
-							emptyOverlayCamera(),
-							emptyOverlayCamera(),
-							emptyOverlayCamera(),
-							emptyOverlayCamera()
-						])
-						.slice(0, 6)
-				: Array.from({ length: 6 }, emptyOverlayCamera);
+			if (session) {
+				const remote = await getOverlaySettings(session, campaign.id);
+				overlayEnabled = remote.enabled;
+				overlayCameras = (remote.cameras ?? []).map((camera) => ({
+					...emptyOverlayCamera(),
+					...camera
+				}));
+				remoteOverlayLoaded = true;
+			}
 		} catch {
-			overlayCameras = Array.from({ length: 6 }, emptyOverlayCamera);
+			/* legacy local fallback */
+		}
+		if (!remoteOverlayLoaded) {
+			try {
+				const saved = localStorage.getItem(`maismorras:overlay-cameras:${campaign.id}`);
+				overlayCameras = saved
+					? (JSON.parse(saved) as (Partial<OverlayCamera> | string)[])
+							.slice(0, 6)
+							.map((camera) =>
+								typeof camera === 'string'
+									? { ...emptyOverlayCamera(), url: camera }
+									: { ...emptyOverlayCamera(), ...camera }
+							)
+							.concat([
+								emptyOverlayCamera(),
+								emptyOverlayCamera(),
+								emptyOverlayCamera(),
+								emptyOverlayCamera()
+							])
+							.slice(0, 6)
+					: Array.from({ length: 6 }, emptyOverlayCamera);
+			} catch {
+				overlayCameras = Array.from({ length: 6 }, emptyOverlayCamera);
+			}
 		}
 		workspaceTab = 'map';
 		activeScene = null;
@@ -493,10 +510,16 @@
 		personagens.set([]);
 		activeScene = scene;
 	}
-	function toggleOverlay() {
+	async function toggleOverlay() {
 		if (!activeCampaign) return;
 		overlayEnabled = !overlayEnabled;
-		localStorage.setItem(`maismorras:overlay-enabled:${activeCampaign.id}`, String(overlayEnabled));
+		localStorage.setItem('maismorras:overlay-enabled:' + activeCampaign.id, String(overlayEnabled));
+		if (session)
+			await saveOverlaySettings(session, activeCampaign.id, {
+				enabled: overlayEnabled,
+				cameras: overlayCameras,
+				activeSceneId: activeScene?.id ?? null
+			});
 	}
 	function openLiveOverlay() {
 		if (!activeCampaign || !activeScene || !overlayEnabled) {
@@ -515,7 +538,7 @@
 		});
 		window.open(`/overlay?${params.toString()}`, '_blank', 'noopener,noreferrer');
 	}
-	function publishOverlayScene() {
+	async function publishOverlayScene() {
 		if (!activeCampaign || !activeScene) return;
 		const payload = JSON.stringify({ sceneId: activeScene.id, nonce: crypto.randomUUID() });
 		localStorage.setItem(`maismorras:overlay:${activeCampaign.id}`, payload);
@@ -523,6 +546,15 @@
 			const channel = new BroadcastChannel(`maismorras:overlay:${activeCampaign.id}`);
 			channel.postMessage({ type: 'scene-change', sceneId: activeScene.id });
 			channel.close();
+		}
+		if (session) {
+			void saveOverlaySettings(session, activeCampaign.id, {
+				enabled: overlayEnabled,
+				cameras: overlayCameras,
+				activeSceneId: activeScene.id
+			}).catch(() => {
+				/* local broadcast remains available when the API is temporarily offline */
+			});
 		}
 	}
 	async function presentAsset(asset: { path: string; name: string }) {
@@ -563,12 +595,18 @@
 		await navigator.clipboard.writeText(`${window.location.origin}/overlay?${params.toString()}`);
 		inviteStatus = 'Endereço da overlay copiado.';
 	}
-	function saveOverlayCameras() {
+	async function saveOverlayCameras() {
 		if (activeCampaign)
 			localStorage.setItem(
 				`maismorras:overlay-cameras:${activeCampaign.id}`,
 				JSON.stringify(overlayCameras)
 			);
+		if (session && activeCampaign)
+			await saveOverlaySettings(session, activeCampaign.id, {
+				enabled: overlayEnabled,
+				cameras: overlayCameras,
+				activeSceneId: activeScene?.id ?? null
+			});
 		inviteStatus = 'Câmeras da overlay salvas.';
 	}
 	async function addScene() {

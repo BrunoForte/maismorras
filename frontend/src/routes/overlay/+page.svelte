@@ -21,6 +21,7 @@
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { apiBase } from '$lib/services/apiBase';
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
+	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -32,8 +33,6 @@
 	let socket: SceneSocket | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let fallbackRefreshTimer: ReturnType<typeof setInterval> | null = null;
-	let audioSrc = $state('');
-	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
 	let audioB = $state<HTMLAudioElement>();
 	let playback: CrossfadeAudio | null = null;
@@ -133,7 +132,6 @@
 			.reverse();
 	async function applyAudioState(state: AudioPlaybackState) {
 		lastAudioState = state;
-		audioVolume = state.volume;
 		if (!playback || !session) return;
 		const applied = await playback.apply(
 			state,
@@ -276,6 +274,18 @@
 				return;
 			}
 			session = data.session;
+			getOverlaySettings(data.session, campaignId())
+				.then((settings) => {
+					if (settings.cameras?.length)
+						cameraSlots = settings.cameras.filter((camera) =>
+							camera.url.startsWith('https://vdo.ninja/')
+						);
+					if (!query().get('scene') && settings.activeSceneId)
+						applySceneChange(settings.activeSceneId);
+				})
+				.catch(() => {
+					/* query parameters remain a compatible fallback */
+				});
 			void loadOverlayLayout(data.session);
 			void refresh(data.session);
 			const updateFallback = (status: RealtimeStatus) => {

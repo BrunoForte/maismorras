@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { apiBase } from './apiBase';
+import { request as httpRequest } from './httpClient';
 
 export type AbilityScores = {
 	strength: number;
@@ -71,25 +71,8 @@ export type Participant = {
 	character: Character | null;
 };
 
-const base = apiBase;
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
-	const response = await fetch(`${base}${path}`, {
-		...init,
-		headers: {
-			Authorization: `Bearer ${session.access_token}`,
-			'Content-Type': 'application/json',
-			...init.headers
-		}
-	});
-	if (!response.ok) {
-		const body = await response.json().catch(() => null);
-		const error = new Error(
-			body?.error?.message ?? 'Não foi possível carregar a ficha.'
-		) as Error & { status?: number };
-		error.status = response.status;
-		throw error;
-	}
-	return response.json() as Promise<T>;
+	return httpRequest<T>(session, path, init);
 }
 // Fichas criadas antes do inventário estruturado possuem arrays serializados
 // como null. Normalizar na borda mantém os dados antigos compatíveis.

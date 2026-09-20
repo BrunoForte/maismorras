@@ -2,6 +2,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/require-each-key, @typescript-eslint/no-unused-vars */
 	import { onMount } from 'svelte';
+	import { optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		createEmptySheet,
@@ -464,19 +465,7 @@
 		portraitPreview = (await getSignedAssetUrl(session, campaignId, sheet.portraitPath)) ?? null;
 	}
 	async function optimizePortrait(blob: Blob): Promise<Blob> {
-		if (!blob.type.startsWith('image/') || typeof createImageBitmap === 'undefined') return blob;
-		const bitmap = await createImageBitmap(blob);
-		const maxDimension = 1536;
-		const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-		const canvas = document.createElement('canvas');
-		canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-		canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-		canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-		bitmap.close();
-		return (
-			(await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))) ??
-			blob
-		);
+		return (await optimizeImage(new File([blob], 'portrait', { type: blob.type }), 1536)).file;
 	}
 	async function savePortrait(blob: Blob, filename: string) {
 		blob = await optimizePortrait(blob);

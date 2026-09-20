@@ -66,6 +66,33 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas, "walls": walls})
 }
+func (h *Handler) GetOverlaySettings(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	settings, err := h.repo.GetOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, settings)
+}
+func (h *Handler) SaveOverlaySettings(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Enabled       bool            `json:"enabled"`
+		Cameras       json.RawMessage `json:"cameras"`
+		ActiveSceneID *string         `json:"activeSceneId"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	if len(in.Cameras) > 256*1024 || (len(in.Cameras) > 0 && !json.Valid(in.Cameras)) {
+		return apperror.BadRequest("INVALID_OVERLAY_SETTINGS", "Configuração de câmeras inválida.")
+	}
+	settings, err := h.repo.SaveOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID, OverlaySettings{Enabled: in.Enabled, Cameras: in.Cameras, ActiveSceneID: in.ActiveSceneID})
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, settings)
+}
 func (h *Handler) GetOverlayLayout(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	layout, err := h.repo.GetOverlayLayout(r.Context(), r.PathValue("sceneID"), p.UserID)

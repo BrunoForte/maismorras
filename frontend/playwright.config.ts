@@ -11,7 +11,10 @@ export default defineConfig({
 		storageState: process.env.E2E_STORAGE_STATE || undefined,
 		trace: 'on-first-retry'
 	},
-	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+	projects: [
+		{ name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+		{ name: 'mobile-chromium', use: { ...devices['Pixel 5'] } }
+	],
 	webServer: process.env.E2E_BASE_URL
 		? undefined
 		: {

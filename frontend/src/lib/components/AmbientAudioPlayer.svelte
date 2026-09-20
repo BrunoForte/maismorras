@@ -29,8 +29,9 @@
 			path: value.ambientAudioPath,
 			playing: value.ambientAudioEnabled,
 			volume: targetVolume(value.ambientAudioVolume),
-			positionMs: 0,
-			startedAt: value.ambientAudioEnabled ? Date.now() : 0
+			positionMs: value.ambientAudioPositionMs ?? 0,
+			startedAt: value.ambientAudioStartedAt ? Date.parse(value.ambientAudioStartedAt) : 0,
+			revision: value.ambientAudioRevision ?? 0
 		};
 	}
 
@@ -97,14 +98,22 @@
 	async function selectTrack(event: Event) {
 		if (!isGM) return;
 		const path = (event.currentTarget as HTMLSelectElement).value;
-		const next = { ...scene, ambientAudioPath: path || null, ambientAudioEnabled: false };
+		const next = {
+			...scene,
+			ambientAudioPath: path || null,
+			ambientAudioEnabled: false,
+			ambientAudioPositionMs: 0,
+			ambientAudioStartedAt: null,
+			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
+		};
 		const saved = await save(next, false);
 		const state: AudioPlaybackState = {
 			path: saved.ambientAudioPath,
 			playing: false,
 			volume: targetVolume(saved.ambientAudioVolume),
-			positionMs: 0,
-			startedAt: 0
+			positionMs: saved.ambientAudioPositionMs ?? 0,
+			startedAt: saved.ambientAudioStartedAt ? Date.parse(saved.ambientAudioStartedAt) : 0,
+			revision: saved.ambientAudioRevision ?? 0
 		};
 		publishState(state);
 		await applyState(state);
@@ -114,14 +123,21 @@
 		if (!isGM) return;
 		const playing = !scene.ambientAudioEnabled;
 		const positionMs = playing ? 0 : Math.round((playback?.currentTime ?? 0) * 1000);
-		const next = { ...scene, ambientAudioEnabled: playing };
+		const next = {
+			...scene,
+			ambientAudioEnabled: playing,
+			ambientAudioPositionMs: positionMs,
+			ambientAudioStartedAt: playing ? new Date().toISOString() : null,
+			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
+		};
 		const saved = await save(next, false);
 		const state: AudioPlaybackState = {
 			path: saved.ambientAudioPath,
 			playing,
 			volume: targetVolume(saved.ambientAudioVolume),
 			positionMs,
-			startedAt: playing ? Date.now() : 0
+			startedAt: playing ? Date.parse(saved.ambientAudioStartedAt ?? '') || Date.now() : 0,
+			revision: saved.ambientAudioRevision ?? 0
 		};
 		publishState(state);
 		await applyState(state);

@@ -2,7 +2,11 @@ import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
 
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
-const cacheLifetimeMs = 50 * 60 * 1000;
+const cacheLifetimeMs = 15 * 60 * 1000;
+
+export function clearSignedAssetCache() {
+	signedUrlCache.clear();
+}
 
 /** Resolve a private campaign asset through the backend authorization boundary. */
 export async function getSignedAssetUrl(
@@ -22,7 +26,7 @@ export async function getSignedAssetUrl(
 		/* relative Storage paths are handled below */
 	}
 	if (assetPath.startsWith('http') || assetPath.startsWith('data:')) return assetPath;
-	const cacheKey = campaignId + ':' + assetPath;
+	const cacheKey = session.user.id + ':' + campaignId + ':' + assetPath;
 	const cached = signedUrlCache.get(cacheKey);
 	if (cached && cached.expiresAt > Date.now()) return cached.url;
 	try {

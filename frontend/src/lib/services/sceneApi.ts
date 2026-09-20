@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { apiBase } from './apiBase';
+import { request as httpRequest } from './httpClient';
 
 export type Scene = {
 	id: string;
@@ -9,6 +9,9 @@ export type Scene = {
 	ambientAudioPath: string | null;
 	ambientAudioEnabled: boolean;
 	ambientAudioVolume: number;
+	ambientAudioPositionMs: number;
+	ambientAudioStartedAt: string | null;
+	ambientAudioRevision: number;
 	gridSize: number;
 	playerAccess: 'hidden' | 'available' | 'active';
 	fogEnabled: boolean;
@@ -82,24 +85,12 @@ export type SceneWall = {
 	open: boolean;
 };
 
-const base = apiBase;
 export async function request<T>(
 	session: Session,
 	path: string,
 	init: RequestInit = {}
 ): Promise<T> {
-	const response = await fetch(`${base}${path}`, {
-		...init,
-		headers: {
-			Authorization: `Bearer ${session.access_token}`,
-			'Content-Type': 'application/json',
-			...init.headers
-		}
-	});
-	if (!response.ok)
-		throw new Error((await response.json()).error?.message ?? 'Não foi possível carregar a mesa.');
-	if (response.status === 204) return undefined as T;
-	return response.json() as Promise<T>;
+	return httpRequest<T>(session, path, init, 'Não foi possível carregar a mesa.');
 }
 export const listScenes = (session: Session, campaignId: string) =>
 	request<{ scenes: Scene[] }>(session, `/api/v1/campaigns/${campaignId}/scenes`);

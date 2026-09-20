@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { apiBase } from './apiBase';
+import { request as httpRequest } from './httpClient';
 
 export type CompendiumSource = {
 	id: string;
@@ -25,21 +25,8 @@ export type CompendiumDraft = Pick<
 	CompendiumEntry,
 	'name' | 'summary' | 'rules' | 'translations' | 'isPublished'
 >;
-const base = apiBase;
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
-	const response = await fetch(`${base}${path}`, {
-		...init,
-		headers: {
-			Authorization: `Bearer ${session.access_token}`,
-			'Content-Type': 'application/json',
-			...init.headers
-		}
-	});
-	if (!response.ok) {
-		const body = await response.json().catch(() => null);
-		throw new Error(body?.error?.message ?? 'Não foi possível carregar o compêndio.');
-	}
-	return response.json() as Promise<T>;
+	return httpRequest<T>(session, path, init);
 }
 export const getCompendium = (session: Session, campaignId: string) =>
 	request<{ sources: CompendiumSource[]; entries: CompendiumEntry[] }>(

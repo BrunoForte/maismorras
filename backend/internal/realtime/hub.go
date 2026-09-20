@@ -98,6 +98,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		OriginPatterns:  originPatterns(h.cfg.CORSOrigin),
 	})
 	if err != nil {
+		slog.Error("websocket accept failed", "scene_id", sceneID, "error", err)
 		return nil
 	}
 	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl}
@@ -113,6 +114,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		_, raw, err := conn.Read(readCtx)
 		cancel()
 		if err != nil {
+			slog.Error("websocket accept failed", "scene_id", sceneID, "error", err)
 			return nil
 		}
 		if len(raw) > 32<<10 {
@@ -142,6 +144,10 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		switch event.Type {
 		case "scene.refresh":
 			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+		case "presentation.updated":
+			if peer.canControl {
+				h.hub.broadcast(sceneID, []byte(`{"type":"presentation.updated"}`))
+			}
 		case "audio.state":
 			if !peer.canControl || event.State == nil || len(event.State.Path) > 500 || event.State.Volume < 0 || event.State.Volume > 1 || event.State.Position < 0 || event.State.Position > 24*60*60*1000 || event.State.StartedAt < 0 {
 				continue
@@ -262,7 +268,9 @@ func (h *Hub) broadcast(room string, raw []byte) {
 			defer p.mu.Unlock()
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			_ = p.conn.Write(ctx, websocket.MessageText, raw)
+			if err := p.conn.Write(ctx, websocket.MessageText, raw); err != nil {
+				slog.Warn("realtime write failed", "user_id", p.userID, "error", err)
+			}
 		}(p)
 	}
 }

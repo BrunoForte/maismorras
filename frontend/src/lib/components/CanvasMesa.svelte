@@ -2,6 +2,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { GameEngine } from '$lib/engine/GameEngine';
 	import {
@@ -104,7 +105,7 @@
 	let areasVisible = $state(true);
 	let layerToolsOpen = $state(false);
 	let tokenRefreshTimer: number | undefined;
-	const tokenImageCache = new Map<
+	const tokenImageCache = new SvelteMap<
 		string,
 		{ path: string | null; url: string | null; expiresAt: number }
 	>();

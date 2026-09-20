@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -19,21 +20,25 @@ import (
 )
 
 type Scene struct {
-	ID                         string  `json:"id"`
-	CampaignID                 string  `json:"campaignId"`
-	Name                       string  `json:"name"`
-	BackgroundURL              *string `json:"backgroundUrl"`
-	AmbientAudioPath           *string `json:"ambientAudioPath"`
-	AmbientAudioEnabled        bool    `json:"ambientAudioEnabled"`
-	AmbientAudioVolume         int     `json:"ambientAudioVolume"`
-	GridSize                   int     `json:"gridSize"`
-	PlayerAccess               string  `json:"playerAccess"`
-	FogEnabled                 bool    `json:"fogEnabled"`
-	VisionMode                 string  `json:"visionMode"`
-	AllowPlayerMovement        bool    `json:"allowPlayerMovement"`
-	AllowPlayerDoorInteraction bool    `json:"allowPlayerDoorInteraction"`
-	EnforceTurnOrder           bool    `json:"enforceTurnOrder"`
+	ID                         string     `json:"id"`
+	CampaignID                 string     `json:"campaignId"`
+	Name                       string     `json:"name"`
+	BackgroundURL              *string    `json:"backgroundUrl"`
+	AmbientAudioPath           *string    `json:"ambientAudioPath"`
+	AmbientAudioEnabled        bool       `json:"ambientAudioEnabled"`
+	AmbientAudioVolume         int        `json:"ambientAudioVolume"`
+	AmbientAudioPositionMs     int64      `json:"ambientAudioPositionMs"`
+	AmbientAudioStartedAt      *time.Time `json:"ambientAudioStartedAt"`
+	AmbientAudioRevision       int64      `json:"ambientAudioRevision"`
+	GridSize                   int        `json:"gridSize"`
+	PlayerAccess               string     `json:"playerAccess"`
+	FogEnabled                 bool       `json:"fogEnabled"`
+	VisionMode                 string     `json:"visionMode"`
+	AllowPlayerMovement        bool       `json:"allowPlayerMovement"`
+	AllowPlayerDoorInteraction bool       `json:"allowPlayerDoorInteraction"`
+	EnforceTurnOrder           bool       `json:"enforceTurnOrder"`
 }
+
 type CombatState struct {
 	ActiveTokenID *string `json:"activeTokenId"`
 	Message       string  `json:"message,omitempty"`
@@ -143,6 +148,54 @@ type Presentation struct {
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
 
+type OverlaySettings struct {
+	Enabled       bool            `json:"enabled"`
+	Cameras       json.RawMessage `json:"cameras"`
+	ActiveSceneID *string         `json:"activeSceneId"`
+}
+
+func (r *Repository) GetOverlaySettings(ctx context.Context, campaignID, userID string) (OverlaySettings, error) {
+	var allowed bool
+	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$2 left join profiles p on p.id=$2 where c.id=$1 and (c.owner_id=$2 or m.user_id is not null or coalesce(p.is_admin,false)))`, campaignID, userID).Scan(&allowed); err != nil {
+		return OverlaySettings{}, err
+	}
+	if !allowed {
+		return OverlaySettings{}, ErrForbidden
+	}
+	var out OverlaySettings
+	if err := r.pool.QueryRow(ctx, `select enabled,cameras,active_scene_id::text from campaign_overlay_settings where campaign_id=$1`, campaignID).Scan(&out.Enabled, &out.Cameras, &out.ActiveSceneID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			out.Cameras = json.RawMessage("[]")
+			return out, nil
+		}
+		return OverlaySettings{}, err
+	}
+	return out, nil
+}
+
+func (r *Repository) SaveOverlaySettings(ctx context.Context, campaignID, userID string, in OverlaySettings) (OverlaySettings, error) {
+	var isGM bool
+	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$2 left join profiles p on p.id=$2 where c.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(p.is_admin,false)))`, campaignID, userID).Scan(&isGM); err != nil {
+		return OverlaySettings{}, err
+	}
+	if !isGM {
+		return OverlaySettings{}, ErrForbidden
+	}
+	if len(in.Cameras) == 0 {
+		in.Cameras = json.RawMessage("[]")
+	}
+	var out OverlaySettings
+	err := r.pool.QueryRow(ctx, `insert into campaign_overlay_settings(campaign_id,enabled,cameras,active_scene_id,updated_at) values($1,$2,$3,nullif($4,'')::uuid,now()) on conflict(campaign_id) do update set enabled=excluded.enabled,cameras=excluded.cameras,active_scene_id=excluded.active_scene_id,updated_at=now() returning enabled,cameras,active_scene_id::text`, campaignID, in.Enabled, in.Cameras, valueOrEmpty(in.ActiveSceneID)).Scan(&out.Enabled, &out.Cameras, &out.ActiveSceneID)
+	return out, err
+}
+
+func valueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string) (Presentation, error) {
 	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
 		return Presentation{}, err
@@ -218,7 +271,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sce
 	if err := r.pool.QueryRow(ctx, `select case when exists(select 1 from profiles p where p.id=$2 and p.is_admin) then 'gm' else role::text end from campaign_members where campaign_id=$1 and user_id=$2 union all select 'gm' where exists(select 1 from profiles p where p.id=$2 and p.is_admin) limit 1`, campaignID, userID).Scan(&role); err != nil {
 		return nil, ErrForbidden
 	}
-	query := `select id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where campaign_id=$1`
+	query := `select id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where campaign_id=$1`
 	if role != "gm" {
 		query += ` and player_access <> 'hidden'`
 	}
@@ -230,7 +283,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sce
 	items := []Scene{}
 	for rows.Next() {
 		var s Scene
-		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
+		if err := rows.Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.AmbientAudioPositionMs, &s.AmbientAudioStartedAt, &s.AmbientAudioRevision, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
 			return nil, err
 		}
 		items = append(items, s)
@@ -246,7 +299,7 @@ func (r *Repository) Create(ctx context.Context, campaignID, userID, name string
 		return Scene{}, ErrForbidden
 	}
 	var s Scene
-	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'available') returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder)
+	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'available') returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.AmbientAudioPositionMs, &s.AmbientAudioStartedAt, &s.AmbientAudioRevision, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder)
 	return s, err
 }
 func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, input Scene) (Scene, error) {
@@ -265,7 +318,7 @@ func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, in
 		}
 	}
 	var scene Scene
-	err = tx.QueryRow(ctx, `update scenes set name=$1,background_url=nullif($2,''),ambient_audio_path=nullif($3,''),ambient_audio_enabled=$4,ambient_audio_volume=$5,grid_size=$6,player_access=$7,fog_enabled=$8,vision_mode=$9,allow_player_movement=$10,allow_player_door_interaction=$11,enforce_turn_order=$12,updated_at=now() where id=$13 returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, input.Name, input.BackgroundURL, input.AmbientAudioPath, input.AmbientAudioEnabled, input.AmbientAudioVolume, input.GridSize, input.PlayerAccess, input.FogEnabled, input.VisionMode, input.AllowPlayerMovement, input.AllowPlayerDoorInteraction, input.EnforceTurnOrder, sceneID).Scan(&scene.ID, &scene.CampaignID, &scene.Name, &scene.BackgroundURL, &scene.AmbientAudioPath, &scene.AmbientAudioEnabled, &scene.AmbientAudioVolume, &scene.GridSize, &scene.PlayerAccess, &scene.FogEnabled, &scene.VisionMode, &scene.AllowPlayerMovement, &scene.AllowPlayerDoorInteraction, &scene.EnforceTurnOrder)
+	err = tx.QueryRow(ctx, `update scenes set name=$1,background_url=nullif($2,''),ambient_audio_path=nullif($3,''),ambient_audio_enabled=$4,ambient_audio_volume=$5,ambient_audio_position_ms=$6,ambient_audio_started_at=$7,ambient_audio_revision=$8,grid_size=$9,player_access=$10,fog_enabled=$11,vision_mode=$12,allow_player_movement=$13,allow_player_door_interaction=$14,enforce_turn_order=$15,updated_at=now() where id=$16 returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, input.Name, input.BackgroundURL, input.AmbientAudioPath, input.AmbientAudioEnabled, input.AmbientAudioVolume, input.AmbientAudioPositionMs, input.AmbientAudioStartedAt, input.AmbientAudioRevision, input.GridSize, input.PlayerAccess, input.FogEnabled, input.VisionMode, input.AllowPlayerMovement, input.AllowPlayerDoorInteraction, input.EnforceTurnOrder, sceneID).Scan(&scene.ID, &scene.CampaignID, &scene.Name, &scene.BackgroundURL, &scene.AmbientAudioPath, &scene.AmbientAudioEnabled, &scene.AmbientAudioVolume, &scene.AmbientAudioPositionMs, &scene.AmbientAudioStartedAt, &scene.AmbientAudioRevision, &scene.GridSize, &scene.PlayerAccess, &scene.FogEnabled, &scene.VisionMode, &scene.AllowPlayerMovement, &scene.AllowPlayerDoorInteraction, &scene.EnforceTurnOrder)
 	if err != nil {
 		return Scene{}, err
 	}
@@ -280,7 +333,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	var s Scene
-	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
+	if err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order from scenes where id=$1`, sceneID).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.AmbientAudioPositionMs, &s.AmbientAudioStartedAt, &s.AmbientAudioRevision, &s.GridSize, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder); err != nil {
 		return Scene{}, nil, FogState{}, nil, nil, err
 	}
 	if role != "gm" && s.PlayerAccess == "hidden" {
