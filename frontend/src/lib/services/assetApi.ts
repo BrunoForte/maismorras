@@ -10,8 +10,19 @@ export async function getSignedAssetUrl(
 	campaignId: string,
 	path: string
 ): Promise<string | null> {
-	if (!path || path.startsWith('http') || path.startsWith('data:')) return path || null;
-	const cacheKey = `${campaignId}:${path}`;
+	if (!path) return null;
+	let assetPath = path;
+	try {
+		const parsed = new URL(path);
+		const marker = '/storage/v1/object/sign/campaign-assets/';
+		const markerIndex = parsed.pathname.indexOf(marker);
+		if (markerIndex >= 0)
+			assetPath = decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length));
+	} catch {
+		/* relative Storage paths are handled below */
+	}
+	if (assetPath.startsWith('http') || assetPath.startsWith('data:')) return assetPath;
+	const cacheKey = campaignId + ':' + assetPath;
 	const cached = signedUrlCache.get(cacheKey);
 	if (cached && cached.expiresAt > Date.now()) return cached.url;
 	try {
@@ -21,7 +32,7 @@ export async function getSignedAssetUrl(
 				Authorization: `Bearer ${session.access_token}`,
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ path })
+			body: JSON.stringify({ path: assetPath })
 		});
 		if (!response.ok) {
 			signedUrlCache.delete(cacheKey);

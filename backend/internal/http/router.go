@@ -1,9 +1,12 @@
 package apphttp
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -208,6 +211,22 @@ type statusRecorder struct {
 	status, bytes int
 }
 
+func (w *statusRecorder) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// Hijack must be forwarded so WebSocket handlers can upgrade the connection.
+func (w *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("underlying response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func (w *statusRecorder) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
 func (w *statusRecorder) WriteHeader(status int) {
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
