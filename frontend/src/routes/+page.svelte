@@ -673,6 +673,7 @@
 			/>{/if}
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="auto"></audio>
+			<audio id="maismorras-ambient-b" loop preload="auto"></audio>
 		</div>
 		<header class="app-header">
 			<button

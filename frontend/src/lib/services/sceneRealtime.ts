@@ -1,20 +1,24 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
+import type { AudioPlaybackState } from './audioPlayback';
 import { supabase } from './supabase';
 
 type SceneRefresh = { type: 'scene.refresh' };
+type AudioStateEvent = { type: 'audio.state'; state: AudioPlaybackState };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
 export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
 export type SceneSocket = {
 	publishRefresh: () => void;
 	publishPing: (x: number, y: number, color?: number) => void;
+	publishAudioState: (state: AudioPlaybackState) => void;
 	close: () => void;
 };
 
 type Subscriber = {
 	onRefresh: () => void;
 	onPing?: (ping: Omit<MapPing, 'type'>) => void;
+	onAudio?: (state: AudioPlaybackState) => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
 
@@ -27,8 +31,9 @@ class SharedSceneConnection {
 	private closed = false;
 	private token: string;
 	private readonly subscribers = new Set<Subscriber>();
+	private readonly pendingPayloads: (SceneRefresh | AudioStateEvent | MapPing)[] = [];
 	private readonly url: URL;
-	private authSubscription?: { unsubscribe: () => void };
+	private readonly authSubscription?: { unsubscribe: () => void };
 
 	constructor(
 		private readonly key: string,
@@ -57,6 +62,7 @@ class SharedSceneConnection {
 		return {
 			publishRefresh: () => this.publish({ type: 'scene.refresh' }),
 			publishPing: (x, y, color = 0xf2cf77) => this.publish({ type: 'map.ping', x, y, color }),
+			publishAudioState: (state) => this.publish({ type: 'audio.state', state }),
 			close: () => this.remove(subscriber)
 		};
 	}
@@ -83,12 +89,16 @@ class SharedSceneConnection {
 		socket.onopen = () => {
 			this.reconnectAttempt = 0;
 			this.notify('connected');
+			for (const payload of this.pendingPayloads.splice(0)) socket.send(JSON.stringify(payload));
 		};
 		socket.onmessage = (event) => {
 			try {
-				const payload = JSON.parse(String(event.data)) as SceneRefresh | MapPing;
+				const payload = JSON.parse(String(event.data)) as SceneRefresh | AudioStateEvent | MapPing;
 				if (payload.type === 'scene.refresh') {
 					for (const subscriber of this.subscribers) subscriber.onRefresh();
+				}
+				if (payload.type === 'audio.state') {
+					for (const subscriber of this.subscribers) subscriber.onAudio?.(payload.state);
 				}
 				if (payload.type === 'map.ping') {
 					for (const subscriber of this.subscribers) subscriber.onPing?.(payload);
@@ -107,8 +117,13 @@ class SharedSceneConnection {
 		};
 	}
 
-	private publish(payload: SceneRefresh | MapPing) {
-		if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(payload));
+	private publish(payload: SceneRefresh | AudioStateEvent | MapPing) {
+		if (this.socket?.readyState === WebSocket.OPEN) {
+			this.socket.send(JSON.stringify(payload));
+			return;
+		}
+		if (this.pendingPayloads.length >= 20) this.pendingPayloads.shift();
+		this.pendingPayloads.push(payload);
 	}
 
 	private remove(subscriber: Subscriber) {
@@ -119,20 +134,20 @@ class SharedSceneConnection {
 		this.reconnectTimer = null;
 		this.socket?.close();
 		this.socket = null;
+		this.pendingPayloads.length = 0;
 		this.authSubscription?.unsubscribe();
-		this.authSubscription = undefined;
 		sharedConnections.delete(this.key);
 		subscriber.onStatus?.('disconnected');
 	}
 }
 
-// Reutiliza um único socket entre mapa, combate e chat na mesma sessão/cena.
 export function connectSceneSocket(
 	session: Session,
 	sceneId: string,
 	onRefresh: () => void,
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
-	onStatus?: (status: RealtimeStatus) => void
+	onStatus?: (status: RealtimeStatus) => void,
+	onAudio?: (state: AudioPlaybackState) => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -140,5 +155,5 @@ export function connectSceneSocket(
 		connection = new SharedSceneConnection(key, sceneId, session);
 		sharedConnections.set(key, connection);
 	}
-	return connection.add(session, { onRefresh, onPing, onStatus });
+	return connection.add(session, { onRefresh, onPing, onStatus, onAudio });
 }

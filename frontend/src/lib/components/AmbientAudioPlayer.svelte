@@ -4,9 +4,12 @@
 	import type { Scene } from '$lib/services/sceneApi';
 	import { loadScene, updateScene } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import type { AudioPlaybackState } from '$lib/services/audioPlayback';
+	import { CrossfadeAudio } from '$lib/services/audioPlayback';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+
 	let { scene, session, isGM, onSceneUpdate } = $props<{
 		scene: Scene;
 		session: Session;
@@ -15,30 +18,45 @@
 	}>();
 	type Track = { path: string; name: string };
 	let tracks = $state<Track[]>([]);
-	let url = $state('');
-	let loadedPath = $state('');
 	let needsGesture = $state(false);
-	let syncedEnabled = $state<boolean | undefined>();
 	let sceneSocket: SceneSocket | null = null;
-	const audio = () => document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
-	const targetVolume = () => Math.max(0, Math.min(1, scene.ambientAudioVolume / 100));
-	onMount(() => {
-		void loadTracks();
-		sceneSocket = connectSceneSocket(session, scene.id, () => void refreshScene());
-		const element = audio();
-		return () => {
-			sceneSocket?.close();
-			sceneSocket = null;
+	let playback: CrossfadeAudio | null = null;
+	let lastState: AudioPlaybackState | null = null;
+	const targetVolume = (value = scene.ambientAudioVolume) => Math.max(0, Math.min(1, value / 100));
+
+	function stateFromScene(value: Scene): AudioPlaybackState {
+		return {
+			path: value.ambientAudioPath,
+			playing: value.ambientAudioEnabled,
+			volume: targetVolume(value.ambientAudioVolume),
+			positionMs: 0,
+			startedAt: value.ambientAudioEnabled ? Date.now() : 0
 		};
-	});
+	}
+
+	async function signed(path: string) {
+		return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
+	}
+
+	async function applyState(state: AudioPlaybackState) {
+		lastState = state;
+		if (!playback) return;
+		const applied = await playback.apply(state, signed);
+		needsGesture = state.playing && !applied;
+	}
+
 	async function refreshScene() {
 		try {
 			const loaded = await loadScene(session, scene.id);
-			if (loaded.scene.id === scene.id) onSceneUpdate(loaded.scene);
+			if (loaded.scene.id === scene.id) {
+				onSceneUpdate(loaded.scene);
+				await applyState(stateFromScene(loaded.scene));
+			}
 		} catch {
 			// A transient realtime refresh must not interrupt the audio already playing.
 		}
 	}
+
 	async function loadTracks() {
 		if (!supabase) return;
 		const { data } = await supabase.storage
@@ -54,121 +72,97 @@
 				name: file.name.replace(/^[a-f0-9-]+-/, '')
 			}));
 	}
-	async function signed(path: string) {
-		return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
-	}
-	async function save(next: Scene) {
+
+	async function save(next: Scene, notify = true) {
 		const saved = await updateScene(session, next);
 		onSceneUpdate(saved);
-		sceneSocket?.publishRefresh();
+		if (notify) sceneSocket?.publishRefresh();
 		return saved;
 	}
+
+	async function applyRemoteState(state: AudioPlaybackState) {
+		onSceneUpdate({
+			...scene,
+			ambientAudioPath: state.path,
+			ambientAudioEnabled: state.playing,
+			ambientAudioVolume: Math.round(state.volume * 100)
+		});
+		await applyState(state);
+	}
+
+	function publishState(state: AudioPlaybackState) {
+		sceneSocket?.publishAudioState(state);
+	}
+
 	async function selectTrack(event: Event) {
 		if (!isGM) return;
 		const path = (event.currentTarget as HTMLSelectElement).value;
 		const next = { ...scene, ambientAudioPath: path || null, ambientAudioEnabled: false };
-		await save(next);
-		await applyPath(path);
+		const saved = await save(next, false);
+		const state: AudioPlaybackState = {
+			path: saved.ambientAudioPath,
+			playing: false,
+			volume: targetVolume(saved.ambientAudioVolume),
+			positionMs: 0,
+			startedAt: 0
+		};
+		publishState(state);
+		await applyState(state);
 	}
-	async function fadeTo(element: HTMLAudioElement, target: number, duration = 350) {
-		const initial = element.volume;
-		const started = performance.now();
-		await new Promise<void>((resolve) => {
-			const step = (now: number) => {
-				const progress = Math.min(1, (now - started) / duration);
-				element.volume = initial + (target - initial) * progress;
-				if (progress < 1) requestAnimationFrame(step);
-				else resolve();
-			};
-			requestAnimationFrame(step);
-		});
-	}
-	async function applyPath(path: string) {
-		const element = audio();
-		if (!path) {
-			if (element) {
-				element.pause();
-				element.removeAttribute('src');
-				element.currentTime = 0;
-			}
-			url = '';
-			loadedPath = '';
-			return;
-		}
-		loadedPath = path;
-		url = '';
-		const nextUrl = await signed(path);
-		if (path !== scene.ambientAudioPath) return;
-		url = nextUrl;
-		syncedEnabled = scene.ambientAudioEnabled;
-		if (!element || !nextUrl) return;
-		element.pause();
-		element.currentTime = 0;
-		element.volume = 0;
-		element.src = nextUrl;
-		if (scene.ambientAudioEnabled) {
-			try {
-				await element.play();
-				await fadeTo(element, targetVolume());
-				needsGesture = false;
-			} catch {
-				needsGesture = true;
-			}
-		}
-	}
+
 	async function toggle() {
-		if (!isGM && !needsGesture) return;
-		const element = audio();
-		if (!element || !url) return;
-		if (element.paused) {
-			try {
-				element.volume = 0;
-				await element.play();
-				await fadeTo(element, targetVolume());
-				needsGesture = false;
-				await save({ ...scene, ambientAudioEnabled: true });
-			} catch {
-				needsGesture = true;
-			}
-		} else {
-			await fadeTo(element, 0);
-			element.pause();
-			await save({ ...scene, ambientAudioEnabled: false });
-		}
+		if (!isGM) return;
+		const playing = !scene.ambientAudioEnabled;
+		const positionMs = playing ? 0 : Math.round((playback?.currentTime ?? 0) * 1000);
+		const next = { ...scene, ambientAudioEnabled: playing };
+		const saved = await save(next, false);
+		const state: AudioPlaybackState = {
+			path: saved.ambientAudioPath,
+			playing,
+			volume: targetVolume(saved.ambientAudioVolume),
+			positionMs,
+			startedAt: playing ? Date.now() : 0
+		};
+		publishState(state);
+		await applyState(state);
 	}
+
 	async function enableAudio() {
-		const element = audio();
-		if (!element || !url) return;
-		try {
-			element.volume = targetVolume();
-			await element.play();
-			needsGesture = false;
-		} catch {
-			needsGesture = true;
-		}
+		if (!lastState) return;
+		await applyState({ ...lastState, startedAt: Date.now() });
 	}
+
+	onMount(() => {
+		const first = document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
+		const second = document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null;
+		if (first && second) playback = new CrossfadeAudio([first, second]);
+		void loadTracks();
+		void applyState(stateFromScene(scene));
+		sceneSocket = connectSceneSocket(
+			session,
+			scene.id,
+			() => void refreshScene(),
+			undefined,
+			undefined,
+			(state) => void applyRemoteState(state)
+		);
+		return () => {
+			sceneSocket?.close();
+			sceneSocket = null;
+			playback = null;
+		};
+	});
+
 	$effect(() => {
-		const path = scene.ambientAudioPath ?? '';
-		if (path !== loadedPath) {
-			void applyPath(path);
-			return;
+		const state = stateFromScene(scene);
+		if (
+			!lastState ||
+			state.path !== lastState.path ||
+			state.playing !== lastState.playing ||
+			state.volume !== lastState.volume
+		) {
+			void applyState(state);
 		}
-		const enabled = scene.ambientAudioEnabled;
-		if (enabled === syncedEnabled || !url) return;
-		syncedEnabled = enabled;
-		const element = audio();
-		if (!element) return;
-		if (!enabled) {
-			element.pause();
-			element.currentTime = 0;
-			return;
-		}
-		element.volume = 0;
-		void element
-			.play()
-			.then(() => fadeTo(element, targetVolume()))
-			.then(() => (needsGesture = false))
-			.catch(() => (needsGesture = true));
 	});
 </script>
 
@@ -199,8 +193,8 @@
 				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
 					'Nenhuma música'}</strong
 			>
-			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}>
-					{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
+					>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 				>{/if}
 		</div>{/if}
 </div>
@@ -232,7 +226,8 @@
 		color: #eee4d6;
 		background: #121012;
 	}
-	.listener-status {
+	.listener-status,
+	.gm-status {
 		display: flex;
 		flex: 1;
 		align-items: center;
@@ -240,21 +235,11 @@
 		gap: 1rem;
 		min-width: 0;
 		color: #eee4d6;
+	}
+	.listener-status {
 		pointer-events: none;
 	}
-	.listener-status strong {
-		overflow: hidden;
-		color: #e8c786;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.gm-status {
-		display: flex;
-		flex: 1;
-		align-items: center;
-		gap: 1rem;
-		min-width: 0;
-	}
+	.listener-status strong,
 	.gm-status strong {
 		overflow: hidden;
 		color: #e8c786;
@@ -268,6 +253,7 @@
 		color: #26190e;
 		background: #e0b86f;
 		font-weight: 700;
+		pointer-events: auto;
 	}
 	@media (max-width: 600px) {
 		.ambient-player {
@@ -278,7 +264,6 @@
 		}
 		.gm-status {
 			width: 100%;
-			justify-content: space-between;
 		}
 	}
 </style>

@@ -37,6 +37,7 @@ type peer struct {
 	messageLog []time.Time
 	userID     string
 	ip         string
+	canControl bool
 }
 
 const maxPeersPerRoom = 100
@@ -76,8 +77,10 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	p, _ := auth.FromContext(r.Context())
-	var allowed bool
-	if err := h.pool.QueryRow(r.Context(), `select exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (m.user_id is not null or c.owner_id=$2 or coalesce(pr.is_admin,false)))`, sceneID, p.UserID).Scan(&allowed); err != nil {
+	var allowed, canControl bool
+	if err := h.pool.QueryRow(r.Context(), `select
+		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (m.user_id is not null or c.owner_id=$2 or coalesce(pr.is_admin,false))),
+		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(pr.is_admin,false)))`, sceneID, p.UserID).Scan(&allowed, &canControl); err != nil {
 		// Do not turn a database outage into a misleading authorization failure.
 		// The client can retry a 503, while a genuine 403 remains actionable.
 		slog.Error("realtime authorization lookup failed", "scene_id", sceneID, "error", err)
@@ -97,7 +100,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return nil
 	}
-	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr)}
+	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl}
 	conn.SetReadLimit(32 << 10)
 	if !h.hub.join(sceneID, peer) {
 		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
@@ -124,6 +127,14 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			X     float64 `json:"x"`
 			Y     float64 `json:"y"`
 			Color int     `json:"color"`
+			State *struct {
+				Path      string  `json:"path"`
+				Playing   bool    `json:"playing"`
+				Volume    float64 `json:"volume"`
+				Position  int64   `json:"positionMs"`
+				StartedAt int64   `json:"startedAt"`
+				Revision  int64   `json:"revision"`
+			} `json:"state"`
 		}
 		if json.Unmarshal(raw, &event) != nil {
 			continue
@@ -131,6 +142,15 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		switch event.Type {
 		case "scene.refresh":
 			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+		case "audio.state":
+			if !peer.canControl || event.State == nil || len(event.State.Path) > 500 || event.State.Volume < 0 || event.State.Volume > 1 || event.State.Position < 0 || event.State.Position > 24*60*60*1000 || event.State.StartedAt < 0 {
+				continue
+			}
+			payload, _ := json.Marshal(struct {
+				Type  string `json:"type"`
+				State any    `json:"state"`
+			}{Type: "audio.state", State: event.State})
+			h.hub.broadcast(sceneID, payload)
 		case "map.ping":
 			// Pings are transient UI hints, never database commands. Keep their
 			// payload strictly numeric and bounded before relaying to the room.

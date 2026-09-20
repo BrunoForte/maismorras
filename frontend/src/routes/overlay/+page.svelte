@@ -20,6 +20,7 @@
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { apiBase } from '$lib/services/apiBase';
+	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -34,6 +35,9 @@
 	let audioSrc = $state('');
 	let audioVolume = $state(0.5);
 	let audio = $state<HTMLAudioElement>();
+	let audioB = $state<HTMLAudioElement>();
+	let playback: CrossfadeAudio | null = null;
+	let lastAudioState: AudioPlaybackState | null = null;
 	let audioBlocked = $state(false);
 	type CameraSlot = { url: string; playerName: string; characterName: string };
 	let cameraSlots = $state<CameraSlot[]>([]);
@@ -127,7 +131,16 @@
 			.filter((message) => message.tipo === 'rolagem')
 			.slice(-4)
 			.reverse();
-
+	async function applyAudioState(state: AudioPlaybackState) {
+		lastAudioState = state;
+		audioVolume = state.volume;
+		if (!playback || !session) return;
+		const applied = await playback.apply(
+			state,
+			async (path) => (await getSignedAssetUrl(session as Session, campaignId(), path)) ?? ''
+		);
+		audioBlocked = state.playing && !applied;
+	}
 	async function refresh(currentSession: Session) {
 		if (!sceneId() || !campaignId()) {
 			error = 'Informe os parâmetros campaign e scene na URL do overlay.';
@@ -141,26 +154,13 @@
 			scene = loadedScene.scene;
 			tokens = loadedScene.tokens;
 			const client = supabase;
-			audioVolume = Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100));
-			if (loadedScene.scene.ambientAudioEnabled && loadedScene.scene.ambientAudioPath && client) {
-				audioSrc =
-					(await getSignedAssetUrl(
-						currentSession,
-						campaignId(),
-						loadedScene.scene.ambientAudioPath
-					)) ?? '';
-				if (audio) {
-					if (audio.src !== audioSrc) {
-						audio.src = audioSrc;
-						audio.currentTime = 0;
-					}
-					audio.volume = audioVolume;
-					if (audio.paused) void audio.play().catch(() => (audioBlocked = true));
-				}
-			} else {
-				audioSrc = '';
-				if (audio) audio.pause();
-			}
+			await applyAudioState({
+				path: loadedScene.scene.ambientAudioPath,
+				playing: loadedScene.scene.ambientAudioEnabled,
+				volume: Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100)),
+				positionMs: 0,
+				startedAt: loadedScene.scene.ambientAudioEnabled ? Date.now() : 0
+			});
 			if (client) {
 				if (loadedScene.scene.backgroundUrl) {
 					if (
@@ -235,6 +235,7 @@
 			return;
 		}
 		let disposed = false;
+		if (audio && audioB) playback = new CrossfadeAudio([audio, audioB]);
 		const overlayChannel =
 			'BroadcastChannel' in window
 				? new BroadcastChannel(`maismorras:overlay:${campaignId()}`)
@@ -300,7 +301,8 @@
 					}, 180);
 				},
 				undefined,
-				updateFallback
+				updateFallback,
+				(state) => void applyAudioState(state)
 			);
 		});
 		return () => {
@@ -313,10 +315,8 @@
 		};
 	});
 	async function enableAudio() {
-		if (!audio || !audioSrc) return;
-		audio.volume = audioVolume;
-		await audio.play();
-		audioBlocked = false;
+		if (!lastAudioState) return;
+		await applyAudioState({ ...lastAudioState, startedAt: Date.now() });
 	}
 	async function login() {
 		if (!supabase) return;
@@ -370,15 +370,11 @@
 			</div>
 			<small>{visibleTokens().length} personagens em cena</small>
 		</header>
-		{#if audioSrc}<audio
-				bind:this={audio}
-				src={audioSrc}
-				loop
-				preload="auto"
-				oncanplay={() => void audio?.play().catch(() => (audioBlocked = true))}
-			></audio>{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
-					>Ativar áudio da cena</button
-				>{/if}{/if}
+		<audio bind:this={audio} loop preload="auto"></audio>
+		<audio bind:this={audioB} loop preload="auto"></audio>
+		{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
+				>Ativar áudio da cena</button
+			>{/if}
 		<section
 			class="map-preview"
 			class:layout-hidden={block('map')?.visible === false}
