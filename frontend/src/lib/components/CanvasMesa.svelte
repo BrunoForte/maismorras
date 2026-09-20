@@ -223,6 +223,7 @@
 		if (!personagem.persistedId) return;
 		try {
 			await moveToken(session, scene.id, personagem.persistedId, x, y);
+			sceneSocket?.publishTokenUpdated();
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -274,6 +275,7 @@
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
+			sceneSocket?.publishTokenUpdated();
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -684,7 +686,7 @@
 						personagens.update((atual) =>
 							atual.map((p) => (p.id === personagem.id ? { ...p, persistedId: token.id } : p))
 						);
-						sceneSocket?.publishRefresh();
+						sceneSocket?.publishTokenUpdated();
 					})
 					.catch((error) => {
 						persistenceError =
