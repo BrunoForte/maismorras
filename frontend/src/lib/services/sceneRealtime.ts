@@ -111,6 +111,11 @@ class SharedSceneConnection {
 		};
 	}
 	private publish(payload: SceneRefresh | AudioStateEvent | PresentationUpdated | MapPing) {
+		if (
+			payload.type === 'scene.refresh' &&
+			this.pendingPayloads.some((item) => item.type === 'scene.refresh')
+		)
+			return;
 		if (this.socket?.readyState === WebSocket.OPEN) {
 			this.socket.send(JSON.stringify(payload));
 			return;

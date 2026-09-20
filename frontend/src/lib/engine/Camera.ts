@@ -1,8 +1,8 @@
-import * as PIXI from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 
 export class Camera {
-	public mundo: PIXI.Container;
-	private fundoInterativo: PIXI.Graphics;
+	public mundo: Container;
+	private fundoInterativo: Graphics;
 	private arrastandoCamera = false;
 	private posicaoInicialCamera = { x: 0, y: 0 };
 	private pinchDistance = 0;
@@ -25,11 +25,11 @@ export class Camera {
 		this.zoomAt(1 + direcao * 0.1, e.clientX - rect.left, e.clientY - rect.top);
 	};
 
-	constructor(private app: PIXI.Application) {
-		this.mundo = new PIXI.Container();
+	constructor(private app: Application) {
+		this.mundo = new Container();
 		app.stage.addChild(this.mundo);
 
-		this.fundoInterativo = new PIXI.Graphics();
+		this.fundoInterativo = new Graphics();
 		const LIMITE = 2520;
 		this.fundoInterativo.rect(-LIMITE, -LIMITE, LIMITE * 2, LIMITE * 2);
 		this.fundoInterativo.fill({ color: 0x222222, alpha: 0.01 });

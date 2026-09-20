@@ -13,6 +13,8 @@ test.describe('overlay and audio smoke', () => {
 	test('overlay remains usable on a mobile viewport', async ({ page }) => {
 		await page.goto(process.env.E2E_SCENE_URL!);
 		await expect(page.locator('body')).toBeVisible();
-		await expect(page.locator('body')).toHaveCSS('overflow-x', 'hidden');
+		await expect
+			.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+			.toBe(true);
 	});
 });

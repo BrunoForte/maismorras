@@ -330,7 +330,17 @@
 		try {
 			const invitedCampaign = await acceptPendingInvite(currentSession);
 			await loadCampaigns(currentSession);
-			if (invitedCampaign) await openCampaign(invitedCampaign);
+			const requestedCampaignId = new URLSearchParams(window.location.search).get('campaign');
+			const requestedSceneId = new URLSearchParams(window.location.search).get('scene');
+			const requestedCampaign =
+				invitedCampaign ?? campaigns.find((item) => item.id === requestedCampaignId);
+			if (requestedCampaign) {
+				await openCampaign(requestedCampaign);
+				if (requestedSceneId) {
+					const requestedScene = availableScenes.find((item) => item.id === requestedSceneId);
+					if (requestedScene) activeScene = requestedScene;
+				}
+			}
 		} finally {
 			restoringSession = false;
 		}

@@ -1,46 +1,45 @@
-// src/lib/engine/Token.ts
-import * as PIXI from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { get } from 'svelte/store';
 import type { Personagem } from '$lib/stores/gameStore';
 import { appLocale, distance } from '$lib/stores/locale';
 
 export class Token {
-	public containerPrincipal: PIXI.Container;
-	private circuloFundo: PIXI.Graphics;
-	private spriteFoto: PIXI.Sprite | null = null;
-	private mascaraCircular: PIXI.Graphics | null = null;
-	private textoCoordenada: PIXI.Text;
+	public containerPrincipal: Container;
+	private circuloFundo: Graphics;
+	private spriteFoto: Sprite | null = null;
+	private mascaraCircular: Graphics | null = null;
+	private textoCoordenada: Text;
 	private arrastando = false;
 	private moveuDesdeClique = false;
 	private inicioClique = { x: 0, y: 0 };
 
-	private linhaRegua: PIXI.Graphics;
-	private textoRegua: PIXI.Text;
+	private linhaRegua: Graphics;
+	private textoRegua: Text;
 	private startX = 0;
 	private startY = 0;
 
 	private fotoLoadSeq = 0;
-	private texturaFoto: PIXI.Texture | null = null;
+	private texturaFoto: Texture | null = null;
 
 	constructor(
 		public id: number,
 		private dados: Personagem,
 		private tamanhoGrid: number,
-		private mundo: PIXI.Container,
-		private stage: PIXI.Container,
+		private mundo: Container,
+		private stage: Container,
 		private readonly onSelecionar?: (tokenId: number) => void,
 		private readonly onMover?: (tokenId: number, x: number, y: number) => boolean | void
 	) {
-		this.containerPrincipal = new PIXI.Container();
+		this.containerPrincipal = new Container();
 		this.containerPrincipal.x = dados.x;
 		this.containerPrincipal.y = dados.y;
 
 		// Elemento gráfico para borda/fundo
-		this.circuloFundo = new PIXI.Graphics();
+		this.circuloFundo = new Graphics();
 		this.containerPrincipal.addChild(this.circuloFundo);
 
 		// A coordenada só aparece em hover: oferece orientação sem poluir a mesa.
-		this.textoCoordenada = new PIXI.Text({
+		this.textoCoordenada = new Text({
 			text: '',
 			style: {
 				fontFamily: 'Arial',
@@ -55,8 +54,8 @@ export class Token {
 		this.containerPrincipal.addChild(this.textoCoordenada);
 
 		// Réguas de movimento
-		this.linhaRegua = new PIXI.Graphics();
-		this.textoRegua = new PIXI.Text({
+		this.linhaRegua = new Graphics();
+		this.textoRegua = new Text({
 			text: '',
 			style: {
 				fontFamily: 'Arial',
@@ -83,14 +82,14 @@ export class Token {
 			this.removerFotoExistente();
 
 			// O PixiJS v8 carrega Base64 de forma nativa, instantânea e sem restrições
-			const textura = await PIXI.Assets.load(base64);
+			const textura = await Assets.load(base64);
 			// Uma atualização mais recente venceu esta requisição assíncrona.
 			if (loadSequence !== this.fotoLoadSeq) return;
 
-			this.spriteFoto = new PIXI.Sprite(textura);
+			this.spriteFoto = new Sprite(textura);
 			this.spriteFoto.anchor.set(0.5);
 
-			this.mascaraCircular = new PIXI.Graphics();
+			this.mascaraCircular = new Graphics();
 			this.spriteFoto.mask = this.mascaraCircular;
 
 			this.containerPrincipal.addChild(this.mascaraCircular);

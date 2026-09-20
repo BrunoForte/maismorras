@@ -1,4 +1,4 @@
-import * as PIXI from 'pixi.js';
+import { Container, Graphics, Text } from 'pixi.js';
 import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 import { get, type Unsubscriber } from 'svelte/store';
 import { appLocale, distance } from '$lib/stores/locale';
@@ -11,8 +11,8 @@ export type MeasuredArea = {
 };
 
 export class RulerManager {
-	private graphics: PIXI.Graphics;
-	private texto: PIXI.Text;
+	private graphics: Graphics;
+	private texto: Text;
 	private medindo = false;
 	private startX = 0;
 	private startY = 0;
@@ -22,16 +22,16 @@ export class RulerManager {
 	private endY = 0;
 
 	constructor(
-		private mundo: PIXI.Container,
-		private stage: PIXI.Container,
+		private mundo: Container,
+		private stage: Container,
 		private tamanhoGrid: number,
 		private readonly onComplete?: (area: MeasuredArea) => void
 	) {
 		// 1. Criamos a linha da régua
-		this.graphics = new PIXI.Graphics();
+		this.graphics = new Graphics();
 
 		// 2. Criamos o texto da distância
-		this.texto = new PIXI.Text({
+		this.texto = new Text({
 			text: '',
 			style: {
 				fontFamily: 'Arial',

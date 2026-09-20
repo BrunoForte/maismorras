@@ -1,4 +1,4 @@
-import * as PIXI from 'pixi.js';
+import { Application, FederatedPointerEvent, Graphics, Ticker } from 'pixi.js';
 import { Camera } from './Camera';
 import { Token } from './Token';
 import { MapManager } from './MapManager';
@@ -9,21 +9,21 @@ import { personagens, urlMapa, type Personagem } from '$lib/stores/gameStore';
 import type { Unsubscriber } from 'svelte/store';
 
 export class GameEngine {
-	public app: PIXI.Application;
+	public app: Application;
 	public camera!: Camera;
 	public mapManager!: MapManager;
 	public rulerManager!: RulerManager;
 	public tamanhoGrid = 70;
 	private tokens: Map<number, Token> = new Map();
 	private unsubscribers: Unsubscriber[] = [];
-	private fogLayer: PIXI.Graphics | null = null;
-	private areaLayer: PIXI.Graphics | null = null;
-	private wallLayer: PIXI.Graphics | null = null;
-	private wallPreview: PIXI.Graphics | null = null;
-	private gridLayer: PIXI.Graphics | null = null;
+	private fogLayer: Graphics | null = null;
+	private areaLayer: Graphics | null = null;
+	private wallLayer: Graphics | null = null;
+	private wallPreview: Graphics | null = null;
+	private gridLayer: Graphics | null = null;
 	private drawingWall = false;
 	private wallStart: { x: number; y: number } | null = null;
-	private pings = new Set<PIXI.Graphics>();
+	private pings = new Set<Graphics>();
 
 	constructor(
 		private readonly onTokenClick?: (tokenId: number) => void,
@@ -33,7 +33,7 @@ export class GameEngine {
 		private readonly onWallComplete?: (wall: Omit<SceneWall, 'id' | 'kind' | 'open'>) => void,
 		gridSize = 70
 	) {
-		this.app = new PIXI.Application();
+		this.app = new Application();
 		this.tamanhoGrid = Math.min(200, Math.max(20, gridSize));
 	}
 
@@ -104,7 +104,7 @@ export class GameEngine {
 			this.tamanhoGrid,
 			this.onAreaComplete
 		);
-		this.wallPreview = new PIXI.Graphics();
+		this.wallPreview = new Graphics();
 		this.camera.mundo.addChild(this.wallPreview);
 		this.app.stage.on('pointerdown', (event) => {
 			if (!this.drawingWall || event.shiftKey) return;
@@ -120,7 +120,7 @@ export class GameEngine {
 				.lineTo(pos.x, pos.y)
 				.stroke({ width: 7, color: 0xc98e57, alpha: 0.9 });
 		});
-		const finishWall = (event: PIXI.FederatedPointerEvent) => {
+		const finishWall = (event: FederatedPointerEvent) => {
 			if (!this.drawingWall || !this.wallStart) return;
 			const pos = this.camera.mundo.toLocal(event.global);
 			const start = this.wallStart;
@@ -166,7 +166,7 @@ export class GameEngine {
 	}
 	setAreas(areas: SceneArea[]) {
 		if (!this.areaLayer) {
-			this.areaLayer = new PIXI.Graphics();
+			this.areaLayer = new Graphics();
 			this.camera.mundo.addChild(this.areaLayer);
 		}
 		this.areaLayer.clear();
@@ -212,7 +212,7 @@ export class GameEngine {
 
 	setWalls(walls: SceneWall[]) {
 		if (!this.wallLayer) {
-			this.wallLayer = new PIXI.Graphics();
+			this.wallLayer = new Graphics();
 			this.camera.mundo.addChild(this.wallLayer);
 		}
 		this.wallLayer.clear();
@@ -234,11 +234,11 @@ export class GameEngine {
 	}
 
 	showPing(x: number, y: number, color = 0xf2cf77) {
-		const ping = new PIXI.Graphics();
+		const ping = new Graphics();
 		this.pings.add(ping);
 		this.camera.mundo.addChild(ping);
 		let elapsed = 0;
-		const animate = (ticker: PIXI.Ticker) => {
+		const animate = (ticker: Ticker) => {
 			elapsed += ticker.deltaMS;
 			const progress = Math.min(1, elapsed / 1100);
 			const radius = this.tamanhoGrid * (0.16 + progress * 0.72);
@@ -264,7 +264,7 @@ export class GameEngine {
 		hiddenCells: string[] = []
 	) {
 		if (!this.fogLayer) {
-			this.fogLayer = new PIXI.Graphics();
+			this.fogLayer = new Graphics();
 			this.camera.mundo.addChild(this.fogLayer);
 		}
 		this.fogLayer.clear();
@@ -285,7 +285,7 @@ export class GameEngine {
 	}
 
 	private desenharGrid() {
-		const grid = new PIXI.Graphics();
+		const grid = new Graphics();
 		this.gridLayer = grid;
 		const LIMITE = 2520;
 		for (let i = -LIMITE; i <= LIMITE; i += this.tamanhoGrid) {

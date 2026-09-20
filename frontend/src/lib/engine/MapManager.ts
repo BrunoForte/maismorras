@@ -1,9 +1,9 @@
-import * as PIXI from 'pixi.js';
+import { Assets, Container, Sprite } from 'pixi.js';
 
 export class MapManager {
-	private spriteMapa: PIXI.Sprite | null = null;
+	private spriteMapa: Sprite | null = null;
 
-	constructor(private mundo: PIXI.Container) {}
+	constructor(private mundo: Container) {}
 
 	async carregarMapa(url: string) {
 		// Se já existir um mapa antigo na mesa, nós o destruímos para liberar memória
@@ -13,8 +13,8 @@ export class MapManager {
 		}
 
 		// Carrega a imagem e transforma em uma textura compreensível pela placa de vídeo
-		const textura = await PIXI.Assets.load(url);
-		this.spriteMapa = new PIXI.Sprite(textura);
+		const textura = await Assets.load(url);
+		this.spriteMapa = new Sprite(textura);
 
 		// Posiciona a imagem alinhada no ponto Zero do nosso cenário
 		this.spriteMapa.x = 0;
