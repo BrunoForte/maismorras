@@ -131,9 +131,14 @@
 		sceneSocket = connectSceneSocket(
 			session,
 			sceneId,
-			() => void reloadMessages(),
+			() => {},
 			undefined,
-			updateFallback
+			updateFallback,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => void reloadMessages()
 		);
 		return () => {
 			sceneSocket?.close();
@@ -176,7 +181,7 @@
 					{ id: crypto.randomUUID(), autor: 'Você', texto: input, tipo: 'texto' }
 				];
 			}
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishChatUpdated();
 			form.reset();
 		} finally {
 			sending = false;

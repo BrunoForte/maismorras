@@ -77,7 +77,7 @@
 	async function save(next: Scene, notify = true) {
 		const saved = await updateScene(session, next);
 		onSceneUpdate(saved);
-		if (notify) sceneSocket?.publishRefresh();
+		if (notify) sceneSocket?.publishAudioState(stateFromScene(saved));
 		return saved;
 	}
 

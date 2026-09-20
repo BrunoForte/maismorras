@@ -20,9 +20,8 @@ import (
 
 // Hub isolates every WebSocket room by scene ID. Clients never write directly to
 // PostgreSQL through this channel: they persist through REST first, then publish
-// a refresh notification to peers in the same room. Keeping token data out of
-// WebSocket messages guarantees each browser receives the visibility-filtered
-// representation from the REST endpoint.
+// a small room event. Keeping token data out of WebSocket messages guarantees
+// each browser receives the visibility-filtered representation from REST.
 type Hub struct {
 	mu          sync.RWMutex
 	rooms       map[string]map[*peer]struct{}
@@ -152,14 +151,17 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			if peer.canControl {
 				h.hub.broadcast(sceneID, []byte(`{"type":"overlay.layout.updated"}`))
 			}
+
 		case "token.updated":
-			if peer.canControl {
-				h.hub.broadcast(sceneID, []byte(`{"type":"token.updated"}`))
-			}
+			// The REST endpoint authorizes the actual movement/update. Any authenticated
+			// scene member may publish the notification so player-owned movement reaches peers.
+			h.hub.broadcast(sceneID, []byte(`{"type":"token.updated"}`))
 		case "combat.updated":
 			if peer.canControl {
 				h.hub.broadcast(sceneID, []byte(`{"type":"combat.updated"}`))
 			}
+		case "chat.updated":
+			h.hub.broadcast(sceneID, []byte(`{"type":"chat.updated"}`))
 		case "audio.state":
 			if !peer.canControl || event.State == nil || len(event.State.Path) > 500 || event.State.Volume < 0 || event.State.Volume > 1 || event.State.Position < 0 || event.State.Position > 24*60*60*1000 || event.State.StartedAt < 0 {
 				continue

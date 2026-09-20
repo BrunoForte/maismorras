@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { appLocale } from '$lib/stores/locale';
-	import { apiBase } from '$lib/services/apiBase';
+	import { request } from '$lib/services/httpClient';
 	type Note = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let {
 		campaignId,
@@ -16,23 +16,10 @@
 	let visibility = $state<'gm' | 'players'>('gm');
 	let message = $state('');
 	let loading = $state(true);
-	const base = apiBase;
-	async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-		const r = await fetch(base + path, {
-			...init,
-			headers: {
-				Authorization: `Bearer ${session.access_token}`,
-				'Content-Type': 'application/json',
-				...init.headers
-			}
-		});
-		const data = await r.json();
-		if (!r.ok) throw new Error(data.error?.message ?? 'Erro ao carregar notas.');
-		return data;
-	}
 	onMount(async () => {
 		try {
-			notes = (await api<{ notes: Note[] }>(`/api/v1/campaigns/${campaignId}/notes`)).notes;
+			notes = (await request<{ notes: Note[] }>(session, `/api/v1/campaigns/${campaignId}/notes`))
+				.notes;
 		} catch (e) {
 			message = e instanceof Error ? e.message : 'Erro ao carregar notas.';
 		} finally {
@@ -42,7 +29,7 @@
 	async function create() {
 		if (!title.trim()) return;
 		try {
-			const note = await api<Note>(`/api/v1/campaigns/${campaignId}/notes`, {
+			const note = await request<Note>(session, `/api/v1/campaigns/${campaignId}/notes`, {
 				method: 'POST',
 				body: JSON.stringify({ title, body, visibility })
 			});

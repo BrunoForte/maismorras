@@ -5,8 +5,8 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
-	import { apiBase } from '$lib/services/apiBase';
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
+	import { request } from '$lib/services/httpClient';
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import {
 		loadLibraryPermissions,
@@ -52,29 +52,11 @@
 		void loadAssets();
 		void loadHandouts();
 	});
-	async function notesRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-		const response = await fetch(`${apiBase}${path}`, {
-			...init,
-			headers: {
-				Authorization: `Bearer ${session.access_token}`,
-				'Content-Type': 'application/json',
-				...init.headers
-			}
-		});
-		const data = await response.json();
-		if (!response.ok)
-			throw new Error(
-				data.error?.message ??
-					($appLocale === 'en'
-						? 'Could not save the handout.'
-						: 'Não foi possível salvar o handout.')
-			);
-		return data as T;
-	}
 	async function loadHandouts() {
 		try {
-			handouts = (await notesRequest<{ notes: Handout[] }>(`/api/v1/campaigns/${campaignId}/notes`))
-				.notes;
+			handouts = (
+				await request<{ notes: Handout[] }>(session, `/api/v1/campaigns/${campaignId}/notes`)
+			).notes;
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -89,7 +71,8 @@
 		savingHandout = true;
 		message = '';
 		try {
-			const handout = await notesRequest<Handout>(
+			const handout = await request<Handout>(
+				session,
 				editingHandoutId
 					? `/api/v1/campaigns/${campaignId}/notes/${editingHandoutId}`
 					: `/api/v1/campaigns/${campaignId}/notes`,
@@ -149,7 +132,7 @@
 	}
 	async function deleteHandout(handout: Handout) {
 		try {
-			await notesRequest<void>(`/api/v1/campaigns/${campaignId}/notes/${handout.id}`, {
+			await request<void>(session, `/api/v1/campaigns/${campaignId}/notes/${handout.id}`, {
 				method: 'DELETE'
 			});
 			handouts = handouts.filter((item) => item.id !== handout.id);
@@ -175,7 +158,7 @@
 		try {
 			const { error } = await supabase.storage.from('campaign-assets').remove([asset.path]);
 			if (error) throw error;
-			clearSignedAssetCache();
+			clearSignedAssetCache(campaignId, asset.path);
 			assets = assets.filter((item) => item.path !== asset.path);
 			if (preview?.path === asset.path) preview = null;
 		} catch (error) {

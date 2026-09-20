@@ -4,10 +4,14 @@ import { apiBase } from './apiBase';
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const cacheLifetimeMs = 15 * 60 * 1000;
 
-export function clearSignedAssetCache() {
-	signedUrlCache.clear();
+export function clearSignedAssetCache(campaignId?: string, path?: string) {
+	if (!campaignId) {
+		signedUrlCache.clear();
+		return;
+	}
+	const suffix = ':' + campaignId + ':' + (path ?? '');
+	for (const key of signedUrlCache.keys()) if (key.includes(suffix)) signedUrlCache.delete(key);
 }
-
 /** Resolve a private campaign asset through the backend authorization boundary. */
 export async function getSignedAssetUrl(
 	session: Session,

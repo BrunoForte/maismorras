@@ -100,6 +100,7 @@
 	let wallToolsOpen = $state(false);
 	let pingArmed = $state(false);
 	let cameraZoom = $state(1);
+	let lastCameraView = '';
 	let gridVisible = $state(true);
 	let wallsVisible = $state(true);
 	let areasVisible = $state(true);
@@ -199,7 +200,6 @@
 					error instanceof Error ? error.message : 'Não foi possível salvar a aparência.';
 				return;
 			}
-			sceneSocket?.publishTokenUpdated();
 			return;
 		}
 		try {
@@ -223,7 +223,6 @@
 		if (!personagem.persistedId) return;
 		try {
 			await moveToken(session, scene.id, personagem.persistedId, x, y);
-			sceneSocket?.publishTokenUpdated();
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -276,7 +275,6 @@
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
 			persistenceError = '';
-			sceneSocket?.publishTokenUpdated();
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -585,7 +583,10 @@
 		if (!motor?.camera) return;
 		cameraZoom = motor.camera.zoom;
 		try {
-			sessionStorage.setItem(`maismorras:camera:${scene.id}`, JSON.stringify(motor.camera.view));
+			const serialized = JSON.stringify(motor.camera.view);
+			if (serialized === lastCameraView) return;
+			lastCameraView = serialized;
+			sessionStorage.setItem(`maismorras:camera:${scene.id}`, serialized);
 		} catch {
 			/* storage may be unavailable in private mode */
 		}
@@ -747,7 +748,6 @@
 			persistenceError = result.open
 				? 'Você abriu uma porta próxima.'
 				: 'Você fechou uma porta próxima.';
-			sceneSocket?.publishTokenUpdated();
 			await carregarTokens();
 		} catch (error) {
 			persistenceError =

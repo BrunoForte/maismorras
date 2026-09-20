@@ -19,7 +19,7 @@
 	} from '$lib/stores/diceOverlayStore';
 	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
-	import { apiBase } from '$lib/services/apiBase';
+	import { request } from '$lib/services/httpClient';
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
 
@@ -91,19 +91,17 @@
 	async function loadOverlayLayout(currentSession: Session | null = session) {
 		try {
 			if (currentSession) {
-				const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId()}/overlay-layout`, {
-					headers: { Authorization: `Bearer ${currentSession.access_token}` }
-				});
-				if (response.ok) {
-					const body = (await response.json()) as { layout?: unknown };
-					if (body.layout && Object.keys(body.layout as object).length) {
-						applyLayoutDocument(body.layout);
-						localStorage.setItem(
-							`maismorras:overlay-layout:${campaignId()}:${sceneId()}`,
-							JSON.stringify(body.layout)
-						);
-						return;
-					}
+				const body = await request<{ layout?: unknown }>(
+					currentSession,
+					`/api/v1/scenes/${sceneId()}/overlay-layout`
+				);
+				if (body.layout && Object.keys(body.layout as object).length) {
+					applyLayoutDocument(body.layout);
+					localStorage.setItem(
+						`maismorras:overlay-layout:${campaignId()}:${sceneId()}`,
+						JSON.stringify(body.layout)
+					);
+					return;
 				}
 			}
 			const saved = localStorage.getItem(`maismorras:overlay-layout:${campaignId()}:${sceneId()}`);

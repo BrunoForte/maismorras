@@ -4,8 +4,8 @@
 	import { updateScene, type Scene } from '$lib/services/sceneApi';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
-	import { apiBase } from '$lib/services/apiBase';
 	import { optimizeImage } from '$lib/services/imageProcessing';
+	import { request } from '$lib/services/httpClient';
 	let {
 		scene,
 		session,
@@ -71,16 +71,10 @@
 		generating = true;
 		message = '';
 		try {
-			const response = await fetch(
-				`${apiBase}/api/v1/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`,
-				{ headers: { Authorization: `Bearer ${session.access_token}` } }
+			const data = await request<{ fotoUrl: string }>(
+				session,
+				`/api/v1/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`
 			);
-			const data = await response.json();
-			if (!response.ok)
-				throw new Error(
-					data.error?.message ??
-						($appLocale === 'en' ? 'Could not generate the map.' : 'Não foi possível gerar o mapa.')
-				);
 			const blob = await (await fetch(data.fotoUrl)).blob();
 			const optimized = await optimizeImage(blob, 2048, 0.82);
 			const path = `campaigns/${scene.campaignId}/media/${crypto.randomUUID()}-mapa-gerado.png`;

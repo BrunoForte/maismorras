@@ -3,9 +3,9 @@
 
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
-	import { apiBase } from '$lib/services/apiBase';
 	import { supabase } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { request } from '$lib/services/httpClient';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	let {
 		campaignId,
@@ -221,11 +221,10 @@
 	async function loadRemote() {
 		if (!session?.access_token) return;
 		try {
-			const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
-				headers: { Authorization: `Bearer ${session.access_token}` }
-			});
-			if (!response.ok) return;
-			const body = await response.json();
+			const body = await request<{ layout?: Record<string, unknown> }>(
+				session,
+				`/api/v1/scenes/${sceneId}/overlay-layout`
+			);
 			if (body.layout && Object.keys(body.layout).length) {
 				loadDocument(body.layout);
 				void resolveBackground(layout.background);
@@ -341,20 +340,12 @@
 		localStorage.setItem(key(), JSON.stringify(document));
 		try {
 			if (session?.access_token) {
-				const response = await fetch(`${apiBase}/api/v1/scenes/${sceneId}/overlay-layout`, {
-					method: 'PUT',
-					headers: {
-						Authorization: `Bearer ${session.access_token}`,
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(document)
-				});
-				if (!response.ok)
-					throw new Error(
-						response.status === 403
-							? 'Você não tem permissão para editar esta overlay.'
-							: 'Não foi possível salvar a overlay no servidor.'
-					);
+				await request(
+					session,
+					`/api/v1/scenes/${sceneId}/overlay-layout`,
+					{ method: 'PUT', body: JSON.stringify(document) },
+					'Não foi possível salvar a overlay no servidor.'
+				);
 			}
 			if ('BroadcastChannel' in window) {
 				const channel = new BroadcastChannel(`maismorras:overlay:${campaignId}`);

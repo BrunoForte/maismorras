@@ -9,6 +9,7 @@ type PresentationUpdated = { type: 'presentation.updated' };
 type LayoutUpdated = { type: 'overlay.layout.updated' };
 type TokenUpdated = { type: 'token.updated' };
 type CombatUpdated = { type: 'combat.updated' };
+type ChatUpdated = { type: 'chat.updated' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
 export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 export type SceneSocket = {
@@ -19,6 +20,7 @@ export type SceneSocket = {
 	publishLayoutUpdated: () => void;
 	publishTokenUpdated: () => void;
 	publishCombatUpdated: () => void;
+	publishChatUpdated: () => void;
 	close: () => void;
 };
 type Subscriber = {
@@ -29,6 +31,7 @@ type Subscriber = {
 	onLayout?: () => void;
 	onTokens?: () => void;
 	onCombat?: () => void;
+	onChat?: () => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
 const sharedConnections = new Map<string, SharedSceneConnection>();
@@ -46,6 +49,8 @@ class SharedSceneConnection {
 		| LayoutUpdated
 		| TokenUpdated
 		| CombatUpdated
+		| ChatUpdated
+		| ChatUpdated
 		| MapPing
 	)[] = [];
 	private readonly url: URL;
@@ -79,6 +84,7 @@ class SharedSceneConnection {
 			publishLayoutUpdated: () => this.publish({ type: 'overlay.layout.updated' }),
 			publishTokenUpdated: () => this.publish({ type: 'token.updated' }),
 			publishCombatUpdated: () => this.publish({ type: 'combat.updated' }),
+			publishChatUpdated: () => this.publish({ type: 'chat.updated' }),
 			close: () => this.remove(subscriber)
 		};
 	}
@@ -113,6 +119,7 @@ class SharedSceneConnection {
 					| LayoutUpdated
 					| TokenUpdated
 					| CombatUpdated
+					| ChatUpdated
 					| MapPing;
 				if (payload.type === 'scene.refresh')
 					for (const subscriber of this.subscribers) subscriber.onRefresh();
@@ -126,6 +133,8 @@ class SharedSceneConnection {
 					for (const subscriber of this.subscribers) subscriber.onTokens?.();
 				if (payload.type === 'combat.updated')
 					for (const subscriber of this.subscribers) subscriber.onCombat?.();
+				if (payload.type === 'chat.updated')
+					for (const subscriber of this.subscribers) subscriber.onChat?.();
 				if (payload.type === 'map.ping')
 					for (const subscriber of this.subscribers) subscriber.onPing?.(payload);
 			} catch {
@@ -148,6 +157,7 @@ class SharedSceneConnection {
 			| LayoutUpdated
 			| TokenUpdated
 			| CombatUpdated
+			| ChatUpdated
 			| MapPing
 	) {
 		if (
@@ -185,7 +195,8 @@ export function connectSceneSocket(
 	onPresentation?: () => void,
 	onLayout?: () => void,
 	onTokens?: () => void,
-	onCombat?: () => void
+	onCombat?: () => void,
+	onChat?: () => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -201,6 +212,7 @@ export function connectSceneSocket(
 		onPresentation,
 		onLayout,
 		onTokens,
-		onCombat
+		onCombat,
+		onChat
 	});
 }
