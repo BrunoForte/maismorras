@@ -97,11 +97,18 @@
 		if (participantsOpen || notesOpen || npcsOpen || sceneSettingsOpen)
 			void ensureDrawerComponents();
 	});
-	type Campaign = { id: string; name: string; role: 'gm' | 'player'; isAdmin?: boolean };
+	type Campaign = {
+		id: string;
+		name: string;
+		role: 'gm' | 'player';
+		systemId: 'dnd2024' | 'dnd35';
+		isAdmin?: boolean;
+	};
 	let campaigns = $state<Campaign[]>([]);
 	let activeCampaign = $state<Campaign | null>(null);
 	let activeScene = $state<Scene | null>(null);
 	let campaignName = $state('');
+	let campaignSystem = $state<'dnd2024' | 'dnd35'>('dnd2024');
 	let loadingCampaigns = $state(false);
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
@@ -287,6 +294,10 @@
 					id: campaign.id ?? campaign.ID ?? '',
 					name: campaign.name ?? campaign.Name ?? '',
 					role: campaign.role ?? campaign.Role ?? 'player',
+					systemId:
+						campaign.systemId ??
+						(campaign as { system_id?: 'dnd2024' | 'dnd35' }).system_id ??
+						'dnd2024',
 					isAdmin: campaign.isAdmin ?? campaign.is_admin ?? false
 				})
 			);
@@ -372,15 +383,17 @@
 		try {
 			const response = await api('/api/v1/campaigns', {
 				method: 'POST',
-				body: JSON.stringify({ name: campaignName.trim() })
+				body: JSON.stringify({ name: campaignName.trim(), systemId: campaignSystem })
 			});
 			const campaign: Campaign = {
 				id: response.id ?? response.ID,
 				name: response.name ?? response.Name,
-				role: response.role ?? response.Role
+				role: response.role ?? response.Role,
+				systemId: response.systemId ?? response.SystemID ?? campaignSystem
 			};
 			campaigns = [campaign, ...campaigns];
 			campaignName = '';
+			campaignSystem = 'dnd2024';
 			await openCampaign(campaign);
 		} catch (err) {
 			error =
@@ -1118,7 +1131,14 @@
 							placeholder={$appLocale === 'en'
 								? 'E.g. The Spider City'
 								: 'Ex.: A Cidade das Aranhas'}
-						/><button class="primary-button"
+						/>
+						<select
+							bind:value={campaignSystem}
+							aria-label={$appLocale === 'en' ? 'Game system' : 'Sistema de jogo'}
+						>
+							<option value="dnd2024">D&D 2024</option>
+							<option value="dnd35">D&D 3.5</option>
+						</select><button class="primary-button"
 							>{$appLocale === 'en' ? 'Create table' : 'Criar mesa'}
 							<span aria-hidden="true">→</span></button
 						>

@@ -8,13 +8,15 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"vtt-backend/internal/systems"
 )
 
 type Campaign struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Role    string `json:"role"`
-	IsAdmin bool   `json:"isAdmin"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	SystemID string `json:"systemId"`
+	Role     string `json:"role"`
+	IsAdmin  bool   `json:"isAdmin"`
 }
 type Invite struct {
 	Code       string    `json:"code"`
@@ -33,7 +35,7 @@ type Repository struct{ pool *pgxpool.Pool }
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
 
 func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]Campaign, error) {
-	query := `select c.id::text, c.name, case when $2 then 'gm' else m.role::text end, $2 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$1 where $2 or m.user_id is not null order by c.created_at desc`
+	query := `select c.id::text, c.name, c.system_id, case when $2 then 'gm' else m.role::text end, $2 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$1 where $2 or m.user_id is not null order by c.created_at desc`
 	rows, err := r.pool.Query(ctx, query, userID, isAdmin)
 	if err != nil {
 		return nil, fmt.Errorf("list campaigns: %w", err)
@@ -42,7 +44,7 @@ func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]C
 	items := []Campaign{}
 	for rows.Next() {
 		var item Campaign
-		if err := rows.Scan(&item.ID, &item.Name, &item.Role, &item.IsAdmin); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.SystemID, &item.Role, &item.IsAdmin); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -50,14 +52,14 @@ func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]C
 	return items, rows.Err()
 }
 
-func (r *Repository) Create(ctx context.Context, userID, name string) (Campaign, error) {
+func (r *Repository) Create(ctx context.Context, userID, name string, systemID systems.ID) (Campaign, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return Campaign{}, err
 	}
 	defer tx.Rollback(ctx)
 	var item Campaign
-	err = tx.QueryRow(ctx, `insert into campaigns (name, owner_id) values ($1,$2) returning id::text,name`, name, userID).Scan(&item.ID, &item.Name)
+	err = tx.QueryRow(ctx, `insert into campaigns (name, owner_id, system_id) values ($1,$2,$3) returning id::text,name,system_id`, name, userID, systemID).Scan(&item.ID, &item.Name, &item.SystemID)
 	if err != nil {
 		return Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
@@ -79,7 +81,7 @@ func (r *Repository) Create(ctx context.Context, userID, name string) (Campaign,
 
 func (r *Repository) Rename(ctx context.Context, campaignID, userID, name string) (Campaign, error) {
 	var item Campaign
-	err := r.pool.QueryRow(ctx, `update campaigns set name=$1 where id=$2 and owner_id=$3 returning id::text,name`, name, campaignID, userID).Scan(&item.ID, &item.Name)
+	err := r.pool.QueryRow(ctx, `update campaigns set name=$1 where id=$2 and owner_id=$3 returning id::text,name,system_id`, name, campaignID, userID).Scan(&item.ID, &item.Name, &item.SystemID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Campaign{}, ErrForbidden
 	}
@@ -132,7 +134,7 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 		return Campaign{}, err
 	}
 	var campaign Campaign
-	if err = tx.QueryRow(ctx, `select id::text,name from campaigns where id=$1`, campaignID).Scan(&campaign.ID, &campaign.Name); err != nil {
+	if err = tx.QueryRow(ctx, `select id::text,name,system_id from campaigns where id=$1`, campaignID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID); err != nil {
 		return Campaign{}, err
 	}
 	campaign.Role = "player"
