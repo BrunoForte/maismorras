@@ -15,14 +15,19 @@ export function clearSignedAssetCache(campaignId?: string, path?: string) {
 }
 
 /** Resolve a private campaign asset through the backend authorization boundary. */
-export async function getSignedAssetUrl(session: Session, campaignId: string, path: string): Promise<string | null> {
+export async function getSignedAssetUrl(
+	session: Session,
+	campaignId: string,
+	path: string
+): Promise<string | null> {
 	if (!path) return null;
 	let assetPath = path;
 	try {
 		const parsed = new URL(path);
 		const marker = '/storage/v1/object/sign/campaign-assets/';
 		const markerIndex = parsed.pathname.indexOf(marker);
-		if (markerIndex >= 0) assetPath = decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length));
+		if (markerIndex >= 0)
+			assetPath = decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length));
 	} catch {
 		/* relative Storage paths are handled below */
 	}
@@ -36,7 +41,10 @@ export async function getSignedAssetUrl(session: Session, campaignId: string, pa
 		try {
 			const response = await fetch(`${apiBase}/api/v1/campaigns/${campaignId}/assets/signed-url`, {
 				method: 'POST',
-				headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+				headers: {
+					Authorization: `Bearer ${session.access_token}`,
+					'Content-Type': 'application/json'
+				},
 				body: JSON.stringify({ path: assetPath })
 			});
 			if (!response.ok) {
@@ -46,7 +54,10 @@ export async function getSignedAssetUrl(session: Session, campaignId: string, pa
 			const body = (await response.json()) as { url?: string; expiresAt?: number };
 			if (!body.url) return null;
 			const expiresAt = body.expiresAt ? body.expiresAt * 1000 : Date.now() + cacheLifetimeMs;
-			signedUrlCache.set(cacheKey, { url: body.url, expiresAt: Math.max(Date.now() + 30_000, expiresAt - 30_000) });
+			signedUrlCache.set(cacheKey, {
+				url: body.url,
+				expiresAt: Math.max(Date.now() + 30_000, expiresAt - 30_000)
+			});
 			return body.url;
 		} catch {
 			return null;
@@ -57,4 +68,3 @@ export async function getSignedAssetUrl(session: Session, campaignId: string, pa
 	inFlight.set(cacheKey, request);
 	return request;
 }
-

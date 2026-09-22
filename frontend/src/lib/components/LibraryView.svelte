@@ -31,7 +31,7 @@
 		name: string;
 		path: string;
 		url: string;
-        thumbnailUrl?: string;
+		thumbnailUrl?: string;
 		type: 'image' | 'audio' | 'document' | 'map';
 	};
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
@@ -376,7 +376,13 @@
 				>
 					{#if asset.type === 'image' || asset.type === 'map'}<button
 							class="asset-image"
-							onclick={() => (preview = asset)}><img src={asset.thumbnailUrl ?? asset.url} alt={asset.name} loading="lazy" decoding="async" /></button
+							onclick={() => (preview = asset)}
+							><img
+								src={asset.thumbnailUrl ?? asset.url}
+								alt={asset.name}
+								loading="lazy"
+								decoding="async"
+							/></button
 						>
 					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio
 							controls
@@ -766,6 +772,3 @@
 		}
 	}
 </style>
-
-
-

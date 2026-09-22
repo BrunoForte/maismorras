@@ -313,9 +313,16 @@
 				},
 				undefined,
 				updateFallback,
-                (state) => void applyAudioState(state),
-                (data) => { const presentation = (data as { presentation?: unknown } | undefined)?.presentation; if (!presentation && session) void refresh(session); },
-                (data) => { const document = (data as { document?: unknown } | undefined)?.document; if (document) applyLayoutDocument(document); else void loadOverlayLayout(session); }
+				(state) => void applyAudioState(state),
+				(data) => {
+					const presentation = (data as { presentation?: unknown } | undefined)?.presentation;
+					if (!presentation && session) void refresh(session);
+				},
+				(data) => {
+					const document = (data as { document?: unknown } | undefined)?.document;
+					if (document) applyLayoutDocument(document);
+					else void loadOverlayLayout(session);
+				}
 			);
 		});
 		return () => {
@@ -702,6 +709,3 @@
 		}
 	}
 </style>
-
-
-

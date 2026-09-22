@@ -36,21 +36,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Não foi possível consultar o histórico remoto de migrations: $($lines | Out-String)"
 }
 
-$remoteByLocalVersion = @{}
-foreach ($line in $lines) {
-    $columns = "$line" -split '[|│]'
-    if ($columns.Count -lt 2) { continue }
-
-    $localColumn = $columns[0].Trim()
-    $remoteColumn = $columns[1].Trim()
-    if ($localVersions -contains $localColumn) {
-        $remoteByLocalVersion[$localColumn] = $remoteColumn
+$listing = $lines -join [Environment]::NewLine
+$unapplied = @(
+    $localVersions | Where-Object {
+        $pattern = "(?<!\d)$([regex]::Escape($_))(?!\d)"
+        [regex]::Matches($listing, $pattern).Count -lt 2
     }
-}
-
-$unapplied = @($localVersions | Where-Object { $remoteByLocalVersion[$_] -ne $_ })
+)
 if ($unapplied.Count -gt 0) {
-    throw "Deploy bloqueado: migrations locais ainda não confirmadas como aplicadas no Supabase: $($unapplied -join ', ')."
+    throw "Deploy bloqueado: estas migrations locais não aparecem como aplicadas nos lados local e remoto da CLI: $($unapplied -join ', '). Saída recebida:`n$($listing)"
 }
-
 Write-Host "Migration mais recente validada: $latestLocal (aplicada no projeto remoto $ProjectRef)."
