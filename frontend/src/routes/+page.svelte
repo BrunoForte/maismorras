@@ -108,6 +108,7 @@
 	let activeCampaign = $state<Campaign | null>(null);
 	let activeScene = $state<Scene | null>(null);
 	let campaignName = $state('');
+	let campaignSystem = $state<'dnd2024'>('dnd2024');
 	let loadingCampaigns = $state(false);
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
@@ -380,13 +381,13 @@
 		try {
 			const response = await api('/api/v1/campaigns', {
 				method: 'POST',
-				body: JSON.stringify({ name: campaignName.trim(), systemId: 'dnd2024' })
+				body: JSON.stringify({ name: campaignName.trim(), systemId: campaignSystem })
 			});
 			const campaign: Campaign = {
 				id: response.id ?? response.ID,
 				name: response.name ?? response.Name,
 				role: response.role ?? response.Role,
-				systemId: response.systemId ?? response.SystemID ?? 'dnd2024'
+				systemId: response.systemId ?? response.SystemID ?? campaignSystem
 			};
 			campaigns = [campaign, ...campaigns];
 			campaignName = '';
@@ -1128,6 +1129,12 @@
 								? 'E.g. The Spider City'
 								: 'Ex.: A Cidade das Aranhas'}
 						/>
+						<select
+							bind:value={campaignSystem}
+							aria-label={$appLocale === 'en' ? 'Game system' : 'Sistema de jogo'}
+						>
+							<option value="dnd2024">D&D 2024</option>
+						</select>
 						<button class="primary-button">
 							>{$appLocale === 'en' ? 'Create table' : 'Criar mesa'}
 							<span aria-hidden="true">→</span></button

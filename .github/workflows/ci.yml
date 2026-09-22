@@ -146,6 +146,12 @@ jobs:
               [string]::IsNullOrWhiteSpace($env:VERCEL_PROJECT_ID)) {
             throw 'Configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID in GitHub Actions secrets.'
           }
+          # Recreate the local Vercel link from the protected project identifiers.
+          # A stale .vercel directory can point at a deleted or different project.
+          if (Test-Path -LiteralPath '.vercel') {
+            Remove-Item -LiteralPath '.vercel' -Recurse -Force
+          }
+          vercel link --yes --project $env:VERCEL_PROJECT_ID --scope $env:VERCEL_ORG_ID --token $env:VERCEL_TOKEN
           vercel pull --yes --environment=production --token $env:VERCEL_TOKEN
           vercel build --prod --token $env:VERCEL_TOKEN
           vercel deploy --prebuilt --prod --token $env:VERCEL_TOKEN
