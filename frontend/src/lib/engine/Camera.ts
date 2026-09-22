@@ -48,9 +48,11 @@ export class Camera {
 		this.app.canvas.addEventListener('keydown', this.onKeyDown);
 
 		this.fundoInterativo.eventMode = 'static';
+		this.setPanCursor('grab');
 		this.fundoInterativo.on('pointerdown', (e) => {
 			if (e.shiftKey) return;
 			this.arrastandoCamera = true;
+			this.setPanCursor('grabbing');
 			this.posicaoInicialCamera = { x: e.global.x - this.mundo.x, y: e.global.y - this.mundo.y };
 		});
 
@@ -63,7 +65,10 @@ export class Camera {
 			}
 		});
 
-		const soltarCamera = () => (this.arrastandoCamera = false);
+		const soltarCamera = () => {
+			this.arrastandoCamera = false;
+			this.setPanCursor('grab');
+		};
 		this.app.stage.on('pointerup', soltarCamera);
 		this.app.stage.on('pointerupoutside', soltarCamera);
 	}
@@ -87,6 +92,11 @@ export class Camera {
 	private onTouchEnd = (event: TouchEvent) => {
 		if (event.touches.length < 2) this.pinchDistance = 0;
 	};
+	private setPanCursor(cursor: 'grab' | 'grabbing' | '') {
+		this.app.canvas.style.cursor = cursor;
+		this.fundoInterativo.cursor = cursor || 'default';
+	}
+
 	private distance(a: Touch, b: Touch) {
 		return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 	}
@@ -131,6 +141,7 @@ export class Camera {
 		this.app.canvas.removeEventListener('touchend', this.onTouchEnd);
 		this.app.canvas.removeEventListener('touchcancel', this.onTouchEnd);
 		this.app.canvas.removeEventListener('keydown', this.onKeyDown);
+		this.setPanCursor('');
 		this.fundoInterativo.removeAllListeners();
 		this.app.stage.removeAllListeners();
 	}
