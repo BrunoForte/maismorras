@@ -15,6 +15,7 @@
 	import {
 		addSceneEffect,
 		createToken,
+		getSceneToken,
 		createSceneArea,
 		createSceneWall,
 		deleteSceneArea,
@@ -38,6 +39,7 @@
 		type SceneWall,
 		type Scene
 	} from '$lib/services/sceneApi';
+	import { ApiError } from '$lib/services/httpClient';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -195,6 +197,7 @@
 						imageOffsetY: personagem.fotoOffsetY
 					}
 				);
+				sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
 			} catch (error) {
 				persistenceError =
 					error instanceof Error ? error.message : 'Não foi possível salvar a aparência.';
@@ -208,9 +211,7 @@
 				...asPersisted(personagem)
 			});
 			savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
-			sceneSocket?.publishTokenUpdated({
-				token: personagem.persistedId ? asPersisted(personagem) : undefined
-			});
+			sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -225,9 +226,7 @@
 		if (!personagem.persistedId) return;
 		try {
 			await moveToken(session, scene.id, personagem.persistedId, x, y);
-			sceneSocket?.publishTokenUpdated({
-				token: personagem.persistedId ? asPersisted(personagem) : undefined
-			});
+			sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -279,7 +278,7 @@
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
-			sceneSocket?.publishTokenUpdated({ token: { id: persistedId, deleted: true } });
+			sceneSocket?.publishTokenUpdated({ tokenId: persistedId, deleted: true });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -333,6 +332,43 @@
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível carregar os tokens.';
+		}
+	}
+	async function atualizarTokenRecebido(signal?: { tokenId: string; deleted?: boolean }) {
+		if (!signal?.tokenId) return;
+		try {
+			const token = await getSceneToken(session, scene.id, signal.tokenId);
+			const cached = tokenImageCache.get(token.id);
+			const imageUrl =
+				cached?.path === token.imageUrl && cached.expiresAt > Date.now()
+					? (cached.url ?? undefined)
+					: await resolverImagemToken(token.imageUrl);
+			tokenImageCache.set(token.id, {
+				path: token.imageUrl,
+				url: imageUrl ?? null,
+				expiresAt: Date.now() + 45 * 60 * 1000
+			});
+			personagens.update((lista) => {
+				const existing = lista.find((item) => item.persistedId === token.id);
+				const updated = asPersonagem(
+					token,
+					existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1,
+					imageUrl
+				);
+				const next = existing
+					? lista.map((item) => (item.persistedId === token.id ? updated : item))
+					: [...lista, updated];
+				savedSnapshots.set(token.id, JSON.stringify(asPersisted(updated)));
+				return next;
+			});
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 404) {
+				personagens.update((lista) => lista.filter((item) => item.persistedId !== signal.tokenId));
+				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
+				savedSnapshots.delete(signal.tokenId);
+				return;
+			}
+			console.warn('Não foi possível sincronizar o token recebido.', error);
 		}
 	}
 	async function resolverImagemDeFundo(value: string | null) {
@@ -671,30 +707,7 @@
 			undefined,
 			undefined,
 			undefined,
-			(data) => {
-				const token = (
-					data as { token?: { id?: string; x?: number; y?: number; deleted?: boolean } } | undefined
-				)?.token;
-				if (!token?.id) {
-					void carregarTokens();
-					return;
-				}
-				if (token.deleted) {
-					personagens.update((lista) => lista.filter((item) => item.persistedId !== token.id));
-					return;
-				}
-				personagens.update((lista) =>
-					lista.map((item) =>
-						item.persistedId === token.id
-							? {
-									...item,
-									...(token.x === undefined ? {} : { x: token.x }),
-									...(token.y === undefined ? {} : { y: token.y })
-								}
-							: item
-					)
-				);
-			}
+			(signal) => void atualizarTokenRecebido(signal)
 		);
 
 		const unsubscribe = personagens.subscribe((lista) => {
@@ -714,7 +727,7 @@
 						personagens.update((atual) =>
 							atual.map((p) => (p.id === personagem.id ? { ...p, persistedId: token.id } : p))
 						);
-						sceneSocket?.publishTokenUpdated({ token: { id: token.id } });
+						sceneSocket?.publishTokenUpdated({ tokenId: token.id });
 					})
 					.catch((error) => {
 						persistenceError =

@@ -1,6 +1,9 @@
 package realtime
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestOriginPatternsUsesConfiguredHosts(t *testing.T) {
 	got := originPatterns("https://maismorras.vercel.app, http://localhost:5173")
@@ -10,13 +13,24 @@ func TestOriginPatternsUsesConfiguredHosts(t *testing.T) {
 }
 
 func TestEventBroadcastPreservesBoundedData(t *testing.T) {
-	payload := eventBroadcast("token.updated", []byte(`{"id":"token-1","x":4}`))
-	if string(payload) != `{"type":"token.updated","data":{"id":"token-1","x":4}}` {
+	payload := eventBroadcast("overlay.layout.updated", []byte(`{"id":"layout-1"}`))
+	if string(payload) != `{"type":"overlay.layout.updated","data":{"id":"layout-1"}}` {
 		t.Fatalf("unexpected payload: %s", payload)
 	}
-	tooLarge := eventBroadcast("token.updated", make([]byte, 25<<10))
+	tooLarge := eventBroadcast("overlay.layout.updated", make([]byte, 25<<10))
 	if string(tooLarge) == "" || string(tooLarge)[:1] != "{" {
 		t.Fatal("expected valid JSON payload")
 	}
 }
 
+func TestTokenUpdateSignalDoesNotContainTokenFields(t *testing.T) {
+	var input map[string]any
+	payload := tokenUpdateBroadcast("12345678-1234-1234-1234-123456789012", false)
+	if err := json.Unmarshal(payload, &input); err != nil {
+		t.Fatal(err)
+	}
+	data := input["data"].(map[string]any)
+	if len(data) != 2 || data["tokenId"] != "12345678-1234-1234-1234-123456789012" || data["deleted"] != false {
+		t.Fatalf("expected minimal invalidation signal, got %#v", data)
+	}
+}

@@ -122,6 +122,8 @@ export const loadScene = (session: Session, sceneId: string) =>
 		areas: SceneArea[];
 		walls: SceneWall[];
 	}>(session, `/api/v1/scenes/${sceneId}`);
+export const getSceneToken = (session: Session, sceneId: string, tokenId: string) =>
+	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}`);
 export const createSceneArea = (session: Session, sceneId: string, area: Omit<SceneArea, 'id'>) =>
 	request<SceneArea>(session, `/api/v1/scenes/${sceneId}/areas`, {
 		method: 'POST',
@@ -151,7 +153,10 @@ export const interactWithNearbyDoor = (session: Session, sceneId: string) =>
 		method: 'POST'
 	});
 export const getCombat = (session: Session, sceneId: string) =>
-	request<{ activeTokenId: string | null }>(session, `/api/v1/scenes/${sceneId}/combat`);
+	request<{
+		activeTokenId: string | null;
+		initiatives: { tokenId: string; initiative: number }[];
+	}>(session, `/api/v1/scenes/${sceneId}/combat`);
 export const setCombat = (session: Session, sceneId: string, activeTokenId: string | null) =>
 	request<{ activeTokenId: string | null; message?: string }>(
 		session,

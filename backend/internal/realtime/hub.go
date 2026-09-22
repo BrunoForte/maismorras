@@ -154,9 +154,19 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			}
 
 		case "token.updated":
-			// The REST endpoint authorizes the actual movement/update. Any authenticated
-			// scene member may publish the notification so player-owned movement reaches peers.
-			h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
+			// Treat this as an invalidation signal only. Never rebroadcast client-provided
+			// token fields; every recipient fetches its own visibility-filtered REST view.
+			var signal struct {
+				TokenID string `json:"tokenId"`
+				Deleted bool   `json:"deleted"`
+			}
+			if json.Unmarshal(event.Data, &signal) != nil || len(signal.TokenID) != 36 {
+				continue
+			}
+			if signal.Deleted && !peer.canControl {
+				continue
+			}
+			h.hub.broadcast(sceneID, tokenUpdateBroadcast(signal.TokenID, signal.Deleted))
 		case "combat.updated":
 			if peer.canControl {
 				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
@@ -188,6 +198,19 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			h.hub.broadcast(sceneID, payload)
 		}
 	}
+}
+func tokenUpdateBroadcast(tokenID string, deleted bool) []byte {
+	payload, err := json.Marshal(struct {
+		Type string `json:"type"`
+		Data any    `json:"data"`
+	}{Type: "token.updated", Data: struct {
+		TokenID string `json:"tokenId"`
+		Deleted bool   `json:"deleted"`
+	}{TokenID: tokenID, Deleted: deleted}})
+	if err != nil {
+		return []byte(`{"type":"scene.refresh"}`)
+	}
+	return payload
 }
 
 // originPatterns converts the same explicit origins used by HTTP CORS into
@@ -303,4 +326,3 @@ func (h *Hub) broadcast(room string, raw []byte) {
 		}(p)
 	}
 }
-

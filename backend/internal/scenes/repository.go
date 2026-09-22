@@ -40,8 +40,13 @@ type Scene struct {
 }
 
 type CombatState struct {
-	ActiveTokenID *string `json:"activeTokenId"`
-	Message       string  `json:"message,omitempty"`
+	ActiveTokenID *string            `json:"activeTokenId"`
+	Initiatives   []CombatInitiative `json:"initiatives"`
+	Message       string             `json:"message,omitempty"`
+}
+type CombatInitiative struct {
+	TokenID    string `json:"tokenId"`
+	Initiative int    `json:"initiative"`
 }
 
 // InitiativeResult is the authoritative result of an individual initiative
@@ -803,8 +808,23 @@ func (r *Repository) Combat(ctx context.Context, sceneID, userID string) (Combat
 		return CombatState{}, ErrForbidden
 	}
 	var state CombatState
+	state.Initiatives = []CombatInitiative{}
 	if err := r.pool.QueryRow(ctx, `select active_token_id::text from scenes where id=$1`, sceneID).Scan(&state.ActiveTokenID); err != nil {
 		return CombatState{}, err
+	}
+	_, visibleTokens, _, _, _, err := r.Detail(ctx, sceneID, userID)
+	if err != nil {
+		return CombatState{}, err
+	}
+	visible := make(map[string]struct{}, len(visibleTokens))
+	for _, token := range visibleTokens {
+		visible[token.ID] = struct{}{}
+		state.Initiatives = append(state.Initiatives, CombatInitiative{TokenID: token.ID, Initiative: token.Initiative})
+	}
+	if state.ActiveTokenID != nil {
+		if _, ok := visible[*state.ActiveTokenID]; !ok {
+			state.ActiveTokenID = nil
+		}
 	}
 	return state, nil
 }

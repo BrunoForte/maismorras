@@ -64,6 +64,8 @@ jobs:
         run: supabase stop --no-backup
   e2e:
     name: E2E authenticated (optional)
+    outputs:
+      e2e_status: ${{ steps.configure-auth-state.outputs.result == 'skipped' && 'skipped' || steps.run-e2e.outcome }}
     needs: [frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -83,14 +85,17 @@ jobs:
         working-directory: frontend
         run: npm ci
       - name: Configure authenticated storage state
+        id: configure-auth-state
         shell: pwsh
         working-directory: frontend
         run: |
           if ([string]::IsNullOrWhiteSpace($env:E2E_STORAGE_STATE_B64)) {
             "E2E_STORAGE_STATE_B64 not configured; skipping authenticated E2E." | Out-File e2e-skip.txt
+            "result=skipped" >> $env:GITHUB_OUTPUT
             exit 0
           }
           [IO.File]::WriteAllBytes('e2e-storage-state.json', [Convert]::FromBase64String($env:E2E_STORAGE_STATE_B64))
+          "result=configured" >> $env:GITHUB_OUTPUT
           $env:E2E_STORAGE_STATE = (Join-Path (Get-Location) 'e2e-storage-state.json')
           "E2E_STORAGE_STATE=$env:E2E_STORAGE_STATE" | Out-File $env:GITHUB_ENV -Append
           if (-not [string]::IsNullOrWhiteSpace($env:E2E_PLAYER_STORAGE_STATE_B64)) {
@@ -98,6 +103,7 @@ jobs:
             "E2E_PLAYER_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-player-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
           }
       - name: Run Playwright E2E
+        id: run-e2e
         shell: pwsh
         working-directory: frontend
         run: |
@@ -109,6 +115,18 @@ jobs:
         shell: pwsh
         working-directory: frontend
         run: Remove-Item -Force -ErrorAction SilentlyContinue e2e-storage-state.json, e2e-player-storage-state.json
+      - name: Report authenticated E2E status
+        if: always()
+        shell: pwsh
+        env:
+          E2E_CONFIGURED: ${{ steps.configure-auth-state.outputs.result }}
+          E2E_OUTCOME: ${{ steps.run-e2e.outcome }}
+        run: |
+          if ($env:E2E_CONFIGURED -eq 'skipped') {
+            "### Authenticated E2E: SKIPPED`n`n`E2E_STORAGE_STATE_B64` is not configured; no authenticated browser tests ran." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "### Authenticated E2E: $($env:E2E_OUTCOME.ToUpperInvariant())" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
   verify-migrations:
     name: Require latest Supabase migration applied
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
@@ -140,6 +158,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      statuses: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -268,6 +287,7 @@ jobs:
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.deployment_url }}
           VERCEL_HEALTH: ${{ steps.verify-vercel.outputs.http_status }}
           COMMIT_SHA: ${{ github.sha }}
+          E2E_STATUS: ${{ needs.e2e.outputs.e2e_status }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           $summary = @"
@@ -278,8 +298,40 @@ jobs:
           | Cloud Run | $env:CLOUD_RUN_OUTCOME | $env:CLOUD_RUN_URL | $env:CLOUD_RUN_REVISION / HTTP $env:CLOUD_RUN_HEALTH |
           | Vercel | $env:VERCEL_OUTCOME | $env:VERCEL_DEPLOYMENT_URL | produção: https://maismorras.vercel.app / HTTP $env:VERCEL_HEALTH |
 
+          Authenticated E2E: **$env:E2E_STATUS**
+
           Commit: $env:COMMIT_SHA
           [Execução completa do workflow]($env:RUN_URL)
           "@
           $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
+      - name: Publish deploy status to commit
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CLOUD_RUN_OUTCOME: ${{ steps.cloud-run.outcome }}
+          CLOUD_RUN_HEALTH: ${{ steps.verify-cloud-run.outputs.http_status }}
+          VERCEL_OUTCOME: ${{ steps.deploy-vercel.outcome }}
+          VERCEL_HEALTH: ${{ steps.verify-vercel.outputs.http_status }}
+        run: |
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $endpoint = "https://api.github.com/repos/$env:GH_REPOSITORY/statuses/$env:COMMIT_SHA"
+          $checks = @(
+            @{ context = 'deploy/cloud-run'; outcome = $env:CLOUD_RUN_OUTCOME; health = $env:CLOUD_RUN_HEALTH },
+            @{ context = 'deploy/vercel'; outcome = $env:VERCEL_OUTCOME; health = $env:VERCEL_HEALTH }
+          )
+          foreach ($check in $checks) {
+            $success = $check.outcome -eq 'success' -and $check.health -eq '200'
+            $state = if ($success) { 'success' } else { 'failure' }
+            $description = if ($success) { "Deploy e health check OK (HTTP $($check.health))" } else { "Deploy/health check falhou (etapa: $($check.outcome), HTTP $($check.health))" }
+            $body = @{ state = $state; context = $check.context; description = $description; target_url = $env:RUN_URL } | ConvertTo-Json
+            Invoke-RestMethod -Method Post -Uri $endpoint -Headers $headers -ContentType 'application/json' -Body $body | Out-Null
+          }

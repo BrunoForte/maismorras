@@ -66,6 +66,21 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas, "walls": walls})
 }
+func (h *Handler) TokenDetail(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	_, tokens, _, _, _, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	tokenID := r.PathValue("tokenID")
+	for _, token := range tokens {
+		if token.ID == tokenID {
+			return write(w, http.StatusOK, token)
+		}
+	}
+	// Hidden or out-of-vision tokens are indistinguishable from deleted tokens.
+	return apperror.NotFound("TOKEN_NOT_FOUND", "Token não encontrado.")
+}
 func (h *Handler) GetOverlaySettings(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	settings, err := h.repo.GetOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID)

@@ -34,6 +34,12 @@
 		try {
 			const combat = await getCombat(session, sceneId);
 			activeTokenId = combat.activeTokenId;
+			const values = new Map(combat.initiatives.map((item) => [item.tokenId, item.initiative]));
+			$personagens = $personagens.map((token) =>
+				token.persistedId && values.has(token.persistedId)
+					? { ...token, iniciativa: values.get(token.persistedId)! }
+					: token
+			);
 		} catch (error) {
 			console.error('Falha ao carregar turno:', error);
 		}
@@ -42,7 +48,18 @@
 		$turnoAtualId = combatants.find((token) => token.persistedId === activeTokenId)?.id ?? null;
 	});
 	onMount(() => {
-		sceneSocket = connectSceneSocket(session, sceneId, () => void syncCombat());
+		sceneSocket = connectSceneSocket(
+			session,
+			sceneId,
+			() => void syncCombat(),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => void syncCombat()
+		);
 		void syncCombat();
 		return () => {
 			sceneSocket?.close();
@@ -118,7 +135,7 @@
 				item.persistedId === result.tokenId ? { ...item, iniciativa: result.initiative } : item
 			);
 			$chatMensagens = await loadMessages(session, campaignId);
-			sceneSocket?.publishCombatUpdated();
+			sceneSocket?.publishTokenUpdated({ tokenId: result.tokenId });
 		} finally {
 			rollingInitiative = false;
 		}
