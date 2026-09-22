@@ -607,6 +607,54 @@
 		box-sizing: border-box;
 		max-width: 100%;
 	}
+	.overlay-editor button {
+		border: 1px solid #765d3d;
+		border-radius: 7px;
+		padding: 0.52rem 0.75rem;
+		color: #edc77f;
+		background: #2b211e;
+		font: inherit;
+		font-size: 0.74rem;
+		font-weight: 750;
+		cursor: pointer;
+		transition:
+			background 0.16s ease,
+			border-color 0.16s ease,
+			op 0.16s ease;
+	}
+	.overlay-editor button:hover:not(:disabled) {
+		border-color: #d8ad67;
+		background: #3a2920;
+	}
+	.overlay-editor button:focus-visible {
+		outline: 2px solid #f0cb85;
+		outline-offset: 2px;
+	}
+	.overlay-editor button:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+	.overlay-editor .primary-button {
+		border-color: #e0b86f;
+		color: #26190e;
+		background: #e0b86f;
+	}
+	.overlay-editor .primary-button:hover:not(:disabled) {
+		border-color: #f4d796;
+		background: #f4d796;
+	}
+	.overlay-editor .secondary-button {
+		background: #2b211e;
+	}
+	.overlay-editor .secondary-button.danger {
+		border-color: #8f5049;
+		color: #efaaa0;
+		background: rgba(105, 45, 34, 0.22);
+	}
+	.overlay-editor .secondary-button.danger:hover:not(:disabled) {
+		border-color: #d77c6f;
+		background: rgba(105, 45, 34, 0.42);
+	}
 	.overlay-editor {
 		min-width: 0;
 		border: 1px solid #3a312e;

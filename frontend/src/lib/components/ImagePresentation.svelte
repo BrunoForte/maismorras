@@ -142,4 +142,26 @@
 			transform: scale(1);
 		}
 	}
+
+	@media (max-width: 600px) {
+		.presentation-backdrop {
+			padding: 0.5rem;
+		}
+		figure {
+			max-width: 96vw;
+			max-height: calc(100dvh - 1rem);
+		}
+		img {
+			max-width: 96vw;
+			max-height: 78vh;
+			border-radius: 8px;
+		}
+		figcaption {
+			max-width: 96vw;
+			overflow: hidden;
+			font-size: 0.9rem;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
 </style>

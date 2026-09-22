@@ -220,4 +220,27 @@
 		color: #f0d8aa;
 		font-size: 0.8rem;
 	}
+
+	@media (max-width: 600px) {
+		.back {
+			padding: 0.5rem;
+		}
+		section {
+			max-height: calc(100dvh - 1rem);
+			border-radius: 10px;
+		}
+		header,
+		footer,
+		form,
+		main {
+			padding: 0.75rem;
+		}
+		form div {
+			align-items: stretch;
+			flex-direction: column;
+		}
+		form button {
+			width: 100%;
+		}
+	}
 </style>

@@ -301,4 +301,34 @@
 		color: #f0d8aa;
 		font-size: 0.8rem;
 	}
+
+	@media (max-width: 600px) {
+		.backdrop {
+			padding: 0.5rem;
+		}
+		.panel {
+			max-height: calc(100dvh - 1rem);
+			border-radius: 10px;
+			display: flex;
+			flex-direction: column;
+		}
+		.body {
+			min-height: 0;
+			max-height: none;
+			flex: 1;
+			padding: 0.75rem;
+		}
+		header {
+			padding: 0.75rem 1rem;
+		}
+		article {
+			align-items: flex-start;
+		}
+		.place {
+			margin-left: auto;
+		}
+		footer {
+			padding: 0.65rem 0.75rem;
+		}
+	}
 </style>
