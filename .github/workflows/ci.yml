@@ -71,6 +71,7 @@ jobs:
     timeout-minutes: 15
     env:
       E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://maismorras.vercel.app' }}
+      E2E_API_BASE: ${{ vars.E2E_API_BASE || 'https://maismorras-api-454646414754.southamerica-east1.run.app' }}
       E2E_STORAGE_STATE_B64: ${{ secrets.E2E_STORAGE_STATE_B64 }}
       E2E_SCENE_URL: ${{ vars.E2E_SCENE_URL }}
       E2E_PLAYER_STORAGE_STATE_B64: ${{ secrets.E2E_PLAYER_STORAGE_STATE_B64 }}
