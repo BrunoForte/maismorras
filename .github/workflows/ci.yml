@@ -66,14 +66,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:SUPABASE_ACCESS_TOKEN) -or
-              [string]::IsNullOrWhiteSpace($env:SUPABASE_PROJECT_REF) -or
-              [string]::IsNullOrWhiteSpace($env:SUPABASE_DB_PASSWORD)) {
-            throw 'Configure SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF and SUPABASE_DB_PASSWORD in GitHub Actions secrets.'
+              [string]::IsNullOrWhiteSpace($env:SUPABASE_PROJECT_REF)) {
+            throw 'Configure SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF in GitHub Actions secrets.'
           }
-          supabase link --project-ref $env:SUPABASE_PROJECT_REF --password $env:SUPABASE_DB_PASSWORD
+          # Without an explicit password, the CLI uses its temporary cli_login_postgres role.
+          supabase link --project-ref $env:SUPABASE_PROJECT_REF
           supabase db push --linked --yes
 
   deploy-production:
