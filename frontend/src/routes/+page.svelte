@@ -109,6 +109,9 @@
 	let activeScene = $state<Scene | null>(null);
 	let campaignName = $state('');
 	let campaignSystem = $state<'dnd2024'>('dnd2024');
+	let campaignCreateOpen = $state(false);
+	let campaignFilter = $state('');
+	let campaignSystemFilter = $state<'all' | 'dnd2024'>('all');
 	let loadingCampaigns = $state(false);
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
@@ -391,6 +394,7 @@
 			};
 			campaigns = [campaign, ...campaigns];
 			campaignName = '';
+			campaignCreateOpen = false;
 			await openCampaign(campaign);
 		} catch (err) {
 			error =
@@ -1110,43 +1114,86 @@
 					<div class="hero-die" aria-hidden="true">⌘</div>
 				</section>
 				{#if error}<p class="error">{error}</p>{/if}
-				<form
-					class="create-campaign"
-					onsubmit={(e) => {
-						e.preventDefault();
-						void createCampaign();
-					}}
-				>
-					<label for="campaign-name"
-						>{$appLocale === 'en' ? 'Create a new table' : 'Criar uma nova mesa'}</label
-					>
-					<div>
+				<div class="campaign-toolbar">
+					<label class="campaign-filter" for="campaign-filter">
+						<span>{$appLocale === 'en' ? 'Filter tables' : 'Filtrar mesas'}</span>
 						<input
-							id="campaign-name"
-							bind:value={campaignName}
-							maxlength="120"
-							placeholder={$appLocale === 'en'
-								? 'E.g. The Spider City'
-								: 'Ex.: A Cidade das Aranhas'}
+							id="campaign-filter"
+							bind:value={campaignFilter}
+							placeholder={$appLocale === 'en' ? 'Search by name' : 'Buscar por nome'}
 						/>
-						<select
-							bind:value={campaignSystem}
-							aria-label={$appLocale === 'en' ? 'Game system' : 'Sistema de jogo'}
-						>
+					</label>
+					<label class="campaign-filter campaign-system-filter" for="campaign-system-filter">
+						<span>{$appLocale === 'en' ? 'System' : 'Sistema'}</span>
+						<select id="campaign-system-filter" bind:value={campaignSystemFilter}>
+							<option value="all"
+								>{$appLocale === 'en' ? 'All systems' : 'Todos os sistemas'}</option
+							>
 							<option value="dnd2024">D&D 2024</option>
 						</select>
-						<button class="primary-button">
-							>{$appLocale === 'en' ? 'Create table' : 'Criar mesa'}
-							<span aria-hidden="true">→</span></button
-						>
-					</div>
-				</form>
+					</label>
+					<button
+						class="primary-button new-campaign-button"
+						type="button"
+						onclick={() => (campaignCreateOpen = true)}
+					>
+						+ {$appLocale === 'en' ? 'New table' : 'Nova mesa'}
+					</button>
+				</div>
+				{#if campaignCreateOpen}<form
+						class="create-campaign"
+						onsubmit={(e) => {
+							e.preventDefault();
+							void createCampaign();
+						}}
+					>
+						<div class="create-campaign-heading">
+							<label for="campaign-name"
+								>{$appLocale === 'en' ? 'Create a new table' : 'Criar uma nova mesa'}</label
+							>
+							<button
+								class="text-button"
+								type="button"
+								onclick={() => (campaignCreateOpen = false)}
+							>
+								{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}
+							</button>
+						</div>
+						<div>
+							<input
+								id="campaign-name"
+								bind:value={campaignName}
+								maxlength="120"
+								placeholder={$appLocale === 'en'
+									? 'E.g. The Spider City'
+									: 'Ex.: A Cidade das Aranhas'}
+							/>
+							<select
+								bind:value={campaignSystem}
+								aria-label={$appLocale === 'en' ? 'Game system' : 'Sistema de jogo'}
+							>
+								<option value="dnd2024">D&D 2024</option>
+							</select>
+							<button class="primary-button">
+								{$appLocale === 'en' ? 'Create table' : 'Criar mesa'}
+								<span aria-hidden="true">→</span>
+							</button>
+						</div>
+					</form>{/if}
 				<section class="campaign-section">
 					<div class="section-heading">
 						<h2>{$appLocale === 'en' ? 'Your tables' : 'Suas mesas'}</h2>
 						<span
-							>{campaigns.length}
-							{campaigns.length === 1
+							>{campaigns.filter(
+								(campaign) =>
+									campaign.name.toLowerCase().includes(campaignFilter.trim().toLowerCase()) &&
+									(campaignSystemFilter === 'all' || campaign.systemId === campaignSystemFilter)
+							).length}
+							{campaigns.filter(
+								(campaign) =>
+									campaign.name.toLowerCase().includes(campaignFilter.trim().toLowerCase()) &&
+									(campaignSystemFilter === 'all' || campaign.systemId === campaignSystemFilter)
+							).length === 1
 								? $appLocale === 'en'
 									? 'campaign'
 									: 'campanha'
@@ -1166,11 +1213,43 @@
 							</h3>
 							<p>
 								{$appLocale === 'en'
-									? 'Create a table above to invite your group.'
-									: 'Crie uma mesa acima para convidar seu grupo.'}
+									? 'Use the New table button to invite your group.'
+									: 'Use o botão Nova mesa para convidar seu grupo.'}
 							</p>
+						</div>{:else if campaigns.filter((campaign) => campaign.name
+								.toLowerCase()
+								.includes(campaignFilter
+										.trim()
+										.toLowerCase()) && (campaignSystemFilter === 'all' || campaign.systemId === campaignSystemFilter)).length === 0}<div
+							class="empty-state"
+						>
+							<div>⌕</div>
+							<h3>
+								{$appLocale === 'en' ? 'No tables found.' : 'Nenhuma mesa encontrada.'}
+							</h3>
+							<p>
+								{$appLocale === 'en'
+									? 'Try another name or clear the filter.'
+									: 'Tente outro nome ou limpe o filtro.'}
+							</p>
+							<button
+								class="secondary-button"
+								type="button"
+								onclick={() => {
+									campaignFilter = '';
+									campaignSystemFilter = 'all';
+								}}
+							>
+								{$appLocale === 'en' ? 'Clear filter' : 'Limpar filtro'}
+							</button>
 						</div>{:else}<div class="campaign-list">
-							{#each campaigns as campaign (campaign.id)}<div class="campaign">
+							{#each campaigns.filter((campaign) => campaign.name
+										.toLowerCase()
+										.includes(campaignFilter
+												.trim()
+												.toLowerCase()) && (campaignSystemFilter === 'all' || campaign.systemId === campaignSystemFilter)) as campaign (campaign.id)}<div
+									class="campaign"
+								>
 									<button class="campaign-open" onclick={() => void openCampaign(campaign)}
 										><span class="campaign-emblem">{campaign.name.slice(0, 1).toUpperCase()}</span
 										><span class="campaign-info"
@@ -1183,6 +1262,9 @@
 														? 'You play in this campaign'
 														: 'Você participa desta campanha'}</small
 											></span
+										><span class="system-badge"
+											>{campaign.systemId === 'dnd2024' ? 'D&D 2024' : campaign.systemId}</span
+										>
 										><span class="role-badge {campaign.role}"
 											>{campaign.role === 'gm'
 												? $appLocale === 'en'
@@ -1580,6 +1662,51 @@
 			2.4rem Georgia,
 			serif;
 	}
+	.campaign-toolbar {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1rem;
+		margin: 2rem 0 1rem;
+	}
+	.campaign-filter {
+		display: grid;
+		gap: 0.45rem;
+		flex: 1;
+		max-width: 520px;
+		color: #a99e94;
+		font-size: 0.78rem;
+		font-weight: 650;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.campaign-system-filter {
+		flex: 0 0 190px;
+		max-width: 220px;
+	}
+	.campaign-filter input,
+	.campaign-filter select {
+		width: 100%;
+		border: 1px solid #51443a;
+		border-radius: 8px;
+		padding: 0.78rem 0.9rem;
+		color: #f6eee4;
+		background: #151216;
+		font: inherit;
+		font-size: 0.95rem;
+		font-weight: 400;
+		letter-spacing: normal;
+		text-transform: none;
+	}
+	.create-campaign-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.create-campaign-heading .text-button {
+		margin: 0;
+	}
 	.create-campaign {
 		margin: 2rem 0 3.5rem;
 		padding: 1.25rem;
@@ -1712,6 +1839,19 @@
 	.campaign-info small {
 		color: #978b81;
 		font-size: 0.78rem;
+	}
+	.system-badge {
+		display: inline-flex;
+		align-items: center;
+		width: fit-content;
+		padding: 0.3rem 0.52rem;
+		border: 1px solid #65533b;
+		border-radius: 999px;
+		color: #d8bd8d;
+		background: rgba(119, 75, 32, 0.1);
+		font-size: 0.7rem;
+		font-weight: 700;
+		white-space: nowrap;
 	}
 	.role-badge {
 		display: inline-flex;
@@ -2152,6 +2292,20 @@
 			width: 70px;
 			height: 70px;
 			font-size: 1.8rem;
+		}
+		.campaign-toolbar {
+			align-items: stretch;
+			flex-direction: column;
+			margin-top: 1.25rem;
+		}
+		.campaign-filter {
+			max-width: none;
+		}
+		.campaign-system-filter {
+			flex-basis: auto;
+		}
+		.new-campaign-button {
+			width: 100%;
 		}
 		.create-campaign > div {
 			flex-direction: column;

@@ -107,6 +107,11 @@ jobs:
               [string]::IsNullOrWhiteSpace($env:CLOUD_RUN_SERVICE)) {
             throw 'Configure GCP_PROJECT_ID and CLOUD_RUN_SERVICE in GitHub Actions secrets.'
           }
+          # Refuse to create an unexpected Cloud Run service when the target name is wrong.
+          $existingService = gcloud run services describe $env:CLOUD_RUN_SERVICE --project $env:GCP_PROJECT_ID --region $env:GCP_REGION --format="value(metadata.name)" 2>$null
+          if ([string]::IsNullOrWhiteSpace($existingService)) {
+            throw "Cloud Run service '$($env:CLOUD_RUN_SERVICE)' was not found in $($env:GCP_PROJECT_ID)/$($env:GCP_REGION). Refusing to create a new service."
+          }
           gcloud run deploy $env:CLOUD_RUN_SERVICE `
             --source backend `
             --project $env:GCP_PROJECT_ID `
@@ -135,7 +140,6 @@ jobs:
 
       - name: Build and publish frontend to Vercel
         shell: pwsh
-        working-directory: frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
