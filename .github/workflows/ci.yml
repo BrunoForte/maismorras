@@ -153,6 +153,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Redeploy backend to Cloud Run
+        id: cloud-run
         shell: pwsh
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -175,11 +176,26 @@ jobs:
             --no-use-http2 `
             --timeout 3600 `
             --quiet
+          if ($LASTEXITCODE -ne 0) {
+            throw "Cloud Run deploy failed with exit code $LASTEXITCODE."
+          }
+          $serviceInfo = gcloud run services describe $env:CLOUD_RUN_SERVICE --project $env:GCP_PROJECT_ID --region $env:GCP_REGION --format=json | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not read the deployed Cloud Run service metadata.'
+          }
+          $serviceUrl = $serviceInfo.status.url
+          $revision = $serviceInfo.status.latestReadyRevisionName
+          if ([string]::IsNullOrWhiteSpace($serviceUrl) -or [string]::IsNullOrWhiteSpace($revision)) {
+            throw 'Cloud Run did not report a ready revision and service URL after deployment.'
+          }
+          "service_url=$serviceUrl" >> $env:GITHUB_OUTPUT
+          "revision=$revision" >> $env:GITHUB_OUTPUT
 
       - name: Verify Cloud Run health
+        id: verify-cloud-run
         shell: pwsh
         env:
-          BACKEND_URL: https://maismorras-api-454646414754.southamerica-east1.run.app
+          BACKEND_URL: ${{ steps.cloud-run.outputs.service_url }}
         run: |
           $response = Invoke-WebRequest -Uri "$env:BACKEND_URL/health" -UseBasicParsing
           if ($response.StatusCode -ne 200) {
@@ -189,12 +205,14 @@ jobs:
           if ($payload.status -ne 'ok') {
             throw "Unexpected Cloud Run health payload: $($response.Content)"
           }
+          "http_status=$($response.StatusCode)" >> $env:GITHUB_OUTPUT
 
       - name: Install Vercel CLI
         shell: pwsh
         run: npm install --global vercel@48.1.2
 
       - name: Build and publish frontend to Vercel
+        id: deploy-vercel
         shell: pwsh
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -214,5 +232,54 @@ jobs:
           vercel link --yes --project $env:VERCEL_PROJECT_ID --scope $env:VERCEL_ORG_ID --token $env:VERCEL_TOKEN
           vercel pull --yes --environment=production --token $env:VERCEL_TOKEN
           # Let Vercel build remotely to avoid local shell/runtime differences in CI
-          vercel deploy --prod --token $env:VERCEL_TOKEN
+          $deployOutput = vercel deploy --prod --yes --token $env:VERCEL_TOKEN 2>&1
+          $deployExitCode = $LASTEXITCODE
+          $deployOutput | ForEach-Object { Write-Host $_ }
+          if ($deployExitCode -ne 0) {
+            throw "Vercel production deployment failed with exit code $deployExitCode."
+          }
+          $urls = [regex]::Matches(($deployOutput -join [Environment]::NewLine), 'https://[a-zA-Z0-9.-]+\.vercel\.app')
+          if ($urls.Count -eq 0) {
+            throw 'Vercel CLI succeeded but did not return a deployment URL.'
+          }
+          "deployment_url=$($urls[$urls.Count - 1].Value)" >> $env:GITHUB_OUTPUT
+
+      - name: Verify Vercel production URL
+        id: verify-vercel
+        shell: pwsh
+        env:
+          FRONTEND_URL: https://maismorras.vercel.app
+        run: |
+          $response = Invoke-WebRequest -Uri $env:FRONTEND_URL -UseBasicParsing
+          if ($response.StatusCode -ne 200) {
+            throw "Vercel production URL returned HTTP $($response.StatusCode)."
+          }
+          "http_status=$($response.StatusCode)" >> $env:GITHUB_OUTPUT
+
+      - name: Add deployment summary
+        if: always()
+        shell: pwsh
+        env:
+          CLOUD_RUN_OUTCOME: ${{ steps.cloud-run.outcome }}
+          CLOUD_RUN_URL: ${{ steps.cloud-run.outputs.service_url }}
+          CLOUD_RUN_REVISION: ${{ steps.cloud-run.outputs.revision }}
+          CLOUD_RUN_HEALTH: ${{ steps.verify-cloud-run.outputs.http_status }}
+          VERCEL_OUTCOME: ${{ steps.deploy-vercel.outcome }}
+          VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.deployment_url }}
+          VERCEL_HEALTH: ${{ steps.verify-vercel.outputs.http_status }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          $summary = @"
+          ## Produção — resumo do deploy
+
+          | Serviço | Resultado | URL | Revisão / health |
+          | --- | --- | --- | --- |
+          | Cloud Run | $env:CLOUD_RUN_OUTCOME | $env:CLOUD_RUN_URL | $env:CLOUD_RUN_REVISION / HTTP $env:CLOUD_RUN_HEALTH |
+          | Vercel | $env:VERCEL_OUTCOME | $env:VERCEL_DEPLOYMENT_URL | produção: https://maismorras.vercel.app / HTTP $env:VERCEL_HEALTH |
+
+          Commit: $env:COMMIT_SHA
+          [Execução completa do workflow]($env:RUN_URL)
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
