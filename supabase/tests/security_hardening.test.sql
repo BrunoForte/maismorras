@@ -1,0 +1,11 @@
+begin;
+select plan(7);
+select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
+select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
+select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
+select ok(not has_table_privilege('authenticated', 'public.scene_tokens', 'UPDATE'), 'authenticated cannot directly update tokens');
+select ok(not has_table_privilege('authenticated', 'public.actors', 'UPDATE'), 'authenticated cannot directly update actors');
+select ok(not has_table_privilege('authenticated', 'public.campaign_invites', 'INSERT'), 'authenticated cannot directly create invites');
+select ok(not has_table_privilege('authenticated', 'public.scene_token_turn_movement', 'UPDATE'), 'authenticated cannot directly rewrite movement');
+select * from finish();
+rollback;

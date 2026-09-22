@@ -670,6 +670,7 @@
 			updateTokenFallback,
 			undefined,
 			undefined,
+			undefined,
 			(data) => {
 				const token = (
 					data as { token?: { id?: string; x?: number; y?: number; deleted?: boolean } } | undefined

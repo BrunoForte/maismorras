@@ -31,19 +31,33 @@ if ($LASTEXITCODE -ne 0) {
     throw "Não foi possível vincular o projeto Supabase: $($linkOutput | Out-String)"
 }
 
-$lines = & supabase migration list --linked 2>&1
-if ($LASTEXITCODE -ne 0) {
-    throw "Não foi possível consultar o histórico remoto de migrations: $($lines | Out-String)"
-}
-
-$listing = $lines -join [Environment]::NewLine
-$unapplied = @(
-    $localVersions | Where-Object {
-        $pattern = "(?<!\d)$([regex]::Escape($_))(?!\d)"
-        [regex]::Matches($listing, $pattern).Count -lt 2
+$maxWaitMinutes = 8
+$deadline = [DateTimeOffset]::UtcNow.AddMinutes($maxWaitMinutes)
+$pollIntervalSeconds = 10
+$attempt = 0
+while ($true) {
+    $attempt++
+    $lines = & supabase migration list --linked 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Não foi possível consultar o histórico remoto de migrations: $($lines | Out-String)"
     }
-)
-if ($unapplied.Count -gt 0) {
-    throw "Deploy bloqueado: estas migrations locais não aparecem como aplicadas nos lados local e remoto da CLI: $($unapplied -join ', '). Saída recebida:`n$($listing)"
+    $listing = $lines -join [Environment]::NewLine
+    $unapplied = @(
+        $localVersions | Where-Object {
+            $pattern = "(?<!\d)$([regex]::Escape($_))(?!\d)"
+            [regex]::Matches($listing, $pattern).Count -lt 2
+        }
+    )
+    if ($unapplied.Count -eq 0) {
+        Write-Host "Migrations validadas: $latestLocal está aplicada no projeto remoto $ProjectRef."
+        exit 0
+    }
+    $remainingSeconds = ($deadline - [DateTimeOffset]::UtcNow).TotalSeconds
+    if ($remainingSeconds -le 0) {
+        throw "Tempo limite de $maxWaitMinutes minuto(s): migrations ainda não aplicadas: $($unapplied -join ', '). Última saída:`n$($listing)"
+    }
+    Write-Host "Aguardando a integração Supabase aplicar $($unapplied -join ', ') (tentativa $attempt; próxima consulta em $pollIntervalSeconds s)."
+    $sleepSeconds = [int][Math]::Min($pollIntervalSeconds, [Math]::Ceiling($remainingSeconds))
+    Start-Sleep -Seconds $sleepSeconds
+    $pollIntervalSeconds = [Math]::Min($pollIntervalSeconds * 2, 30)
 }
-Write-Host "Migration mais recente validada: $latestLocal (aplicada no projeto remoto $ProjectRef)."

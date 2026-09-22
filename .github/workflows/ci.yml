@@ -49,6 +49,19 @@ jobs:
       - run: npm test -- --run
       - run: npm run build
 
+  database-security:
+    name: Supabase migrations and RLS tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start
+      - run: supabase test db
+      - if: always()
+        run: supabase stop --no-backup
   e2e:
     name: E2E authenticated (optional)
     needs: [frontend]
@@ -57,6 +70,8 @@ jobs:
     env:
       E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://maismorras.vercel.app' }}
       E2E_STORAGE_STATE_B64: ${{ secrets.E2E_STORAGE_STATE_B64 }}
+      E2E_SCENE_URL: ${{ vars.E2E_SCENE_URL }}
+      E2E_PLAYER_STORAGE_STATE_B64: ${{ secrets.E2E_PLAYER_STORAGE_STATE_B64 }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -78,6 +93,10 @@ jobs:
           [IO.File]::WriteAllBytes('e2e-storage-state.json', [Convert]::FromBase64String($env:E2E_STORAGE_STATE_B64))
           $env:E2E_STORAGE_STATE = (Join-Path (Get-Location) 'e2e-storage-state.json')
           "E2E_STORAGE_STATE=$env:E2E_STORAGE_STATE" | Out-File $env:GITHUB_ENV -Append
+          if (-not [string]::IsNullOrWhiteSpace($env:E2E_PLAYER_STORAGE_STATE_B64)) {
+            [IO.File]::WriteAllBytes('e2e-player-storage-state.json', [Convert]::FromBase64String($env:E2E_PLAYER_STORAGE_STATE_B64))
+            "E2E_PLAYER_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-player-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
+          }
       - name: Run Playwright E2E
         shell: pwsh
         working-directory: frontend
@@ -89,12 +108,12 @@ jobs:
         if: always()
         shell: pwsh
         working-directory: frontend
-        run: Remove-Item -Force -ErrorAction SilentlyContinue e2e-storage-state.json
+        run: Remove-Item -Force -ErrorAction SilentlyContinue e2e-storage-state.json, e2e-player-storage-state.json
   verify-migrations:
     name: Require latest Supabase migration applied
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -105,7 +124,7 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Require remote migration history to match repository
+      - name: Wait for remote migration history to converge
         shell: pwsh
         run: |
           if ([string]::IsNullOrWhiteSpace($env:SUPABASE_ACCESS_TOKEN) -or [string]::IsNullOrWhiteSpace($env:SUPABASE_PROJECT_REF) -or [string]::IsNullOrWhiteSpace($env:SUPABASE_DB_PASSWORD)) {
@@ -115,7 +134,7 @@ jobs:
   deploy-production:
     name: Deploy production (Cloud Run → Vercel)
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-    needs: [backend, frontend, e2e, verify-migrations]
+    needs: [backend, frontend, database-security, e2e, verify-migrations]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

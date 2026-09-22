@@ -50,7 +50,6 @@ class SharedSceneConnection {
 		| TokenUpdated
 		| CombatUpdated
 		| ChatUpdated
-		| ChatUpdated
 		| MapPing
 	)[] = [];
 	private readonly url: URL;
