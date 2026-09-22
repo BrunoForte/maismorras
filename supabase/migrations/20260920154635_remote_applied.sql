@@ -1,0 +1,1 @@
+-- Migration 20260920154635 was already applied in the remote Supabase project.`r`n-- Kept locally to reconcile the migration history.
