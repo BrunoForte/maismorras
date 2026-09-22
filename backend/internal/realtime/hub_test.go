@@ -8,3 +8,15 @@ func TestOriginPatternsUsesConfiguredHosts(t *testing.T) {
 		t.Fatalf("origin patterns = %#v", got)
 	}
 }
+
+func TestEventBroadcastPreservesBoundedData(t *testing.T) {
+	payload := eventBroadcast("token.updated", []byte(`{"id":"token-1","x":4}`))
+	if string(payload) != `{"type":"token.updated","data":{"id":"token-1","x":4}}` {
+		t.Fatalf("unexpected payload: %s", payload)
+	}
+	tooLarge := eventBroadcast("token.updated", make([]byte, 25<<10))
+	if string(tooLarge) == "" || string(tooLarge)[:1] != "{" {
+		t.Fatal("expected valid JSON payload")
+	}
+}
+

@@ -28,7 +28,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("cloud_run_revision", os.Getenv("K_REVISION"), "service", os.Getenv("K_SERVICE"))
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("database connection failed", "error", err)
@@ -69,3 +69,4 @@ func main() {
 		logger.Error("graceful shutdown failed", "error", err)
 	}
 }
+

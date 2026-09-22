@@ -88,7 +88,7 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	if strings.HasPrefix(out.SignedURL, "/") {
 		out.SignedURL = h.cfg.SupabaseURL + "/storage/v1" + out.SignedURL
 	}
-	return write(w, http.StatusOK, map[string]string{"url": out.SignedURL})
+	return write(w, http.StatusOK, map[string]any{"url": out.SignedURL, "expiresAt": time.Now().Add(55 * time.Minute).Unix()})
 }
 func isAudioPath(value string) bool {
 	value = strings.ToLower(value)
@@ -105,3 +105,4 @@ func write(w http.ResponseWriter, status int, value any) error {
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(value)
 }
+

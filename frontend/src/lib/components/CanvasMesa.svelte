@@ -208,7 +208,7 @@
 				...asPersisted(personagem)
 			});
 			savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
-			sceneSocket?.publishTokenUpdated();
+            sceneSocket?.publishTokenUpdated({ token: personagem.persistedId ? asPersisted(personagem) : undefined });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -223,7 +223,7 @@
 		if (!personagem.persistedId) return;
 		try {
 			await moveToken(session, scene.id, personagem.persistedId, x, y);
-			sceneSocket?.publishTokenUpdated();
+            sceneSocket?.publishTokenUpdated({ token: personagem.persistedId ? asPersisted(personagem) : undefined });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -275,7 +275,7 @@
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
-			sceneSocket?.publishTokenUpdated();
+            sceneSocket?.publishTokenUpdated({ token: { id: persistedId, deleted: true } });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -666,7 +666,12 @@
 			updateTokenFallback,
 			undefined,
 			undefined,
-			() => void carregarTokens()
+			(data) => {
+				const token = (data as { token?: { id?: string; x?: number; y?: number; deleted?: boolean } } | undefined)?.token;
+				if (!token?.id) { void carregarTokens(); return; }
+				if (token.deleted) { personagens.update((lista) => lista.filter((item) => item.persistedId !== token.id)); return; }
+				personagens.update((lista) => lista.map((item) => item.persistedId === token.id ? { ...item, ...(token.x === undefined ? {} : { x: token.x }), ...(token.y === undefined ? {} : { y: token.y }) } : item));
+			}
 		);
 
 		const unsubscribe = personagens.subscribe((lista) => {
@@ -686,7 +691,7 @@
 						personagens.update((atual) =>
 							atual.map((p) => (p.id === personagem.id ? { ...p, persistedId: token.id } : p))
 						);
-						sceneSocket?.publishTokenUpdated();
+                        sceneSocket?.publishTokenUpdated({ token: { id: token.id } });
 					})
 					.catch((error) => {
 						persistenceError =
@@ -2132,3 +2137,6 @@
 		}
 	}
 </style>
+
+
+

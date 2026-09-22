@@ -1,0 +1,4 @@
+drop policy if exists notes_member_select on public.notes;
+create policy notes_member_select on public.notes for select to authenticated using (exists (select 1 from public.campaign_members m where m.campaign_id = notes.campaign_id and m.user_id = auth.uid()) and (visibility = 'players' or author_id = auth.uid() or exists (select 1 from public.campaign_members gm where gm.campaign_id = notes.campaign_id and gm.user_id = auth.uid() and gm.role = 'gm')));
+drop policy if exists notes_author_write on public.notes;
+create policy notes_author_write on public.notes for all to authenticated using (author_id = auth.uid() or exists (select 1 from public.campaign_members gm where gm.campaign_id = notes.campaign_id and gm.user_id = auth.uid() and gm.role = 'gm')) with check (author_id = auth.uid() or exists (select 1 from public.campaign_members gm where gm.campaign_id = notes.campaign_id and gm.user_id = auth.uid() and gm.role = 'gm'));

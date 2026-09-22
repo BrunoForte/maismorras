@@ -196,6 +196,9 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(recorder, r)
 			attrs := []any{"request_id", requestID, "method", r.Method, "path", r.URL.Path, "status", recorder.status, "bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds(), "user_agent", r.UserAgent(), "remote_addr", r.RemoteAddr}
+			if campaignID := campaignIDFromPath(r.URL.Path); campaignID != "" {
+				attrs = append(attrs, "campaign_id", campaignID)
+			}
 			switch {
 			case recorder.status >= http.StatusInternalServerError:
 				logger.Error("request completed", attrs...)
@@ -206,6 +209,16 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			}
 		})
 	}
+}
+
+func campaignIDFromPath(value string) string {
+	parts := strings.Split(strings.Trim(value, "/"), "/")
+	for i := 0; i+1 < len(parts); i++ {
+		if parts[i] == "campaigns" && len(parts[i+1]) >= 8 {
+			return parts[i+1]
+		}
+	}
+	return ""
 }
 
 type statusRecorder struct {

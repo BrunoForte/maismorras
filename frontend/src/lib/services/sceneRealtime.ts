@@ -5,10 +5,10 @@ import { supabase } from './supabase';
 
 type SceneRefresh = { type: 'scene.refresh' };
 type AudioStateEvent = { type: 'audio.state'; state: AudioPlaybackState };
-type PresentationUpdated = { type: 'presentation.updated' };
-type LayoutUpdated = { type: 'overlay.layout.updated' };
-type TokenUpdated = { type: 'token.updated' };
-type CombatUpdated = { type: 'combat.updated' };
+type PresentationUpdated = { type: 'presentation.updated'; data?: unknown };
+type LayoutUpdated = { type: 'overlay.layout.updated'; data?: unknown };
+type TokenUpdated = { type: 'token.updated'; data?: unknown };
+type CombatUpdated = { type: 'combat.updated'; data?: unknown };
 type ChatUpdated = { type: 'chat.updated' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
 export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
@@ -16,10 +16,10 @@ export type SceneSocket = {
 	publishRefresh: () => void;
 	publishPing: (x: number, y: number, color?: number) => void;
 	publishAudioState: (state: AudioPlaybackState) => void;
-	publishPresentationUpdated: () => void;
-	publishLayoutUpdated: () => void;
-	publishTokenUpdated: () => void;
-	publishCombatUpdated: () => void;
+	publishPresentationUpdated: (data?: unknown) => void;
+	publishLayoutUpdated: (data?: unknown) => void;
+	publishTokenUpdated: (data?: unknown) => void;
+	publishCombatUpdated: (data?: unknown) => void;
 	publishChatUpdated: () => void;
 	close: () => void;
 };
@@ -27,10 +27,10 @@ type Subscriber = {
 	onRefresh: () => void;
 	onPing?: (ping: Omit<MapPing, 'type'>) => void;
 	onAudio?: (state: AudioPlaybackState) => void;
-	onPresentation?: () => void;
-	onLayout?: () => void;
-	onTokens?: () => void;
-	onCombat?: () => void;
+	onPresentation?: (data?: unknown) => void;
+	onLayout?: (data?: unknown) => void;
+	onTokens?: (data?: unknown) => void;
+	onCombat?: (data?: unknown) => void;
 	onChat?: () => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
@@ -80,10 +80,10 @@ class SharedSceneConnection {
 			publishRefresh: () => this.publish({ type: 'scene.refresh' }),
 			publishPing: (x, y, color = 0xf2cf77) => this.publish({ type: 'map.ping', x, y, color }),
 			publishAudioState: (state) => this.publish({ type: 'audio.state', state }),
-			publishPresentationUpdated: () => this.publish({ type: 'presentation.updated' }),
-			publishLayoutUpdated: () => this.publish({ type: 'overlay.layout.updated' }),
-			publishTokenUpdated: () => this.publish({ type: 'token.updated' }),
-			publishCombatUpdated: () => this.publish({ type: 'combat.updated' }),
+			publishPresentationUpdated: (data) => this.publish({ type: 'presentation.updated', data }),
+			publishLayoutUpdated: (data) => this.publish({ type: 'overlay.layout.updated', data }),
+			publishTokenUpdated: (data) => this.publish({ type: 'token.updated', data }),
+			publishCombatUpdated: (data) => this.publish({ type: 'combat.updated', data }),
 			publishChatUpdated: () => this.publish({ type: 'chat.updated' }),
 			close: () => this.remove(subscriber)
 		};
@@ -124,15 +124,15 @@ class SharedSceneConnection {
 				if (payload.type === 'scene.refresh')
 					for (const subscriber of this.subscribers) subscriber.onRefresh();
 				if (payload.type === 'presentation.updated')
-					for (const subscriber of this.subscribers) subscriber.onPresentation?.();
+					for (const subscriber of this.subscribers) subscriber.onPresentation?.(payload.data);
 				if (payload.type === 'audio.state')
 					for (const subscriber of this.subscribers) subscriber.onAudio?.(payload.state);
 				if (payload.type === 'overlay.layout.updated')
-					for (const subscriber of this.subscribers) subscriber.onLayout?.();
+					for (const subscriber of this.subscribers) subscriber.onLayout?.(payload.data);
 				if (payload.type === 'token.updated')
-					for (const subscriber of this.subscribers) subscriber.onTokens?.();
+					for (const subscriber of this.subscribers) subscriber.onTokens?.(payload.data);
 				if (payload.type === 'combat.updated')
-					for (const subscriber of this.subscribers) subscriber.onCombat?.();
+					for (const subscriber of this.subscribers) subscriber.onCombat?.(payload.data);
 				if (payload.type === 'chat.updated')
 					for (const subscriber of this.subscribers) subscriber.onChat?.();
 				if (payload.type === 'map.ping')
@@ -192,10 +192,10 @@ export function connectSceneSocket(
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
 	onStatus?: (status: RealtimeStatus) => void,
 	onAudio?: (state: AudioPlaybackState) => void,
-	onPresentation?: () => void,
-	onLayout?: () => void,
-	onTokens?: () => void,
-	onCombat?: () => void,
+	onPresentation?: (data?: unknown) => void,
+	onLayout?: (data?: unknown) => void,
+	onTokens?: (data?: unknown) => void,
+	onCombat?: (data?: unknown) => void,
 	onChat?: () => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
@@ -216,3 +216,5 @@ export function connectSceneSocket(
 		onChat
 	});
 }
+
+

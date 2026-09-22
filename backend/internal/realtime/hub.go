@@ -124,10 +124,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 		var event struct {
-			Type  string  `json:"type"`
-			X     float64 `json:"x"`
-			Y     float64 `json:"y"`
-			Color int     `json:"color"`
+			Type  string          `json:"type"`
+			X     float64         `json:"x"`
+			Y     float64         `json:"y"`
+			Color int             `json:"color"`
+			Data  json.RawMessage `json:"data"`
 			State *struct {
 				Path      string  `json:"path"`
 				Playing   bool    `json:"playing"`
@@ -145,20 +146,20 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
 		case "presentation.updated":
 			if peer.canControl {
-				h.hub.broadcast(sceneID, []byte(`{"type":"presentation.updated"}`))
+				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 			}
 		case "overlay.layout.updated":
 			if peer.canControl {
-				h.hub.broadcast(sceneID, []byte(`{"type":"overlay.layout.updated"}`))
+				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 			}
 
 		case "token.updated":
 			// The REST endpoint authorizes the actual movement/update. Any authenticated
 			// scene member may publish the notification so player-owned movement reaches peers.
-			h.hub.broadcast(sceneID, []byte(`{"type":"token.updated"}`))
+			h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 		case "combat.updated":
 			if peer.canControl {
-				h.hub.broadcast(sceneID, []byte(`{"type":"combat.updated"}`))
+				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 			}
 		case "chat.updated":
 			h.hub.broadcast(sceneID, []byte(`{"type":"chat.updated"}`))
@@ -178,10 +179,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 				continue
 			}
 			payload, _ := json.Marshal(struct {
-				Type  string  `json:"type"`
-				X     float64 `json:"x"`
-				Y     float64 `json:"y"`
-				Color int     `json:"color"`
+				Type  string          `json:"type"`
+				X     float64         `json:"x"`
+				Y     float64         `json:"y"`
+				Color int             `json:"color"`
+				Data  json.RawMessage `json:"data"`
 			}{Type: "map.ping", X: event.X, Y: event.Y, Color: event.Color})
 			h.hub.broadcast(sceneID, payload)
 		}
@@ -206,6 +208,19 @@ func originPatterns(raw string) []string {
 		patterns = append(patterns, value)
 	}
 	return patterns
+}
+func eventBroadcast(eventType string, data json.RawMessage) []byte {
+	if len(data) == 0 || len(data) > 24<<10 {
+		data = []byte("null")
+	}
+	payload, err := json.Marshal(struct {
+		Type string          `json:"type"`
+		Data json.RawMessage `json:"data,omitempty"`
+	}{Type: eventType, Data: data})
+	if err != nil {
+		return []byte(`{"type":"scene.refresh"}`)
+	}
+	return payload
 }
 func (h *Hub) join(room string, p *peer) bool {
 	h.mu.Lock()
@@ -288,3 +303,4 @@ func (h *Hub) broadcast(room string, raw []byte) {
 		}(p)
 	}
 }
+

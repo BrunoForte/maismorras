@@ -313,7 +313,9 @@
 				},
 				undefined,
 				updateFallback,
-				(state) => void applyAudioState(state)
+                (state) => void applyAudioState(state),
+                (data) => { const presentation = (data as { presentation?: unknown } | undefined)?.presentation; if (!presentation && session) void refresh(session); },
+                (data) => { const document = (data as { document?: unknown } | undefined)?.document; if (document) applyLayoutDocument(document); else void loadOverlayLayout(session); }
 			);
 		});
 		return () => {
@@ -381,8 +383,8 @@
 			</div>
 			<small>{visibleTokens().length} personagens em cena</small>
 		</header>
-		<audio bind:this={audio} loop preload="auto"></audio>
-		<audio bind:this={audioB} loop preload="auto"></audio>
+		<audio bind:this={audio} loop preload="metadata"></audio>
+		<audio bind:this={audioB} loop preload="metadata"></audio>
 		{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
 				>Ativar áudio da cena</button
 			>{/if}
@@ -700,3 +702,6 @@
 		}
 	}
 </style>
+
+
+

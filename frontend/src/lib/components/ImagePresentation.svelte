@@ -28,7 +28,7 @@
 		url = '';
 		try {
 			await savePresentation(session, sceneId, { assetPath: '', title: '', visible: false });
-			socket?.publishPresentationUpdated();
+			socket?.publishPresentationUpdated({ presentation: { assetPath: "", title: "", visible: false } });
 		} catch {
 			/* Keep the current presentation if the server is temporarily unavailable. */
 		}
@@ -165,3 +165,4 @@
 		}
 	}
 </style>
+

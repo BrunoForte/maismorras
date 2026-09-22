@@ -352,7 +352,7 @@
 				channel.postMessage({ type: 'layout-change', sceneId });
 				channel.close();
 			}
-			layoutSocket?.publishLayoutUpdated();
+			layoutSocket?.publishLayoutUpdated({ document });
 			status = 'Layout da overlay salvo para esta cena.';
 		} catch (error) {
 			status = error instanceof Error ? error.message : 'Não foi possível salvar a overlay.';
@@ -866,3 +866,4 @@
 		}
 	}
 </style>
+

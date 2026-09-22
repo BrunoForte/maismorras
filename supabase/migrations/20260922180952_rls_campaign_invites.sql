@@ -1,0 +1,4 @@
+drop policy if exists invites_gm_select on public.campaign_invites;
+create policy invites_gm_select on public.campaign_invites for select to authenticated using (created_by = auth.uid() or exists (select 1 from public.campaign_members m where m.campaign_id = campaign_invites.campaign_id and m.user_id = auth.uid() and m.role = 'gm'));
+drop policy if exists invites_gm_write on public.campaign_invites;
+create policy invites_gm_write on public.campaign_invites for all to authenticated using (created_by = auth.uid() or exists (select 1 from public.campaign_members m where m.campaign_id = campaign_invites.campaign_id and m.user_id = auth.uid() and m.role = 'gm')) with check (created_by = auth.uid() or exists (select 1 from public.campaign_members m where m.campaign_id = campaign_invites.campaign_id and m.user_id = auth.uid() and m.role = 'gm'));
