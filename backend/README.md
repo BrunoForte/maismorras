@@ -32,7 +32,7 @@ internal/tokens/         handler e serviço do proxy Pollinations
 
 ## Executar localmente
 
-Requer Go 1.25.8+.
+Requer Go 1.25.13+.
 
 ```bash
 go run ./cmd/api
