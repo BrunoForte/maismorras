@@ -79,14 +79,19 @@
 	let customItemCategory = $state<'weapon' | 'armor' | 'consumable' | 'gear'>('gear');
 	let customItemDamage = $state('');
 	let customItemDefense = $state(10);
+	let customItemBonus = $state(0);
+	let customItemWeight = $state(0);
 	let customItemQuantity = $state(1);
 	let spellCircle = $state('all');
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
 		'profile'
 	);
 	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
-	let rollingWeapon = $state<string | null>(null);
+	let rollingWeaponAction = $state<string | null>(null);
+	let lastCriticalWeapon = $state<string | null>(null);
 	let rollingAttack = $state<number | null>(null);
+	let rollingAttackAction = $state<'attack' | 'damage' | null>(null);
+	let lastCriticalAttack = $state<number | null>(null);
 	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
 	let castingSpell = $state<number | null>(null);
 	let spellSlotChoice = $state<Record<number, number>>({});
@@ -556,6 +561,9 @@
 		const category = String(item.rules.category ?? '');
 		if (['weapon', 'armor', 'consumable', 'tool', 'gear'].includes(category))
 			return category as typeof inventoryFilter;
+		const catalog = String(item.rules.catalog ?? '').toLowerCase();
+		if (catalog === 'weapons' || item.rules.damage) return 'weapon';
+		if (catalog === 'armor' || item.rules.ac || item.rules.armorClass) return 'armor';
 		const name = item.name.toLowerCase();
 		if (/armor|mail|plate|shield|couro|armadura|escudo/.test(name)) return 'armor';
 		if (/potion|acid|fire|ration|po[cç][aã]o|ra[cç][oõ]es/.test(name)) return 'consumable';
@@ -575,20 +583,108 @@
 				(inventoryFilter === 'all' ||
 					equipmentCategory({ name: entry.name, rules: entryRules(entry) }) === inventoryFilter)
 		);
+	const weaponItems = () => sheet.inventory.filter((item) => equipmentCategory(item) === 'weapon');
 	const visibleInventory = () =>
 		sheet.inventory.filter(
 			(item) => inventoryFilter === 'all' || equipmentCategory(item) === inventoryFilter
 		);
 	const itemLabel = (item: InventoryItem) => item.name;
-	const itemDetail = (item: InventoryItem) => {
-		const category = equipmentCategory(item);
-		if (category === 'weapon' && item.rules.damage)
-			return `${$appLocale === 'en' ? 'Damage' : 'Dano'} ${item.rules.damage}`;
-		if (category === 'armor' && (item.rules.ac || item.rules.armorClass))
-			return `${$appLocale === 'en' ? 'Base AC' : 'Defesa base'} ${item.rules.ac ?? item.rules.armorClass}`;
-		if (category === 'consumable')
-			return `${$appLocale === 'en' ? 'Qty.' : 'Qtd.'} ${item.quantity}`;
-		return '';
+	const itemWeight = (item: InventoryItem) => {
+		const weight = Number.parseFloat(String(item.rules.weight ?? 0));
+		return Number.isFinite(weight)
+			? Math.max(0, weight) * Math.max(0, Number(item.quantity) || 0)
+			: 0;
+	};
+	const totalInventoryWeight = () =>
+		sheet.inventory.reduce((total, item) => total + itemWeight(item), 0);
+	const weaponRange = (item: InventoryItem): 'melee' | 'ranged' => {
+		const type = `${String(item.rules.attackType ?? '')} ${String(item.rules.category ?? '')} ${String(item.rules.range ?? '')}`;
+		return /ranged|à distância|distancia/i.test(type) ? 'ranged' : 'melee';
+	};
+	const weaponAbility = (item: InventoryItem) => {
+		const value = String(item.rules.attackAbility ?? '');
+		return attributes.some((attribute) => attribute.key === value)
+			? (value as keyof Sheet['abilityScores'])
+			: weaponRange(item) === 'ranged'
+				? 'dexterity'
+				: 'strength';
+	};
+	const weaponItemBonus = (item: InventoryItem) => {
+		if (item.rules.bonus !== undefined) return Number(item.rules.bonus) || 0;
+		if (item.rules.enchantmentBonus !== undefined) return Number(item.rules.enchantmentBonus) || 0;
+		const description = `${String(item.rules.description ?? '')} ${String(item.rules.summary ?? '')}`;
+		const match = description.match(/\+(\d+)\s+bonus to attack rolls? and damage rolls?/i);
+		return match ? Number(match[1]) : 0;
+	};
+	type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
+	const parseWeaponEffect = (
+		key: string,
+		name: string,
+		text: string,
+		itemRange: 'melee' | 'ranged'
+	): WeaponEffect | null => {
+		const range = weaponRangeFromText(text);
+		if (range && range !== itemRange) return null;
+		const attack = text.match(/\+(\d+)\s+bonus to attack rolls?/i);
+		const damage = text.match(/\+(\d+)\s+bonus to damage rolls?/i);
+		const attackBonus = attack ? Number(attack[1]) : 0;
+		const damageBonus = damage ? Number(damage[1]) : 0;
+		return attackBonus || damageBonus ? { key, name, attackBonus, damageBonus } : null;
+	};
+	function weaponRangeFromText(text: string): 'melee' | 'ranged' | null {
+		if (/ranged weapons?|à distância/i.test(text)) return 'ranged';
+		if (/melee weapons?|corpo a corpo/i.test(text)) return 'melee';
+		return null;
+	}
+	const weaponEffects = (item: InventoryItem): WeaponEffect[] => {
+		const range = weaponRange(item);
+		const features = derivedFeatures().map((feature) => ({
+			key: feature.id,
+			name: feature.name,
+			text: feature.description
+		}));
+		const feats = featList().flatMap((feat, index) => {
+			const entry = optionsFor('feat').find(
+				(candidate) =>
+					candidate.name.toLowerCase() === feat.toLowerCase() ||
+					optionLabel(candidate).toLowerCase() === feat.toLowerCase()
+			);
+			if (!entry) return [];
+			const rules = entry.rules ?? {};
+			const benefits = Array.isArray(rules.benefits) ? rules.benefits.map(String).join(' ') : '';
+			return [
+				{
+					key: `feat-${entry.id || index}`,
+					name: optionLabel(entry),
+					text: `${String(rules.description ?? '')} ${benefits}`
+				}
+			];
+		});
+		return [...features, ...feats].flatMap((effect) => {
+			const parsed = parseWeaponEffect(effect.key, effect.name, effect.text, range);
+			return parsed ? [parsed] : [];
+		});
+	};
+	const selectedWeaponEffects = (item: InventoryItem) => {
+		const enabled = Array.isArray(item.rules.enabledCombatModifiers)
+			? item.rules.enabledCombatModifiers.map(String)
+			: [];
+		return weaponEffects(item).filter((effect) => enabled.includes(effect.key));
+	};
+	function toggleWeaponEffect(item: InventoryItem, key: string) {
+		const enabled = Array.isArray(item.rules.enabledCombatModifiers)
+			? item.rules.enabledCombatModifiers.map(String)
+			: [];
+		item.rules.enabledCombatModifiers = enabled.includes(key)
+			? enabled.filter((itemKey) => itemKey !== key)
+			: [...enabled, key];
+	}
+	const weaponBonusTotals = (item: InventoryItem) => {
+		const effects = selectedWeaponEffects(item);
+		return {
+			attack: effects.reduce((total, effect) => total + effect.attackBonus, 0),
+			damage: effects.reduce((total, effect) => total + effect.damageBonus, 0)
+		};
 	};
 	const modifierText = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
 	function canonicalClass(value: string) {
@@ -1025,10 +1121,15 @@
 			}
 		}
 		const rules: Record<string, unknown> = { category: customItemCategory, custom: true };
+		rules.weight = Math.max(0, Number(customItemWeight) || 0);
 		if (customItemCategory === 'weapon') {
 			if (customItemDamage.trim()) rules.damage = customItemDamage.trim();
+			rules.bonus = Math.round(customItemBonus);
+			rules.attackType = /ranged|dist[aâ]ncia|arco|besta/i.test(name) ? 'ranged' : 'melee';
+			rules.attackAbility = rules.attackType === 'ranged' ? 'dexterity' : 'strength';
 		} else if (customItemCategory === 'armor') {
 			rules.ac = String(Math.max(0, Math.round(customItemDefense)));
+			rules.bonus = Math.round(customItemBonus);
 		} else if (customItemCategory === 'consumable') {
 			rules.quantity = Math.max(1, Math.round(customItemQuantity));
 		}
@@ -1073,36 +1174,27 @@
 		customItemName = '';
 		customItemDamage = '';
 		customItemDefense = 10;
+		customItemBonus = 0;
+		customItemWeight = 0;
 		customItemQuantity = 1;
 	}
 	function removeInventoryItem(index: number) {
 		sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index);
 	}
-	function addWeaponAttack(item: InventoryItem) {
+	async function rollWeapon(item: InventoryItem, action: 'attack' | 'damage') {
 		const rules = item.rules;
-		if (rules.category !== 'weapon') return;
-		const abilityKey = rules.attackAbility === 'dexterity' ? 'dexterity' : 'strength';
-		const ability = sheet.abilityScores[abilityKey];
-		const abilityModifier = modifier(ability);
-		const damage =
-			`${String(rules.damage ?? '')}${abilityModifier ? ` ${modifierText(abilityModifier)}` : ''} ${String(rules.damageType ?? '')}`.trim();
-		sheet.attacks = [
-			...sheet.attacks,
-			{
-				name: item.name,
-				attackType: abilityKey === 'dexterity' ? 'ranged' : 'melee',
-				ability: abilityKey,
-				attackBonus: sheet.proficiencyBonus,
-				damage,
-				notes: `Item do compêndio · ${Array.isArray(rules.properties) ? rules.properties.join(', ') : ''}`
-			}
-		];
-	}
-	async function rollWeapon(item: InventoryItem) {
-		const rules = item.rules;
-		const damageMatch = String(rules.damage ?? '').match(/^(\d+)d(\d+)/i);
-		if (rules.category !== 'weapon' || !damageMatch || rollingWeapon) return;
+		const damageMatch = String(rules.damage ?? '').match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
+		const actionKey = `${item.entryId}:${action}`;
+		if (equipmentCategory(item) !== 'weapon' || rollingWeaponAction) return;
+		if (action === 'damage' && !damageMatch) {
+			message =
+				$appLocale === 'en'
+					? 'This weapon has no damage formula.'
+					: 'Esta arma não tem uma fórmula de dano.';
+			return;
+		}
 		if (
+			action === 'attack' &&
 			activeConditions.some((condition) =>
 				['Incapacitado', 'Paralisado', 'Atordoado', 'Petrificado', 'Inconsciente'].includes(
 					condition
@@ -1112,78 +1204,89 @@
 			message = 'Esta condição impede ações e reações; o ataque não pode ser rolado.';
 			return;
 		}
-		const ability =
-			rules.attackAbility === 'dexterity'
-				? sheet.abilityScores.dexterity
-				: sheet.abilityScores.strength;
-		const attackBonus = modifier(ability) + sheet.proficiencyBonus;
-		rollingWeapon = item.entryId;
+		const abilityKey = weaponAbility(item);
+		const abilityModifier = modifier(sheet.abilityScores[abilityKey]);
+		const itemBonus = weaponItemBonus(item);
+		const effects = weaponBonusTotals(item);
+		rollingWeaponAction = actionKey;
 		message = '';
 		beginDiceBatch();
 		try {
-			const attackMode = selectedAttackMode();
-			const attackEvent = await rollDice(
-				session,
-				campaignId,
-				`1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`,
-				attackMode === 'normal' ? undefined : attackMode,
-				'combat'
-			);
-			const attack = attackEvent.payload as { expressao: string; dados: number[]; total: number };
-			const critical = attack.dados[0] === 20;
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: String(attackEvent.id),
-					autor: attackEvent.author,
-					texto: `${item.name} · ataque${critical ? ' · CRÍTICO!' : ''}`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						...attack,
-						modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0),
-						label: `${item.name} · ataque`
+			if (action === 'attack') {
+				const attackBonus = abilityModifier + sheet.proficiencyBonus + itemBonus + effects.attack;
+				const attackMode = selectedAttackMode();
+				const event = await rollDice(
+					session,
+					campaignId,
+					`1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`,
+					attackMode === 'normal' ? undefined : attackMode,
+					'combat'
+				);
+				const result = event.payload as { expressao: string; dados: number[]; total: number };
+				const critical = result.dados.includes(20);
+				lastCriticalWeapon = critical ? item.entryId : null;
+				$chatMensagens = [
+					...$chatMensagens,
+					{
+						id: String(event.id),
+						autor: event.author,
+						texto: `${item.name} · ataque${critical ? ' · CRÍTICO!' : ''}`,
+						tipo: 'rolagem',
+						canal: 'combat',
+						detalhesRolagem: { ...result, modificador: attackBonus, label: `${item.name} · ataque` }
 					}
-				}
-			];
-			$diceOverlay = {
-				expression: `${item.name} · ataque`,
-				total: attack.total,
-				dice: attack.dados
-			};
-			const diceCount = Number(damageMatch[1]) * (critical ? 2 : 1);
-			const damageModifier = modifier(ability);
-			const damageEvent = await rollDice(
-				session,
-				campaignId,
-				`${diceCount}d${damageMatch[2]}${damageModifier >= 0 ? '+' : ''}${damageModifier}`,
-				undefined,
-				'combat'
-			);
-			const damage = damageEvent.payload as { expressao: string; dados: number[]; total: number };
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: String(damageEvent.id),
-					autor: damageEvent.author,
-					texto: `${item.name} · dano${critical ? ' crítico' : ''} (${String(rules.damageType ?? '')})`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						...damage,
-						modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0),
-						label: `${item.name} · dano${critical ? ' crítico' : ''}`
+				];
+				$diceOverlay = {
+					expression: `${item.name} · ataque`,
+					total: result.total,
+					dice: result.dados,
+					nonce: crypto.randomUUID()
+				};
+			} else {
+				const baseModifier =
+					damageMatch?.[3] === '-' ? -Number(damageMatch[4] ?? 0) : Number(damageMatch?.[4] ?? 0);
+				const damageModifier = baseModifier + abilityModifier + itemBonus + effects.damage;
+				const isCritical = lastCriticalWeapon === item.entryId;
+				const diceCount = Number(damageMatch![1]) * (isCritical ? 2 : 1);
+				const event = await rollDice(
+					session,
+					campaignId,
+					`${diceCount}d${damageMatch![2]}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
+					undefined,
+					'combat'
+				);
+				const damage = event.payload as { expressao: string; dados: number[]; total: number };
+				$chatMensagens = [
+					...$chatMensagens,
+					{
+						id: String(event.id),
+						autor: event.author,
+						texto: `${item.name} · dano${isCritical ? ' crítico' : ''} (${String(rules.damageType ?? '')})`,
+						tipo: 'rolagem',
+						canal: 'combat',
+						detalhesRolagem: {
+							...damage,
+							modificador: damageModifier,
+							label: `${item.name} · dano${isCritical ? ' crítico' : ''}`
+						}
 					}
-				}
-			];
-			$diceOverlay = {
-				expression: `${item.name} · dano${critical ? ' crítico' : ''}`,
-				total: damage.total,
-				dice: damage.dados
-			};
-			message = critical
-				? 'Crítico! Ataque e dano foram registrados no chat.'
-				: 'Ataque e dano foram registrados no chat.';
+				];
+				$diceOverlay = {
+					expression: `${item.name} · dano${isCritical ? ' crítico' : ''}`,
+					total: damage.total,
+					dice: damage.dados,
+					nonce: crypto.randomUUID()
+				};
+				if (isCritical) lastCriticalWeapon = null;
+			}
+			message =
+				action === 'attack'
+					? $appLocale === 'en'
+						? 'Attack registered in chat.'
+						: 'Ataque registrado no chat.'
+					: $appLocale === 'en'
+						? 'Damage registered in chat.'
+						: 'Dano registrado no chat.';
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -1193,7 +1296,7 @@
 						: 'Não foi possível rolar a arma.';
 		} finally {
 			finishDiceBatch();
-			rollingWeapon = null;
+			rollingWeaponAction = null;
 		}
 	}
 	function addCompendiumSpell() {
@@ -1230,7 +1333,7 @@
 			? sheet.savingThrows.filter((item) => item !== key)
 			: [...sheet.savingThrows, key];
 	}
-	async function rollSheet(label: string, bonus: number, damage = '') {
+	async function rollSheet(label: string, bonus: number, attackIndex: number) {
 		const attackMode = selectedAttackMode();
 		const attackEvent = await rollDice(
 			session,
@@ -1241,6 +1344,7 @@
 		);
 		const attack = attackEvent.payload as { dados: number[]; total: number; expressao: string };
 		const critical = attack.dados[0] === 20;
+		lastCriticalAttack = critical ? attackIndex : null;
 		$chatMensagens = [
 			...$chatMensagens,
 			{
@@ -1258,8 +1362,11 @@
 			dice: attack.dados,
 			nonce: crypto.randomUUID()
 		};
+	}
+	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
 		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
 		if (!match) return;
+		const critical = lastCriticalAttack === attackIndex;
 		const count = Number(match[1]) * (critical ? 2 : 1),
 			mod = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
 		const damageEvent = await rollDice(
@@ -1278,26 +1385,32 @@
 				texto: `${label} · dano${critical ? ' crítico' : ''}`,
 				tipo: 'rolagem',
 				canal: 'combat',
-				detalhesRolagem: { ...result, modificador: mod, label: `${label} · dano` }
+				detalhesRolagem: {
+					...result,
+					modificador: mod,
+					label: `${label} · dano${critical ? ' crítico' : ''}`
+				}
 			}
 		];
 		$diceOverlay = {
-			expression: `${label} · dano`,
+			expression: `${label} · dano${critical ? ' crítico' : ''}`,
 			total: result.total,
 			dice: result.dados,
 			nonce: crypto.randomUUID()
 		};
+		if (critical) lastCriticalAttack = null;
 	}
 	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) {
 		if (rollingAttack !== null) return;
 		rollingAttack = index;
+		rollingAttackAction = 'attack';
 		beginDiceBatch();
 		try {
 			const ability = attack.ability ?? 'strength';
 			await rollSheet(
 				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
 				modifier(sheet.abilityScores[ability]) + attack.attackBonus,
-				attack.damage
+				index
 			);
 		} catch {
 			message =
@@ -1305,6 +1418,27 @@
 		} finally {
 			finishDiceBatch();
 			rollingAttack = null;
+			rollingAttackAction = null;
+		}
+	}
+	async function rollCustomDamage(attack: Sheet['attacks'][number], index: number) {
+		if (rollingAttack !== null || !attack.damage.trim()) return;
+		rollingAttack = index;
+		rollingAttackAction = 'damage';
+		beginDiceBatch();
+		try {
+			await rollSheetDamage(
+				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
+				attack.damage,
+				index
+			);
+		} catch {
+			message =
+				$appLocale === 'en' ? 'Could not roll the damage.' : 'Não foi possível rolar o dano.';
+		} finally {
+			finishDiceBatch();
+			rollingAttack = null;
+			rollingAttackAction = null;
 		}
 	}
 	function spellcastingAbility() {
@@ -1890,9 +2024,129 @@
 									>
 								</div>{/each}
 						</section>{/if}
+					<section class="combat-equipment">
+						<div class="section-title">
+							<h3>{$appLocale === 'en' ? 'Weapon attacks' : 'Ataques com armas'}</h3>
+						</div>
+						{#if weaponItems().length}<div class="weapon-combat-list">
+								{#each weaponItems() as item (item.entryId)}<article class="weapon-combat-card">
+										<div class="weapon-combat-heading">
+											<strong>{item.name}</strong><span
+												>{String(item.rules.damage ?? '—')}
+												{String(item.rules.damageType ?? '')}</span
+											>
+										</div>
+										<div class="weapon-combat-fields">
+											<label
+												>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
+													value={weaponAbility(item)}
+													onchange={(event) =>
+														(item.rules.attackAbility = event.currentTarget.value)}
+												>
+													{#each attributes as attribute}<option value={attribute.key}
+															>{abilityLabel(attribute.key)} ({modifierText(
+																modifier(sheet.abilityScores[attribute.key])
+															)})</option
+														>{/each}
+												</select></label
+											>
+											<label
+												>{$appLocale === 'en'
+													? 'Item bonus to attack and damage'
+													: 'Bônus do item no ataque e dano'}<input
+													type="number"
+													min="-10"
+													max="10"
+													value={weaponItemBonus(item)}
+													oninput={(event) =>
+														(item.rules.bonus = Number(event.currentTarget.value) || 0)}
+													aria-label={$appLocale === 'en'
+														? `Bonus for ${item.name}`
+														: `Bônus de ${item.name}`}
+												/></label
+											>
+										</div>
+										{#if weaponEffects(item).length}<fieldset class="weapon-effects">
+												<legend
+													>{$appLocale === 'en'
+														? 'Applicable class/feat bonuses'
+														: 'Bônus de classe/talentos aplicáveis'}</legend
+												>
+												{#each weaponEffects(item) as effect (effect.key)}<label
+														><input
+															type="checkbox"
+															checked={(Array.isArray(item.rules.enabledCombatModifiers)
+																? item.rules.enabledCombatModifiers.map(String)
+																: []
+															).includes(effect.key)}
+															onchange={() => toggleWeaponEffect(item, effect.key)}
+														/>{effect.name}<small
+															>{#if effect.attackBonus}{$appLocale === 'en'
+																	? `Attack +${effect.attackBonus}`
+																	: `Ataque +${effect.attackBonus}`}{/if}{#if effect.attackBonus && effect.damageBonus}
+																·
+															{/if}{#if effect.damageBonus}{$appLocale === 'en'
+																	? `Damage +${effect.damageBonus}`
+																	: `Dano +${effect.damageBonus}`}{/if}</small
+														></label
+													>{/each}
+											</fieldset>{/if}
+										<div class="weapon-combat-summary">
+											{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {modifierText(
+												modifier(sheet.abilityScores[weaponAbility(item)]) +
+													sheet.proficiencyBonus +
+													weaponItemBonus(item) +
+													weaponBonusTotals(item).attack
+											)} · {$appLocale === 'en' ? 'Damage' : 'Dano'}: {String(
+												item.rules.damage ?? '—'
+											)}
+											{modifierText(
+												modifier(sheet.abilityScores[weaponAbility(item)]) +
+													weaponItemBonus(item) +
+													weaponBonusTotals(item).damage
+											)}
+										</div>
+										<div class="weapon-combat-actions">
+											<button
+												class="roll-weapon"
+												onclick={() => void rollWeapon(item, 'attack')}
+												disabled={rollingWeaponAction !== null}
+												>{rollingWeaponAction === `${item.entryId}:attack`
+													? '…'
+													: $appLocale === 'en'
+														? '🎲 Attack'
+														: '🎲 Ataque'}</button
+											><button
+												onclick={() => void rollWeapon(item, 'damage')}
+												disabled={rollingWeaponAction !== null ||
+													!String(item.rules.damage ?? '').match(/^\d+d\d+/i)}
+												>{rollingWeaponAction === `${item.entryId}:damage`
+													? '…'
+													: $appLocale === 'en'
+														? '🎲 Damage'
+														: '🎲 Dano'}</button
+											>
+										</div>
+									</article>{/each}
+							</div>{:else}<p class="empty-inline">
+								{$appLocale === 'en'
+									? 'Add weapons in Inventory to roll them here.'
+									: 'Adicione armas no Inventário para rolar por aqui.'}
+							</p>{/if}
+						{#if sheet.inventory.some((item) => equipmentCategory(item) === 'armor')}<div
+								class="combat-armor-list"
+							>
+								<h4>{$appLocale === 'en' ? 'Armor' : 'Armaduras'}</h4>
+								{#each sheet.inventory.filter((item) => equipmentCategory(item) === 'armor') as item (item.entryId)}<label
+										><input type="checkbox" bind:checked={item.equipped} /><span
+											>{$appLocale === 'en' ? 'Equipped' : 'Equipado'} · {item.name}</span
+										></label
+									>{/each}
+							</div>{/if}
+					</section>
 					<section class="combat-attacks">
 						<div class="section-title">
-							<h3>{$appLocale === 'en' ? 'Attacks' : 'Ataques'}</h3>
+							<h3>{$appLocale === 'en' ? 'Other attacks' : 'Outros ataques'}</h3>
 							<button onclick={addAttack}>+ {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button>
 						</div>
 						{#each sheet.attacks as attack, index}<div class="line-item attack-row">
@@ -1943,7 +2197,21 @@
 								/><button
 									class="roll-custom"
 									onclick={() => void rollCustomAttack(attack, index)}
-									disabled={rollingAttack === index}>{rollingAttack === index ? '…' : '🎲'}</button
+									disabled={rollingAttack !== null}
+									>{rollingAttack === index && rollingAttackAction === 'attack'
+										? '…'
+										: $appLocale === 'en'
+											? '🎲 Attack'
+											: '🎲 Ataque'}</button
+								><button
+									class="roll-custom"
+									onclick={() => void rollCustomDamage(attack, index)}
+									disabled={rollingAttack !== null || !attack.damage.trim()}
+									>{rollingAttack === index && rollingAttackAction === 'damage'
+										? '…'
+										: $appLocale === 'en'
+											? '🎲 Damage'
+											: '🎲 Dano'}</button
 								><button onclick={() => removeAttack(index)}>×</button>
 							</div>{/each}
 					</section>
@@ -1999,8 +2267,7 @@
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Equipment' : 'Equipamento'}</h3>
 							<span class="defense-hint"
-								>{$appLocale === 'en' ? 'Equipped defense' : 'Defesa equipada'}: +{equippedDefense()}
-								{$appLocale === 'en' ? 'AC' : 'CA'}</span
+								>{$appLocale === 'en' ? 'Total weight' : 'Peso total'}: {totalInventoryWeight()} lb</span
 							>
 						</div>
 						<div
@@ -2045,16 +2312,39 @@
 									>{$appLocale === 'en' ? 'Consumable' : 'Consumível'}</option
 								>
 							</select>
+							<label
+								>{$appLocale === 'en' ? 'Weight (lb)' : 'Peso (lb)'}<input
+									type="number"
+									min="0"
+									max="9999"
+									step="0.1"
+									bind:value={customItemWeight}
+								/></label
+							>
 							{#if customItemCategory === 'weapon'}<input
 									bind:value={customItemDamage}
 									placeholder={$appLocale === 'en' ? 'Damage (e.g. 1d8)' : 'Dano (ex.: 1d8)'}
 									maxlength="40"
-								/>{:else if customItemCategory === 'armor'}<label
+								/><label
+									>{$appLocale === 'en' ? 'Item bonus' : 'Bônus do item'}<input
+										type="number"
+										min="-10"
+										max="10"
+										bind:value={customItemBonus}
+									/></label
+								>{:else if customItemCategory === 'armor'}<label
 									>{$appLocale === 'en' ? 'Base AC' : 'Defesa base'}<input
 										type="number"
 										min="0"
 										max="99"
 										bind:value={customItemDefense}
+									/></label
+								><label
+									>{$appLocale === 'en' ? 'Item bonus' : 'Bônus do item'}<input
+										type="number"
+										min="-10"
+										max="10"
+										bind:value={customItemBonus}
 									/></label
 								>
 							{:else if customItemCategory === 'consumable'}<label
@@ -2074,12 +2364,7 @@
 						</div>
 						{#if visibleInventory().length}<div class="inventory-list">
 								{#each visibleInventory() as item}<div class="inventory-item">
-										<label
-											><input type="checkbox" bind:checked={item.equipped} />
-											{$appLocale === 'en' ? 'equipped' : 'equipado'}</label
-										><strong>{itemLabel(item)}</strong>{#if itemDetail(item)}<small
-												class="item-detail">{itemDetail(item)}</small
-											>{/if}<input
+										<strong>{itemLabel(item)}</strong><input
 											type="number"
 											min="0"
 											max="9999"
@@ -2087,21 +2372,9 @@
 											aria-label={$appLocale === 'en'
 												? `Quantity of ${item.name}`
 												: `Quantidade de ${item.name}`}
-										/>{#if equipmentCategory(item) === 'weapon'}<button
-												onclick={() => addWeaponAttack(item)}
-												>+ {$appLocale === 'en' ? 'attack' : 'ataque'}</button
-											><button
-												class="roll-weapon"
-												onclick={() => rollWeapon(item)}
-												disabled={rollingWeapon === item.entryId}
-												>{rollingWeapon === item.entryId
-													? $appLocale === 'en'
-														? 'Rolling…'
-														: 'Rolando…'
-													: $appLocale === 'en'
-														? '🎲 attack'
-														: '🎲 atacar'}</button
-											>{/if}<button
+										/>{#if itemWeight(item) > 0}<small class="inventory-weight"
+												>{itemWeight(item)} lb</small
+											>{:else}<small class="inventory-weight">—</small>{/if}<button
 											onclick={() => removeInventoryItem(sheet.inventory.indexOf(item))}>×</button
 										>
 									</div>{/each}
@@ -3032,9 +3305,119 @@
 		background: #2a211e;
 		font-size: 0.72rem;
 	}
+	.weapon-combat-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+		gap: 0.65rem;
+	}
+	.weapon-combat-card {
+		min-width: 0;
+		display: grid;
+		gap: 0.6rem;
+		padding: 0.75rem;
+		border: 1px solid #51443e;
+		border-radius: 8px;
+		background: #181416;
+	}
+	.weapon-combat-heading,
+	.weapon-combat-fields,
+	.weapon-combat-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+	}
+	.weapon-combat-heading strong {
+		min-width: 0;
+		color: #f0d8aa;
+	}
+	.weapon-combat-heading span,
+	.weapon-combat-summary {
+		color: #b9aa9b;
+		font-size: 0.75rem;
+	}
+	.weapon-combat-fields label {
+		min-width: 0;
+		flex: 1;
+		display: grid;
+		gap: 0.25rem;
+		color: #bcae9f;
+		font-size: 0.68rem;
+	}
+	.weapon-combat-fields input,
+	.weapon-combat-fields select {
+		width: 100%;
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.45rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.weapon-effects {
+		min-width: 0;
+		display: grid;
+		gap: 0.35rem;
+		margin: 0;
+		border: 1px solid #493e39;
+		border-radius: 6px;
+		padding: 0.5rem;
+	}
+	.weapon-effects legend {
+		padding: 0 0.25rem;
+		color: #d6b879;
+		font-size: 0.68rem;
+	}
+	.weapon-effects label {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: #e1d5c9;
+		font-size: 0.72rem;
+	}
+	.weapon-effects small {
+		margin-left: auto;
+		color: #b9aa9b;
+		font-size: 0.65rem;
+	}
+	.weapon-combat-actions button {
+		flex: 1;
+		border: 1px solid #725a3b;
+		border-radius: 6px;
+		padding: 0.48rem 0.6rem;
+		color: #e8c786;
+		background: #2a211e;
+	}
+	.weapon-combat-actions .roll-weapon {
+		color: #ffe1a4;
+		background: #3b291e;
+	}
+	.combat-armor-list {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem 0.9rem;
+		margin-top: 0.65rem;
+		border-top: 1px solid #403536;
+		padding-top: 0.65rem;
+	}
+	.combat-armor-list h4 {
+		width: 100%;
+		margin: 0;
+		color: #d9c4a3;
+		font-size: 0.78rem;
+	}
+	.combat-armor-list label {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: #d5c7b9;
+		font-size: 0.75rem;
+	}
 	.custom-item-form {
 		display: grid;
-		grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(100px, 0.7fr) auto;
+		grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 		align-items: center;
 		gap: 0.45rem;
 		margin-bottom: 0.7rem;
@@ -3044,6 +3427,7 @@
 		background: #151214;
 	}
 	.custom-item-form strong {
+		grid-column: 1 / -1;
 		color: #d8ad67;
 		font-size: 0.72rem;
 	}
@@ -3075,11 +3459,6 @@
 		background: #2a211e;
 		font-size: 0.72rem;
 	}
-	.item-detail {
-		color: #b9aa9b;
-		font-size: 0.68rem;
-		white-space: nowrap;
-	}
 	@media (max-width: 640px) {
 		.custom-item-form {
 			grid-template-columns: 1fr 1fr;
@@ -3097,7 +3476,7 @@
 	}
 	.inventory-item {
 		display: grid;
-		grid-template-columns: auto minmax(90px, 1fr) 60px auto auto auto;
+		grid-template-columns: minmax(0, 1fr) 78px 64px 32px;
 		align-items: center;
 		gap: 0.45rem;
 		padding: 0.45rem;
@@ -3105,6 +3484,19 @@
 		border-radius: 6px;
 		background: #181416;
 		font-size: 0.78rem;
+	}
+	.inventory-item > strong {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.inventory-item > input {
+		width: 100%;
+		text-align: center;
+	}
+	.inventory-weight {
+		color: #b9aa9b;
+		font-size: 0.7rem;
+		text-align: center;
 	}
 	.roll-weapon {
 		border-color: #9d7744 !important;
@@ -3184,15 +3576,6 @@
 		line-height: 1.45;
 		white-space: pre-wrap;
 	}
-	.inventory-item label {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		font-size: 0.62rem;
-	}
-	.inventory-item label input {
-		width: auto;
-	}
 	.empty-inline {
 		margin: 0;
 		color: #96897e;
@@ -3206,8 +3589,8 @@
 	}
 	.line-item.attack-row {
 		grid-template-columns:
-			28px minmax(170px, 2.4fr) minmax(96px, 0.9fr) minmax(112px, 1.1fr) 72px
-			minmax(130px, 1.3fr) 40px 32px;
+			28px minmax(110px, 2fr) minmax(80px, 0.8fr) minmax(90px, 0.9fr) 60px
+			minmax(80px, 1.1fr) auto auto 32px;
 		align-items: center;
 	}
 	.attack-row > input,
@@ -3307,40 +3690,39 @@
 			grid-template-columns: 1fr;
 		}
 		.line-item.attack-row {
-			grid-template-columns: 28px minmax(0, 1fr) 84px 70px;
+			grid-template-columns: 28px minmax(0, 1fr) 64px;
 			gap: 0.35rem;
 		}
 		.attack-row .token-roll-toggle {
 			grid-area: 1 / 1;
 		}
 		.attack-row .attack-name {
-			grid-area: 1 / 2 / 2 / 5;
-		}
-		.attack-row .attack-type {
-			grid-area: 2 / 2;
-		}
-		.attack-row .attack-ability {
-			grid-area: 2 / 3;
-		}
-		.attack-row .attack-bonus {
-			grid-area: 2 / 4;
-		}
-		.attack-row .attack-damage {
-			grid-area: 3 / 2 / 4 / 3;
-		}
-		.attack-row .roll-custom {
-			grid-area: 3 / 3;
+			grid-area: 1 / 2 / 2 / 3;
 		}
 		.attack-row > button:last-child {
-			grid-area: 3 / 4;
+			grid-area: 1 / 3;
+		}
+		.attack-row .attack-type {
+			grid-area: 2 / 1 / 3 / 3;
+		}
+		.attack-row .attack-ability {
+			grid-area: 3 / 1 / 4 / 3;
+		}
+		.attack-row .attack-bonus {
+			grid-area: 3 / 3;
+		}
+		.attack-row .attack-damage {
+			grid-area: 4 / 1 / 5 / 4;
+		}
+		.attack-row .roll-custom {
+			grid-column: 1 / -1;
 		}
 		.species-traits > div {
 			align-items: flex-start;
 			flex-direction: column;
 			gap: 0.2rem;
 		}
-		.spell-picker,
-		.inventory-item {
+		.spell-picker {
 			grid-template-columns: 1fr;
 		}
 	}
