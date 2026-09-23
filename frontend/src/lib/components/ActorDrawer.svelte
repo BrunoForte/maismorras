@@ -15,12 +15,14 @@
 		campaignId,
 		sceneId,
 		session,
-		onadded = async () => {}
+		onadded = async () => {},
+		oncompendium = () => {}
 	}: {
 		campaignId: string;
 		sceneId: string;
 		session: Session;
 		onadded?: () => void | Promise<void>;
+		oncompendium?: () => void;
 	} = $props();
 
 	type ActorRow = { id: string; name: string; kind: 'character' | 'npc'; detail: string };
@@ -125,6 +127,9 @@
 	</button>
 	{#if open}
 		<div class="drawer-body">
+			<button class="compendium-link" onclick={oncompendium}
+				>Adicionar monstros do compêndio…</button
+			>
 			<p class="hint">Adicionar coloca o ator nesta cena. Um ator só pode ter um token por cena.</p>
 			{#if loading}<p class="empty">Carregando elenco…</p>
 			{:else if actors.length === 0}<p class="empty">Ainda não há fichas ou NPCs cadastrados.</p>
@@ -156,7 +161,7 @@
 	.actor-drawer {
 		position: fixed;
 		z-index: 8;
-		left: 1rem;
+		right: 1rem;
 		bottom: 4.25rem;
 		width: min(330px, calc(100% - 2rem));
 		overflow: hidden;
@@ -170,6 +175,17 @@
 	.actor-drawer.closed {
 		width: min(220px, calc(100% - 2rem));
 		height: auto;
+	}
+	.compendium-link {
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.5rem 0.65rem;
+		color: #f0cb85;
+		background: #2b211c;
+		font: inherit;
+		font-size: 0.72rem;
+		text-align: left;
+		cursor: pointer;
 	}
 	.actor-drawer.closed .drawer-body {
 		display: none;
@@ -199,6 +215,13 @@
 		max-height: 360px;
 		overflow: auto;
 		padding: 0.7rem;
+	}
+	@media (max-width: 650px) {
+		.actor-drawer {
+			right: 0.6rem;
+			bottom: 4.25rem;
+			width: min(330px, calc(100% - 1.2rem));
+		}
 	}
 	.hint,
 	.empty,

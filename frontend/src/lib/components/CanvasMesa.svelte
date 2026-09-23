@@ -92,7 +92,10 @@
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const savedSnapshots = new Map<string, string>();
 	let sceneSocket: SceneSocket | null = null;
-	let motor: GameEngine | null = null;
+	let motor = $state<GameEngine | null>(null);
+	$effect(() => {
+		if (motor) motor.setMapSize(scene.mapWidthCells, scene.mapHeightCells, scene.gridSize);
+	});
 	let fogMode = $state<'reveal' | 'hide' | null>(null);
 	let fogBrush = $state(1);
 	let areas = $state<SceneArea[]>([]);
@@ -737,6 +740,7 @@
 			motor?.resize(entry.contentRect.width, entry.contentRect.height);
 		});
 		void motor.init(canvasMesa).then(async () => {
+			motor?.setMapSize(scene.mapWidthCells, scene.mapHeightCells, scene.gridSize);
 			observer.observe(container);
 			try {
 				const saved = sessionStorage.getItem(`maismorras:camera:${scene.id}`);
@@ -1869,9 +1873,14 @@
 		z-index: 2;
 		top: 1rem;
 		right: 1rem;
-		width: min(300px, calc(100% - 2rem));
+		width: min(340px, calc(100% - 2rem));
+		height: min(420px, calc(100% - 2rem));
+		min-width: 260px;
+		min-height: 180px;
+		max-width: calc(100% - 1rem);
 		max-height: calc(100% - 2rem);
-		overflow-y: auto;
+		resize: both;
+		overflow: auto;
 		overscroll-behavior: contain;
 		padding: 1rem;
 		border: 1px solid rgba(216, 173, 103, 0.42);
@@ -2252,8 +2261,10 @@
 			right: 0.45rem;
 			bottom: 0.45rem;
 			width: calc(100% - 0.9rem);
+			height: min(360px, 52%);
+			min-width: 0;
 			max-height: 52%;
-			overflow: auto;
+			resize: none;
 		}
 	}
 </style>

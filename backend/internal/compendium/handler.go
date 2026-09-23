@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"vtt-backend/internal/apperror"
@@ -127,6 +128,7 @@ func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error
 	}
 	translated, err := h.translator.Translate(r.Context(), fields)
 	if err != nil {
+		slog.Error("compendium translation provider failed", "campaign_id", r.PathValue("campaignID"), "entry_id", r.PathValue("entryID"), "error", err)
 		return apperror.TranslationProvider(err)
 	}
 	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, translated)

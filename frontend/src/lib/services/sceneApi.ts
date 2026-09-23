@@ -13,6 +13,8 @@ export type Scene = {
 	ambientAudioStartedAt: string | null;
 	ambientAudioRevision: number;
 	gridSize: number;
+	mapWidthCells: number;
+	mapHeightCells: number;
 	playerAccess: 'hidden' | 'available' | 'active';
 	fogEnabled: boolean;
 	visionMode: 'manual' | 'shared' | 'token';

@@ -149,6 +149,14 @@ export class GameEngine {
 		this.app.renderer.resize(Math.max(width, 320), Math.max(height, 320));
 	}
 
+	setMapSize(widthCells: number, heightCells: number, gridSize = this.tamanhoGrid) {
+		this.mapManager?.setBoardSize(
+			Math.min(100, Math.max(5, widthCells || 30)),
+			Math.min(100, Math.max(5, heightCells || 20)),
+			Math.min(200, Math.max(20, gridSize || 70))
+		);
+	}
+
 	destroy() {
 		this.unsubscribers.forEach((unsubscribe) => unsubscribe());
 		this.unsubscribers = [];

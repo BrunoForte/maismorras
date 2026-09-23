@@ -49,16 +49,18 @@
 	let loading = $state(true);
 	let error = $state('');
 	async function ensureMapComponents() {
-		const [canvas, dice, table, chat] = await Promise.all([
+		const [canvas, dice, table, chat, actor] = await Promise.all([
 			import('$lib/components/CanvasMesa.svelte'),
 			import('$lib/components/DiceOverlay.svelte'),
 			import('$lib/components/TableTools.svelte'),
-			import('$lib/components/FloatingChat.svelte')
+			import('$lib/components/FloatingChat.svelte'),
+			import('$lib/components/ActorDrawer.svelte')
 		]);
 		CanvasMesaComponent ??= canvas.default;
 		DiceOverlayComponent ??= dice.default;
 		TableToolsComponent ??= table.default;
 		FloatingChatComponent ??= chat.default;
+		ActorDrawerComponent ??= actor.default;
 	}
 	async function ensureTabComponent(tab: WorkspaceTab) {
 		if (tab === 'sheets')
@@ -955,6 +957,7 @@
 										sceneId={activeScene.id}
 										{session}
 										onadded={() => reloadActiveScene()}
+										oncompendium={() => (workspaceTab = 'compendium')}
 									/>{/if}
 							</div>
 						{/key}{:else}<p class="status-message">

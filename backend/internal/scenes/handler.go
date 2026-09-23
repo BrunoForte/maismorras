@@ -46,14 +46,24 @@ func (h *Handler) UpdateScene(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	in.Name = strings.TrimSpace(in.Name)
-	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || in.AmbientAudioVolume < 0 || in.AmbientAudioVolume > 100 || !validSceneSettings(in) {
-		return apperror.BadRequest("INVALID_SCENE", "Confira nome, grid, acesso de jogadores e visão da cena.")
+	// Older browser tabs may submit a scene payload without map dimensions.
+	if in.MapWidthCells == 0 {
+		in.MapWidthCells = 30
+	}
+	if in.MapHeightCells == 0 {
+		in.MapHeightCells = 20
+	}
+	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || !validMapDimensions(in.MapWidthCells, in.MapHeightCells) || in.AmbientAudioVolume < 0 || in.AmbientAudioVolume > 100 || !validSceneSettings(in) {
+		return apperror.BadRequest("INVALID_SCENE", "Confira nome, grid, dimensões do mapa, acesso de jogadores e visão da cena.")
 	}
 	scene, err := h.repo.UpdateScene(r.Context(), r.PathValue("sceneID"), p.UserID, in)
 	if err != nil {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, scene)
+}
+func validMapDimensions(width, height int) bool {
+	return width >= 5 && width <= 100 && height >= 5 && height <= 100
 }
 func validSceneSettings(s Scene) bool {
 	return (s.PlayerAccess == "hidden" || s.PlayerAccess == "available" || s.PlayerAccess == "active") && (s.VisionMode == "manual" || s.VisionMode == "shared" || s.VisionMode == "token")

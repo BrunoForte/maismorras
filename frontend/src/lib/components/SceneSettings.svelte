@@ -192,7 +192,23 @@
 					min="20"
 					max="200"
 				/></label
-			><label
+			>
+			<div class="map-dimensions">
+				<label>
+					{$appLocale === 'en' ? 'Map width (squares)' : 'Largura do mapa (quadrados)'}
+					<input bind:value={draft.mapWidthCells} type="number" min="5" max="100" />
+				</label>
+				<label>
+					{$appLocale === 'en' ? 'Map height (squares)' : 'Altura do mapa (quadrados)'}
+					<input bind:value={draft.mapHeightCells} type="number" min="5" max="100" />
+				</label>
+			</div>
+			<small class="map-size-hint">
+				{$appLocale === 'en'
+					? 'The background image is fitted to this grid area; a different image ratio may stretch it.'
+					: 'A imagem de fundo será ajustada a esta área de grade; proporções diferentes podem esticar a imagem.'}
+			</small>
+			<label
 				>{$appLocale === 'en' ? 'Player visibility' : 'Visibilidade para jogadores'}<select
 					bind:value={draft.playerAccess}
 					><option value="hidden"
@@ -262,6 +278,15 @@
 		padding: 0.7rem;
 		color: #d8ad67;
 		font-size: 0.75rem;
+	}
+	.map-dimensions {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.7rem;
+	}
+	.map-size-hint {
+		color: #a99c91;
+		font-size: 0.68rem;
 	}
 	.map-ai textarea {
 		min-height: 68px;

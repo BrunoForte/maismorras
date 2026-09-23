@@ -15,6 +15,9 @@
 		type CompendiumSource
 	} from '$lib/services/compendiumApi';
 	import { createTokenFromCompendiumMonster } from '$lib/services/sceneApi';
+	import { optimizeImage } from '$lib/services/imageProcessing';
+	import { supabase } from '$lib/services/supabase';
+	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale, distanceText } from '$lib/stores/locale';
 	let {
 		campaignId,
@@ -56,6 +59,8 @@
 		batchProgress = $state(''),
 		message = $state('');
 	let selectedEntryId = $state<string | null>(null);
+	let selectedArtUrl = $state('');
+	let artRequestRevision = 0;
 	let editingEntryId = $state<string | null>(null);
 	let entryType = $state<EntryType>('other'),
 		name = $state(''),
@@ -70,6 +75,9 @@
 		initiative = $state(0),
 		color = $state(4921830),
 		imageUrl = $state('');
+	let monsterExtraRules = $state<Record<string, unknown>>({});
+	let extraTranslations = $state<Record<string, string>>({});
+	let uploadingMonsterArt = $state(false);
 	let spellLevel = $state(1),
 		spellClasses = $state(''),
 		itemDamage = $state(''),
@@ -171,6 +179,18 @@
 			([key, value]) => key.startsWith('pt-BR') && key.endsWith('.source') && value === 'ai'
 		);
 	const rules = (entry: CompendiumEntry) => entry.rules ?? {};
+	$effect(() => {
+		const entry = selectedEntry();
+		const imagePath = String(entry?.rules?.imageUrl ?? '');
+		const revision = ++artRequestRevision;
+		if (!imagePath) {
+			selectedArtUrl = '';
+			return;
+		}
+		void getSignedAssetUrl(session, campaignId, imagePath).then((url) => {
+			if (revision === artRequestRevision) selectedArtUrl = url ?? '';
+		});
+	});
 	const isMonster = (entry: CompendiumEntry) =>
 		entry.entryType === 'other' &&
 		(rules(entry).kind === 'monster' || rules(entry).catalog === 'monster');
@@ -205,6 +225,7 @@
 	function formRules(): Record<string, unknown> {
 		if (entryType === 'other')
 			return {
+				...(category === 'monster' ? monsterExtraRules : {}),
 				kind: category,
 				...(category === 'monster'
 					? {
@@ -269,6 +290,8 @@
 		portugueseName = '';
 		summary = '';
 		imageUrl = '';
+		monsterExtraRules = {};
+		extraTranslations = {};
 		itemDamage = '';
 		itemDefense = 0;
 		spellClasses = '';
@@ -312,8 +335,8 @@
 				summary: summary.trim(),
 				rules: formRules(),
 				translations: portugueseName.trim()
-					? { 'pt-BR': portugueseName.trim() }
-					: ({} as Record<string, string>),
+					? { ...extraTranslations, 'pt-BR': portugueseName.trim() }
+					: extraTranslations,
 				isPublished: published
 			};
 			const wasEditing = Boolean(editingEntryId);
@@ -353,6 +376,8 @@
 		summary = entry.summary;
 		published = entry.isPublished;
 		const value = entry.rules ?? {};
+		monsterExtraRules = { ...value };
+		extraTranslations = { ...(entry.translations ?? {}) };
 		category = String(value.kind ?? value.category ?? 'monster') as typeof category;
 		hpMax = Number(value.hpMax ?? 10);
 		armorClass = Number(value.armorClass ?? 10);
@@ -377,6 +402,63 @@
 					};
 				})
 			: [];
+	}
+	function copyMonsterForCampaign(entry: CompendiumEntry) {
+		const source = privateSources()[0];
+		if (!source) {
+			message = 'Crie uma fonte privada da campanha antes de copiar criaturas do SRD.';
+			return;
+		}
+		const monster = rules(entry);
+		monsterExtraRules = { ...monster };
+		extraTranslations = { ...(entry.translations ?? {}) };
+		sourceId = source.id;
+		entryType = 'other';
+		category = 'monster';
+		name = entry.name;
+		portugueseName = String(entry.translations?.['pt-BR'] ?? '');
+		summary = displaySummary(entry);
+		hpMax = Number(monster.hpMax ?? monster.hitPointsMax ?? 0);
+		armorClass = Number(monster.armorClass ?? 10);
+		size = Number(monster.size ?? 1);
+		initiative = Number(monster.initiative ?? 0);
+		imageUrl = String(monster.imageUrl ?? '');
+		published = true;
+		editingEntryId = null;
+		selectedEntryId = null;
+		window.setTimeout(
+			() => document.querySelector('.assistant')?.scrollIntoView({ behavior: 'smooth' }),
+			0
+		);
+		message = `Cópia de “${displayName(entry)}” preparada. Vincule uma URL ou caminho de imagem e salve.`;
+	}
+	async function uploadMonsterArt(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file || !supabase || uploadingMonsterArt) return;
+		if (!file.type.startsWith('image/') || file.size > 15 * 1024 * 1024) {
+			message = 'Escolha uma imagem de até 15 MB.';
+			return;
+		}
+		uploadingMonsterArt = true;
+		try {
+			const optimized = await optimizeImage(file, 768, 0.8);
+			const path = `campaigns/${campaignId}/media/${crypto.randomUUID()}-criatura.webp`;
+			const { error } = await supabase.storage
+				.from('campaign-assets')
+				.upload(path, optimized.file, {
+					contentType: optimized.file.type,
+					cacheControl: '31536000'
+				});
+			if (error) throw error;
+			imageUrl = path;
+			message = 'Imagem otimizada e vinculada. Salve a criatura para concluir.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível enviar a imagem.';
+		} finally {
+			uploadingMonsterArt = false;
+		}
 	}
 	async function removeEntry(entry: CompendiumEntry) {
 		if (
@@ -508,14 +590,31 @@
 		}
 		batchTranslating = true;
 		message = '';
+		let completed = 0;
+		let failedEntry: CompendiumEntry | null = null;
+		let failureMessage = '';
 		try {
 			for (let index = 0; index < pending.length; index += 1) {
 				const entry = pending[index];
-				batchProgress = `${index + 1}/${pending.length}`;
-				const updated = await translateCompendiumEntry(session, campaignId, entry.id);
-				entries = entries.map((item) => (item.id === updated.id ? updated : item));
+				batchProgress = `${index + 1}/${pending.length} · ${displayName(entry)}`;
+				try {
+					const updated = await translateCompendiumEntry(session, campaignId, entry.id);
+					entries = entries.map((item) => (item.id === updated.id ? updated : item));
+					completed += 1;
+				} catch (error) {
+					failedEntry = entry;
+					failureMessage =
+						error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')
+							? 'A requisição foi interrompida ou excedeu o tempo limite.'
+							: error instanceof Error
+								? error.message
+								: 'Falha do provedor de tradução.';
+					break;
+				}
 			}
-			message = `Tradução concluída para ${pending.length} entrada(s) SRD.`;
+			message = failedEntry
+				? `Lote pausado em “${displayName(failedEntry)}” após ${completed}/${pending.length} tradução(ões). As concluídas foram salvas; tente novamente após corrigir: ${failureMessage}`
+				: `Tradução concluída para ${completed} entrada(s) SRD.`;
 		} catch (error) {
 			message =
 				error instanceof Error ? error.message : 'Não foi possível concluir a tradução em lote.';
@@ -615,9 +714,28 @@
 							placeholder="Tamanho"
 						/><input bind:value={initiative} type="number" placeholder="Iniciativa" /><input
 							bind:value={imageUrl}
-							type="url"
-							placeholder="URL da miniatura (opcional)"
-						/>{/if}
+							type="text"
+							placeholder="URL ou caminho em campaign-assets (opcional)"
+						/>{#if category === 'monster'}<label class="file monster-image-file">
+								<input
+									type="file"
+									accept="image/*"
+									onchange={uploadMonsterArt}
+									disabled={uploadingMonsterArt}
+								/>
+								{$appLocale === 'en'
+									? uploadingMonsterArt
+										? 'Optimizing artwork…'
+										: 'Upload monster artwork'
+									: uploadingMonsterArt
+										? 'Otimizando imagem…'
+										: 'Enviar imagem do monstro'}</label
+							>{/if}{/if}
+					{#if category === 'monster'}<small class="image-link-hint"
+							>{$appLocale === 'en'
+								? 'A public URL or a relative Storage path is copied to the token when the creature enters the scene.'
+								: 'A URL pública ou o caminho relativo do Storage é copiado ao token quando a criatura entra na cena.'}</small
+						>{/if}
 				{:else if entryType === 'item'}<select bind:value={category}
 						><option value="weapon">Arma</option><option value="armor">Armadura</option><option
 							value="consumable">Consumível</option
@@ -817,6 +935,12 @@
 							</div>
 						{/if}
 						<h3>{displayName(entry)}</h3>
+						{#if isMonster(entry) && selectedArtUrl}<img
+								class="monster-art"
+								src={selectedArtUrl}
+								alt={displayName(entry)}
+								loading="lazy"
+							/>{/if}
 						{#if $appLocale === 'pt-BR' && entry.translations?.['pt-BR']}<small class="canonical"
 								>{entry.name}</small
 							>{/if}{#if translationIsOfficial(entry)}<small class="official-translation"
@@ -849,6 +973,13 @@
 									>{distanceText(displayRule(entry, 'speed', detail.speed), $appLocale)}</b
 								>
 							</div>
+							{#if sources.find((source) => source.id === entry.sourceId)?.readOnly && privateSources().length}<button
+									class="ghost"
+									onclick={() => copyMonsterForCampaign(entry)}
+									>{$appLocale === 'en'
+										? 'Copy to campaign and link artwork'
+										: 'Copiar para a mesa e vincular imagem'}</button
+								>{/if}
 							{#if detail.abilities}<div class="rules">
 									{#each Object.entries(detail.abilities as Record<string, unknown>) as [ability, score]}<b
 											>{ability.slice(0, 3).toUpperCase()} {String(score)}</b
@@ -1180,6 +1311,12 @@
 		min-height: 76px;
 		resize: vertical;
 	}
+	.image-link-hint {
+		grid-column: 1 / -1;
+		color: #a99c91;
+		font-size: 0.66rem;
+		line-height: 1.4;
+	}
 	.form > label:not(.file) {
 		display: flex;
 		align-items: center;
@@ -1328,6 +1465,15 @@
 	.entry-detail h3,
 	.entry-detail p {
 		margin: 0;
+	}
+	.monster-art {
+		display: block;
+		width: 100%;
+		max-height: 240px;
+		object-fit: contain;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		background: #100d10;
 	}
 	.entry-detail p {
 		color: #cbbbab;
