@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
 import type { AudioPlaybackState } from './audioPlayback';
 import { supabase } from './supabase';
+import type { SceneArea, SceneEffect, SceneWall } from './sceneApi';
 
 type SceneRefresh = { type: 'scene.refresh' };
 type AudioStateEvent = { type: 'audio.state'; state: AudioPlaybackState };
@@ -10,6 +11,14 @@ type LayoutUpdated = { type: 'overlay.layout.updated'; data?: unknown };
 export type TokenUpdateSignal = { tokenId: string; deleted?: boolean };
 type TokenUpdated = { type: 'token.updated'; data?: TokenUpdateSignal };
 type CombatUpdated = { type: 'combat.updated'; data?: unknown };
+export type SceneDelta =
+	| { kind: 'area'; action: 'upsert'; item: SceneArea }
+	| { kind: 'area'; action: 'delete'; id: string }
+	| { kind: 'wall'; action: 'upsert'; item: SceneWall }
+	| { kind: 'wall'; action: 'delete'; id: string }
+	| { kind: 'effect'; action: 'upsert'; item: SceneEffect }
+	| { kind: 'effect'; action: 'delete'; id: string };
+type SceneDeltaEvent = { type: 'scene.delta'; data: SceneDelta };
 type ChatUpdated = { type: 'chat.updated' };
 type MapPing = { type: 'map.ping'; x: number; y: number; color: number };
 export type RealtimeStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
@@ -21,6 +30,7 @@ export type SceneSocket = {
 	publishLayoutUpdated: (data?: unknown) => void;
 	publishTokenUpdated: (data: TokenUpdateSignal) => void;
 	publishCombatUpdated: (data?: unknown) => void;
+	publishSceneDelta: (data: SceneDelta) => void;
 	publishChatUpdated: () => void;
 	close: () => void;
 };
@@ -32,6 +42,7 @@ type Subscriber = {
 	onLayout?: (data?: unknown) => void;
 	onTokens?: (data?: TokenUpdateSignal) => void;
 	onCombat?: (data?: unknown) => void;
+	onSceneDelta?: (data: SceneDelta) => void;
 	onChat?: () => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
@@ -50,6 +61,7 @@ class SharedSceneConnection {
 		| LayoutUpdated
 		| TokenUpdated
 		| CombatUpdated
+		| SceneDeltaEvent
 		| ChatUpdated
 		| MapPing
 	)[] = [];
@@ -84,6 +96,7 @@ class SharedSceneConnection {
 			publishLayoutUpdated: (data) => this.publish({ type: 'overlay.layout.updated', data }),
 			publishTokenUpdated: (data) => this.publish({ type: 'token.updated', data }),
 			publishCombatUpdated: (data) => this.publish({ type: 'combat.updated', data }),
+			publishSceneDelta: (data) => this.publish({ type: 'scene.delta', data }),
 			publishChatUpdated: () => this.publish({ type: 'chat.updated' }),
 			close: () => this.remove(subscriber)
 		};
@@ -119,6 +132,7 @@ class SharedSceneConnection {
 					| LayoutUpdated
 					| TokenUpdated
 					| CombatUpdated
+					| SceneDeltaEvent
 					| ChatUpdated
 					| MapPing;
 				if (payload.type === 'scene.refresh')
@@ -133,6 +147,8 @@ class SharedSceneConnection {
 					for (const subscriber of this.subscribers) subscriber.onTokens?.(payload.data);
 				if (payload.type === 'combat.updated')
 					for (const subscriber of this.subscribers) subscriber.onCombat?.(payload.data);
+				if (payload.type === 'scene.delta')
+					for (const subscriber of this.subscribers) subscriber.onSceneDelta?.(payload.data);
 				if (payload.type === 'chat.updated')
 					for (const subscriber of this.subscribers) subscriber.onChat?.();
 				if (payload.type === 'map.ping')
@@ -157,6 +173,7 @@ class SharedSceneConnection {
 			| LayoutUpdated
 			| TokenUpdated
 			| CombatUpdated
+			| SceneDeltaEvent
 			| ChatUpdated
 			| MapPing
 	) {
@@ -196,7 +213,8 @@ export function connectSceneSocket(
 	onLayout?: (data?: unknown) => void,
 	onTokens?: (data?: TokenUpdateSignal) => void,
 	onCombat?: (data?: unknown) => void,
-	onChat?: () => void
+	onChat?: () => void,
+	onSceneDelta?: (data: SceneDelta) => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -213,6 +231,7 @@ export function connectSceneSocket(
 		onLayout,
 		onTokens,
 		onCombat,
-		onChat
+		onChat,
+		onSceneDelta
 	});
 }

@@ -171,6 +171,29 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			if peer.canControl {
 				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 			}
+		case "scene.delta":
+			if !peer.canControl {
+				continue
+			}
+			var delta struct {
+				Kind   string          `json:"kind"`
+				Action string          `json:"action"`
+				ID     string          `json:"id"`
+				Item   json.RawMessage `json:"item"`
+			}
+			if json.Unmarshal(event.Data, &delta) != nil || (delta.Kind != "area" && delta.Kind != "wall" && delta.Kind != "effect") {
+				continue
+			}
+			if delta.Action == "upsert" && (len(delta.Item) == 0 || len(delta.Item) > 16<<10) {
+				continue
+			}
+			if delta.Action == "delete" && (len(delta.ID) != 36 || len(delta.Item) != 0) {
+				continue
+			}
+			if delta.Action != "upsert" && delta.Action != "delete" {
+				continue
+			}
+			h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
 		case "chat.updated":
 			h.hub.broadcast(sceneID, []byte(`{"type":"chat.updated"}`))
 		case "audio.state":

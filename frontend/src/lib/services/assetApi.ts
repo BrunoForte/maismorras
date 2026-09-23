@@ -4,6 +4,7 @@ import { fetchAuthenticated } from './httpClient';
 
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const missingAssetCache = new Map<string, number>();
+const failedRequestCache = new Map<string, number>();
 const cacheLifetimeMs = 15 * 60 * 1000;
 const inFlight = new Map<string, Promise<string | null>>();
 
@@ -30,12 +31,15 @@ export function clearSignedAssetCache(campaignId?: string, path?: string) {
 	if (!campaignId) {
 		signedUrlCache.clear();
 		missingAssetCache.clear();
+		failedRequestCache.clear();
 		return;
 	}
 	const suffix = ':' + campaignId + ':' + (path ?? '');
 	for (const key of signedUrlCache.keys()) if (key.includes(suffix)) signedUrlCache.delete(key);
 	for (const key of missingAssetCache.keys())
 		if (key.includes(suffix)) missingAssetCache.delete(key);
+	for (const key of failedRequestCache.keys())
+		if (key.includes(suffix)) failedRequestCache.delete(key);
 }
 
 /** Resolve a private campaign asset through the backend authorization boundary. */
@@ -51,6 +55,9 @@ export async function getSignedAssetUrl(
 	const missingUntil = missingAssetCache.get(cacheKey);
 	if (missingUntil && missingUntil > Date.now()) return null;
 	if (missingUntil) missingAssetCache.delete(cacheKey);
+	const failedUntil = failedRequestCache.get(cacheKey);
+	if (failedUntil && failedUntil > Date.now()) return null;
+	if (failedUntil) failedRequestCache.delete(cacheKey);
 	const cached = signedUrlCache.get(cacheKey);
 	if (cached && cached.expiresAt > Date.now()) return cached.url;
 	const existing = inFlight.get(cacheKey);
@@ -68,7 +75,22 @@ export async function getSignedAssetUrl(
 			);
 			if (!response.ok) {
 				signedUrlCache.delete(cacheKey);
-				if (response.status === 404) missingAssetCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
+				let code = '';
+				try {
+					const body = (await response.json()) as { error?: { code?: unknown } };
+					if (typeof body.error?.code === 'string') code = body.error.code;
+				} catch {
+					// A route-level 404 can be plain text/HTML; don't cache it as a missing object.
+				}
+				if (response.status === 404 && code === 'ASSET_NOT_FOUND') {
+					missingAssetCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
+				} else {
+					failedRequestCache.set(cacheKey, Date.now() + 15_000);
+				}
+				console.warn('Falha ao solicitar URL de asset.', {
+					status: response.status,
+					code: code || 'UNKNOWN'
+				});
 				return null;
 			}
 			const body = (await response.json()) as { url?: string; expiresAt?: number };

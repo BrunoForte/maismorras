@@ -33,6 +33,13 @@ func FromContext(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
+// WithPrincipal carries a verified identity into request handlers. It is used
+// by middleware and focused handler tests; callers must only pass identities
+// established by a trusted authentication boundary.
+func WithPrincipal(ctx context.Context, principal Principal) context.Context {
+	return context.WithValue(ctx, contextKey{}, principal)
+}
+
 var cache struct {
 	sync.Mutex
 	keys    map[string]any
@@ -86,7 +93,7 @@ func Authenticate(baseURL, secret string, next func(http.ResponseWriter, *http.R
 		if metadata, ok := claims["app_metadata"].(map[string]any); ok {
 			isAdmin, _ = metadata["is_admin"].(bool)
 		}
-		if err := next(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, Principal{UserID: id, Email: email, IsAdmin: isAdmin}))); err != nil {
+		if err := next(w, r.WithContext(WithPrincipal(r.Context(), Principal{UserID: id, Email: email, IsAdmin: isAdmin}))); err != nil {
 			apperror.Write(w, err)
 		}
 	})

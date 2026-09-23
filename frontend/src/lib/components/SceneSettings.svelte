@@ -73,7 +73,7 @@
 		try {
 			const data = await request<{ fotoUrl: string }>(
 				session,
-				`/api/v1/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`
+				`/api/v1/campaigns/${scene.campaignId}/scenes/generate-background?prompt=${encodeURIComponent(mapPrompt.trim())}`
 			);
 			const blob = await (await fetch(data.fotoUrl)).blob();
 			const optimized = await optimizeImage(blob, 2048, 0.82);

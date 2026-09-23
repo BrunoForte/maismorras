@@ -18,6 +18,7 @@
 	let item = $state({ assetPath: '', title: '', description: '', visible: false });
 	let url = $state('');
 	let dismissedPresentation = $state('');
+	let presentationGeneration = 0;
 	let socket: SceneSocket | null = null;
 	async function closePresentation(event: Event) {
 		if (!isGM || event.target !== event.currentTarget) return;
@@ -40,18 +41,48 @@
 			/* Keep the current presentation if the server is temporarily unavailable. */
 		}
 	}
+	async function applyPresentation(next: {
+		assetPath: string;
+		title: string;
+		description: string;
+		visible: boolean;
+	}) {
+		const generation = ++presentationGeneration;
+		item = next;
+		const presentationKey = `${next.assetPath}:${next.title}`;
+		if (presentationKey !== dismissedPresentation) dismissedPresentation = '';
+		if (!next.visible || presentationKey === dismissedPresentation || !next.assetPath) {
+			url = '';
+			return;
+		}
+		const signed = await getSignedAssetUrl(session, campaignId, next.assetPath);
+		if (generation === presentationGeneration) url = signed ?? '';
+	}
+	async function applyRealtimePresentation(data?: unknown) {
+		if (!data || typeof data !== 'object') {
+			await load();
+			return;
+		}
+		const payload = data as { presentation?: unknown };
+		if (!payload.presentation || typeof payload.presentation !== 'object') {
+			await load();
+			return;
+		}
+		const next = payload.presentation as Partial<typeof item>;
+		if (
+			typeof next.assetPath !== 'string' ||
+			typeof next.title !== 'string' ||
+			typeof next.description !== 'string' ||
+			typeof next.visible !== 'boolean'
+		) {
+			await load();
+			return;
+		}
+		await applyPresentation(next as typeof item);
+	}
 	async function load() {
 		try {
-			item = await getPresentation(session, sceneId);
-			const presentationKey = `${item.assetPath}:${item.title}`;
-			if (presentationKey !== dismissedPresentation) dismissedPresentation = '';
-			if (item.visible && presentationKey === dismissedPresentation) {
-				url = '';
-				return;
-			}
-			if (item.visible && item.assetPath) {
-				url = (await getSignedAssetUrl(session, campaignId, item.assetPath)) ?? '';
-			} else url = '';
+			await applyPresentation(await getPresentation(session, sceneId));
 		} catch {
 			/* presentation is optional */
 		}
@@ -74,7 +105,7 @@
 			undefined,
 			updateFallback,
 			undefined,
-			() => void load()
+			(data) => void applyRealtimePresentation(data)
 		);
 		return () => {
 			socket?.close();

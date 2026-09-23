@@ -109,8 +109,14 @@ func (h *Handler) removeStaleAssetReferences(r *http.Request, campaignID, assetP
 	}{
 		{"scene tokens", `update public.scene_tokens st set image_url=null from public.scenes s where st.scene_id=s.id and s.campaign_id=$1 and st.image_url=$2`},
 		{"scene backgrounds", `update public.scenes set background_url=null,updated_at=now() where campaign_id=$1 and background_url=$2`},
+		{"scene audio", `update public.scenes set ambient_audio_path=null,ambient_audio_enabled=false,ambient_audio_started_at=null,ambient_audio_revision=ambient_audio_revision+1,updated_at=now() where campaign_id=$1 and ambient_audio_path=$2`},
+		{"scene presentations", `update public.scene_presentations set asset_path='',visible=false,updated_at=now() where campaign_id=$1 and asset_path=$2`},
 		{"actor portraits", `update public.actors set sheet=jsonb_set(sheet,'{portraitPath}','null'::jsonb,true) where campaign_id=$1 and sheet->>'portraitPath'=$2`},
+		{"actor token portraits", `update public.actors set sheet=jsonb_set(sheet,'{tokenPortraitPath}','null'::jsonb,true) where campaign_id=$1 and sheet->>'tokenPortraitPath'=$2`},
+		{"NPC portraits", `update public.actors set sheet=jsonb_set(sheet,'{imageUrl}','null'::jsonb,true) where campaign_id=$1 and sheet->>'imageUrl'=$2`},
 		{"actor tokens", `update public.actors set token=jsonb_set(token,'{imageUrl}','null'::jsonb,true) where campaign_id=$1 and token->>'imageUrl'=$2`},
+		{"asset catalog", `update public.campaign_assets set deleted_at=coalesce(deleted_at,now()),orphaned_at=coalesce(orphaned_at,now()) where campaign_id=$1 and (path=$2 or thumbnail_path=$2)`},
+		{"asset permissions", `delete from public.library_item_permissions where campaign_id=$1 and item_type='asset'::public.library_item_type and item_key=$2`},
 	}
 	for _, query := range queries {
 		if _, err := h.pool.Exec(r.Context(), query.sql, campaignID, assetPath); err != nil {

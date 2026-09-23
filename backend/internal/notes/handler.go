@@ -32,12 +32,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 		slog.Error("notes campaign membership lookup failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
 		return apperror.Internal(err)
 	}
-	q := `select id::text,title,body,visibility::text from notes where campaign_id=$1`
-	if role != "gm" {
-		q += ` and visibility='players' and (not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text) or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text and lp.user_id=$2))`
-	}
-	q += ` order by updated_at desc`
-	rows, err := h.pool.Query(r.Context(), q, cid, p.UserID)
+	q, args := listQuery(role, cid, p.UserID)
+	rows, err := h.pool.Query(r.Context(), q, args...)
 	if err != nil {
 		slog.Error("notes list query failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
 		return apperror.Internal(err)
@@ -57,6 +53,17 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 		return apperror.Internal(err)
 	}
 	return write(w, http.StatusOK, map[string]any{"notes": items})
+}
+
+func listQuery(role, campaignID, userID string) (string, []any) {
+	q := `select id::text,title,body,visibility::text from notes where campaign_id=$1`
+	args := []any{campaignID}
+	if role != "gm" {
+		q += ` and visibility='players' and (not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text) or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='note'::public.library_item_type and lp.item_key=notes.id::text and lp.user_id=$2))`
+		args = append(args, userID)
+	}
+	q += ` order by updated_at desc`
+	return q, args
 }
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())

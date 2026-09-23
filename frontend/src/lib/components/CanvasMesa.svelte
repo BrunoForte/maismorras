@@ -43,7 +43,8 @@
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
-		type SceneSocket
+		type SceneSocket,
+		type SceneDelta
 	} from '$lib/services/sceneRealtime';
 	import { diceOverlay, setDiceColor } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
@@ -493,6 +494,7 @@
 			});
 			efeitosAtivos = [...efeitosAtivos, effect];
 			persistenceError = '';
+			sceneSocket?.publishSceneDelta({ kind: 'effect', action: 'upsert', item: effect });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível aplicar a condição.';
@@ -505,7 +507,7 @@
 			await removeSceneEffect(session, scene.id, effect.id);
 			efeitosAtivos = efeitosAtivos.filter((item) => item.id !== effect.id);
 			persistenceError = '';
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'effect', action: 'delete', id: effect.id });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -526,6 +528,28 @@
 					effect.name
 				)
 		);
+	}
+	function aplicarDeltaCena(delta: SceneDelta) {
+		if (delta.kind === 'area') {
+			areas =
+				delta.action === 'delete'
+					? areas.filter((item) => item.id !== delta.id)
+					: [...areas.filter((item) => item.id !== delta.item.id), delta.item];
+			motor?.setAreas(areas);
+			return;
+		}
+		if (delta.kind === 'wall') {
+			walls =
+				delta.action === 'delete'
+					? walls.filter((item) => item.id !== delta.id)
+					: [...walls.filter((item) => item.id !== delta.item.id), delta.item];
+			motor?.setWalls(walls);
+			return;
+		}
+		efeitosAtivos =
+			delta.action === 'delete'
+				? efeitosAtivos.filter((item) => item.id !== delta.id)
+				: [...efeitosAtivos.filter((item) => item.id !== delta.item.id), delta.item];
 	}
 	async function paintFog(worldX: number, worldY: number) {
 		if (!isGM || !fogMode || !scene.fogEnabled) return;
@@ -580,7 +604,7 @@
 			});
 			areas = [...areas, created];
 			motor?.setAreas(areas);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'area', action: 'upsert', item: created });
 		} catch (error) {
 			persistenceError = error instanceof Error ? error.message : 'Não foi possível salvar a área.';
 		}
@@ -590,7 +614,7 @@
 			await deleteSceneArea(session, scene.id, area.id);
 			areas = areas.filter((item) => item.id !== area.id);
 			motor?.setAreas(areas);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'area', action: 'delete', id: area.id });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -611,7 +635,7 @@
 			});
 			walls = [...walls, created];
 			motor?.setWalls(walls);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'wall', action: 'upsert', item: created });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível salvar a parede.';
@@ -622,7 +646,7 @@
 			await deleteSceneWall(session, scene.id, wall.id);
 			walls = walls.filter((item) => item.id !== wall.id);
 			motor?.setWalls(walls);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'wall', action: 'delete', id: wall.id });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -637,7 +661,7 @@
 			const updated = await setSceneDoorOpen(session, scene.id, wall.id, !wall.open);
 			walls = walls.map((item) => (item.id === updated.id ? updated : item));
 			motor?.setWalls(walls);
-			sceneSocket?.publishRefresh();
+			sceneSocket?.publishSceneDelta({ kind: 'wall', action: 'upsert', item: updated });
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -775,7 +799,10 @@
 			undefined,
 			undefined,
 			undefined,
-			(signal) => void atualizarTokenRecebido(signal)
+			(signal) => void atualizarTokenRecebido(signal),
+			undefined,
+			undefined,
+			(delta) => aplicarDeltaCena(delta)
 		);
 
 		const unsubscribe = personagens.subscribe((lista) => {

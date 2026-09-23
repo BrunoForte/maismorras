@@ -211,7 +211,7 @@
 					undefined,
 					undefined,
 					undefined,
-					() => void loadRemote()
+					(data) => void applyRealtimeLayout(data)
 				);
 		} catch {
 			layout = defaults();
@@ -233,6 +233,20 @@
 		} catch {
 			/* local layout remains available offline */
 		}
+	}
+	async function applyRealtimeLayout(value?: unknown) {
+		if (!value || typeof value !== 'object' || !('document' in value)) {
+			await loadRemote();
+			return;
+		}
+		const document = (value as { document?: unknown }).document;
+		if (!document || typeof document !== 'object') {
+			await loadRemote();
+			return;
+		}
+		loadDocument(document);
+		await resolveBackground(layout.background);
+		localStorage.setItem(key(), JSON.stringify({ activeProfile, profiles }));
 	}
 	async function resolveBackground(path: string) {
 		if (!path) {

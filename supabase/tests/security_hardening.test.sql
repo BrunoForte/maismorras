@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(11);
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
 select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
@@ -7,5 +7,9 @@ select ok(not has_table_privilege('authenticated', 'public.scene_tokens', 'UPDAT
 select ok(not has_table_privilege('authenticated', 'public.actors', 'UPDATE'), 'authenticated cannot directly update actors');
 select ok(not has_table_privilege('authenticated', 'public.campaign_invites', 'INSERT'), 'authenticated cannot directly create invites');
 select ok(not has_table_privilege('authenticated', 'public.scene_token_turn_movement', 'UPDATE'), 'authenticated cannot directly rewrite movement');
+select ok(not has_schema_privilege('anon', 'private', 'USAGE') and not has_schema_privilege('authenticated', 'private', 'USAGE'), 'internal schema is not exposed through Supabase API roles');
+select ok(not has_table_privilege('anon', 'private.image_generation_limits', 'SELECT') and not has_table_privilege('authenticated', 'private.image_generation_limits', 'SELECT') and not has_table_privilege('service_role', 'private.image_generation_limits', 'SELECT'), 'image quota rows are not exposed through Supabase API roles');
+select ok(not exists (select 1 from pg_policies where schemaname='public' and tablename='notes' and cmd='ALL'), 'notes no longer use a broad FOR ALL policy');
+select ok((select count(*)=3 from pg_policies where schemaname='public' and tablename='notes' and policyname in ('notes_author_insert','notes_author_update','notes_author_delete')), 'notes writes remain covered by explicit insert/update/delete policies');
 select * from finish();
 rollback;
