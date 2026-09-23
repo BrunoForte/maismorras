@@ -64,7 +64,10 @@ jobs:
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase db start
-      - run: supabase test db
+      - name: Run Supabase database tests
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
+        run: supabase test db
       - if: always()
         run: supabase stop --no-backup
   e2e:
