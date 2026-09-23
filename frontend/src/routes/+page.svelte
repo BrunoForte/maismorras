@@ -587,6 +587,7 @@
 			await savePresentation(session, activeScene.id, {
 				assetPath: asset.path,
 				title: asset.name,
+				description: '',
 				visible: true
 			});
 			inviteStatus = 'Imagem exibida para os jogadores.';
@@ -598,7 +599,12 @@
 	async function hidePresentedAsset() {
 		if (!activeScene || !session || activeCampaign?.role !== 'gm') return;
 		try {
-			await savePresentation(session, activeScene.id, { assetPath: '', title: '', visible: false });
+			await savePresentation(session, activeScene.id, {
+				assetPath: '',
+				title: '',
+				description: '',
+				visible: false
+			});
 			publishOverlayScene();
 			inviteStatus = 'Imagem ocultada para os jogadores.';
 		} catch (error) {

@@ -144,8 +144,8 @@ func (h *Handler) SavePresentation(w http.ResponseWriter, r *http.Request) error
 	if err := decode(w, r, &item); err != nil {
 		return err
 	}
-	if len(item.AssetPath) > 500 || len(item.Title) > 200 {
-		return apperror.BadRequest("INVALID_PRESENTATION", "Imagem inválida.")
+	if len(item.AssetPath) > 500 || len(item.Title) > 200 || len(item.Description) > 12_000 {
+		return apperror.BadRequest("INVALID_PRESENTATION", "Apresentação inválida.")
 	}
 	if err := h.repo.SavePresentation(r.Context(), r.PathValue("sceneID"), p.UserID, item); err != nil {
 		return mapError(err)

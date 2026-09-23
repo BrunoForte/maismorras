@@ -33,6 +33,8 @@
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { supabase } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { savePresentation } from '$lib/services/presentationApi';
+	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import {
 		classData,
 		classFeatures,
@@ -44,6 +46,7 @@
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
+	import { hasWeaponProficiency } from '$lib/utils/weaponProficiency';
 
 	let {
 		campaignId,
@@ -92,6 +95,8 @@
 	let lastCriticalAttack = $state<number | null>(null);
 	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
 	let castingSpell = $state<number | null>(null);
+	let expandedSpell = $state<number | null>(null);
+	let expandedWeapon = $state<string | null>(null);
 	let spellSlotChoice = $state<Record<number, number>>({});
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
@@ -106,6 +111,7 @@
 	let portraitPreview = $state<string | null>(null);
 	let portraitBusy = $state(false);
 	let expandedFeature = $state<string | null>(null);
+	let presentationSocket: SceneSocket | null = null;
 	const hasAttackDisadvantage = () =>
 		activeConditions.some((condition) => ['Cego', 'Envenenado', 'Impedido'].includes(condition));
 	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
@@ -487,6 +493,14 @@
 			loading = false;
 		}
 	});
+	onMount(() => {
+		if (!isGM || !sceneId) return;
+		presentationSocket = connectSceneSocket(session, sceneId, () => {});
+		return () => {
+			presentationSocket?.close();
+			presentationSocket = null;
+		};
+	});
 	async function refreshPortraitPreview() {
 		if (!sheet.portraitPath || !supabase) {
 			portraitPreview = null;
@@ -608,12 +622,24 @@
 				: 'strength';
 	};
 	const weaponItemBonus = (item: InventoryItem) => {
-		if (item.rules.bonus !== undefined) return Number(item.rules.bonus) || 0;
-		if (item.rules.enchantmentBonus !== undefined) return Number(item.rules.enchantmentBonus) || 0;
+		const bonus = Number(item.rules.bonus) || 0;
+		const enchantment = Number(item.rules.enchantmentBonus) || 0;
+		if (item.rules.bonus !== undefined || item.rules.enchantmentBonus !== undefined)
+			return bonus + enchantment;
 		const description = `${String(item.rules.description ?? '')} ${String(item.rules.summary ?? '')}`;
 		const match = description.match(/\+(\d+)\s+bonus to attack rolls? and damage rolls?/i);
 		return match ? Number(match[1]) : 0;
 	};
+	const weaponProficiencyStatus = (item: InventoryItem) => {
+		if (typeof item.rules.proficient === 'boolean') return item.rules.proficient;
+		const rules = compendiumClass()?.rules ?? {};
+		const proficiencies = Array.isArray(rules.weaponProficiencies)
+			? rules.weaponProficiencies.map((value) => String(value).toLowerCase())
+			: [];
+		return hasWeaponProficiency(proficiencies, item.name, String(item.rules.category ?? ''));
+	};
+	const weaponProficiencyBonus = (item: InventoryItem) =>
+		weaponProficiencyStatus(item) ? sheet.proficiencyBonus : 0;
 	type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
 	const parseWeaponEffect = (
 		key: string,
@@ -1205,13 +1231,14 @@
 		const abilityKey = weaponAbility(item);
 		const abilityModifier = modifier(sheet.abilityScores[abilityKey]);
 		const itemBonus = weaponItemBonus(item);
+		const proficiencyBonus = weaponProficiencyBonus(item);
 		const effects = weaponBonusTotals(item);
 		rollingWeaponAction = actionKey;
 		message = '';
 		beginDiceBatch();
 		try {
 			if (action === 'attack') {
-				const attackBonus = abilityModifier + sheet.proficiencyBonus + itemBonus + effects.attack;
+				const attackBonus = abilityModifier + proficiencyBonus + itemBonus + effects.attack;
 				const attackMode = selectedAttackMode();
 				const event = await rollDice(
 					session,
@@ -1439,8 +1466,62 @@
 		)[canonicalClass(sheet.class)];
 		return ability ?? 'intelligence';
 	}
-	async function rollSpell(spell: Sheet['spells'][number]) {
-		await rollAuthorized('spell', '', `${spell.name || 'Magia'} · ataque`);
+	async function rollSpellDamage(spell: Sheet['spells'][number]) {
+		const expression = spell.diceFormula?.trim();
+		if (!expression) return;
+		beginDiceBatch();
+		try {
+			const event = await rollDice(session, campaignId, expression, undefined, 'combat');
+			const result = event.payload as {
+				expressao: string;
+				dados: number[];
+				modificador?: number;
+				total: number;
+			};
+			$chatMensagens = [
+				...$chatMensagens,
+				{
+					id: String(event.id),
+					autor: event.author,
+					texto: `${spell.name} · ${result.expressao} = ${result.total}`,
+					tipo: 'rolagem',
+					canal: 'combat',
+					detalhesRolagem: {
+						expressao: result.expressao,
+						dados: result.dados,
+						modificador: result.modificador ?? 0,
+						total: result.total,
+						label: `${spell.name} · efeito`
+					}
+				}
+			];
+			$diceOverlay = {
+				expression: spell.name,
+				total: result.total,
+				dice: result.dados,
+				nonce: crypto.randomUUID()
+			};
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível rolar a magia.';
+		} finally {
+			finishDiceBatch();
+		}
+	}
+	async function presentSpell(spell: Sheet['spells'][number]) {
+		if (!isGM || !sceneId) return;
+		try {
+			const presentation = {
+				assetPath: '',
+				title: spell.name,
+				description: spell.description || spell.notes,
+				visible: true
+			};
+			await savePresentation(session, sceneId, presentation);
+			presentationSocket?.publishPresentationUpdated({ presentation });
+			message = 'Magia destacada para a mesa.';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível destacar a magia.';
+		}
 	}
 	const compatibleSlots = (spell: Sheet['spells'][number]) =>
 		sheet.spellSlots.filter((slot) => slot.level >= spell.level && slot.current > 0);
@@ -1522,19 +1603,37 @@
 		);
 		if (existingSpell) {
 			const rules = entryRules(existingSpell);
+			const damage =
+				rules.damage && typeof rules.damage === 'object'
+					? (rules.damage as Record<string, unknown>)
+					: {};
 			sheet.spells = [
 				...sheet.spells,
 				{
 					entryId: existingSpell.id,
 					name: optionLabel(existingSpell),
 					level: Number(rules.level ?? newSpellLevel),
-					notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`
+					notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`,
+					description: String(rules.description ?? existingSpell.summary ?? ''),
+					diceFormula: String(damage.dice ?? ''),
+					higherLevels: String(rules.higherLevels ?? rules.atHigherLevels ?? '')
 				}
 			];
 		} else {
 			// Names not selected from the suggestions remain custom sheet spells.
-			sheet.spells = [...sheet.spells, { name, level: newSpellLevel, notes: '' }];
+			sheet.spells = [
+				...sheet.spells,
+				{
+					name,
+					level: newSpellLevel,
+					notes: '',
+					description: '',
+					diceFormula: '',
+					higherLevels: ''
+				}
+			];
 		}
+		expandedSpell = sheet.spells.length - 1;
 		newSpellName = '';
 	}
 	function removeAttack(index: number) {
@@ -1795,6 +1894,40 @@
 								>{/each}</datalist
 						>
 					</section>
+					<section class="profile-combat-fields">
+						<h3>{$appLocale === 'en' ? 'Combat profile' : 'Perfil de combate'}</h3>
+						<label
+							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
+								type="number"
+								min="-20"
+								max="20"
+								bind:value={sheet.initiative}
+								oninput={syncTokenSoon}
+							/>
+						</label>
+						<label>
+							>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
+								type="number"
+								min="0"
+								value={displayedSpeed()}
+								onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)}
+							/></label
+						><label
+							>{$appLocale === 'en' ? 'Proficiency bonus' : 'Bônus de proficiência'}<input
+								type="number"
+								min="0"
+								max="20"
+								bind:value={sheet.proficiencyBonus}
+							/></label
+						><label
+							>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}<input
+								bind:value={sheet.hitDice}
+							/><small
+								>{sheet.level - sheet.hitDiceSpent}/{sheet.level}
+								{$appLocale === 'en' ? 'available' : 'disponíveis'}</small
+							></label
+						>
+					</section>
 					{#if speciesProfile()}
 						<section
 							class="species-traits"
@@ -1966,26 +2099,6 @@
 								? 'Calculated from ability scores and equipped armor/shield.'
 								: 'Calculada pelos atributos e armaduras/escudos equipados.'}</small
 						><label
-							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
-								type="number"
-								min="-20"
-								max="20"
-								bind:value={sheet.initiative}
-								oninput={syncTokenSoon}
-							/></label
-						><label
-							>{$appLocale === 'en' ? 'Speed (ft)' : 'Deslocamento (m)'}<input
-								type="number"
-								min="0"
-								value={displayedSpeed()}
-								onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)}
-							/></label
-						><label
-							>{$appLocale === 'en' ? 'Proficiency' : 'Proficiência'}<input
-								type="number"
-								bind:value={sheet.proficiencyBonus}
-							/></label
-						><label
 							>{$appLocale === 'en' ? 'Current HP' : 'PV atuais'}<input
 								type="number"
 								min="0"
@@ -2005,15 +2118,8 @@
 								type="number"
 								min="0"
 								bind:value={sheet.temporaryHP}
-							/></label
-						><label
-							>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}<input
-								bind:value={sheet.hitDice}
-							/><small
-								>{sheet.level - sheet.hitDiceSpent}/{sheet.level}
-								{$appLocale === 'en' ? 'available' : 'disponíveis'}</small
-							></label
-						>
+							/>
+						</label>
 					</section>
 					{#if sheet.resources.length}<section class="resources">
 							<h3>{$appLocale === 'en' ? 'Resources' : 'Recursos'}</h3>
@@ -2037,103 +2143,156 @@
 						</div>
 						{#if weaponItems().length}<div class="weapon-combat-list">
 								{#each weaponItems() as item (item.entryId)}<article class="weapon-combat-card">
-										<div class="weapon-combat-heading">
-											<strong>{item.name}</strong><span
-												>{String(item.rules.damage ?? '—')}
-												{String(item.rules.damageType ?? '')}</span
-											>
-										</div>
-										<div class="weapon-combat-fields">
-											<label
-												>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
-													value={weaponAbility(item)}
-													onchange={(event) =>
-														(item.rules.attackAbility = event.currentTarget.value)}
-												>
-													{#each attributes as attribute}<option value={attribute.key}
-															>{abilityLabel(attribute.key)} ({modifierText(
-																modifier(sheet.abilityScores[attribute.key])
-															)})</option
-														>{/each}
-												</select></label
-											>
-											<label
-												>{$appLocale === 'en'
-													? 'Item bonus to attack and damage'
-													: 'Bônus do item no ataque e dano'}<input
-													type="number"
-													min="-10"
-													max="10"
-													value={weaponItemBonus(item)}
-													oninput={(event) =>
-														(item.rules.bonus = Number(event.currentTarget.value) || 0)}
-													aria-label={$appLocale === 'en'
-														? `Bonus for ${item.name}`
-														: `Bônus de ${item.name}`}
-												/></label
-											>
-										</div>
-										{#if weaponEffects(item).length}<fieldset class="weapon-effects">
-												<legend
+										<button
+											class="weapon-toggle"
+											type="button"
+											aria-expanded={expandedWeapon === item.entryId}
+											onclick={() =>
+												(expandedWeapon = expandedWeapon === item.entryId ? null : item.entryId)}
+											><strong>{item.name}</strong><span
+												>{expandedWeapon === item.entryId ? '⌃' : '⌄'}</span
+											></button
+										>{#if expandedWeapon === item.entryId}<div class="weapon-modifications">
+												<label
 													>{$appLocale === 'en'
-														? 'Applicable class/feat bonuses'
-														: 'Bônus de classe/talentos aplicáveis'}</legend
+														? 'Enchantment bonus'
+														: 'Bônus de encantamento'}<input
+														type="number"
+														min="-10"
+														max="10"
+														value={Number(item.rules.enchantmentBonus) || 0}
+														oninput={(event) =>
+															(item.rules.enchantmentBonus =
+																Number(event.currentTarget.value) || 0)}
+													/>
+												</label>
+												<label>
+													{$appLocale === 'en' ? 'Modifications' : 'Modificações'}<input
+														value={String(item.rules.modifications ?? '')}
+														oninput={(event) =>
+															(item.rules.modifications = event.currentTarget.value)}
+														placeholder={$appLocale === 'en'
+															? 'Notes on this weapon'
+															: 'Ex.: runas, ajustes…'}
+													/>
+												</label>
+											</div>
+											<div class="weapon-combat-fields">
+												<label>
+													{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
+													<select
+														value={weaponAbility(item)}
+														onchange={(event) =>
+															(item.rules.attackAbility = event.currentTarget.value)}
+													>
+														{#each attributes as attribute}
+															<option value={attribute.key}>
+																{abilityLabel(attribute.key)} ({modifierText(
+																	modifier(sheet.abilityScores[attribute.key])
+																)})
+															</option>
+														{/each}
+													</select>
+												</label>
+												<label>
+													{$appLocale === 'en'
+														? 'Bonus to attack and damage'
+														: 'Bônus no ataque e dano'}
+													<input
+														type="number"
+														min="-10"
+														max="10"
+														value={Number(item.rules.bonus) || 0}
+														oninput={(event) =>
+															(item.rules.bonus = Number(event.currentTarget.value) || 0)}
+														aria-label={$appLocale === 'en'
+															? `Bonus for ${item.name}`
+															: `Bônus de ${item.name}`}
+													/>
+												</label>
+												<span
+													class:unproficient={!weaponProficiencyStatus(item)}
+													class="weapon-proficiency"
 												>
-												{#each weaponEffects(item) as effect (effect.key)}<label
-														><input
-															type="checkbox"
-															checked={(Array.isArray(item.rules.enabledCombatModifiers)
-																? item.rules.enabledCombatModifiers.map(String)
-																: []
-															).includes(effect.key)}
-															onchange={() => toggleWeaponEffect(item, effect.key)}
-														/>{effect.name}<small
-															>{#if effect.attackBonus}{$appLocale === 'en'
-																	? `Attack +${effect.attackBonus}`
-																	: `Ataque +${effect.attackBonus}`}{/if}{#if effect.attackBonus && effect.damageBonus}
-																·
-															{/if}{#if effect.damageBonus}{$appLocale === 'en'
-																	? `Damage +${effect.damageBonus}`
-																	: `Dano +${effect.damageBonus}`}{/if}</small
-														></label
-													>{/each}
-											</fieldset>{/if}
-										<div class="weapon-combat-summary">
-											{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {modifierText(
-												modifier(sheet.abilityScores[weaponAbility(item)]) +
-													sheet.proficiencyBonus +
-													weaponItemBonus(item) +
-													weaponBonusTotals(item).attack
-											)} · {$appLocale === 'en' ? 'Damage' : 'Dano'}: {String(
-												item.rules.damage ?? '—'
-											)}
-											{modifierText(
-												modifier(sheet.abilityScores[weaponAbility(item)]) +
-													weaponItemBonus(item) +
-													weaponBonusTotals(item).damage
-											)}
-										</div>
-										<div class="weapon-combat-actions">
-											<button
-												class="roll-weapon"
-												onclick={() => void rollWeapon(item, 'attack')}
-												disabled={rollingWeaponAction !== null}
-												>{rollingWeaponAction === `${item.entryId}:attack`
-													? '…'
-													: $appLocale === 'en'
-														? '🎲 Attack'
-														: '🎲 Ataque'}</button
-											><button
-												onclick={() => void rollWeapon(item, 'damage')}
-												disabled={rollingWeaponAction !== null ||
-													!String(item.rules.damage ?? '').match(/^\d+d\d+/i)}
-												>{rollingWeaponAction === `${item.entryId}:damage`
-													? '…'
-													: $appLocale === 'en'
-														? '🎲 Damage'
-														: '🎲 Dano'}</button
-											>
-										</div>
+													{weaponProficiencyStatus(item)
+														? `${$appLocale === 'en' ? 'Proficient' : 'Proficiente'} · ${modifierText(weaponProficiencyBonus(item))}`
+														: $appLocale === 'en'
+															? 'Not proficient'
+															: 'Não proficiente'}
+												</span>
+												<label>
+													{$appLocale === 'en' ? 'Damage' : 'Dano'}
+													<input
+														value={String(item.rules.damage ?? '')}
+														oninput={(event) => (item.rules.damage = event.currentTarget.value)}
+													/>
+												</label>
+											</div>
+											{#if weaponEffects(item).length}<fieldset class="weapon-effects">
+													<legend
+														>{$appLocale === 'en'
+															? 'Applicable class/feat bonuses'
+															: 'Bônus de classe/talentos aplicáveis'}</legend
+													>
+													{#each weaponEffects(item) as effect (effect.key)}<label
+															><input
+																type="checkbox"
+																checked={(Array.isArray(item.rules.enabledCombatModifiers)
+																	? item.rules.enabledCombatModifiers.map(String)
+																	: []
+																).includes(effect.key)}
+																onchange={() => toggleWeaponEffect(item, effect.key)}
+															/>{effect.name}<small
+																>{#if effect.attackBonus}{$appLocale === 'en'
+																		? `Attack +${effect.attackBonus}`
+																		: `Ataque +${effect.attackBonus}`}{/if}{#if effect.attackBonus && effect.damageBonus}
+																	·
+																{/if}{#if effect.damageBonus}{$appLocale === 'en'
+																		? `Damage +${effect.damageBonus}`
+																		: `Dano +${effect.damageBonus}`}{/if}</small
+															></label
+														>{/each}
+												</fieldset>{:else}<small class="weapon-effects-empty">
+													{$appLocale === 'en'
+														? 'No numeric class or feat modifiers are mapped to this weapon.'
+														: 'Nenhum bônus numérico de habilidade ou talento foi mapeado para esta arma.'}
+												</small>{/if}
+											<div class="weapon-combat-summary">
+												{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {modifierText(
+													modifier(sheet.abilityScores[weaponAbility(item)]) +
+														weaponProficiencyBonus(item) +
+														weaponItemBonus(item) +
+														weaponBonusTotals(item).attack
+												)} · {$appLocale === 'en' ? 'Damage' : 'Dano'}: {String(
+													item.rules.damage ?? '—'
+												)}
+												{modifierText(
+													modifier(sheet.abilityScores[weaponAbility(item)]) +
+														weaponItemBonus(item) +
+														weaponBonusTotals(item).damage
+												)}
+											</div>
+											<div class="weapon-combat-actions">
+												<button
+													class="roll-weapon"
+													onclick={() => void rollWeapon(item, 'attack')}
+													disabled={rollingWeaponAction !== null}
+													>{rollingWeaponAction === `${item.entryId}:attack`
+														? '…'
+														: $appLocale === 'en'
+															? '🎲 Attack'
+															: '🎲 Ataque'}</button
+												><button
+													onclick={() => void rollWeapon(item, 'damage')}
+													disabled={rollingWeaponAction !== null ||
+														!String(item.rules.damage ?? '').match(/^\d+d\d+/i)}
+													>{rollingWeaponAction === `${item.entryId}:damage`
+														? '…'
+														: $appLocale === 'en'
+															? '🎲 Damage'
+															: '🎲 Dano'}</button
+												>
+											</div>{/if}
 									</article>{/each}
 							</div>{:else}<p class="empty-inline">
 								{$appLocale === 'en'
@@ -2436,45 +2595,86 @@
 										>
 									</div>
 								</header>
-								{#if spellsForCircle(circle).length}{#each spellsForCircle(circle) as { spell, index } (index)}<div
-											class="line-item"
+								{#if spellsForCircle(circle).length}{#each spellsForCircle(circle) as { spell, index } (index)}<article
+											class="spell-card"
 										>
-											<input
-												bind:value={spell.name}
-												placeholder={$appLocale === 'en' ? 'Name' : 'Nome'}
-											/><input
-												bind:value={spell.notes}
-												placeholder={$appLocale === 'en' ? 'Notes' : 'Notas'}
-											/><button
-												class="roll-spell"
-												onclick={() => void rollSpell(spell)}
-												aria-label={$appLocale === 'en'
-													? `Roll ${spell.name}`
-													: `Rolar ${spell.name}`}>🎲</button
-											>{#if spell.level > 0}<select
-													value={selectedSlot(spell, index)}
-													onchange={(event) =>
-														(spellSlotChoice[index] = Number(event.currentTarget.value))}
-													aria-label="Espaço de magia"
-													>{#each compatibleSlots(spell) as slot}<option value={slot.level}
-															>{circleLabel(slot.level)} · {slot.current}/{slot.max}</option
-														>{/each}</select
-												>{/if}<button
-												class="cast-spell"
-												disabled={castingSpell === index ||
-													!spell.entryId ||
-													(spell.level > 0 && !compatibleSlots(spell).length)}
-												title={!spell.entryId
-													? 'Adicione a magia pelo compêndio para conjurá-la com regras.'
-													: ''}
-												onclick={() => void castSpell(spell, index)}
-												>{castingSpell === index
-													? '…'
-													: $appLocale === 'en'
-														? 'Cast'
-														: 'Lançar'}</button
-											><button onclick={() => removeSpell(index)}>×</button>
-										</div>{/each}{:else}<p>
+											<button
+												class="spell-toggle"
+												type="button"
+												aria-expanded={expandedSpell === index}
+												onclick={() => (expandedSpell = expandedSpell === index ? null : index)}
+												><strong
+													>{spell.name ||
+														($appLocale === 'en' ? 'Unnamed spell' : 'Magia sem nome')}</strong
+												><span
+													>{circleLabel(spell.level)} · {expandedSpell === index ? '⌃' : '⌄'}</span
+												></button
+											>{#if expandedSpell === index}<div class="spell-details">
+													<label
+														>{$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}<input
+															bind:value={spell.name}
+														/></label
+													><label
+														>{$appLocale === 'en' ? 'Dice expression' : 'Dados de efeito'}<input
+															bind:value={spell.diceFormula}
+															placeholder="Ex.: 6d6"
+														/>
+													</label>
+													><label class="spell-description-field"
+														>{$appLocale === 'en' ? 'Description' : 'Descrição'}<textarea
+															bind:value={spell.description}
+															rows="4"></textarea>
+													</label>
+													<label class="spell-description-field">
+														{$appLocale === 'en'
+															? 'At higher levels'
+															: 'Em níveis mais altos'}<textarea
+															bind:value={spell.higherLevels}
+															rows="2"></textarea>
+													</label>
+													<label class="spell-description-field">
+														{$appLocale === 'en' ? 'Notes' : 'Notas'}<textarea
+															bind:value={spell.notes}
+															rows="2"></textarea>
+													</label>
+													<div class="spell-actions">
+														{#if isGM}<button type="button" onclick={() => void presentSpell(spell)}
+																>{$appLocale === 'en'
+																	? 'Show to table'
+																	: 'Destacar na tela'}</button
+															>{/if}{#if spell.diceFormula?.trim()}<button
+																type="button"
+																onclick={() => void rollSpellDamage(spell)}
+																>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
+															>{/if}{#if spell.level > 0}<select
+																value={selectedSlot(spell, index)}
+																onchange={(event) =>
+																	(spellSlotChoice[index] = Number(event.currentTarget.value))}
+																aria-label="Espaço de magia"
+																>{#each compatibleSlots(spell) as slot}<option value={slot.level}
+																		>{circleLabel(slot.level)} · {slot.current}/{slot.max}</option
+																	>{/each}</select
+															><button
+																class="cast-spell"
+																type="button"
+																disabled={castingSpell === index ||
+																	!spell.entryId ||
+																	(spell.level > 0 && !compatibleSlots(spell).length)}
+																title={!spell.entryId
+																	? 'Adicione a magia pelo compêndio para conjurá-la com regras.'
+																	: ''}
+																onclick={() => void castSpell(spell, index)}
+																>{castingSpell === index
+																	? '…'
+																	: $appLocale === 'en'
+																		? 'Cast'
+																		: 'Lançar'}</button
+															>{/if}<button type="button" onclick={() => removeSpell(index)}
+															>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button
+														>
+													</div>
+												</div>{/if}
+										</article>{/each}{:else}<p>
 										{$appLocale === 'en'
 											? `No ${circle === 0 ? 'cantrips' : `level ${circle} spells`} added.`
 											: `Nenhuma ${circle === 0 ? 'magia' : 'magia deste círculo'} adicionada.`}
@@ -3037,10 +3237,15 @@
 		background: #38281f;
 	}
 	.identity,
-	.combat {
+	.combat,
+	.profile-combat-fields {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 		gap: 0.7rem;
+	}
+	.profile-combat-fields h3 {
+		grid-column: 1 / -1;
+		margin: 0;
 	}
 	.combat h3 {
 		grid-column: 1 / -1;
@@ -3160,6 +3365,78 @@
 		color: #8f8378;
 		font-size: 0.72rem;
 		font-style: italic;
+	}
+	.spell-card {
+		min-width: 0;
+		border: 1px solid #3d3334;
+		border-radius: 7px;
+		background: #1c191b;
+		overflow: hidden;
+	}
+	.spell-toggle {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		border: 0;
+		padding: 0.7rem 0.8rem;
+		color: #e8d8c2;
+		background: transparent;
+		text-align: left;
+	}
+	.spell-toggle span {
+		color: #b99a68;
+		font-size: 0.72rem;
+		white-space: nowrap;
+	}
+	.spell-details {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.65rem;
+		border-top: 1px solid #3d3334;
+		padding: 0.75rem;
+	}
+	.spell-details label {
+		min-width: 0;
+		display: grid;
+		gap: 0.3rem;
+		color: #bcae9f;
+		font-size: 0.7rem;
+	}
+	.spell-details input,
+	.spell-details textarea {
+		width: 100%;
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.55rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+		font-size: 0.82rem;
+		resize: vertical;
+	}
+	.spell-description-field {
+		grid-column: 1 / -1;
+	}
+	.spell-actions {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.spell-actions button,
+	.spell-actions select {
+		min-height: 2.25rem;
+		border: 1px solid #725a3b;
+		border-radius: 6px;
+		padding: 0.45rem 0.65rem;
+		color: #e8c786;
+		background: #2a211e;
+		font: inherit;
+		font-size: 0.75rem;
 	}
 	.identity label:first-child {
 		grid-column: span 2;
@@ -3314,26 +3591,72 @@
 		border-radius: 8px;
 		background: #181416;
 	}
-	.weapon-combat-heading,
-	.weapon-combat-fields,
+	.weapon-toggle {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		border: 0;
+		padding: 0.2rem 0;
+		color: #f0d8aa;
+		background: transparent;
+		text-align: left;
+	}
+	.weapon-toggle span {
+		color: #c9a972;
+	}
+	.weapon-modifications {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.6rem;
+		padding-bottom: 0.6rem;
+		border-bottom: 1px solid #393034;
+	}
+	.weapon-modifications label {
+		min-width: 0;
+		display: grid;
+		gap: 0.25rem;
+		color: #bcae9f;
+		font-size: 0.68rem;
+	}
+	.weapon-modifications input {
+		width: 100%;
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.45rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
 	.weapon-combat-actions {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.6rem;
 	}
-	.weapon-combat-heading strong {
-		min-width: 0;
-		color: #f0d8aa;
+	.weapon-combat-fields {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		align-items: end;
+		gap: 0.55rem;
 	}
-	.weapon-combat-heading span,
+	.weapon-proficiency {
+		align-self: end;
+		padding-bottom: 0.5rem;
+		color: #a9c99a;
+		font-size: 0.68rem;
+	}
+	.weapon-proficiency.unproficient {
+		color: #e3a09a;
+	}
 	.weapon-combat-summary {
 		color: #b9aa9b;
 		font-size: 0.75rem;
 	}
 	.weapon-combat-fields label {
 		min-width: 0;
-		flex: 1;
 		display: grid;
 		gap: 0.25rem;
 		color: #bcae9f;
@@ -3375,6 +3698,10 @@
 		margin-left: auto;
 		color: #b9aa9b;
 		font-size: 0.65rem;
+	}
+	.weapon-effects-empty {
+		color: #93877d;
+		font-size: 0.68rem;
 	}
 	.weapon-combat-actions button {
 		flex: 1;
@@ -3666,7 +3993,8 @@
 			padding: 0.7rem 0 0;
 		}
 		.identity,
-		.combat {
+		.combat,
+		.profile-combat-fields {
 			grid-template-columns: repeat(2, 1fr);
 		}
 		.identity label:first-child {
@@ -3680,6 +4008,15 @@
 		}
 		.expertise-choices > div {
 			grid-template-columns: 1fr;
+		}
+		.spell-details,
+		.weapon-combat-fields,
+		.weapon-modifications {
+			grid-template-columns: 1fr;
+		}
+		.spell-description-field,
+		.spell-actions {
+			grid-column: auto;
 		}
 		.notes {
 			grid-template-columns: 1fr;

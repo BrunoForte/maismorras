@@ -1,6 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
 import { request } from './httpClient';
-export type Presentation = { assetPath: string; title: string; visible: boolean };
+export type Presentation = {
+	assetPath: string;
+	title: string;
+	description: string;
+	visible: boolean;
+};
 export async function getPresentation(session: Session, sceneId: string) {
 	return request<Presentation>(
 		session,

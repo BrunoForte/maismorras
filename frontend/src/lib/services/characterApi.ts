@@ -17,7 +17,15 @@ export type Attack = {
 	attackType?: 'melee' | 'ranged';
 	ability?: keyof AbilityScores;
 };
-export type Spell = { entryId?: string; name: string; level: number; notes: string };
+export type Spell = {
+	entryId?: string;
+	name: string;
+	level: number;
+	notes: string;
+	description?: string;
+	diceFormula?: string;
+	higherLevels?: string;
+};
 export type CharacterResource = {
 	id: string;
 	name: string;

@@ -75,6 +75,12 @@ jobs:
       E2E_STORAGE_STATE_B64: ${{ secrets.E2E_STORAGE_STATE_B64 }}
       E2E_SCENE_URL: ${{ vars.E2E_SCENE_URL }}
       E2E_PLAYER_STORAGE_STATE_B64: ${{ secrets.E2E_PLAYER_STORAGE_STATE_B64 }}
+      E2E_SUPABASE_URL: ${{ vars.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_PUBLISHABLE_KEY: ${{ vars.E2E_SUPABASE_PUBLISHABLE_KEY }}
+      E2E_GM_EMAIL: ${{ secrets.E2E_GM_EMAIL }}
+      E2E_GM_PASSWORD: ${{ secrets.E2E_GM_PASSWORD }}
+      E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
+      E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -90,18 +96,28 @@ jobs:
         shell: pwsh
         working-directory: frontend
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:E2E_STORAGE_STATE_B64)) {
-            "E2E_STORAGE_STATE_B64 not configured; skipping authenticated E2E." | Out-File e2e-skip.txt
+          $loginValues = @($env:E2E_SUPABASE_URL, $env:E2E_SUPABASE_PUBLISHABLE_KEY, $env:E2E_GM_EMAIL, $env:E2E_GM_PASSWORD, $env:E2E_PLAYER_EMAIL, $env:E2E_PLAYER_PASSWORD)
+          $loginCount = @($loginValues | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($loginCount -eq $loginValues.Count) {
+            node e2e/create-auth-state.mjs
+            "E2E_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
+            "E2E_PLAYER_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-player-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
+            "result=configured" >> $env:GITHUB_OUTPUT
+          } elseif ($loginCount -gt 0) {
+            throw 'Configure all six E2E login variables together, or use the legacy storage-state secrets temporarily.'
+          } elseif (-not [string]::IsNullOrWhiteSpace($env:E2E_STORAGE_STATE_B64)) {
+            [IO.File]::WriteAllBytes('e2e-storage-state.json', [Convert]::FromBase64String($env:E2E_STORAGE_STATE_B64))
+            "E2E_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
+            if (-not [string]::IsNullOrWhiteSpace($env:E2E_PLAYER_STORAGE_STATE_B64)) {
+              [IO.File]::WriteAllBytes('e2e-player-storage-state.json', [Convert]::FromBase64String($env:E2E_PLAYER_STORAGE_STATE_B64))
+              "E2E_PLAYER_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-player-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
+            }
+            "result=configured" >> $env:GITHUB_OUTPUT
+            Write-Warning 'Using legacy static browser state; configure E2E login credentials to remove manual refreshes.'
+          } else {
+            "No E2E accounts configured; skipping authenticated E2E." | Out-File e2e-skip.txt
             "result=skipped" >> $env:GITHUB_OUTPUT
             exit 0
-          }
-          [IO.File]::WriteAllBytes('e2e-storage-state.json', [Convert]::FromBase64String($env:E2E_STORAGE_STATE_B64))
-          "result=configured" >> $env:GITHUB_OUTPUT
-          $env:E2E_STORAGE_STATE = (Join-Path (Get-Location) 'e2e-storage-state.json')
-          "E2E_STORAGE_STATE=$env:E2E_STORAGE_STATE" | Out-File $env:GITHUB_ENV -Append
-          if (-not [string]::IsNullOrWhiteSpace($env:E2E_PLAYER_STORAGE_STATE_B64)) {
-            [IO.File]::WriteAllBytes('e2e-player-storage-state.json', [Convert]::FromBase64String($env:E2E_PLAYER_STORAGE_STATE_B64))
-            "E2E_PLAYER_STORAGE_STATE=$(Join-Path (Get-Location) 'e2e-player-storage-state.json')" | Out-File $env:GITHUB_ENV -Append
           }
       - name: Run Playwright E2E
         id: run-e2e
@@ -124,7 +140,7 @@ jobs:
           E2E_OUTCOME: ${{ steps.run-e2e.outcome }}
         run: |
           if ($env:E2E_CONFIGURED -eq 'skipped') {
-            "### Authenticated E2E: SKIPPED`n`n`E2E_STORAGE_STATE_B64` is not configured; no authenticated browser tests ran." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "### Authenticated E2E: SKIPPED`n`nNo automated E2E login credentials or legacy storage-state secret were configured; no authenticated browser tests ran." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           } else {
             "### Authenticated E2E: $($env:E2E_OUTCOME.ToUpperInvariant())" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }

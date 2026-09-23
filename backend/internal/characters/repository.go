@@ -73,10 +73,13 @@ type Attack struct {
 	Notes       string `json:"notes"`
 }
 type Spell struct {
-	EntryID string `json:"entryId"`
-	Name    string `json:"name"`
-	Level   int    `json:"level"`
-	Notes   string `json:"notes"`
+	EntryID      string `json:"entryId"`
+	Name         string `json:"name"`
+	Level        int    `json:"level"`
+	Notes        string `json:"notes"`
+	Description  string `json:"description"`
+	DiceFormula  string `json:"diceFormula"`
+	HigherLevels string `json:"higherLevels"`
 }
 type Resource struct {
 	ID        string `json:"id"`

@@ -15,21 +15,26 @@
 		session,
 		isGM = false
 	}: { sceneId: string; campaignId: string; session: Session; isGM?: boolean } = $props();
-	let item = $state({ assetPath: '', title: '', visible: false });
+	let item = $state({ assetPath: '', title: '', description: '', visible: false });
 	let url = $state('');
-	let dismissedPath = $state('');
+	let dismissedPresentation = $state('');
 	let socket: SceneSocket | null = null;
 	async function closePresentation(event: Event) {
 		if (!isGM || event.target !== event.currentTarget) return;
 		// Hide immediately so a transient API error cannot trap the narrator
 		// behind the presentation modal.
 		item = { ...item, visible: false };
-		dismissedPath = item.assetPath;
+		dismissedPresentation = `${item.assetPath}:${item.title}`;
 		url = '';
 		try {
-			await savePresentation(session, sceneId, { assetPath: '', title: '', visible: false });
+			await savePresentation(session, sceneId, {
+				assetPath: '',
+				title: '',
+				description: '',
+				visible: false
+			});
 			socket?.publishPresentationUpdated({
-				presentation: { assetPath: '', title: '', visible: false }
+				presentation: { assetPath: '', title: '', description: '', visible: false }
 			});
 		} catch {
 			/* Keep the current presentation if the server is temporarily unavailable. */
@@ -38,8 +43,9 @@
 	async function load() {
 		try {
 			item = await getPresentation(session, sceneId);
-			if (item.assetPath !== dismissedPath) dismissedPath = '';
-			if (item.visible && item.assetPath === dismissedPath) {
+			const presentationKey = `${item.assetPath}:${item.title}`;
+			if (presentationKey !== dismissedPresentation) dismissedPresentation = '';
+			if (item.visible && presentationKey === dismissedPresentation) {
 				url = '';
 				return;
 			}
@@ -77,7 +83,7 @@
 	});
 </script>
 
-{#if item.visible && url}<div
+{#if item.visible && (url || item.description)}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
 		onclick={(event) => void closePresentation(event)}
@@ -90,8 +96,13 @@
 		aria-label={item.title || 'Imagem apresentada'}
 	>
 		<figure>
-			<img src={url} alt={item.title || 'Imagem apresentada'} />
-			<figcaption>{item.title}</figcaption>
+			{#if url}<img src={url} alt={item.title || 'Imagem apresentada'} />{:else}<div
+					class="presentation-text"
+				>
+					<h2>{item.title}</h2>
+					<p>{item.description}</p>
+				</div>{/if}
+			{#if url && item.title}<figcaption>{item.title}</figcaption>{/if}
 		</figure>
 	</div>{/if}
 
@@ -120,6 +131,30 @@
 		object-fit: contain;
 		border-radius: 12px;
 		box-shadow: 0 20px 80px #000;
+	}
+	.presentation-text {
+		width: min(88vw, 900px);
+		max-height: 82vh;
+		overflow: auto;
+		border: 1px solid rgba(240, 203, 133, 0.42);
+		border-radius: 14px;
+		padding: clamp(1.5rem, 5vw, 4rem);
+		color: #f4e5ca;
+		background: #171417;
+		box-shadow: 0 20px 80px #000;
+		text-align: left;
+	}
+	.presentation-text h2 {
+		margin: 0 0 1.25rem;
+		font:
+			600 clamp(1.5rem, 3vw, 2.5rem) Georgia,
+			serif;
+	}
+	.presentation-text p {
+		margin: 0;
+		font-size: clamp(1rem, 1.5vw, 1.3rem);
+		line-height: 1.7;
+		white-space: pre-wrap;
 	}
 	figcaption {
 		color: #f4e5ca;
