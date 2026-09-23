@@ -58,6 +58,31 @@ func TestPollinationsServiceGenerate(t *testing.T) {
 	}
 }
 
+func TestPollinationsServiceGenerateMapAddsFixedScaleAndViewConstraints(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		encodedPrompt := strings.TrimPrefix(r.URL.EscapedPath(), "/prompt/")
+		prompt, err := url.PathUnescape(encodedPrompt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, required := range []string{"ruínas élficas", "mapa de batalha para D&D", "visão ortográfica", "sem perspectiva", "1,5 m por 1,5 m", "não desenhe grade"} {
+			if !strings.Contains(prompt, required) {
+				t.Errorf("map prompt %q does not contain %q", prompt, required)
+			}
+		}
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("fake-png"))
+	}))
+	defer server.Close()
+
+	service := NewPollinationsService(server.Client(), server.URL, 1024)
+	if _, err := service.GenerateMap(context.Background(), "ruínas élficas"); err != nil {
+		t.Fatalf("GenerateMap() error = %v", err)
+	}
+}
+
 func TestPollinationsServiceGenerateConvertsUpstreamFailuresToBadGateway(t *testing.T) {
 	t.Parallel()
 

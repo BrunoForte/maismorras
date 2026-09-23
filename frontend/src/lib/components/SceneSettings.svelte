@@ -148,7 +148,9 @@
 				><textarea
 					bind:value={mapPrompt}
 					maxlength="1500"
-					placeholder="Ex.: ruínas élficas subterrâneas, ponte quebrada sobre rio de lava, espaço para combate"
+					placeholder={$appLocale === 'en'
+						? 'Describe only the scene flavor, e.g. elven ruins, a broken bridge over lava, scattered bones…'
+						: 'Descreva apenas o tema da cena: ruínas élficas, ponte sobre lava, ossadas espalhadas…'}
 				></textarea><button
 					type="button"
 					onclick={() => void generateMap()}
@@ -161,6 +163,11 @@
 							? 'Generate and select map'
 							: 'Gerar e selecionar mapa'}</button
 				>
+				<small class="map-ai-hint">
+					{$appLocale === 'en'
+						? 'The map is always generated as a top-down, non-perspective D&D battle map. The prompt enforces consistent square scale (1.5 m × 1.5 m); the game grid is added separately.'
+						: 'A geração sempre pede um mapa de batalha de D&D visto de cima, sem perspectiva, com escala consistente de 1,5 m × 1,5 m por quadrado. A grade é adicionada pelo jogo.'}
+				</small>
 			</div>
 			<label
 				>{$appLocale === 'en' ? 'Scene soundtrack' : 'Trilha da cena'}<select
@@ -297,6 +304,12 @@
 		background: #161216;
 		font: inherit;
 		resize: vertical;
+	}
+	.map-ai-hint {
+		color: #a99c91;
+		font-size: 0.68rem;
+		font-weight: 400;
+		line-height: 1.4;
 	}
 	.map-ai button {
 		justify-self: start;

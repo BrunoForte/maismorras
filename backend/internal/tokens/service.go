@@ -15,6 +15,7 @@ import (
 )
 
 const promptSuffix = ", portrait, fantasy rpg avatar, highly detailed digital painting, plain background"
+const mapPromptSuffix = ", mapa de batalha para D&D, visto exatamente de cima (visão ortográfica), sem perspectiva, sem inclinação e sem efeito isométrico; mantenha escala e proporções consistentes: cada quadrado da grade do jogo representa 1,5 m por 1,5 m; corredores, portas e objetos devem respeitar essa escala; não desenhe grade, coordenadas, texto, rótulos ou personagens, pois a grade será aplicada pelo jogo"
 
 type ImageGenerator interface {
 	Generate(ctx context.Context, prompt string) (string, error)
@@ -35,7 +36,7 @@ func (s *PollinationsService) Generate(ctx context.Context, prompt string) (stri
 }
 
 func (s *PollinationsService) GenerateMap(ctx context.Context, prompt string) (string, error) {
-	return s.generate(ctx, prompt+", top-down fantasy battle map, gridless, no text, no labels, highly detailed", 1024, 1024)
+	return s.generate(ctx, prompt+mapPromptSuffix, 1024, 1024)
 }
 
 func (s *PollinationsService) generate(ctx context.Context, fullPrompt string, width, height int) (string, error) {
