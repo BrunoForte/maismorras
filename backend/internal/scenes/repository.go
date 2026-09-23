@@ -338,7 +338,7 @@ func (r *Repository) Create(ctx context.Context, campaignID, userID, name string
 		return Scene{}, ErrForbidden
 	}
 	var s Scene
-	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,$2,'available') returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,map_width_cells,map_height_cells,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.AmbientAudioPositionMs, &s.AmbientAudioStartedAt, &s.AmbientAudioRevision, &s.GridSize, &s.MapWidthCells, &s.MapHeightCells, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder)
+	err := r.pool.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access,allow_player_movement) values($1,$2,'available',true) returning id::text,campaign_id::text,name,background_url,ambient_audio_path,ambient_audio_enabled,ambient_audio_volume,ambient_audio_position_ms,ambient_audio_started_at,ambient_audio_revision,grid_size,map_width_cells,map_height_cells,player_access,fog_enabled,vision_mode,allow_player_movement,allow_player_door_interaction,enforce_turn_order`, campaignID, name).Scan(&s.ID, &s.CampaignID, &s.Name, &s.BackgroundURL, &s.AmbientAudioPath, &s.AmbientAudioEnabled, &s.AmbientAudioVolume, &s.AmbientAudioPositionMs, &s.AmbientAudioStartedAt, &s.AmbientAudioRevision, &s.GridSize, &s.MapWidthCells, &s.MapHeightCells, &s.PlayerAccess, &s.FogEnabled, &s.VisionMode, &s.AllowPlayerMovement, &s.AllowPlayerDoorInteraction, &s.EnforceTurnOrder)
 	return s, err
 }
 func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, input Scene) (Scene, error) {
@@ -378,7 +378,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 	if role != "gm" && s.PlayerAccess == "hidden" {
 		return Scene{}, nil, FogState{}, nil, nil, ErrForbidden
 	}
-	query := `select st.id::text,st.actor_id::text,st.owner_id::text,st.name,st.image_url,st.color,st.position_x,st.position_y,st.size,st.hp_current,st.hp_max,st.armor_class,st.initiative,st.initiative_bonus,st.vision_range,st.light_range,st.movement_limit,coalesce(tm.spent_squares,0),st.statuses,st.is_hidden,st.visibility from scene_tokens st left join scene_token_turn_movement tm on tm.scene_id=st.scene_id and tm.token_id=st.id where st.scene_id=$1`
+	query := `select st.id::text,st.actor_id::text,coalesce(st.owner_id,a.owner_id)::text,st.name,st.image_url,st.color,st.position_x,st.position_y,st.size,st.hp_current,st.hp_max,st.armor_class,st.initiative,st.initiative_bonus,st.vision_range,st.light_range,st.movement_limit,coalesce(tm.spent_squares,0),st.statuses,st.is_hidden,st.visibility from scene_tokens st left join actors a on a.id=st.actor_id left join scene_token_turn_movement tm on tm.scene_id=st.scene_id and tm.token_id=st.id where st.scene_id=$1`
 	if role != "gm" {
 		query += ` and is_hidden=false`
 	}

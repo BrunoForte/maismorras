@@ -32,6 +32,8 @@ export type CharacterResource = {
 	name: string;
 	current: number;
 	max: number;
+	/** Optional user override; absent values follow the class/level progression. */
+	maxOverride?: number;
 	restoreOn: 'short' | 'long';
 };
 export type SpellSlot = { level: number; current: number; max: number };

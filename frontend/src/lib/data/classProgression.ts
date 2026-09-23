@@ -164,7 +164,6 @@ export function defaultResources(
 	scores: AbilityScores
 ): CharacterResource[] {
 	const key = canonicalClass(className);
-	const pb = Math.ceil(level / 4) + 1;
 	const cha = Math.max(1, Math.floor((scores.charisma - 10) / 2));
 	const item = (id: string, name: string, max: number, rest: 'short' | 'long') => ({
 		id,
@@ -173,16 +172,32 @@ export function defaultResources(
 		max,
 		restoreOn: rest
 	});
-	if (key === 'barbarian') return [item('rage', 'Fúria', pb, 'long')];
+	if (key === 'barbarian')
+		return [
+			item(
+				'rage',
+				'Fúria',
+				level >= 17 ? 6 : level >= 12 ? 5 : level >= 6 ? 4 : level >= 3 ? 3 : 2,
+				'long'
+			)
+		];
 	if (key === 'bard')
 		return [item('bardic-inspiration', 'Inspiração Bárdica', cha, level >= 5 ? 'short' : 'long')];
 	if (key === 'cleric' && level >= 2)
-		return [item('channel-divinity', 'Canalizar Divindade', 2, 'short')];
-	if (key === 'druid') return [item('wild-shape', 'Forma Selvagem', 2, 'long')];
+		return [
+			item('channel-divinity', 'Canalizar Divindade', level >= 18 ? 4 : level >= 6 ? 3 : 2, 'short')
+		];
+	if (key === 'druid')
+		return [item('wild-shape', 'Forma Selvagem', level >= 17 ? 4 : level >= 6 ? 3 : 2, 'short')];
 	if (key === 'fighter')
 		return [
-			item('second-wind', 'Segundo Fôlego', 2, 'short'),
-			...(level >= 2 ? [item('action-surge', 'Surto de Ação', 1, 'short')] : [])
+			item(
+				'second-wind',
+				'Segundo Fôlego',
+				level >= 17 ? 5 : level >= 10 ? 4 : level >= 4 ? 3 : 2,
+				'short'
+			),
+			...(level >= 2 ? [item('action-surge', 'Surto de Ação', level >= 17 ? 2 : 1, 'short')] : [])
 		];
 	if (key === 'monk') return [item('focus-points', 'Pontos de Foco', level, 'short')];
 	if (key === 'paladin') return [item('lay-on-hands', 'Imposição das Mãos', level * 5, 'long')];
@@ -199,6 +214,24 @@ export function defaultResources(
 		];
 	if (key === 'wizard') return [item('arcane-recovery', 'Recuperação Arcana', 1, 'long')];
 	return [];
+}
+export function syncResourceMaxima(
+	defaults: CharacterResource[],
+	previous: CharacterResource[]
+): CharacterResource[] {
+	return defaults.map((resource) => {
+		const old = previous.find((candidate) => candidate.id === resource.id);
+		const override = Number.isFinite(old?.maxOverride)
+			? Math.max(0, Math.floor(old!.maxOverride!))
+			: undefined;
+		const max = override ?? resource.max;
+		return {
+			...resource,
+			...(override === undefined ? {} : { maxOverride: override }),
+			max,
+			current: Math.max(0, Math.min(max, old?.current ?? max))
+		};
+	});
 }
 export function spellSlots(className: string, level: number): SpellSlot[] {
 	const full = ['bard', 'cleric', 'druid', 'sorcerer', 'wizard'].includes(

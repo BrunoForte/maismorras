@@ -40,6 +40,7 @@
 		classFeatures,
 		canonicalClass as progressionClass,
 		defaultResources,
+		syncResourceMaxima,
 		isClassProgressionFeature,
 		spellSlots
 	} from '$lib/data/classProgression';
@@ -965,10 +966,7 @@
 			sheet.hitPointsCurrent = hp;
 		}
 		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);
-		sheet.resources = defaults.map((resource) => ({
-			...resource,
-			current: sheet.resources.find((old) => old.id === resource.id)?.current ?? resource.max
-		}));
+		sheet.resources = syncResourceMaxima(defaults, sheet.resources);
 		const slots = spellSlots(sheet.class, sheet.level);
 		sheet.spellSlots = slots.map((slot) => ({
 			...slot,
@@ -1087,6 +1085,23 @@
 	}
 	function spendResource(index: number) {
 		sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1);
+		syncTokenSoon();
+	}
+	function setResourceMax(index: number, value: string) {
+		const resource = sheet.resources[index];
+		const parsed = value.trim() === '' ? undefined : Number(value);
+		if (parsed !== undefined && (!Number.isFinite(parsed) || parsed < 0)) return;
+		const automatic =
+			defaultResources(sheet.class, sheet.level, sheet.abilityScores).find(
+				(candidate) => candidate.id === resource.id
+			)?.max ?? resource.max;
+		const max = parsed === undefined ? automatic : Math.min(999, Math.floor(parsed));
+		sheet.resources[index] = {
+			...resource,
+			max,
+			...(parsed === undefined ? { maxOverride: undefined } : { maxOverride: max }),
+			current: Math.min(resource.current, max)
+		};
 		syncTokenSoon();
 	}
 	async function rest(kind: 'short' | 'long') {
@@ -2196,7 +2211,22 @@
 												: 'descanso longo'}</span
 									><button onclick={() => spendResource(index)} disabled={resource.current === 0}
 										>{$appLocale === 'en' ? 'Use' : 'Usar'}</button
+									><label class="resource-max"
+										>{$appLocale === 'en' ? 'Max' : 'Máx.'}<input
+											type="number"
+											min="0"
+											max="999"
+											step="1"
+											value={resource.max}
+											onchange={(event) => setResourceMax(index, event.currentTarget.value)}
+										/></label
 									>
+									{#if resource.maxOverride !== undefined}<button
+											class="resource-auto"
+											type="button"
+											onclick={() => setResourceMax(index, '')}
+											>{$appLocale === 'en' ? 'Auto' : 'Auto'}</button
+										>{/if}
 								</div>{/each}
 						</section>{/if}
 					<section class="combat-equipment">
@@ -3453,7 +3483,7 @@
 	}
 	.resources > div {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto auto;
+		grid-template-columns: minmax(0, 1fr) auto auto auto auto;
 		align-items: center;
 		gap: 0.5rem;
 		border-top: 1px solid #393034;
@@ -3462,6 +3492,33 @@
 	.resources span {
 		color: #a99c91;
 		font-size: 0.7rem;
+	}
+	.resource-max {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		color: #a99c91;
+		font-size: 0.68rem;
+	}
+	.resource-max input {
+		width: 3.3rem;
+		min-width: 0;
+		border: 1px solid #594a42;
+		border-radius: 5px;
+		padding: 0.3rem;
+		color: #f0d29d;
+		background: #211b1b;
+	}
+	.resources .resource-auto {
+		padding-inline: 0.4rem;
+	}
+	@media (max-width: 520px) {
+		.resources > div {
+			grid-template-columns: minmax(0, 1fr) auto auto;
+		}
+		.resources > div > strong {
+			grid-column: 1 / -1;
+		}
 	}
 	.spell-circle {
 		display: grid;

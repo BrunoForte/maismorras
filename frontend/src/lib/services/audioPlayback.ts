@@ -117,8 +117,8 @@ export class CrossfadeAudio {
 		const started = performance.now();
 		return new Promise<void>((resolve) => {
 			const step = (now: number) => {
-				const progress = Math.min(1, (now - started) / this.fadeMs);
-				element.volume = initial + (target - initial) * progress;
+				const progress = Math.max(0, Math.min(1, (now - started) / this.fadeMs));
+				element.volume = Math.max(0, Math.min(1, initial + (target - initial) * progress));
 				if (progress < 1) requestAnimationFrame(step);
 				else resolve();
 			};
