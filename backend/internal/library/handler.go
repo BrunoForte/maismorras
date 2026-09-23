@@ -66,7 +66,7 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 		return apperror.ServiceUnavailable("Storage seguro não está configurado no servidor.")
 	}
 	payload, _ := json.Marshal(map[string]int{"expiresIn": 3600})
-	endpoint := h.cfg.SupabaseURL + "/storage/v1/object/sign/campaign-assets/" + url.PathEscape(in.Path)
+	endpoint := h.cfg.SupabaseURL + "/storage/v1/object/sign/campaign-assets/" + escapeStorageObjectPath(in.Path)
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+h.cfg.SupabaseSecretKey)
 	req.Header.Set("apikey", h.cfg.SupabaseSecretKey)
@@ -90,6 +90,18 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, map[string]any{"url": out.SignedURL, "expiresAt": time.Now().Add(55 * time.Minute).Unix()})
 }
+
+// Storage object paths contain slash-separated segments. Escape each segment
+// independently so reserved characters in filenames are encoded without
+// turning directory separators into %2F.
+func escapeStorageObjectPath(objectPath string) string {
+	segments := strings.Split(objectPath, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	return strings.Join(segments, "/")
+}
+
 func isAudioPath(value string) bool {
 	value = strings.ToLower(value)
 	for _, extension := range []string{".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac"} {
@@ -105,4 +117,3 @@ func write(w http.ResponseWriter, status int, value any) error {
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(value)
 }
-
