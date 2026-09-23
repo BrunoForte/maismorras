@@ -145,8 +145,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		case "scene.refresh":
 			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
 		case "presentation.updated":
-			if peer.canControl {
-				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
+			// Presentation content is fetched through the caller's permission-filtered
+			// REST endpoint. Realtime only invalidates the view, so item paths and
+			// titles are never disclosed to unauthorized campaign members.
+			if canPublishPresentationUpdate(peer.canControl, event.Data) {
+				h.hub.broadcast(sceneID, []byte(`{"type":"presentation.updated"}`))
 			}
 		case "overlay.layout.updated":
 			if peer.canControl {
@@ -222,6 +225,15 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 }
+
+func canPublishPresentationUpdate(canControl bool, data json.RawMessage) bool {
+	if canControl {
+		return true
+	}
+	value := strings.TrimSpace(string(data))
+	return value == "" || value == "null"
+}
+
 func tokenUpdateBroadcast(tokenID string, deleted bool) []byte {
 	payload, err := json.Marshal(struct {
 		Type string `json:"type"`

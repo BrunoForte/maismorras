@@ -54,7 +54,7 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
     where m.campaign_id=$1 and m.user_id=$2
     and (
       m.role='gm'::public.campaign_role
-      or ($3 and exists (select 1 from public.scenes s where s.campaign_id=$1 and s.ambient_audio_path=$4))
+      or ($3 and exists (select 1 from public.scenes s where s.campaign_id=$1 and s.ambient_audio_path=$4 and s.ambient_audio_enabled))
       or (not $3 and (
         not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$4)
         or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$4 and lp.user_id=$2)

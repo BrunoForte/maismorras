@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { request } from './httpClient';
-export type LibraryPermission = { userIds: string[]; isGM: boolean };
+export type LibraryPermission = { userIds: string[]; isGM: boolean; restricted: boolean };
 export async function loadLibraryPermissions(
 	session: Session,
 	campaignId: string,
@@ -21,12 +21,13 @@ export async function saveLibraryPermissions(
 	campaignId: string,
 	itemType: 'asset' | 'note',
 	itemKey: string,
-	userIds: string[]
+	userIds: string[],
+	restricted: boolean
 ) {
 	return request<LibraryPermission>(
 		session,
 		`/api/v1/campaigns/${campaignId}/library-permissions`,
-		{ method: 'PUT', body: JSON.stringify({ itemType, itemKey, userIds }) },
+		{ method: 'PUT', body: JSON.stringify({ itemType, itemKey, userIds, restricted }) },
 		'Não foi possível salvar as permissões.'
 	);
 }

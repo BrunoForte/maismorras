@@ -592,10 +592,13 @@
 				description: '',
 				visible: true
 			});
+			window.dispatchEvent(
+				new CustomEvent('maismorras:presentation-changed', { detail: { sceneId: activeScene.id } })
+			);
 			inviteStatus = 'Imagem exibida para os jogadores.';
 			publishOverlayScene();
-		} catch (e) {
-			inviteStatus = e instanceof Error ? e.message : 'Não foi possível exibir a imagem.';
+		} catch {
+			inviteStatus = '';
 		}
 	}
 	async function hidePresentedAsset() {
@@ -607,10 +610,13 @@
 				description: '',
 				visible: false
 			});
+			window.dispatchEvent(
+				new CustomEvent('maismorras:presentation-changed', { detail: { sceneId: activeScene.id } })
+			);
 			publishOverlayScene();
 			inviteStatus = 'Imagem ocultada para os jogadores.';
-		} catch (error) {
-			inviteStatus = error instanceof Error ? error.message : 'Não foi possível ocultar a imagem.';
+		} catch {
+			inviteStatus = '';
 		}
 	}
 	async function copyLiveOverlayAddress() {
@@ -733,7 +739,6 @@
 				sceneId={activeScene.id}
 				campaignId={activeCampaign.id}
 				{session}
-				isGM={activeCampaign.role === 'gm'}
 			/>{/if}
 		{#if activeCampaign && activeScene && session}<AmbientAudioPlayer
 				scene={activeScene}

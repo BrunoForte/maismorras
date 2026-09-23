@@ -9,23 +9,17 @@
 		type SceneSocket
 	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
-	let {
-		sceneId,
-		campaignId,
-		session,
-		isGM = false
-	}: { sceneId: string; campaignId: string; session: Session; isGM?: boolean } = $props();
+	import { appLocale } from '$lib/stores/locale';
+	let { sceneId, campaignId, session }: { sceneId: string; campaignId: string; session: Session } =
+		$props();
 	let item = $state({ assetPath: '', title: '', description: '', visible: false });
 	let url = $state('');
-	let dismissedPresentation = $state('');
 	let presentationGeneration = 0;
 	let socket: SceneSocket | null = null;
-	async function closePresentation(event: Event) {
-		if (!isGM || event.target !== event.currentTarget) return;
+	async function dismissPresentation() {
 		// Hide immediately so a transient API error cannot trap the narrator
 		// behind the presentation modal.
 		item = { ...item, visible: false };
-		dismissedPresentation = `${item.assetPath}:${item.title}`;
 		url = '';
 		try {
 			await savePresentation(session, sceneId, {
@@ -34,11 +28,10 @@
 				description: '',
 				visible: false
 			});
-			socket?.publishPresentationUpdated({
-				presentation: { assetPath: '', title: '', description: '', visible: false }
-			});
+			socket?.publishPresentationUpdated();
 		} catch {
-			/* Keep the current presentation if the server is temporarily unavailable. */
+			// The local dismissal stays immediate; the shared request handler reports
+			// a concise error and a later refresh reconciles state with the server.
 		}
 	}
 	async function applyPresentation(next: {
@@ -49,9 +42,7 @@
 	}) {
 		const generation = ++presentationGeneration;
 		item = next;
-		const presentationKey = `${next.assetPath}:${next.title}`;
-		if (presentationKey !== dismissedPresentation) dismissedPresentation = '';
-		if (!next.visible || presentationKey === dismissedPresentation || !next.assetPath) {
+		if (!next.visible || !next.assetPath) {
 			url = '';
 			return;
 		}
@@ -89,6 +80,11 @@
 	}
 	onMount(() => {
 		void load();
+		const onLocalPresentationChange = (event: Event) => {
+			const detail = (event as CustomEvent<{ sceneId?: string }>).detail;
+			if (detail?.sceneId === sceneId) socket?.publishPresentationUpdated();
+		};
+		window.addEventListener('maismorras:presentation-changed', onLocalPresentationChange);
 		let fallbackTimer: number | undefined;
 		const updateFallback = (status: RealtimeStatus) => {
 			if (status === 'connected') {
@@ -108,6 +104,7 @@
 			(data) => void applyRealtimePresentation(data)
 		);
 		return () => {
+			window.removeEventListener('maismorras:presentation-changed', onLocalPresentationChange);
 			socket?.close();
 			if (fallbackTimer) window.clearInterval(fallbackTimer);
 		};
@@ -117,15 +114,23 @@
 {#if item.visible && (url || item.description)}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
-		onclick={(event) => void closePresentation(event)}
+		onclick={(event) => {
+			if (event.target === event.currentTarget) void dismissPresentation();
+		}}
 		onkeydown={(event) => {
-			if (event.key === 'Escape') void closePresentation(event);
+			if (event.key === 'Escape') void dismissPresentation();
 		}}
 		tabindex="0"
 		role="dialog"
 		aria-modal="true"
 		aria-label={item.title || 'Imagem apresentada'}
 	>
+		<button
+			class="presentation-close"
+			onclick={() => void dismissPresentation()}
+			aria-label={$appLocale === 'en' ? 'Dismiss image for everyone' : 'Fechar imagem para todos'}
+			>×</button
+		>
 		<figure>
 			{#if url}<img src={url} alt={item.title || 'Imagem apresentada'} />{:else}<div
 					class="presentation-text"
@@ -147,6 +152,24 @@
 		background: rgba(0, 0, 0, 0.82);
 		animation: presentation-in 0.35s ease both;
 		backdrop-filter: blur(3px);
+	}
+	.presentation-close {
+		position: fixed;
+		z-index: 1;
+		top: max(1rem, env(safe-area-inset-top));
+		right: max(1rem, env(safe-area-inset-right));
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 1px solid #d8ad67;
+		border-radius: 50%;
+		color: #f4e5ca;
+		background: #171417dd;
+		font-size: 1.7rem;
+		cursor: pointer;
+	}
+	.presentation-close:hover {
+		color: #26190e;
+		background: #e0b86f;
 	}
 	figure {
 		margin: 0;

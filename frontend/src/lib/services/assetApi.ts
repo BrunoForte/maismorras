@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
-import { fetchAuthenticated } from './httpClient';
+import { fetchAuthenticated, notifyUserRequestError } from './httpClient';
 
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const missingAssetCache = new Map<string, number>();
@@ -84,8 +84,15 @@ export async function getSignedAssetUrl(
 				}
 				if (response.status === 404 && code === 'ASSET_NOT_FOUND') {
 					missingAssetCache.set(cacheKey, Date.now() + 5 * 60 * 1000);
+					notifyUserRequestError(
+						'Este arquivo não existe mais no Storage e as referências antigas foram removidas.'
+					);
 				} else {
 					failedRequestCache.set(cacheKey, Date.now() + 15_000);
+					if (response.status >= 500)
+						notifyUserRequestError(
+							'Não foi possível carregar um arquivo da mesa. Tente novamente.'
+						);
 				}
 				console.warn('Falha ao solicitar URL de asset.', {
 					status: response.status,
@@ -101,6 +108,9 @@ export async function getSignedAssetUrl(
 				signedUrlCache.set(cacheKey, { url: body.url, expiresAt: safeExpiry });
 			return body.url;
 		} catch {
+			notifyUserRequestError(
+				'Não foi possível conectar ao Storage. Verifique sua conexão e tente novamente.'
+			);
 			return null;
 		} finally {
 			inFlight.delete(cacheKey);

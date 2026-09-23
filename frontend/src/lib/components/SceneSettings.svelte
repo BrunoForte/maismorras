@@ -5,7 +5,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { optimizeImage } from '$lib/services/imageProcessing';
-	import { request } from '$lib/services/httpClient';
+	import { notifyUserRequestError, request } from '$lib/services/httpClient';
 	let {
 		scene,
 		session,
@@ -32,7 +32,11 @@
 			.from('campaign-assets')
 			.list(folder, { limit: 100 });
 		if (error) {
-			message = error.message;
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not load campaign media.'
+					: 'Não foi possível carregar as mídias da campanha.'
+			);
 			return;
 		}
 		audioFiles = (data ?? [])
@@ -56,12 +60,11 @@
 			onsaved(result);
 			onclose();
 		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not save the scene.'
-						: 'Não foi possível salvar a cena.';
+			message = '';
+			if (!(error instanceof Error && error.name === 'ApiError'))
+				notifyUserRequestError(
+					$appLocale === 'en' ? 'Could not save the scene.' : 'Não foi possível salvar a cena.'
+				);
 		} finally {
 			saving = false;
 		}
@@ -92,12 +95,13 @@
 					? 'Map generated and selected. Save the scene to apply it.'
 					: 'Mapa gerado e selecionado. Salve a cena para aplicá-lo.';
 		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not generate the map.'
-						: 'Não foi possível gerar o mapa.';
+			message = '';
+			if (!(error instanceof Error && error.name === 'ApiError'))
+				notifyUserRequestError(
+					$appLocale === 'en'
+						? 'Could not generate or save the map.'
+						: 'Não foi possível gerar ou salvar o mapa.'
+				);
 		} finally {
 			generating = false;
 		}

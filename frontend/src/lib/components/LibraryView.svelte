@@ -6,8 +6,9 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
-	import { request } from '$lib/services/httpClient';
+	import { notifyUserRequestError, request } from '$lib/services/httpClient';
 	import { optimizeImage } from '$lib/services/imageProcessing';
+	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import {
 		loadLibraryPermissions,
 		saveLibraryPermissions
@@ -48,6 +49,15 @@
 	let handoutVisibility = $state<'gm' | 'players'>('players');
 	let message = $state('');
 	let preview = $state<Asset | null>(null);
+	let draggingFiles = $state(false);
+	let permissionDialog = $state<{ type: 'asset' | 'note'; key: string; label: string } | null>(
+		null
+	);
+	let participants = $state<Participant[]>([]);
+	let permissionUsers = $state<string[]>([]);
+	let permissionRestricted = $state(false);
+	let loadingPermissions = $state(false);
+	let savingPermissions = $state(false);
 	const folder = () => `campaigns/${campaignId}/media`;
 	onMount(() => {
 		void loadAssets();
@@ -58,13 +68,8 @@
 			handouts = (
 				await request<{ notes: Handout[] }>(session, `/api/v1/campaigns/${campaignId}/notes`)
 			).notes;
-		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not load handouts.'
-						: 'Não foi possível carregar os handouts.';
+		} catch {
+			message = '';
 		}
 	}
 	async function saveHandout() {
@@ -94,13 +99,8 @@
 			handoutVisibility = 'players';
 			editingHandoutId = null;
 			handoutOpen = false;
-		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not save the handout.'
-						: 'Não foi possível salvar o handout.';
+		} catch {
+			message = '';
 		} finally {
 			savingHandout = false;
 		}
@@ -114,21 +114,50 @@
 	}
 	async function editPermissions(itemType: 'asset' | 'note', itemKey: string, label: string) {
 		if (!isGM) return;
+		loadingPermissions = true;
+		permissionDialog = { type: itemType, key: itemKey, label };
 		try {
-			const current = await loadLibraryPermissions(session, campaignId, itemType, itemKey);
-			const entered = window.prompt(
-				`Usuários autorizados para ${label} (UUIDs separados por vírgula):`,
-				current.userIds.join(', ')
+			const [current, roster] = await Promise.all([
+				loadLibraryPermissions(session, campaignId, itemType, itemKey),
+				listParticipants(session, campaignId)
+			]);
+			permissionUsers = current.userIds;
+			permissionRestricted = current.restricted;
+			participants = roster.participants.filter((participant) => participant.role === 'player');
+		} catch {
+			message = '';
+			permissionDialog = null;
+		} finally {
+			loadingPermissions = false;
+		}
+	}
+	function togglePermissionUser(userId: string) {
+		permissionUsers = permissionUsers.includes(userId)
+			? permissionUsers.filter((id) => id !== userId)
+			: [...permissionUsers, userId];
+	}
+	async function savePermissionSelection() {
+		if (!permissionDialog || savingPermissions) return;
+		savingPermissions = true;
+		try {
+			await saveLibraryPermissions(
+				session,
+				campaignId,
+				permissionDialog.type,
+				permissionDialog.key,
+				permissionUsers,
+				permissionRestricted
 			);
-			if (entered === null) return;
-			const userIds = entered
-				.split(',')
-				.map((id) => id.trim())
-				.filter(Boolean);
-			await saveLibraryPermissions(session, campaignId, itemType, itemKey, userIds);
-			message = 'Permissões atualizadas.';
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível salvar as permissões.';
+			if (permissionDialog.type === 'note')
+				handouts = handouts.map((item) =>
+					item.id === permissionDialog?.key ? { ...item, visibility: 'players' } : item
+				);
+			permissionDialog = null;
+			message = 'Acesso atualizado.';
+		} catch {
+			message = '';
+		} finally {
+			savingPermissions = false;
 		}
 	}
 	async function deleteHandout(handout: Handout) {
@@ -137,13 +166,8 @@
 				method: 'DELETE'
 			});
 			handouts = handouts.filter((item) => item.id !== handout.id);
-		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not delete the handout.'
-						: 'Não foi possível excluir o handout.';
+		} catch {
+			message = '';
 		}
 	}
 	async function deleteAsset(asset: Asset) {
@@ -162,13 +186,13 @@
 			clearSignedAssetCache(campaignId, asset.path);
 			assets = assets.filter((item) => item.path !== asset.path);
 			if (preview?.path === asset.path) preview = null;
-		} catch (error) {
-			message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not delete the media.'
-						: 'Não foi possível excluir a mídia.';
+		} catch {
+			message = '';
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not delete this media.'
+					: 'Não foi possível excluir esta mídia.'
+			);
 		} finally {
 			deletingAsset = null;
 		}
@@ -180,7 +204,12 @@
 			.from('campaign-assets')
 			.list(folder(), { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
 		if (error) {
-			message = error.message;
+			message = '';
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not load campaign media.'
+					: 'Não foi possível carregar as mídias da campanha.'
+			);
 			return;
 		}
 		const listed = await Promise.all(
@@ -208,42 +237,74 @@
 			(asset): asset is Asset => asset !== null && (isGM || asset.type !== 'audio')
 		);
 	}
-	async function upload(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file || !supabase) return;
-		if (
-			(!file.type.startsWith('image/') &&
-				!file.type.startsWith('audio/') &&
-				file.type !== 'application/pdf' &&
-				!file.type.startsWith('text/')) ||
-			file.size > 20 * 1024 * 1024
-		) {
+	function isSupportedFile(file: File) {
+		return (
+			(file.type.startsWith('image/') ||
+				file.type.startsWith('audio/') ||
+				file.type === 'application/pdf' ||
+				file.type.startsWith('text/')) &&
+			file.size <= 20 * 1024 * 1024
+		);
+	}
+	async function uploadFiles(files: FileList | File[]) {
+		if (!supabase || uploading) return;
+		const selected = Array.from(files);
+		if (!selected.length) return;
+		const rejected = selected.filter((file) => !isSupportedFile(file));
+		const accepted = selected.filter(isSupportedFile);
+		if (!accepted.length) {
 			message =
 				$appLocale === 'en'
-					? 'Upload an image, audio, or document up to 20 MB.'
-					: 'Envie imagem, áudio ou documento de até 20 MB.';
+					? 'Choose supported media files up to 20 MB each.'
+					: 'Escolha imagens, áudios ou documentos compatíveis de até 20 MB cada.';
 			return;
 		}
 		uploading = true;
-		message = '';
+		message = rejected.length
+			? $appLocale === 'en'
+				? `${rejected.length} unsupported file(s) skipped.`
+				: `${rejected.length} arquivo(s) incompatível(is) ignorado(s).`
+			: '';
+		let uploaded = 0;
 		try {
-			const optimized = await optimizeImage(file);
-			const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-			const { error } = await supabase.storage
-				.from('campaign-assets')
-				.upload(`${folder()}/${crypto.randomUUID()}-${name}`, optimized.file, {
-					contentType: optimized.file.type,
-					cacheControl: '3600'
-				});
-			if (error) throw error;
+			for (const file of accepted) {
+				const optimized = await optimizeImage(file);
+				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+				const { error } = await supabase.storage
+					.from('campaign-assets')
+					.upload(`${folder()}/${crypto.randomUUID()}-${name}`, optimized.file, {
+						contentType: optimized.file.type,
+						cacheControl: '3600'
+					});
+				if (error) throw error;
+				uploaded++;
+			}
 			await loadAssets();
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível enviar a mídia.';
+			if (!rejected.length)
+				message =
+					$appLocale === 'en'
+						? `${uploaded} media item(s) added.`
+						: `${uploaded} mídia(s) adicionada(s).`;
+		} catch {
+			message = '';
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not upload the selected media.'
+					: 'Não foi possível enviar as mídias selecionadas.'
+			);
 		} finally {
 			uploading = false;
-			input.value = '';
 		}
+	}
+	async function upload(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		if (input.files) await uploadFiles(input.files);
+		input.value = '';
+	}
+	function dropFiles(event: DragEvent) {
+		event.preventDefault();
+		draggingFiles = false;
+		if (event.dataTransfer?.files) void uploadFiles(event.dataTransfer.files);
 	}
 </script>
 
@@ -270,7 +331,9 @@
 						: $appLocale === 'en'
 							? 'Add media'
 							: 'Adicionar mídia'}<input
+						id="campaign-media-upload"
 						type="file"
+						multiple
 						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav,application/pdf,text/plain"
 						onchange={upload}
 						disabled={uploading}
@@ -291,6 +354,43 @@
 			</div>{/if}
 	</header>
 	{#if message}<p class="message">{message}</p>{/if}
+	{#if isGM}<button
+			class="drop-zone"
+			class:dragging={draggingFiles}
+			onclick={() => document.getElementById('campaign-media-upload')?.click()}
+			onkeydown={(event) => {
+				if (event.key === 'Enter' || event.key === ' ')
+					document.getElementById('campaign-media-upload')?.click();
+			}}
+			ondragover={(event) => {
+				event.preventDefault();
+				draggingFiles = true;
+			}}
+			ondragleave={(event) => {
+				if (event.currentTarget === event.target) draggingFiles = false;
+			}}
+			ondrop={dropFiles}
+			disabled={uploading}
+			aria-label={$appLocale === 'en'
+				? 'Drop files to upload media'
+				: 'Solte arquivos para adicionar mídias'}
+		>
+			<span aria-hidden="true">{uploading ? '◌' : '↥'}</span>
+			<strong
+				>{uploading
+					? $appLocale === 'en'
+						? 'Uploading media…'
+						: 'Enviando mídias…'
+					: $appLocale === 'en'
+						? 'Drop media files here'
+						: 'Arraste mídias para cá'}</strong
+			>
+			<small
+				>{$appLocale === 'en'
+					? 'or click to choose · images, audio, PDF and text up to 20 MB each'
+					: 'ou clique para escolher · imagens, áudio, PDF e texto até 20 MB por arquivo'}</small
+			>
+		</button>{/if}
 	{#if handoutOpen && isGM}<form
 			class="handout-form"
 			onsubmit={(event) => {
@@ -349,7 +449,7 @@
 								<button onclick={() => editHandout(handout)}
 									>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button
 								><button onclick={() => void editPermissions('note', handout.id, handout.title)}
-									>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
+									>{$appLocale === 'en' ? 'Players' : 'Acesso'}</button
 								><button onclick={() => void deleteHandout(handout)}
 									>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
 								>
@@ -395,21 +495,31 @@
 							rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a
 						>{/if}
 					<div class="asset-footer">
-						<small>{asset.name}</small>{#if isGM}<button
-								class="asset-delete"
-								aria-label={$appLocale === 'en' ? `Delete ${asset.name}` : `Excluir ${asset.name}`}
-								title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
-								onclick={() => void deleteAsset(asset)}
-								disabled={deletingAsset === asset.path}>×</button
-							>{#if isGM}<button
+						<small>{asset.name}</small>
+						{#if isGM}<div class="asset-actions">
+								<button
+									class="asset-delete"
+									aria-label={$appLocale === 'en'
+										? `Delete ${asset.name}`
+										: `Excluir ${asset.name}`}
+									title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
+									onclick={() => void deleteAsset(asset)}
+									disabled={deletingAsset === asset.path}>×</button
+								><button
 									class="asset-present"
+									aria-label={$appLocale === 'en'
+										? `Manage access to ${asset.name}`
+										: `Gerenciar acesso a ${asset.name}`}
 									onclick={() => void editPermissions('asset', asset.path, asset.name)}
 									>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
-								>{/if}
-							>{#if asset.type === 'image' || asset.type === 'map'}<button
-									class="asset-present"
-									onclick={() => onpresent({ path: asset.path, name: asset.name })}>👁</button
-								>{/if}{/if}
+								>{#if asset.type === 'image' || asset.type === 'map'}<button
+										class="asset-present"
+										aria-label={$appLocale === 'en'
+											? `Show ${asset.name} to the table`
+											: `Exibir ${asset.name} para a mesa`}
+										onclick={() => onpresent({ path: asset.path, name: asset.name })}>👁</button
+									>{/if}
+							</div>{/if}
 					</div>
 				</article>{/each}
 		</section>{:else}<div class="empty">
@@ -442,6 +552,106 @@
 			><img src={preview.url} alt={preview.name} />
 			<p>{preview.name}</p>
 		</section>
+	</div>{/if}
+{#if permissionDialog}<div
+		class="permission-backdrop"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget && !savingPermissions) permissionDialog = null;
+		}}
+	>
+		<dialog open class="permission-dialog" aria-modal="true" aria-labelledby="permission-title">
+			<header>
+				<div>
+					<p>{$appLocale === 'en' ? 'CAMPAIGN ACCESS' : 'ACESSO DA MESA'}</p>
+					<h3 id="permission-title">
+						{$appLocale === 'en' ? 'Who can see this item?' : 'Quem pode ver este item?'}
+					</h3>
+					<span>{permissionDialog.label}</span>
+				</div>
+				<button
+					class="dialog-close"
+					onclick={() => (permissionDialog = null)}
+					disabled={savingPermissions}
+					aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}>×</button
+				>
+			</header>
+			{#if loadingPermissions}<p class="permission-empty">
+					{$appLocale === 'en' ? 'Loading campaign players…' : 'Carregando jogadores da mesa…'}
+				</p>{:else}
+				<div class="permission-modes">
+					<label
+						><input
+							type="radio"
+							name="access-mode"
+							checked={!permissionRestricted}
+							onchange={() => (permissionRestricted = false)}
+						/>{$appLocale === 'en' ? 'All players' : 'Todos os jogadores'}</label
+					>
+					<label
+						><input
+							type="radio"
+							name="access-mode"
+							checked={permissionRestricted}
+							onchange={() => (permissionRestricted = true)}
+						/>{$appLocale === 'en' ? 'Selected players' : 'Jogadores selecionados'}</label
+					>
+				</div>
+				{#if permissionRestricted}<div class="permission-roster">
+						{#each participants as participant (participant.userId)}<label class="player-option">
+								<input
+									type="checkbox"
+									checked={permissionUsers.includes(participant.userId)}
+									onchange={() => togglePermissionUser(participant.userId)}
+								/>
+								<span class="player-color" aria-hidden="true"></span>
+								<span
+									><strong
+										>{participant.displayName ||
+											($appLocale === 'en' ? 'Player' : 'Jogador')}</strong
+									>{#if participant.character?.sheet?.name}<small
+											>{participant.character.sheet.name}</small
+										>{/if}</span
+								>
+							</label>{:else}<p class="permission-empty">
+								{$appLocale === 'en'
+									? 'No players have joined this campaign yet.'
+									: 'Nenhum jogador entrou nesta mesa ainda.'}
+							</p>{/each}
+					</div>
+					<p class="permission-hint">
+						{permissionUsers.length === 0
+							? $appLocale === 'en'
+								? 'No selected players means only the GM can see it.'
+								: 'Sem jogadores selecionados, somente o narrador verá.'
+							: $appLocale === 'en'
+								? `${permissionUsers.length} player(s) selected.`
+								: `${permissionUsers.length} jogador(es) selecionado(s).`}
+					</p>{:else}<p class="permission-hint">
+						{$appLocale === 'en'
+							? 'Every current and future player in this campaign can see it.'
+							: 'Todos os jogadores atuais e futuros desta mesa poderão ver.'}
+					</p>{/if}
+			{/if}
+			<footer>
+				<button
+					class="secondary-button"
+					onclick={() => (permissionDialog = null)}
+					disabled={savingPermissions}>{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}</button
+				><button
+					class="primary-button"
+					onclick={() => void savePermissionSelection()}
+					disabled={loadingPermissions || savingPermissions}
+					>{savingPermissions
+						? $appLocale === 'en'
+							? 'Saving…'
+							: 'Salvando…'
+						: $appLocale === 'en'
+							? 'Save access'
+							: 'Salvar acesso'}</button
+				>
+			</footer>
+		</dialog>
 	</div>{/if}
 
 <style>
@@ -498,6 +708,46 @@
 		border: 0;
 		color: #26190e;
 		background: #e0b86f;
+	}
+	.drop-zone {
+		display: grid;
+		place-items: center;
+		gap: 0.35rem;
+		width: 100%;
+		min-height: 118px;
+		margin: 0 0 1.2rem;
+		padding: 1rem;
+		border: 1px dashed #806039;
+		border-radius: 10px;
+		color: #eee4d6;
+		background: #211b1e;
+		cursor: pointer;
+		transition:
+			border-color 140ms ease,
+			background-color 140ms ease,
+			transform 140ms ease;
+	}
+	.drop-zone:hover,
+	.drop-zone.dragging {
+		border-color: #e0b86f;
+		background: #30241f;
+	}
+	.drop-zone.dragging {
+		transform: scale(1.005);
+	}
+	.drop-zone > span {
+		color: #e0b86f;
+		font-size: 1.7rem;
+	}
+	.drop-zone strong {
+		font:
+			600 1rem Georgia,
+			serif;
+	}
+	.drop-zone small {
+		color: #a99c91;
+		font-size: 0.75rem;
+		text-align: center;
 	}
 	.actions input {
 		display: none;
@@ -710,6 +960,27 @@
 		line-height: 1;
 		cursor: pointer;
 	}
+	.asset-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		flex: 0 0 auto;
+	}
+	.asset-present {
+		border: 1px solid #5a493b;
+		border-radius: 5px;
+		padding: 0.3rem 0.45rem;
+		color: #edc77f;
+		background: #2b211e;
+		font-size: 0.68rem;
+		cursor: pointer;
+	}
+	.asset-present:hover,
+	.handout-actions button:hover,
+	.actions button:hover {
+		border-color: #d8ad67;
+		background: #3a2920;
+	}
 	.asset-delete:hover:not(:disabled) {
 		border-color: #b96d68;
 		color: #fff0ed;
@@ -766,9 +1037,169 @@
 		color: #e9dcc9;
 		text-align: center;
 	}
+	.permission-backdrop {
+		position: fixed;
+		z-index: 1100;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+		background: #080608cc;
+		backdrop-filter: blur(5px);
+	}
+	.permission-dialog {
+		position: relative;
+		inset: auto;
+		margin: 0;
+		width: min(100%, 480px);
+		max-height: min(80dvh, 680px);
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		overflow: hidden;
+		padding: 1.1rem;
+		border: 1px solid #5a493b;
+		border-radius: 12px;
+		color: #eee4d6;
+		background: #211b1e;
+		box-shadow: 0 22px 70px #000a;
+	}
+	.permission-dialog header {
+		align-items: flex-start;
+		margin: 0;
+		padding: 0 0 0.8rem;
+	}
+	.permission-dialog header p {
+		margin: 0 0 0.3rem;
+	}
+	.permission-dialog h3 {
+		margin: 0;
+		font:
+			600 1.25rem Georgia,
+			serif;
+	}
+	.permission-dialog header span {
+		display: block;
+		max-width: 370px;
+		margin-top: 0.35rem;
+		overflow: hidden;
+		color: #b9aa9d;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.dialog-close {
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid #5a493b;
+		border-radius: 6px;
+		color: #edc77f;
+		background: #171316;
+		font-size: 1.2rem;
+		cursor: pointer;
+	}
+	.permission-modes {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.5rem;
+	}
+	.permission-modes label {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		min-height: 2.7rem;
+		padding: 0.55rem;
+		border: 1px solid #493c39;
+		border-radius: 7px;
+		color: #d8c9b9;
+		font-size: 0.78rem;
+		cursor: pointer;
+	}
+	.permission-roster {
+		display: grid;
+		gap: 0.35rem;
+		max-height: 36dvh;
+		overflow: auto;
+		padding-right: 0.2rem;
+	}
+	.player-option {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		min-width: 0;
+		padding: 0.6rem;
+		border: 1px solid #493c39;
+		border-radius: 7px;
+		background: #171316;
+		cursor: pointer;
+	}
+	.player-option span:last-child {
+		display: grid;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+	.player-option strong,
+	.player-option small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.player-option small {
+		color: #a99c91;
+	}
+	.player-color {
+		width: 0.65rem;
+		height: 0.65rem;
+		flex: 0 0 auto;
+		border-radius: 50%;
+		background: #d8ad67;
+	}
+	.permission-empty,
+	.permission-hint {
+		margin: 0;
+		color: #b9aa9d;
+		font-size: 0.78rem;
+		line-height: 1.45;
+	}
+	.permission-dialog footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		padding-top: 0.7rem;
+		border-top: 1px solid #493c39;
+	}
+	.permission-dialog footer button {
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.5rem 0.7rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.secondary-button {
+		color: #edc77f;
+		background: #2b211e;
+	}
+	.primary-button {
+		border-color: #e0b86f !important;
+		color: #26190e;
+		background: #e0b86f;
+	}
+	button:focus-visible,
+	input:focus-visible,
+	textarea:focus-visible,
+	select:focus-visible {
+		outline: 2px solid #f0cb85;
+		outline-offset: 2px;
+	}
 	@media (max-width: 650px) {
 		header {
 			flex-direction: column;
+		}
+		.actions {
+			flex-wrap: wrap;
+		}
+		.permission-modes {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

@@ -2,6 +2,18 @@ package scenes
 
 import "testing"
 
+func TestPresentationDismissalRequiresEmptyHiddenPayload(t *testing.T) {
+	if !isPresentationDismissal(Presentation{}) {
+		t.Fatal("empty presentation should be dismissible")
+	}
+	if isPresentationDismissal(Presentation{Visible: true}) {
+		t.Fatal("visible presentation must not be treated as a dismissal")
+	}
+	if isPresentationDismissal(Presentation{AssetPath: "campaigns/map.png"}) {
+		t.Fatal("presentation with an asset must not be treated as a dismissal")
+	}
+}
+
 func TestApplyVisibilityRedactsPrivateFieldsForOtherPlayer(t *testing.T) {
 	owner := "owner-id"
 	token := Token{

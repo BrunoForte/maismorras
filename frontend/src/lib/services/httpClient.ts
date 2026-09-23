@@ -52,6 +52,53 @@ export class ApiError extends Error {
 	}
 }
 
+function userFacingMessage(status: number, body: unknown, fallback: string): string {
+	if (status === 401) return 'Sua sessão expirou. Entre novamente e repita a ação.';
+	if (status === 403) return 'Você não tem permissão para fazer isso nesta mesa.';
+	if (status === 404) return 'O item solicitado não foi encontrado ou não está mais disponível.';
+	if (status === 408) return 'A operação demorou mais que o esperado. Tente novamente.';
+	if (status === 429)
+		return 'Muitas tentativas em pouco tempo. Aguarde um instante e tente novamente.';
+	if (status >= 500)
+		return 'O serviço encontrou um erro. Tente novamente; se persistir, informe o horário da tentativa.';
+	const candidate =
+		typeof body === 'object' &&
+		body !== null &&
+		'error' in body &&
+		typeof body.error === 'object' &&
+		body.error !== null &&
+		'message' in body.error
+			? String(body.error.message)
+			: typeof body === 'string'
+				? body
+				: fallback;
+	const clean = candidate
+		.replace(/[\r\n\t]+/g, ' ')
+		.replace(/\s{2,}/g, ' ')
+		.trim();
+	if (!clean || clean.length > 180 || /https?:\/\/|\bat\s+\w+\s*\(/i.test(clean))
+		return 'Não foi possível concluir a ação. Revise os dados e tente novamente.';
+	return clean;
+}
+
+function reportRequestError(message: string) {
+	if (typeof window !== 'undefined')
+		window.dispatchEvent(new CustomEvent('maismorras:request-error', { detail: { message } }));
+}
+
+export function notifyUserRequestError(message: string) {
+	const clean = message
+		.replace(/[\r\n\t]+/g, ' ')
+		.replace(/\s{2,}/g, ' ')
+		.replace(/https?:\/\/\S+/gi, '')
+		.trim();
+	const safe =
+		!clean || clean.length > 180 || /\bat\s+\w+\s*\(/i.test(clean)
+			? 'Não foi possível concluir a ação. Tente novamente.'
+			: clean;
+	reportRequestError(safe);
+}
+
 async function readBody(response: Response): Promise<unknown> {
 	const text = await response.text();
 	if (!text.trim()) return null;
@@ -84,7 +131,15 @@ export async function request<T>(
 		});
 	} catch (error) {
 		if (controller.signal.aborted && !init.signal?.aborted) {
-			throw new ApiError(408, 'A operação demorou mais que o esperado. Tente novamente.');
+			const message = userFacingMessage(408, null, fallback);
+			reportRequestError(message);
+			throw new ApiError(408, message);
+		}
+		if (!init.signal?.aborted) {
+			const message =
+				'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
+			reportRequestError(message);
+			throw new ApiError(0, message);
 		}
 		throw error;
 	} finally {
@@ -92,17 +147,8 @@ export async function request<T>(
 	}
 	const body = await readBody(response);
 	if (!response.ok) {
-		const message =
-			typeof body === 'object' &&
-			body !== null &&
-			'error' in body &&
-			typeof body.error === 'object' &&
-			body.error !== null &&
-			'message' in body.error
-				? String(body.error.message)
-				: typeof body === 'string' && body.trim()
-					? body
-					: fallback;
+		const message = userFacingMessage(response.status, body, fallback);
+		reportRequestError(message);
 		throw new ApiError(response.status, message, body);
 	}
 	return (body === null ? undefined : body) as T;

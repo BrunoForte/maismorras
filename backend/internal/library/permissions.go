@@ -9,6 +9,17 @@ import (
 	"vtt-backend/internal/auth"
 )
 
+func normalizePermissionSelection(restricted *bool, userIDs []string) (bool, []string) {
+	if restricted == nil {
+		legacyRestricted := len(userIDs) > 0
+		restricted = &legacyRestricted
+	}
+	if !*restricted {
+		return false, nil
+	}
+	return true, userIDs
+}
+
 func (h *Handler) ListPermissions(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
@@ -27,23 +38,28 @@ func (h *Handler) ListPermissions(w http.ResponseWriter, r *http.Request) error 
 	}
 	defer rows.Close()
 	userIDs := []string{}
+	restricted := false
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return apperror.Internal(err)
 		}
-		userIDs = append(userIDs, id)
+		restricted = true
+		if id != p.UserID {
+			userIDs = append(userIDs, id)
+		}
 	}
-	return write(w, http.StatusOK, map[string]any{"userIds": userIDs, "isGM": role == "gm"})
+	return write(w, http.StatusOK, map[string]any{"userIds": userIDs, "isGM": role == "gm", "restricted": restricted})
 }
 
 func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
 	var in struct {
-		ItemType string   `json:"itemType"`
-		ItemKey  string   `json:"itemKey"`
-		UserIDs  []string `json:"userIds"`
+		ItemType   string   `json:"itemType"`
+		ItemKey    string   `json:"itemKey"`
+		UserIDs    []string `json:"userIds"`
+		Restricted *bool    `json:"restricted"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
@@ -52,6 +68,14 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 	if (in.ItemType != "asset" && in.ItemType != "note") || in.ItemKey == "" {
 		return apperror.BadRequest("INVALID_ITEM", "Item inválido.")
 	}
+	if len(in.UserIDs) > 100 {
+		return apperror.BadRequest("INVALID_PERMISSIONS", "Selecione no máximo 100 jogadores.")
+	}
+	// Older clients omitted `restricted`; their non-empty user list meant an
+	// allowlist. New clients can explicitly select all players while retaining
+	// stale local checkboxes, so an explicit false must ignore that list.
+	restricted, userIDs := normalizePermissionSelection(in.Restricted, in.UserIDs)
+	in.UserIDs = userIDs
 	var role string
 	if err := h.pool.QueryRow(r.Context(), "select role::text from campaign_members where campaign_id=$1 and user_id=$2", campaignID, p.UserID).Scan(&role); err != nil || role != "gm" {
 		return apperror.Forbidden("Somente o narrador pode alterar permissões.")
@@ -64,13 +88,41 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 	if _, err = tx.Exec(r.Context(), "delete from library_item_permissions where campaign_id=$1 and item_type=$2::public.library_item_type and item_key=$3", campaignID, in.ItemType, in.ItemKey); err != nil {
 		return apperror.Internal(err)
 	}
+	if restricted {
+		// The GM row is a sentinel that distinguishes “selected list is empty”
+		// (nobody) from no permission rows (all campaign players).
+		if _, err = tx.Exec(r.Context(), "insert into library_item_permissions(campaign_id,item_type,item_key,user_id) values($1,$2::public.library_item_type,$3,$4)", campaignID, in.ItemType, in.ItemKey, p.UserID); err != nil {
+			return apperror.Internal(err)
+		}
+	}
+	seen := map[string]struct{}{}
 	for _, userID := range in.UserIDs {
 		userID = strings.TrimSpace(userID)
 		if userID == "" {
 			continue
 		}
-		if _, err = tx.Exec(r.Context(), "insert into library_item_permissions(campaign_id,item_type,item_key,user_id) select $1,$2::public.library_item_type,$3,$4 where exists (select 1 from campaign_members where campaign_id=$1 and user_id=$4)", campaignID, in.ItemType, in.ItemKey, userID); err != nil {
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		var valid bool
+		if err = tx.QueryRow(r.Context(), "select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2 and role='player'::public.campaign_role)", campaignID, userID).Scan(&valid); err != nil {
 			return apperror.Internal(err)
+		}
+		if !valid {
+			return apperror.BadRequest("INVALID_PERMISSION_MEMBER", "A lista contém alguém que não é jogador desta mesa.")
+		}
+		if _, err = tx.Exec(r.Context(), "insert into library_item_permissions(campaign_id,item_type,item_key,user_id) values($1,$2::public.library_item_type,$3,$4)", campaignID, in.ItemType, in.ItemKey, userID); err != nil {
+			return apperror.Internal(err)
+		}
+	}
+	if in.ItemType == "note" {
+		result, updateErr := tx.Exec(r.Context(), "update public.notes set visibility='players'::public.note_visibility, updated_at=now() where id::text=$1 and campaign_id=$2", in.ItemKey, campaignID)
+		if updateErr != nil {
+			return apperror.Internal(updateErr)
+		}
+		if result.RowsAffected() != 1 {
+			return apperror.BadRequest("INVALID_ITEM", "Handout não encontrado nesta campanha.")
 		}
 	}
 	if err = tx.Commit(r.Context()); err != nil {

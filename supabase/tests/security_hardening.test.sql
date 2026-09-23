@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(16);
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
 select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
@@ -11,5 +11,10 @@ select ok(not has_schema_privilege('anon', 'private', 'USAGE') and not has_schem
 select ok(not has_table_privilege('anon', 'private.image_generation_limits', 'SELECT') and not has_table_privilege('authenticated', 'private.image_generation_limits', 'SELECT') and not has_table_privilege('service_role', 'private.image_generation_limits', 'SELECT'), 'image quota rows are not exposed through Supabase API roles');
 select ok(not exists (select 1 from pg_policies where schemaname='public' and tablename='notes' and cmd='ALL'), 'notes no longer use a broad FOR ALL policy');
 select ok((select count(*)=3 from pg_policies where schemaname='public' and tablename='notes' and policyname in ('notes_author_insert','notes_author_update','notes_author_delete')), 'notes writes remain covered by explicit insert/update/delete policies');
+select ok(not exists (select 1 from pg_policies where schemaname='public' and tablename='library_item_permissions' and policyname='campaign members read item permissions'), 'players cannot enumerate other players item permissions');
+select ok((select qual like '%gm%' from pg_policies where schemaname='public' and tablename='library_item_permissions' and policyname='campaign gms manage item permissions' and cmd='ALL'), 'GM-only item permission policy remains the sole read/write policy');
+select ok((select qual like '%library_item_permissions%' from pg_policies where schemaname='public' and tablename='notes' and policyname='notes_member_select'), 'handout reads enforce per-player permissions');
+select ok((select qual like '%library_item_permissions%' from pg_policies where schemaname='public' and tablename='scene_presentations' and policyname='campaign members can read permitted presentations'), 'presentation reads enforce per-player permissions');
+select ok((select qual like '%ambient_audio_enabled%' and qual like '%library_item_permissions%' from pg_policies where schemaname='storage' and tablename='objects' and policyname='campaign members read permitted assets'), 'Storage reads enforce media permissions and active audio');
 select * from finish();
 rollback;

@@ -34,3 +34,19 @@ func TestTokenUpdateSignalDoesNotContainTokenFields(t *testing.T) {
 		t.Fatalf("expected minimal invalidation signal, got %#v", data)
 	}
 }
+
+func TestPresentationRealtimeOnlyAllowsPlayerInvalidations(t *testing.T) {
+	for _, value := range []json.RawMessage{nil, []byte("  "), []byte("null")} {
+		if !canPublishPresentationUpdate(false, value) {
+			t.Errorf("player dismissal invalidation should be allowed: %q", value)
+		}
+	}
+	for _, value := range []json.RawMessage{[]byte(`{"assetPath":"private.png"}`), []byte(`{"visible":true}`)} {
+		if canPublishPresentationUpdate(false, value) {
+			t.Errorf("player must not broadcast presentation content: %s", value)
+		}
+	}
+	if !canPublishPresentationUpdate(true, json.RawMessage(`{"visible":true}`)) {
+		t.Fatal("GM should be able to publish a presentation update")
+	}
+}

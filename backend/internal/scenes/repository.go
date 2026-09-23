@@ -153,6 +153,10 @@ type Presentation struct {
 	Visible     bool   `json:"visible"`
 }
 
+func isPresentationDismissal(p Presentation) bool {
+	return !p.Visible && strings.TrimSpace(p.AssetPath) == "" && strings.TrimSpace(p.Title) == "" && strings.TrimSpace(p.Description) == ""
+}
+
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
 
 type OverlaySettings struct {
@@ -241,14 +245,20 @@ func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string
 	return p, nil
 }
 func (r *Repository) SavePresentation(ctx context.Context, sceneID, userID string, p Presentation) error {
-	if role, err := r.memberRole(ctx, sceneID, userID); err != nil || role != "gm" {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return err
+	}
+	// Any campaign member may dismiss a visible presentation, but only the GM
+	// may choose or replace the content shown to the table.
+	if role != "gm" && !isPresentationDismissal(p) {
 		return ErrForbidden
 	}
-	if strings.TrimSpace(p.AssetPath) == "" && strings.TrimSpace(p.Title) == "" && strings.TrimSpace(p.Description) == "" {
+	if isPresentationDismissal(p) {
 		_, err := r.pool.Exec(ctx, `delete from scene_presentations where scene_id=$1`, sceneID)
 		return err
 	}
-	_, err := r.pool.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible) select $1,campaign_id,$2,$3,$4,$5 from scenes where id=$1 on conflict(scene_id) do update set asset_path=excluded.asset_path,title=excluded.title,description=excluded.description,visible=excluded.visible,updated_at=now()`, sceneID, p.AssetPath, p.Title, p.Description, p.Visible)
+	_, err = r.pool.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible) select $1,campaign_id,$2,$3,$4,$5 from scenes where id=$1 on conflict(scene_id) do update set asset_path=excluded.asset_path,title=excluded.title,description=excluded.description,visible=excluded.visible,updated_at=now()`, sceneID, p.AssetPath, p.Title, p.Description, p.Visible)
 	return err
 }
 

@@ -86,7 +86,11 @@
 			...scene,
 			ambientAudioPath: state.path,
 			ambientAudioEnabled: state.playing,
-			ambientAudioVolume: Math.round(state.volume * 100)
+			ambientAudioVolume: Math.round(state.volume * 100),
+			ambientAudioPositionMs: state.positionMs,
+			ambientAudioStartedAt:
+				state.playing && state.startedAt > 0 ? new Date(state.startedAt).toISOString() : null,
+			ambientAudioRevision: state.revision ?? scene.ambientAudioRevision ?? 0
 		});
 		await applyState(state);
 	}
@@ -98,21 +102,27 @@
 	async function selectTrack(event: Event) {
 		if (!isGM) return;
 		const path = (event.currentTarget as HTMLSelectElement).value;
+		if (path === (scene.ambientAudioPath ?? '')) return;
+		const continuePlayback = scene.ambientAudioEnabled && Boolean(path);
+		const startedAt = continuePlayback ? new Date().toISOString() : null;
 		const next = {
 			...scene,
 			ambientAudioPath: path || null,
-			ambientAudioEnabled: false,
+			ambientAudioEnabled: continuePlayback,
 			ambientAudioPositionMs: 0,
-			ambientAudioStartedAt: null,
+			ambientAudioStartedAt: startedAt,
 			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
 		};
 		const saved = await save(next, false);
 		const state: AudioPlaybackState = {
 			path: saved.ambientAudioPath,
-			playing: false,
+			playing: continuePlayback,
 			volume: targetVolume(saved.ambientAudioVolume),
 			positionMs: saved.ambientAudioPositionMs ?? 0,
-			startedAt: saved.ambientAudioStartedAt ? Date.parse(saved.ambientAudioStartedAt) : 0,
+			startedAt:
+				continuePlayback && saved.ambientAudioStartedAt
+					? Date.parse(saved.ambientAudioStartedAt)
+					: 0,
 			revision: saved.ambientAudioRevision ?? 0
 		};
 		publishState(state);

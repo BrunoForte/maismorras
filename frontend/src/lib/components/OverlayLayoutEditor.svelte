@@ -634,7 +634,7 @@
 		transition:
 			background 0.16s ease,
 			border-color 0.16s ease,
-			op 0.16s ease;
+			opacity 0.16s ease;
 	}
 	.overlay-editor button:hover:not(:disabled) {
 		border-color: #d8ad67;
@@ -820,15 +820,17 @@
 		grid-column: 1 / -1;
 	}
 	.properties label {
-		display: grid;
-		gap: 0.2rem;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
 		color: #b9aa9b;
 		font-size: 0.68rem;
 	}
 	.properties input {
+		width: 4.5rem;
 		min-width: 0;
 		border: 1px solid #51443a;
-		border-radius: 6px;
+		border-radius: 5px;
 		padding: 0.3rem;
 		color: #eee4d6;
 		background: #211c1e;
@@ -837,19 +839,6 @@
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
-	}
-	.properties label {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-	.properties input {
-		width: 4.5rem;
-		border: 1px solid #51443a;
-		border-radius: 5px;
-		padding: 0.3rem;
-		color: #eee4d6;
-		background: #211c1e;
 	}
 	.block.hidden {
 		opacity: 0.3;

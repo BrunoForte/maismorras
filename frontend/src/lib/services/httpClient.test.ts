@@ -92,4 +92,34 @@ describe('request timeout', () => {
 		await assertion;
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
+
+	it('shows only one concise sentence for server failures', async () => {
+		const onError = vi.fn();
+		const browserWindow = new EventTarget();
+		vi.stubGlobal('window', browserWindow);
+		browserWindow.addEventListener('maismorras:request-error', onError);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({ error: { message: 'panic at internal/db.go:42\nsecret stack' } }),
+					{
+						status: 500,
+						headers: { 'Content-Type': 'application/json' }
+					}
+				)
+			)
+		);
+
+		await expect(
+			request({ access_token: 'token', user: { id: 'user-1' } } as Session, '/broken')
+		).rejects.toMatchObject({ status: 500 });
+
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect(onError.mock.calls[0][0].detail.message).toBe(
+			'O serviço encontrou um erro. Tente novamente; se persistir, informe o horário da tentativa.'
+		);
+		expect(onError.mock.calls[0][0].detail.message).not.toContain('db.go');
+		browserWindow.removeEventListener('maismorras:request-error', onError);
+	});
 });
