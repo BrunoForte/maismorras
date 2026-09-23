@@ -8,7 +8,7 @@ test.describe('overlay configuration', () => {
 
 	test('opens the overlay tab for a campaign owner', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByText(/Central de campanhas|Campaign hub/i)).toBeVisible();
+		await expect(page.locator('main.campaign-hub')).toBeVisible();
 		const overlayTab = page.getByRole('button', { name: /^Overlay$/i });
 		if (await overlayTab.count()) {
 			await overlayTab.click();
