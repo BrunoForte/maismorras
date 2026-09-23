@@ -25,6 +25,7 @@ export type Spell = {
 	description?: string;
 	diceFormula?: string;
 	higherLevels?: string;
+	scalingDicePerLevel?: number;
 };
 export type CharacterResource = {
 	id: string;

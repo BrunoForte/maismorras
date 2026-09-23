@@ -1640,7 +1640,8 @@
 					notes: '',
 					description: '',
 					diceFormula: '',
-					higherLevels: ''
+					higherLevels: '',
+					scalingDicePerLevel: 0
 				}
 			];
 		}
@@ -2103,12 +2104,7 @@
 								max="99"
 								value={calculatedArmorClass()}
 								readonly
-								aria-describedby="armor-class-help"
 							/></label
-						><small id="armor-class-help" class="field-hint"
-							>{$appLocale === 'en'
-								? 'Calculated from ability scores and equipped armor/shield.'
-								: 'Calculada pelos atributos e armaduras/escudos equipados.'}</small
 						><label
 							>{$appLocale === 'en' ? 'Current HP' : 'PV atuais'}<input
 								type="number"
@@ -2631,6 +2627,39 @@
 															placeholder="Ex.: 6d6"
 														/>
 													</label>
+													{#if !spell.entryId}<div class="custom-spell-scaling">
+															<label>
+																<input
+																	type="checkbox"
+																	checked={(spell.scalingDicePerLevel ?? 0) > 0}
+																	onchange={(event) => {
+																		spell.scalingDicePerLevel = event.currentTarget.checked
+																			? Math.max(1, spell.scalingDicePerLevel ?? 0)
+																			: 0;
+																	}}
+																	disabled={!spell.diceFormula?.trim()}
+																/>
+																{$appLocale === 'en'
+																	? 'Calculate extra damage when using a higher slot'
+																	: 'Calcular aumento ao usar espaço de nível superior'}
+															</label>
+															{#if (spell.scalingDicePerLevel ?? 0) > 0}<label>
+																	{$appLocale === 'en'
+																		? 'Extra dice per slot level'
+																		: 'Dados extras por nível do espaço'}
+																	<input
+																		type="number"
+																		min="1"
+																		max="10"
+																		bind:value={spell.scalingDicePerLevel}
+																	/>
+																</label>
+																<small>
+																	{$appLocale === 'en'
+																		? 'Uses the same die size as the base damage formula.'
+																		: 'Usa o mesmo tipo de dado da fórmula de dano base.'}
+																</small>{/if}
+														</div>{/if}
 													><label class="spell-description-field"
 														>{$appLocale === 'en' ? 'Description' : 'Descrição'}<textarea
 															bind:value={spell.description}
@@ -2653,7 +2682,7 @@
 																>{$appLocale === 'en'
 																	? 'Show to table'
 																	: 'Destacar na tela'}</button
-															>{/if}{#if spell.diceFormula?.trim()}<button
+															>{/if}{#if spell.diceFormula?.trim() && spell.level === 0}<button
 																type="button"
 																onclick={() => void rollSpellDamage(spell)}
 																>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
@@ -2669,11 +2698,7 @@
 																class="cast-spell"
 																type="button"
 																disabled={castingSpell === index ||
-																	!spell.entryId ||
 																	(spell.level > 0 && !compatibleSlots(spell).length)}
-																title={!spell.entryId
-																	? 'Adicione a magia pelo compêndio para conjurá-la com regras.'
-																	: ''}
 																onclick={() => void castSpell(spell, index)}
 																>{castingSpell === index
 																	? '…'
@@ -3440,6 +3465,32 @@
 		font: inherit;
 		font-size: 0.82rem;
 		resize: vertical;
+	}
+	.custom-spell-scaling {
+		grid-column: 1 / -1;
+		display: grid;
+		gap: 0.4rem;
+		border: 1px solid #493c39;
+		border-radius: 7px;
+		padding: 0.65rem;
+		background: #171417;
+	}
+	.custom-spell-scaling label:first-child {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.custom-spell-scaling input[type='checkbox'] {
+		width: 1rem;
+		margin: 0;
+		accent-color: #c89655;
+	}
+	.custom-spell-scaling label:not(:first-child) {
+		max-width: 16rem;
+	}
+	.custom-spell-scaling small {
+		color: #a99c91;
+		font-size: 0.68rem;
 	}
 	.spell-description-field {
 		grid-column: 1 / -1;

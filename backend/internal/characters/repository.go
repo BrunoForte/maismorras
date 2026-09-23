@@ -74,13 +74,14 @@ type Attack struct {
 	Notes       string `json:"notes"`
 }
 type Spell struct {
-	EntryID      string `json:"entryId"`
-	Name         string `json:"name"`
-	Level        int    `json:"level"`
-	Notes        string `json:"notes"`
-	Description  string `json:"description"`
-	DiceFormula  string `json:"diceFormula"`
-	HigherLevels string `json:"higherLevels"`
+	EntryID             string `json:"entryId"`
+	Name                string `json:"name"`
+	Level               int    `json:"level"`
+	Notes               string `json:"notes"`
+	Description         string `json:"description"`
+	DiceFormula         string `json:"diceFormula"`
+	HigherLevels        string `json:"higherLevels"`
+	ScalingDicePerLevel int    `json:"scalingDicePerLevel"`
 }
 type Resource struct {
 	ID        string `json:"id"`
@@ -288,9 +289,6 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 		return SpellCastResult{}, fmt.Errorf("spell not found")
 	}
 	spell := sheet.Spells[spellIndex]
-	if spell.EntryID == "" {
-		return SpellCastResult{}, fmt.Errorf("spell is not linked to compendium data")
-	}
 	if spell.Level > 0 {
 		if slotLevel < spell.Level {
 			return SpellCastResult{}, fmt.Errorf("incompatible spell slot")
@@ -309,18 +307,29 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	} else if slotLevel != 0 {
 		return SpellCastResult{}, fmt.Errorf("cantrips do not consume spell slots")
 	}
-	var rulesRaw []byte
-	if err = tx.QueryRow(ctx, `select rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='spell' and is_published=true`, spell.EntryID, campaignID).Scan(&rulesRaw); err != nil {
-		return SpellCastResult{}, fmt.Errorf("spell data unavailable")
-	}
 	var rules map[string]any
-	if err = json.Unmarshal(rulesRaw, &rules); err != nil {
-		return SpellCastResult{}, err
-	}
-	if baseLevel, ok := rules["level"].(float64); !ok || int(baseLevel) != spell.Level {
-		return SpellCastResult{}, fmt.Errorf("spell level does not match compendium data")
+	if spell.EntryID == "" {
+		var rulesErr error
+		rules, rulesErr = customSpellRules(spell)
+		if rulesErr != nil {
+			return SpellCastResult{}, rulesErr
+		}
+	} else {
+		var rulesRaw []byte
+		if err = tx.QueryRow(ctx, `select rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='spell' and is_published=true`, spell.EntryID, campaignID).Scan(&rulesRaw); err != nil {
+			return SpellCastResult{}, fmt.Errorf("spell data unavailable")
+		}
+		if err = json.Unmarshal(rulesRaw, &rules); err != nil {
+			return SpellCastResult{}, err
+		}
+		if baseLevel, ok := rules["level"].(float64); !ok || int(baseLevel) != spell.Level {
+			return SpellCastResult{}, fmt.Errorf("spell level does not match compendium data")
+		}
 	}
 	effect := spellEffect(rules, spell.Level, slotLevel)
+	if spell.EntryID == "" && slotLevel > spell.Level && strings.TrimSpace(spell.HigherLevels) != "" {
+		effect = strings.TrimSpace(effect + " " + strings.TrimSpace(spell.HigherLevels))
+	}
 	if effect == "" {
 		effect = "Efeito não definido."
 	}
@@ -346,6 +355,45 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 		return SpellCastResult{}, err
 	}
 	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, Expression: expression, Dice: dice, Modifier: modifier, Total: total}, nil
+}
+
+// customSpellRules derives mechanics exclusively from the custom spell stored
+// on the character sheet. The optional upcast model adds a fixed number of
+// base-formula dice per slot level above the spell's base level.
+func customSpellRules(spell Spell) (map[string]any, error) {
+	if spell.ScalingDicePerLevel < 0 || spell.ScalingDicePerLevel > 10 {
+		return nil, fmt.Errorf("invalid custom spell scaling")
+	}
+	rules := map[string]any{"level": float64(spell.Level), "description": spell.Description}
+	dice := strings.TrimSpace(spell.DiceFormula)
+	if dice == "" {
+		if spell.ScalingDicePerLevel != 0 {
+			return nil, fmt.Errorf("custom spell scaling requires base damage dice")
+		}
+		return rules, nil
+	}
+	match := diceInEffect.FindStringSubmatch(dice)
+	if match == nil || strings.TrimSpace(match[0]) != dice {
+		return nil, fmt.Errorf("invalid custom spell dice formula")
+	}
+	count, _ := strconv.Atoi(match[1])
+	sides := mustParseDieSides(match[2])
+	validSides := map[int]bool{4: true, 6: true, 8: true, 10: true, 12: true, 20: true, 100: true}
+	if count < 1 || count > 50 || !validSides[sides] {
+		return nil, fmt.Errorf("custom spell dice count is out of range")
+	}
+	damage := map[string]any{"dice": dice}
+	if spell.ScalingDicePerLevel > 0 {
+		damage["scalingType"] = "spell-level"
+		rules["scalingIncrement"] = float64(spell.ScalingDicePerLevel)
+	}
+	rules["damage"] = damage
+	return rules, nil
+}
+
+func mustParseDieSides(value string) int {
+	sides, _ := strconv.Atoi(value)
+	return sides
 }
 
 func spellEffect(rules map[string]any, base, slot int) string {

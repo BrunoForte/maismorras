@@ -56,6 +56,30 @@ func TestRollSpellEffectPreservesModifierWhenScaling(t *testing.T) {
 	}
 }
 
+func TestCustomSpellRulesScaleConfiguredDicePerSlotLevel(t *testing.T) {
+	rules, err := customSpellRules(Spell{
+		Name: "Explosão de teste", Level: 1, DiceFormula: "2d6+1", ScalingDicePerLevel: 1,
+	})
+	if err != nil {
+		t.Fatalf("customSpellRules returned error: %v", err)
+	}
+	expression, dice, modifier, total := rollSpellEffect(rules, 1, 3)
+	if expression != "4d6+1" || len(dice) != 4 || modifier != 1 || total < 5 || total > 25 {
+		t.Fatalf("unexpected custom spell scaling: %s %v +%d = %d", expression, dice, modifier, total)
+	}
+}
+
+func TestCustomSpellRulesRejectInvalidScaling(t *testing.T) {
+	_, err := customSpellRules(Spell{Level: 1, DiceFormula: "2d6", ScalingDicePerLevel: 11})
+	if err == nil {
+		t.Fatal("expected out-of-range scaling to be rejected")
+	}
+	_, err = customSpellRules(Spell{Level: 1, ScalingDicePerLevel: 1})
+	if err == nil {
+		t.Fatal("expected scaling without base damage dice to be rejected")
+	}
+}
+
 func validSheet() Sheet {
 	return Sheet{
 		Name: "Lia", Level: 1, ArmorClass: 14, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10,
