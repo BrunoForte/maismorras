@@ -1673,7 +1673,7 @@
 		display: grid;
 		gap: 0.45rem;
 		flex: 1;
-		max-width: 520px;
+		min-width: 0;
 		color: #a99e94;
 		font-size: 0.78rem;
 		font-weight: 650;
@@ -1683,6 +1683,11 @@
 	.campaign-system-filter {
 		flex: 0 0 190px;
 		max-width: 220px;
+	}
+	.new-campaign-button {
+		width: auto;
+		flex: 0 0 auto;
+		white-space: nowrap;
 	}
 	.campaign-filter input,
 	.campaign-filter select {
@@ -2306,6 +2311,7 @@
 		}
 		.new-campaign-button {
 			width: 100%;
+			flex: 0 0 auto;
 		}
 		.create-campaign > div {
 			flex-direction: column;
