@@ -20,6 +20,7 @@
 	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } =
 		$props();
 	let open = $state(true);
+	let docked = $state(false);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
@@ -191,18 +192,24 @@
 
 <aside
 	class:closed={!open}
+	class:docked
 	class="floating-chat"
 	aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}
 >
-	<button class="chat-toggle" onclick={() => (open = !open)} aria-expanded={open}>
-		<span>◌</span>{open
-			? $appLocale === 'en'
-				? 'Table chat'
-				: 'Chat da mesa'
-			: $appLocale === 'en'
-				? 'Open chat'
-				: 'Abrir chat'}
-	</button>
+	<div class="chat-titlebar">
+		<button class="chat-toggle" onclick={() => (open = !open)} aria-expanded={open}>
+			<span>◌</span>{open
+				? $appLocale === 'en'
+					? 'Table chat'
+					: 'Chat da mesa'
+				: $appLocale === 'en'
+					? 'Open chat'
+					: 'Abrir chat'}
+		</button>
+		{#if open}<button class="dock-toggle" onclick={() => (docked = !docked)} aria-pressed={docked}
+				>{docked ? 'Desacoplar' : 'Acoplar'}</button
+			>{/if}
+	</div>
 	{#if open}
 		<div class="chat-body">
 			<nav
@@ -327,12 +334,14 @@
 	.floating-chat {
 		position: fixed;
 		z-index: 8;
-		right: 1rem;
+		left: 1rem;
 		bottom: 4.25rem;
-		min-height: 9rem;
-		max-height: min(70vh, 560px);
+		height: min(420px, calc(100dvh - 7rem));
+		min-height: 0;
 		resize: both;
 		width: min(360px, calc(100% - 2rem));
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr);
 		border: 1px solid rgba(216, 173, 103, 0.4);
 		border-radius: 12px;
 		overflow: hidden;
@@ -341,11 +350,22 @@
 		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
 		backdrop-filter: blur(12px);
 	}
+	.floating-chat.docked {
+		top: 6rem;
+		bottom: 4.25rem;
+		left: 0;
+		width: min(350px, 82vw);
+		height: auto;
+		max-height: none;
+		resize: horizontal;
+		border-radius: 0 12px 12px 0;
+	}
 	.floating-chat.closed {
 		width: min(220px, calc(100% - 2rem));
 		min-height: 0;
 		height: auto;
 		resize: none;
+		grid-template-rows: auto;
 	}
 	.floating-chat.closed .chat-body {
 		display: none;
@@ -354,7 +374,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.45rem;
-		width: 100%;
+		flex: 1;
 		border: 0;
 		padding: 0.75rem 0.9rem;
 		color: #f0cb85;
@@ -369,10 +389,26 @@
 		color: #d8ad67;
 		font-size: 1rem;
 	}
+	.chat-titlebar {
+		display: flex;
+		align-items: stretch;
+		min-width: 0;
+	}
+	.dock-toggle {
+		border: 0;
+		padding: 0.5rem 0.65rem;
+		color: #e7d6b8;
+		background: rgba(35, 27, 30, 0.9);
+		font:
+			600 0.67rem Georgia,
+			serif;
+		cursor: pointer;
+	}
 	.chat-body {
 		display: grid;
 		grid-template-rows: auto minmax(0, 1fr) auto;
-		height: 315px;
+		min-height: 0;
+		height: auto;
 	}
 	.channel-tabs {
 		display: grid;
@@ -535,12 +571,17 @@
 	}
 	@media (max-width: 650px) {
 		.floating-chat {
-			right: 0.6rem;
+			left: 0.6rem;
 			bottom: 4.25rem;
 			width: calc(100% - 1.2rem);
+			height: min(380px, calc(100dvh - 6rem));
 		}
-		.chat-body {
-			height: 280px;
+		.floating-chat.docked {
+			top: 5.8rem;
+			bottom: 4.25rem;
+			left: 0;
+			width: min(88vw, 350px);
+			height: auto;
 		}
 	}
 	.expand {

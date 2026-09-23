@@ -26,6 +26,7 @@ var (
 type Sheet struct {
 	Name                 string          `json:"name"`
 	PortraitPath         string          `json:"portraitPath"`
+	TokenPortraitPath    string          `json:"tokenPortraitPath"`
 	Class                string          `json:"class"`
 	Subclass             string          `json:"subclass"`
 	Level                int             `json:"level"`
@@ -625,7 +626,11 @@ func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, u
 // Tokens linked to a character are instances for position and conditions, but
 // their sheet-derived combat numbers must follow the character sheet.
 func (r *Repository) syncSceneTokens(ctx context.Context, actorID string, sheet Sheet) error {
-	_, err := r.pool.Exec(ctx, `update scene_tokens set hp_current=$1,hp_max=$2,armor_class=$3,initiative_bonus=$4,image_url=nullif($5,''),updated_at=now() where actor_id=$6`, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, sheet.PortraitPath, actorID)
+	portrait := sheet.TokenPortraitPath
+	if strings.TrimSpace(portrait) == "" {
+		portrait = sheet.PortraitPath
+	}
+	_, err := r.pool.Exec(ctx, `update scene_tokens set hp_current=$1,hp_max=$2,armor_class=$3,initiative_bonus=$4,image_url=nullif($5,''),updated_at=now() where actor_id=$6`, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, portrait, actorID)
 	if err != nil {
 		return fmt.Errorf("sync character tokens: %w", err)
 	}

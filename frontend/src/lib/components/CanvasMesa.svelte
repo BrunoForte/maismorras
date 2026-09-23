@@ -112,6 +112,13 @@
 	let areasVisible = $state(true);
 	let layerToolsOpen = $state(false);
 	let tokenRefreshTimer: number | undefined;
+	const personagemIdByToken = new SvelteMap<string, number>();
+	function personagemIdFor(tokenId: string, fallback: number) {
+		const existing = personagemIdByToken.get(tokenId);
+		if (existing !== undefined) return existing;
+		personagemIdByToken.set(tokenId, fallback);
+		return fallback;
+	}
 	const tokenImageCache = new SvelteMap<
 		string,
 		{ path: string | null; url: string | null; expiresAt: number }
@@ -280,6 +287,7 @@
 		try {
 			await deleteSceneToken(session, scene.id, persistedId);
 			personagens.update((lista) => lista.filter((item) => item.persistedId !== persistedId));
+			personagemIdByToken.delete(persistedId);
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
@@ -328,7 +336,7 @@
 						url: imageUrl ?? null,
 						expiresAt: Date.now() + 45 * 60 * 1000
 					});
-					return asPersonagem(token, index, imageUrl);
+					return asPersonagem(token, personagemIdFor(token.id, index + 1), imageUrl);
 				})
 			);
 			savedSnapshots.clear();
@@ -363,7 +371,7 @@
 				const existing = lista.find((item) => item.persistedId === token.id);
 				const updated = asPersonagem(
 					token,
-					existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1,
+					personagemIdFor(token.id, existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1),
 					imageUrl
 				);
 				const next = existing
@@ -375,6 +383,7 @@
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 404) {
 				personagens.update((lista) => lista.filter((item) => item.persistedId !== signal.tokenId));
+				personagemIdByToken.delete(signal.tokenId);
 				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
 				savedSnapshots.delete(signal.tokenId);
 				return;
@@ -959,7 +968,7 @@
 			? 'Interactive game map. Focus it to use keyboard shortcuts.'
 			: 'Mapa interativo da mesa. Foque nele para usar atalhos do teclado.'}
 	></canvas>
-	<div class="ping-tool">
+	<div class="ping-tool" class:has-fog={isGM && scene.fogEnabled}>
 		<button class:active={pingArmed} onclick={() => (pingArmed = !pingArmed)}
 			>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button
 		>
@@ -1406,8 +1415,11 @@
 	.ping-tool {
 		position: absolute;
 		z-index: 4;
-		bottom: 0.9rem;
-		left: 0.9rem;
+		top: 0.8rem;
+		right: 0.8rem;
+	}
+	.ping-tool.has-fog {
+		top: 3.65rem;
 	}
 	.ping-tool button {
 		border: 1px solid #765d3d;
@@ -1831,6 +1843,9 @@
 		.camera-tools {
 			top: 0.65rem;
 		}
+		.ping-tool.has-fog {
+			top: 3.55rem;
+		}
 	}
 	.token-inspector {
 		position: absolute;
@@ -1838,6 +1853,9 @@
 		top: 1rem;
 		right: 1rem;
 		width: min(300px, calc(100% - 2rem));
+		max-height: calc(100% - 2rem);
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 1rem;
 		border: 1px solid rgba(216, 173, 103, 0.42);
 		border-radius: 12px;

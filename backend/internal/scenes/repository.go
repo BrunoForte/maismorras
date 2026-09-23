@@ -1095,7 +1095,11 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	}
 	owner := ownerID
 	var portrait *string
-	if value := strings.TrimSpace(sheet.PortraitPath); value != "" {
+	portraitPath := sheet.TokenPortraitPath
+	if strings.TrimSpace(portraitPath) == "" {
+		portraitPath = sheet.PortraitPath
+	}
+	if value := strings.TrimSpace(portraitPath); value != "" {
 		portrait = &value
 	}
 	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: actorTokenColor(actorID), X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}

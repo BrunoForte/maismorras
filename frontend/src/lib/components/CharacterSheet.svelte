@@ -2,7 +2,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/require-each-key, @typescript-eslint/no-unused-vars */
 	import { onMount } from 'svelte';
-	import { optimizeImage } from '$lib/services/imageProcessing';
+	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		createEmptySheet,
@@ -526,13 +526,29 @@
 				'A sessão atual não corresponde ao usuário autenticado. Faça login novamente.'
 			);
 		const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
-		const path = `campaigns/${campaignId}/portraits/${userData.user.id}/${crypto.randomUUID()}-${safeName}`;
-		const { error } = await supabase.storage.from('campaign-assets').upload(path, blob, {
-			contentType: blob.type || 'image/png',
-			cacheControl: '3600'
+		const basePath = `campaigns/${campaignId}/portraits/${userData.user.id}/${crypto.randomUUID()}`;
+		const path = `${basePath}-${safeName}`;
+		const thumbnail = await createThumbnail(blob, 320);
+		const tokenExtension = thumbnail.file.type === 'image/webp' ? 'webp' : 'png';
+		const tokenPath = `${basePath}-token.${tokenExtension}`;
+		const storage = supabase.storage.from('campaign-assets');
+		const { error: thumbnailError } = await storage.upload(tokenPath, thumbnail.file, {
+			contentType: thumbnail.file.type || 'image/png',
+			cacheControl: '31536000',
+			upsert: false
 		});
-		if (error) throw error;
+		if (thumbnailError) throw thumbnailError;
+		const { error } = await storage.upload(path, blob, {
+			contentType: blob.type || 'image/png',
+			cacheControl: '31536000',
+			upsert: false
+		});
+		if (error) {
+			await storage.remove([tokenPath]);
+			throw error;
+		}
 		sheet.portraitPath = path;
+		sheet.tokenPortraitPath = tokenPath;
 		await refreshPortraitPreview();
 		message = 'Retrato selecionado. Salve a ficha para atualizar o token.';
 	}
@@ -571,7 +587,11 @@
 	const optionsFor = (entryType: string) =>
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	const optionLabel = (entry: CompendiumEntry) =>
-		$appLocale === 'pt-BR' ? entry.translations?.['pt-BR'] || entry.name : entry.name;
+		$appLocale === 'pt-BR' &&
+		entry.translations?.['pt-BR']?.trim() &&
+		entry.translations['pt-BR'].trim().toLocaleLowerCase() !== entry.name.trim().toLocaleLowerCase()
+			? entry.translations['pt-BR']
+			: entry.name;
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
 	function equipmentCategory(item: { name: string; rules: Record<string, unknown> }) {
 		const category = String(item.rules.category ?? '');
@@ -863,6 +883,41 @@
 			? rules.benefits.map((benefit) => String(benefit).trim()).filter(Boolean)
 			: [];
 		return [...new Set([description, ...benefits].filter(Boolean))].join('\n\n') || entry.summary;
+	};
+	const spellCompendiumEntry = (spell: Sheet['spells'][number]) =>
+		spell.entryId ? compendiumEntries.find((entry) => entry.id === spell.entryId) : undefined;
+	const spellDisplayName = (spell: Sheet['spells'][number]) => {
+		const entry = spellCompendiumEntry(spell);
+		return entry ? optionLabel(entry) : spell.name;
+	};
+	const localizedSpellText = (spell: Sheet['spells'][number], field: string, fallback: string) => {
+		const entry = spellCompendiumEntry(spell);
+		const translation = entry?.translations?.[`pt-BR.rules.${field}`]?.trim();
+		return $appLocale === 'pt-BR' &&
+			translation &&
+			translation.toLocaleLowerCase() !== fallback.trim().toLocaleLowerCase()
+			? translation
+			: fallback;
+	};
+	const spellDescription = (spell: Sheet['spells'][number]) => {
+		const entry = spellCompendiumEntry(spell);
+		const rules = entry ? entryRules(entry) : {};
+		const original = String(rules.description ?? spell.description ?? entry?.summary ?? '').trim();
+		return localizedSpellText(spell, 'description', original);
+	};
+	const spellHigherLevels = (spell: Sheet['spells'][number]) => {
+		const entry = spellCompendiumEntry(spell);
+		const rules = entry ? entryRules(entry) : {};
+		const original = String(
+			rules.higherLevels ?? rules.atHigherLevels ?? spell.higherLevels ?? ''
+		).trim();
+		return localizedSpellText(spell, 'higherLevels', original);
+	};
+	const spellHasAITranslation = (spell: Sheet['spells'][number]) => {
+		const entry = spellCompendiumEntry(spell);
+		return Object.entries(entry?.translations ?? {}).some(
+			([key, value]) => key.startsWith('pt-BR.rules.') && key.endsWith('.source') && value === 'ai'
+		);
 	};
 	function addFeat() {
 		const feat = newFeat.trim();
@@ -1523,8 +1578,8 @@
 		try {
 			const presentation = {
 				assetPath: '',
-				title: spell.name,
-				description: spell.description || spell.notes,
+				title: spellDisplayName(spell),
+				description: spellDescription(spell) || spell.notes,
 				visible: true
 			};
 			await savePresentation(session, sceneId, presentation);
@@ -2611,7 +2666,7 @@
 												aria-expanded={expandedSpell === index}
 												onclick={() => (expandedSpell = expandedSpell === index ? null : index)}
 												><strong
-													>{spell.name ||
+													>{spellDisplayName(spell) ||
 														($appLocale === 'en' ? 'Unnamed spell' : 'Magia sem nome')}</strong
 												><span
 													>{circleLabel(spell.level)} · {expandedSpell === index ? '⌃' : '⌄'}</span
@@ -2660,18 +2715,34 @@
 																		: 'Usa o mesmo tipo de dado da fórmula de dano base.'}
 																</small>{/if}
 														</div>{/if}
-													><label class="spell-description-field"
-														>{$appLocale === 'en' ? 'Description' : 'Descrição'}<textarea
-															bind:value={spell.description}
-															rows="4"></textarea>
-													</label>
-													<label class="spell-description-field">
-														{$appLocale === 'en'
-															? 'At higher levels'
-															: 'Em níveis mais altos'}<textarea
-															bind:value={spell.higherLevels}
-															rows="2"></textarea>
-													</label>
+													{#if spell.entryId}<section
+															class="spell-lore"
+															aria-label="Descrição da magia"
+														>
+															{#if spellHasAITranslation(spell)}<small>Tradução livre (IA)</small
+																>{/if}
+															<p>
+																{spellDescription(spell) ||
+																	'Descrição não cadastrada no compêndio.'}
+															</p>
+															{#if spellHigherLevels(spell)}<h5>
+																	{$appLocale === 'en'
+																		? 'At higher levels'
+																		: 'Em níveis mais altos'}
+																</h5>
+																<p>{spellHigherLevels(spell)}</p>{/if}
+														</section>{:else}<label class="spell-description-field"
+															>{$appLocale === 'en' ? 'Description' : 'Descrição'}<textarea
+																bind:value={spell.description}
+																rows="4"></textarea>
+														</label>
+														<label class="spell-description-field">
+															{$appLocale === 'en'
+																? 'At higher levels'
+																: 'Em níveis mais altos'}<textarea
+																bind:value={spell.higherLevels}
+																rows="2"></textarea>
+														</label>{/if}
 													<label class="spell-description-field">
 														{$appLocale === 'en' ? 'Notes' : 'Notas'}<textarea
 															bind:value={spell.notes}
@@ -3445,6 +3516,26 @@
 		gap: 0.65rem;
 		border-top: 1px solid #3d3334;
 		padding: 0.75rem;
+	}
+	.spell-lore {
+		grid-column: 1 / -1;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		padding: 0.8rem 0.9rem;
+		color: #e8ddcd;
+		background: linear-gradient(145deg, #201b1b, #171417);
+		white-space: pre-line;
+	}
+	.spell-lore p {
+		margin: 0.35rem 0 0;
+		line-height: 1.55;
+	}
+	.spell-lore h5 {
+		margin: 0.85rem 0 0;
+		color: #e8c985;
+	}
+	.spell-lore small {
+		color: #cbd9ff;
 	}
 	.spell-details label {
 		min-width: 0;

@@ -261,10 +261,10 @@ func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID,
 	translations := map[string]string{}
 	_ = json.Unmarshal(item.Translations, &translations)
 	fields := map[string]string{}
-	if strings.TrimSpace(translations["pt-BR"]) == "" {
+	if isUntranslated(item.Name, translations["pt-BR"]) {
 		fields["pt-BR"] = item.Name
 	}
-	if strings.TrimSpace(item.Summary) != "" && strings.TrimSpace(translations["pt-BR.summary"]) == "" {
+	if strings.TrimSpace(item.Summary) != "" && isUntranslated(item.Summary, translations["pt-BR.summary"]) {
 		fields["pt-BR.summary"] = item.Summary
 	}
 	var ruleData any
@@ -332,7 +332,7 @@ func (r *Repository) entryForGM(ctx context.Context, campaignID, entryID string)
 func collectMissingTranslationFields(result, translations map[string]string, key string, value any) {
 	switch current := value.(type) {
 	case string:
-		if strings.TrimSpace(current) != "" && strings.TrimSpace(translations[key]) == "" {
+		if isUntranslated(current, translations[key]) {
 			result[key] = current
 		}
 	case map[string]any:
@@ -344,6 +344,12 @@ func collectMissingTranslationFields(result, translations map[string]string, key
 			collectMissingTranslationFields(result, translations, fmt.Sprintf("%s.%d", key, index), child)
 		}
 	}
+}
+
+func isUntranslated(source, translated string) bool {
+	source = strings.Join(strings.Fields(strings.TrimSpace(source)), " ")
+	translated = strings.Join(strings.Fields(strings.TrimSpace(translated)), " ")
+	return source != "" && (translated == "" || strings.EqualFold(source, translated))
 }
 
 // UpsertEntries is an idempotent importer for a single entry type. Re-importing a

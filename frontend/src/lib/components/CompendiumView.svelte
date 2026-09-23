@@ -123,10 +123,41 @@
 	// The SRD pack keeps English as the canonical text. Localized fields use a
 	// stable flat key (for example `pt-BR.summary` or `pt-BR.rules.school`) so
 	// imports can add translations progressively without changing the schema.
-	const translated = (entry: CompendiumEntry, field: string, fallback: string) =>
-		$appLocale === 'pt-BR' ? entry.translations?.[`pt-BR.${field}`] || fallback : fallback;
-	const displayName = (entry: CompendiumEntry) =>
-		$appLocale === 'pt-BR' ? entry.translations?.['pt-BR'] || entry.name : entry.name;
+	const isUntranslated = (source: unknown, translation: unknown) => {
+		const original = String(source ?? '')
+			.trim()
+			.replace(/\s+/g, ' ');
+		const localized = String(translation ?? '')
+			.trim()
+			.replace(/\s+/g, ' ');
+		return (
+			!localized || original.localeCompare(localized, undefined, { sensitivity: 'accent' }) === 0
+		);
+	};
+	const translated = (entry: CompendiumEntry, field: string, fallback: string) => {
+		const value = entry.translations?.[`pt-BR.${field}`];
+		return $appLocale === 'pt-BR' && !isUntranslated(fallback, value) ? value : fallback;
+	};
+	const displayName = (entry: CompendiumEntry) => {
+		const value = entry.translations?.['pt-BR'];
+		return $appLocale === 'pt-BR' && !isUntranslated(entry.name, value) ? value : entry.name;
+	};
+	const hasPendingTranslation = (entry: CompendiumEntry) => {
+		if (isUntranslated(entry.name, entry.translations?.['pt-BR'])) return true;
+		if (isUntranslated(entry.summary, entry.translations?.['pt-BR.summary'])) return true;
+		const visit = (value: unknown, key: string): boolean => {
+			if (typeof value === 'string')
+				return isUntranslated(value, entry.translations?.[`pt-BR.rules.${key}`]);
+			if (Array.isArray(value))
+				return value.some((child, index) => visit(child, `${key}.${index}`));
+			if (value && typeof value === 'object')
+				return Object.entries(value).some(([childKey, child]) =>
+					visit(child, key ? `${key}.${childKey}` : childKey)
+				);
+			return false;
+		};
+		return visit(entry.rules, '');
+	};
 	const displaySummary = (entry: CompendiumEntry) => translated(entry, 'summary', entry.summary);
 	const displayRule = (entry: CompendiumEntry, field: string, value: unknown) =>
 		translated(entry, `rules.${field}`, String(value ?? ''));
@@ -451,8 +482,8 @@
 			entries = entries.map((item) => (item.id === updated.id ? updated : item));
 			message =
 				$appLocale === 'en'
-					? 'AI translation generated and marked.'
-					: 'Tradução por IA gerada e identificada.';
+					? 'Free AI translation generated and marked.'
+					: 'Tradução livre (IA) gerada e identificada.';
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -469,7 +500,7 @@
 		const pending = entries.filter(
 			(entry) =>
 				sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' &&
-				!entry.translations?.['pt-BR.summary']
+				hasPendingTranslation(entry)
 		);
 		if (!pending.length) {
 			message = 'As entradas SRD já possuem tradução ou não têm texto para traduzir.';
@@ -791,7 +822,7 @@
 							>{/if}{#if translationIsOfficial(entry)}<small class="official-translation"
 								>{$appLocale === 'en' ? 'Official translation' : 'Tradução oficial'}</small
 							>{/if}{#if translationHasAI(entry)}<small class="ai-translation"
-								>{$appLocale === 'en' ? 'Translated with AI' : 'Traduzido com IA'}</small
+								>{$appLocale === 'en' ? 'Free AI translation' : 'Tradução livre (IA)'}</small
 							>{/if}
 						<p>
 							{displaySummary(entry) ||

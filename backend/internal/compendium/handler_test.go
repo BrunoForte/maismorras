@@ -26,3 +26,22 @@ func TestValidRules(t *testing.T) {
 		t.Fatal("array rules must be rejected")
 	}
 }
+
+func TestIsUntranslated(t *testing.T) {
+	tests := []struct {
+		name, source, translated string
+		want                     bool
+	}{
+		{"missing", "Fireball", "", true},
+		{"still source text", "Fireball", "  fireball  ", true},
+		{"translated", "Fireball", "Bola de fogo", false},
+		{"empty source", "  ", "", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := isUntranslated(test.source, test.translated); got != test.want {
+				t.Fatalf("isUntranslated(%q, %q) = %t, want %t", test.source, test.translated, got, test.want)
+			}
+		})
+	}
+}

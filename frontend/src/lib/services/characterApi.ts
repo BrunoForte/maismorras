@@ -45,6 +45,7 @@ export type InventoryItem = {
 export type CharacterSheet = {
 	name: string;
 	portraitPath: string;
+	tokenPortraitPath?: string;
 	class: string;
 	subclass: string;
 	level: number;
