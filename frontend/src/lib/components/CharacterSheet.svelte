@@ -119,6 +119,9 @@
 		if (hasAttackDisadvantage() && rollMode === 'advantage') rollMode = 'normal';
 	});
 	$effect(() => {
+		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
+	});
+	$effect(() => {
 		const circles = unlockedSpellCircles(sheet.spellSlots);
 		if (!circles.includes(newSpellLevel)) newSpellLevel = circles.at(-1) ?? 0;
 	});
@@ -199,7 +202,7 @@
 		);
 	};
 	const sheetTabs = () =>
-		$appLocale === 'en'
+		($appLocale === 'en'
 			? [
 					['profile', 'Profile'],
 					['skills', 'Skills'],
@@ -215,7 +218,8 @@
 					['inventory', 'Inventário'],
 					['spells', 'Magias'],
 					['details', 'Detalhes']
-				];
+				]
+		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	const classHitDice: Record<string, string> = Object.fromEntries(
 		Object.entries(classData).map(([name, data]) => [name, data.hitDice])
@@ -755,6 +759,13 @@
 				(String(entry.rules.id ?? '') === progressionClass(sheet.class) ||
 					entry.name.toLowerCase() === sheet.class.toLowerCase())
 		);
+	const shouldShowSpellcasting = () => {
+		const rules = compendiumClass()?.rules ?? {};
+		const mapped =
+			(Boolean(rules.spellcasting) && typeof rules.spellcasting === 'object') ||
+			spellSlots(sheet.class, sheet.level).length > 0;
+		return mapped || sheet.spellcastingOverride === true;
+	};
 	const compendiumSubclassOptions = () =>
 		compendiumEntries
 			.filter(
@@ -2551,7 +2562,7 @@
 							</p>{/if}
 					</section>
 				{/if}
-				{#if activeTab === 'spells'}
+				{#if activeTab === 'spells' && shouldShowSpellcasting()}
 					<section>
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Spells' : 'Magias'}</h3>
@@ -2684,6 +2695,19 @@
 				{/if}
 				{#if activeTab === 'details'}
 					<section class="notes">
+						<div class="spellcasting-override">
+							<label>
+								<input type="checkbox" bind:checked={sheet.spellcastingOverride} />
+								{$appLocale === 'en'
+									? 'Show the Spells tab manually'
+									: 'Exibir a aba Magias manualmente'}
+							</label>
+							<small>
+								{$appLocale === 'en'
+									? 'Enable this if this class can cast spells but its compendium entry is not mapped.'
+									: 'Ative se esta classe puder conjurar, mas não estiver mapeada no compêndio.'}
+							</small>
+						</div>
 						<div class="feat-manager">
 							<div>
 								<h3>{$appLocale === 'en' ? 'Feats' : 'Talentos'}</h3>
@@ -3927,6 +3951,32 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: 1rem;
+	}
+	.spellcasting-override {
+		display: grid;
+		gap: 0.35rem;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		padding: 0.7rem 0.8rem;
+		background: #171417;
+	}
+	.spellcasting-override label {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		color: #e1d5c9;
+		font-size: 0.78rem;
+	}
+	.spellcasting-override input {
+		width: 1rem;
+		margin: 0;
+		accent-color: #c89655;
+	}
+	.spellcasting-override small {
+		margin-left: 1.55rem;
+		color: #a99c91;
+		font-size: 0.68rem;
+		line-height: 1.4;
 	}
 	.legacy-equipment {
 		grid-column: 1 / -1;

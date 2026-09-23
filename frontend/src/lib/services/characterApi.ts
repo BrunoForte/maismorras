@@ -67,6 +67,7 @@ export type CharacterSheet = {
 	passivePerception: number;
 	attacks: Attack[];
 	spells: Spell[];
+	spellcastingOverride?: boolean;
 	features: string;
 	feats: string;
 	equipment: string;
@@ -96,6 +97,7 @@ function normalizeCharacter(character: Character): Character {
 		...character.sheet,
 		attacks: character.sheet.attacks ?? [],
 		spells: character.sheet.spells ?? [],
+		spellcastingOverride: character.sheet.spellcastingOverride ?? false,
 		inventory: character.sheet.inventory ?? [],
 		savingThrows: character.sheet.savingThrows ?? [],
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
@@ -227,6 +229,7 @@ export function createEmptySheet(): CharacterSheet {
 		passivePerception: 10,
 		attacks: [],
 		spells: [],
+		spellcastingOverride: false,
 		features: '',
 		feats: '',
 		equipment: '',
