@@ -2528,6 +2528,7 @@
 						<div class="custom-item-form">
 							<strong>{$appLocale === 'en' ? 'Custom item' : 'Item personalizado'}</strong>
 							<input
+								class="custom-name"
 								bind:value={customItemName}
 								placeholder={$appLocale === 'en' ? 'Item name' : 'Nome do item'}
 								maxlength="120"
@@ -3313,8 +3314,19 @@
 	.sheet-body {
 		display: grid;
 		gap: 1rem;
+		align-content: start;
+		min-width: 0;
+		width: 100%;
+		box-sizing: border-box;
 		overflow: auto;
 		padding: 1.25rem;
+		container-type: inline-size;
+	}
+	.sheet-body > section,
+	.sheet-body > aside {
+		min-width: 0;
+		width: 100%;
+		box-sizing: border-box;
 	}
 	.onboarding {
 		display: grid;
@@ -3905,8 +3917,8 @@
 	}
 	.custom-item-form {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-		align-items: center;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: end;
 		gap: 0.45rem;
 		margin-bottom: 0.7rem;
 		padding: 0.55rem;
@@ -3919,6 +3931,9 @@
 		color: #d8ad67;
 		font-size: 0.72rem;
 	}
+	.custom-item-form .custom-name {
+		grid-column: 1 / -1;
+	}
 	.custom-item-form input,
 	.custom-item-form select {
 		min-width: 0;
@@ -3930,16 +3945,18 @@
 		font: inherit;
 	}
 	.custom-item-form label {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
+		display: grid;
+		gap: 0.3rem;
+		min-width: 0;
 		color: #b9aa9b;
 		font-size: 0.72rem;
 	}
 	.custom-item-form label input {
-		width: 4.5rem;
+		width: 100%;
+		box-sizing: border-box;
 	}
 	.custom-item-form button {
+		grid-column: 1 / -1;
 		border: 1px solid #725a3b;
 		border-radius: 6px;
 		padding: 0.45rem 0.6rem;
@@ -3947,9 +3964,9 @@
 		background: #2a211e;
 		font-size: 0.72rem;
 	}
-	@media (max-width: 640px) {
+	@container (max-width: 360px) {
 		.custom-item-form {
-			grid-template-columns: 1fr 1fr;
+			grid-template-columns: minmax(0, 1fr);
 		}
 		.custom-item-form strong {
 			grid-column: 1 / -1;
@@ -3964,7 +3981,7 @@
 	}
 	.inventory-item {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 78px 64px 32px;
+		grid-template-columns: minmax(0, 1fr) 3.5rem 3rem 1.75rem;
 		align-items: center;
 		gap: 0.45rem;
 		padding: 0.45rem;

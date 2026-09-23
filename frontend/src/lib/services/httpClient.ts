@@ -66,10 +66,11 @@ export async function request<T>(
 	session: Session,
 	path: string,
 	init: RequestInit = {},
-	fallback = 'Não foi possível concluir a operação.'
+	fallback = 'Não foi possível concluir a operação.',
+	timeoutMs = 15_000
 ): Promise<T> {
 	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 15_000);
+	const timeout = setTimeout(() => controller.abort(), timeoutMs);
 	let response: Response;
 	try {
 		response = await fetchAuthenticated(session, `${apiBase}${path}`, {
@@ -81,6 +82,11 @@ export async function request<T>(
 				...init.headers
 			}
 		});
+	} catch (error) {
+		if (controller.signal.aborted && !init.signal?.aborted) {
+			throw new ApiError(408, 'A operação demorou mais que o esperado. Tente novamente.');
+		}
+		throw error;
 	} finally {
 		clearTimeout(timeout);
 	}

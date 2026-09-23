@@ -1082,13 +1082,6 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if err := json.Unmarshal(raw, &sheet); err != nil {
 		return Token{}, fmt.Errorf("decode character actor: %w", err)
 	}
-	var characterAlreadyLinked bool
-	if err := r.pool.QueryRow(ctx, `select exists(select 1 from scene_tokens where scene_id=$1 and actor_id=$2)`, sceneID, actorID).Scan(&characterAlreadyLinked); err != nil {
-		return Token{}, err
-	}
-	if characterAlreadyLinked {
-		return Token{}, ErrAlreadyLinked
-	}
 	name := sheet.Name
 	if name == "" {
 		name = actorName
@@ -1102,25 +1095,116 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if value := strings.TrimSpace(portraitPath); value != "" {
 		portrait = &value
 	}
-	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: actorTokenColor(actorID), X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Token{}, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `select pg_advisory_xact_lock(hashtextextended((select campaign_id::text from scenes where id=$1),0))`, sceneID); err != nil {
+		return Token{}, err
+	}
+	var characterAlreadyLinked bool
+	if err = tx.QueryRow(ctx, `select exists(select 1 from scene_tokens where scene_id=$1 and actor_id=$2)`, sceneID, actorID).Scan(&characterAlreadyLinked); err != nil {
+		return Token{}, err
+	}
+	if characterAlreadyLinked {
+		return Token{}, ErrAlreadyLinked
+	}
+	color, err := availablePlayerTokenColor(ctx, tx, sceneID, ownerID, actorID)
+	if err != nil {
+		return Token{}, err
+	}
+	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: color, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, ownerID, name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID)
-	if err == nil {
-		t.InitiativeBonus = abilityModifier(sheet.AbilityScores.Dexterity)
-		_, err = r.pool.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID)
+	if err = tx.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, ownerID, name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID); err != nil {
+		return Token{}, err
 	}
-	if err == nil {
-		err = r.revealTokenVision(ctx, sceneID, t)
+	t.InitiativeBonus = abilityModifier(sheet.AbilityScores.Dexterity)
+	if _, err = tx.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID); err != nil {
+		return Token{}, err
 	}
-	return t, err
+	if err = tx.Commit(ctx); err != nil {
+		return Token{}, err
+	}
+	if err = r.revealTokenVision(ctx, sceneID, t); err != nil {
+		return Token{}, err
+	}
+	return t, nil
+}
+
+var playerTokenPalette = []int{
+	0xD65A4A, 0x4E8FD0, 0x55A86B, 0xB276D2, 0xD49A3A, 0x3BA6A0,
+	0xD06A9A, 0x7D8ED6, 0xA4A83B, 0x48A0A8, 0xE17B42, 0x8B6BC2,
 }
 
 func actorTokenColor(actorID string) int {
-	palette := []int{0xD65A4A, 0x4E8FD0, 0x55A86B, 0xB276D2, 0xD49A3A, 0x3BA6A0, 0xD06A9A, 0x7D8ED6}
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(actorID))
-	return palette[int(h.Sum32())%len(palette)]
+	return playerTokenPalette[int(h.Sum32())%len(playerTokenPalette)]
+}
+
+func availablePlayerTokenColor(ctx context.Context, tx pgx.Tx, sceneID, ownerID, actorID string) (int, error) {
+	rows, err := tx.Query(ctx, `select distinct other.color from scene_tokens other join scenes other_scene on other_scene.id=other.scene_id join scenes target_scene on target_scene.id=$1 where other_scene.campaign_id=target_scene.campaign_id and other.owner_id is not null and other.owner_id<>$2`, sceneID, ownerID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	used := make(map[int]bool)
+	for rows.Next() {
+		var color int
+		if err = rows.Scan(&color); err != nil {
+			return 0, err
+		}
+		used[color] = true
+	}
+	if err = rows.Err(); err != nil {
+		return 0, err
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(actorID))
+	start := int(h.Sum32()) % len(playerTokenPalette)
+	for offset := range len(playerTokenPalette) {
+		color := playerTokenPalette[(start+offset)%len(playerTokenPalette)]
+		if !used[color] {
+			return color, nil
+		}
+	}
+	// Campaigns can outgrow the curated palette; generate a readable hue rather
+	// than preventing a new character from being placed on the map.
+	for offset := range 360 {
+		color := tokenColorFromHue((int(h.Sum32()%360) + offset) % 360)
+		if !used[color] {
+			return color, nil
+		}
+	}
+	return 0, fmt.Errorf("all player token colors are currently in use")
+}
+
+func tokenColorFromHue(hue int) int {
+	h := float64((hue%360+360)%360) / 60
+	chroma := 0.68
+	x := chroma * (1 - math.Abs(math.Mod(h, 2)-1))
+	var red, green, blue float64
+	switch {
+	case h < 1:
+		red, green = chroma, x
+	case h < 2:
+		red, green = x, chroma
+	case h < 3:
+		green, blue = chroma, x
+	case h < 4:
+		green, blue = x, chroma
+	case h < 5:
+		red, blue = x, chroma
+	default:
+		red, blue = chroma, x
+	}
+	match := 0.16
+	r := int(math.Round((red + match) * 255))
+	g := int(math.Round((green + match) * 255))
+	b := int(math.Round((blue + match) * 255))
+	return r<<16 | g<<8 | b
 }
 
 // CreateTokenFromNPC creates a scene token from a campaign NPC. NPCs deliberately
@@ -1275,15 +1359,38 @@ func (r *Repository) UpdateTokenAppearance(ctx context.Context, sceneID, tokenID
 	if err != nil {
 		return err
 	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
 	var ownerID *string
-	if err = r.pool.QueryRow(ctx, `select owner_id::text from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&ownerID); err != nil {
+	var currentColor int
+	if err = tx.QueryRow(ctx, `select owner_id::text,color from scene_tokens where id=$1 and scene_id=$2 for update`, tokenID, sceneID).Scan(&ownerID, &currentColor); err != nil {
 		return err
 	}
 	if role != "gm" && (ownerID == nil || *ownerID != userID) {
 		return ErrForbidden
 	}
-	_, err = r.pool.Exec(ctx, `update scene_tokens set image_url=$1,color=$2,visibility=jsonb_set(jsonb_set(jsonb_set(visibility,'{transparentBackground}',to_jsonb($3::boolean),true),'{imageScale}',to_jsonb($4::numeric),true),'{imageOffsetX}',to_jsonb($5::numeric),true)||jsonb_build_object('imageOffsetY',$6::numeric),updated_at=now() where id=$7 and scene_id=$8`, imageURL, color, visibility.TransparentBackground, visibility.ImageScale, visibility.ImageOffsetX, visibility.ImageOffsetY, tokenID, sceneID)
-	return err
+	if ownerID != nil && color != currentColor {
+		// Serialize color changes per campaign so concurrent players cannot claim
+		// the same identifier at once, including when their tokens are in other scenes.
+		if _, err = tx.Exec(ctx, `select pg_advisory_xact_lock(hashtextextended((select campaign_id::text from scenes where id=$1),0))`, sceneID); err != nil {
+			return err
+		}
+		var colorInUse bool
+		if err = tx.QueryRow(ctx, `select exists(select 1 from scene_tokens other join scenes other_scene on other_scene.id=other.scene_id join scenes target_scene on target_scene.id=$1 where other_scene.campaign_id=target_scene.campaign_id and other.owner_id is not null and other.owner_id<>$4 and other.color=$2 and other.id<>$3)`, sceneID, color, tokenID, *ownerID).Scan(&colorInUse); err != nil {
+			return err
+		}
+		if colorInUse {
+			return ErrTokenColorInUse
+		}
+	}
+	_, err = tx.Exec(ctx, `update scene_tokens set image_url=$1,color=$2,visibility=jsonb_set(jsonb_set(jsonb_set(visibility,'{transparentBackground}',to_jsonb($3::boolean),true),'{imageScale}',to_jsonb($4::numeric),true),'{imageOffsetX}',to_jsonb($5::numeric),true)||jsonb_build_object('imageOffsetY',$6::numeric),updated_at=now() where id=$7 and scene_id=$8`, imageURL, color, visibility.TransparentBackground, visibility.ImageScale, visibility.ImageOffsetX, visibility.ImageOffsetY, tokenID, sceneID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // SetTokenInitiative stores a GM's manual initiative edit without requiring
@@ -1380,6 +1487,7 @@ func applyVisibility(t Token, role, userID string) Token {
 
 var (
 	ErrForbidden       = fmt.Errorf("forbidden")
+	ErrTokenColorInUse = fmt.Errorf("token color already in use")
 	ErrAlreadyLinked   = fmt.Errorf("character already linked to scene")
 	ErrBlockedMovement = fmt.Errorf("movement blocked by wall")
 )

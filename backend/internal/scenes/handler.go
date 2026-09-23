@@ -497,6 +497,9 @@ func mapError(err error) error {
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não tem permissão para operar esta mesa.")
 	}
+	if errors.Is(err, ErrTokenColorInUse) {
+		return apperror.Conflict("TOKEN_COLOR_IN_USE", "Esta cor já está sendo usada por outro personagem da campanha.")
+	}
 	if errors.Is(err, ErrBlockedMovement) {
 		return apperror.BadRequest("WALL_BLOCKED", "Uma parede bloqueia o caminho deste token.")
 	}

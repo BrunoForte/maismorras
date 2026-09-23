@@ -57,10 +57,12 @@ export const importCompendiumEntries = (
 		body: JSON.stringify({ sourceId, entryType, entries })
 	});
 export const translateCompendiumEntry = (session: Session, campaignId: string, entryId: string) =>
-	request<CompendiumEntry>(
+	httpRequest<CompendiumEntry>(
 		session,
 		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}/translate`,
-		{ method: 'POST' }
+		{ method: 'POST' },
+		'Não foi possível traduzir esta entrada.',
+		130_000
 	);
 export const updateCompendiumEntry = (
 	session: Session,

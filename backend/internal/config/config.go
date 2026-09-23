@@ -18,6 +18,7 @@ type Config struct {
 	PollinationsAPIKey  string
 	TranslationModel    string
 	UpstreamTimeout     time.Duration
+	TranslationTimeout  time.Duration
 	MaxImageBytes       int64
 	DatabaseURL         string
 	SupabaseJWTSecret   string
@@ -36,6 +37,7 @@ func Load() Config {
 		PollinationsAPIKey:  os.Getenv("POLLINATIONS_API_KEY"),
 		TranslationModel:    env("TRANSLATION_MODEL", "openai-fast"),
 		UpstreamTimeout:     durationEnv("UPSTREAM_TIMEOUT", 20*time.Second),
+		TranslationTimeout:  durationEnv("TRANSLATION_TIMEOUT", 120*time.Second),
 		MaxImageBytes:       intEnv("MAX_IMAGE_BYTES", 5*1024*1024),
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
 		SupabaseJWTSecret:   os.Getenv("SUPABASE_JWT_SECRET"),

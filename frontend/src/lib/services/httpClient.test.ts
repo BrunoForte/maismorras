@@ -3,12 +3,13 @@ import type { Session } from '@supabase/supabase-js';
 
 vi.mock('./supabase', () => ({ supabase: { auth: { refreshSession: vi.fn() } } }));
 
-import { fetchAuthenticated } from './httpClient';
+import { fetchAuthenticated, request } from './httpClient';
 import { supabase } from './supabase';
 
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.clearAllMocks();
+	vi.useRealTimers();
 });
 
 describe('fetchAuthenticated', () => {
@@ -59,6 +60,36 @@ describe('fetchAuthenticated', () => {
 		);
 
 		expect(response.status).toBe(401);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('request timeout', () => {
+	it('reports a useful timeout error instead of exposing the raw abort message', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(
+			(_input: RequestInfo | URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), {
+						once: true
+					});
+				})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const pending = request(
+			{ access_token: 'token', user: { id: 'user-1' } } as Session,
+			'/slow',
+			{},
+			'fallback',
+			25
+		);
+		const assertion = expect(pending).rejects.toMatchObject({
+			status: 408,
+			message: 'A operação demorou mais que o esperado. Tente novamente.'
+		});
+
+		await vi.advanceTimersByTimeAsync(25);
+		await assertion;
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

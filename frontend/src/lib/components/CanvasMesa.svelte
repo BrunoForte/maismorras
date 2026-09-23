@@ -191,10 +191,10 @@
 		};
 	}
 
-	async function persistir(personagem: Personagem) {
-		if (!personagem.persistedId) return;
+	async function persistir(personagem: Personagem): Promise<boolean> {
+		if (!personagem.persistedId) return false;
 		if (!isGM) {
-			if (!personagem.isOwned) return;
+			if (!personagem.isOwned) return false;
 			try {
 				await updateTokenAppearance(
 					session,
@@ -210,12 +210,13 @@
 					}
 				);
 				sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
+				persistenceError = '';
+				return true;
 			} catch (error) {
 				persistenceError =
 					error instanceof Error ? error.message : 'Não foi possível salvar a aparência.';
-				return;
+				return false;
 			}
-			return;
 		}
 		try {
 			await updateToken(session, scene.id, {
@@ -225,6 +226,7 @@
 			savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
 			sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
 			persistenceError = '';
+			return true;
 		} catch (error) {
 			persistenceError =
 				error instanceof Error
@@ -232,6 +234,7 @@
 					: $appLocale === 'en'
 						? 'Could not save the token.'
 						: 'Não foi possível salvar o token.';
+			return false;
 		}
 	}
 	async function persistirMovimentoDoJogador(personagem: Personagem, x: number, y: number) {
@@ -273,9 +276,17 @@
 	}
 	function alterarCor(valor: string) {
 		const color = Number.parseInt(valor.replace('#', ''), 16);
-		if (!Number.isFinite(color)) return;
+		if (!Number.isFinite(color) || !personagemSelecionado) return;
+		const selected = personagemSelecionado;
 		atualizarSelecionado((p) => ({ ...p, cor: color }));
-		if (personagemSelecionado) void persistir({ ...personagemSelecionado, cor: color });
+		void persistir({ ...selected, cor: color }).then((saved) => {
+			if (!saved)
+				personagens.update((lista) =>
+					lista.map((item) =>
+						item.id === selected.id && item.cor === color ? { ...item, cor: selected.cor } : item
+					)
+				);
+		});
 	}
 
 	async function removerTokenSelecionado() {
@@ -1196,11 +1207,17 @@
 						/></label
 					>
 					<label class="color-control"
-						>Cor <input
+						>Cor do jogador <input
 							type="color"
 							value={`#${personagemSelecionado.cor.toString(16).padStart(6, '0')}`}
 							onchange={(event) => alterarCor(event.currentTarget.value)}
+							aria-label="Cor de identificação do token"
 						/></label
+					>
+					<small class="color-hint"
+						>{$appLocale === 'en'
+							? 'Choose a color different from other characters in the campaign.'
+							: 'Escolha uma cor diferente dos outros personagens da campanha.'}</small
 					>
 					<button onclick={alternarFundoTransparente}
 						>{personagemSelecionado.visibility.transparentBackground
@@ -1888,6 +1905,11 @@
 	.token-appearance input[type='range'] {
 		width: 100%;
 		accent-color: #d8ad67;
+	}
+	.token-appearance .color-hint {
+		color: #b9aa9b;
+		font-size: 0.66rem;
+		line-height: 1.4;
 	}
 	.token-appearance button {
 		border: 1px solid #765d3d;

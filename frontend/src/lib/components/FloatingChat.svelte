@@ -352,12 +352,14 @@
 	}
 	.floating-chat.docked {
 		top: 6rem;
-		bottom: 4.25rem;
+		bottom: auto;
 		left: 0;
 		width: min(350px, 82vw);
-		height: auto;
-		max-height: none;
-		resize: horizontal;
+		height: min(70vh, calc(100dvh - 10.25rem));
+		min-height: 170px;
+		max-height: calc(100dvh - 10.25rem);
+		max-width: calc(100vw - 1rem);
+		resize: both;
 		border-radius: 0 12px 12px 0;
 	}
 	.floating-chat.closed {
@@ -366,6 +368,14 @@
 		height: auto;
 		resize: none;
 		grid-template-rows: auto;
+	}
+	.floating-chat.docked.closed {
+		top: auto;
+		bottom: 4.25rem;
+		left: 0;
+		width: min(220px, calc(100% - 1rem));
+		max-width: calc(100vw - 1rem);
+		max-height: none;
 	}
 	.floating-chat.closed .chat-body {
 		display: none;
@@ -578,10 +588,12 @@
 		}
 		.floating-chat.docked {
 			top: 5.8rem;
-			bottom: 4.25rem;
+			bottom: auto;
 			left: 0;
 			width: min(88vw, 350px);
-			height: auto;
+			height: min(65vh, calc(100dvh - 10rem));
+			min-height: 160px;
+			max-height: calc(100dvh - 10rem);
 		}
 	}
 	.expand {
