@@ -1,8 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import {
 	expect,
 	request as playwrightRequest,
 	test,
+	type Browser,
 	type BrowserContext,
 	type Page
 } from '@playwright/test';
@@ -42,28 +42,73 @@ type Token = {
 	};
 };
 
-async function accessToken(storageStatePath: string): Promise<string> {
-	const state = JSON.parse(await readFile(storageStatePath, 'utf8')) as {
-		origins?: { localStorage?: { name: string; value: string }[] }[];
-	};
-	for (const origin of state.origins ?? []) {
-		for (const entry of origin.localStorage ?? []) {
-			if (!entry.name.includes('auth-token')) continue;
-			const saved = JSON.parse(entry.value) as {
-				access_token?: string;
-				currentSession?: { access_token?: string };
-			};
-			const token = saved.access_token ?? saved.currentSession?.access_token;
-			if (token) return token;
-		}
+async function accessToken(browser: Browser, storageStatePath: string): Promise<string> {
+	const context = await browser.newContext({ storageState: storageStatePath });
+	try {
+		const page = await context.newPage();
+		await page.goto(process.env.E2E_BASE_URL ?? 'https://maismorras.vercel.app');
+		const previousToken = await page.evaluate(() => {
+			for (let index = 0; index < localStorage.length; index += 1) {
+				const key = localStorage.key(index);
+				if (!key?.includes('auth-token')) continue;
+				try {
+					const saved = JSON.parse(localStorage.getItem(key) ?? '{}') as {
+						access_token?: string;
+						currentSession?: { access_token?: string; expires_at?: number };
+						expires_at?: number;
+					};
+					const token = saved.access_token ?? saved.currentSession?.access_token;
+					if (!token) continue;
+					// Force the in-memory test context through Supabase's normal refresh flow.
+					saved.expires_at = 0;
+					if (saved.currentSession) saved.currentSession.expires_at = 0;
+					localStorage.setItem(key, JSON.stringify(saved));
+					return token;
+				} catch {
+					continue;
+				}
+			}
+			return null;
+		});
+		if (!previousToken)
+			throw new Error('Supabase session is missing from the saved browser state.');
+		await page.reload();
+		const refreshed = await page.waitForFunction(
+			(previous) => {
+				for (let index = 0; index < localStorage.length; index += 1) {
+					const key = localStorage.key(index);
+					if (!key?.includes('auth-token')) continue;
+					try {
+						const saved = JSON.parse(localStorage.getItem(key) ?? '{}') as {
+							access_token?: string;
+							currentSession?: { access_token?: string; expires_at?: number };
+							expires_at?: number;
+						};
+						const token = saved.access_token ?? saved.currentSession?.access_token;
+						const expiresAt = Number(saved.expires_at ?? saved.currentSession?.expires_at ?? 0);
+						if (token && token !== previous && expiresAt > Date.now() / 1000 + 30) return token;
+					} catch {
+						continue;
+					}
+				}
+				return false;
+			},
+			previousToken,
+			{ timeout: 20_000 }
+		);
+		const refreshedToken: unknown = await refreshed.jsonValue();
+		if (typeof refreshedToken !== 'string')
+			throw new Error('Supabase session could not be refreshed from the saved browser state.');
+		return refreshedToken;
+	} finally {
+		await context.close();
 	}
-	throw new Error(`No Supabase access token found in ${storageStatePath}.`);
 }
 
-async function apiFor(storageStatePath: string) {
+async function apiFor(browser: Browser, storageStatePath: string) {
 	return playwrightRequest.newContext({
 		baseURL: apiBase,
-		extraHTTPHeaders: { Authorization: `Bearer ${await accessToken(storageStatePath)}` }
+		extraHTTPHeaders: { Authorization: `Bearer ${await accessToken(browser, storageStatePath)}` }
 	});
 }
 
@@ -107,7 +152,7 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 		browser,
 		baseURL
 	}) => {
-		const ownerApi = await apiFor(ownerStatePath!);
+		const ownerApi = await apiFor(browser, ownerStatePath!);
 		let playerApi: Awaited<ReturnType<typeof playwrightRequest.newContext>> | undefined;
 		let ownerContext: BrowserContext | undefined;
 		let playerContext: BrowserContext | undefined;
@@ -129,7 +174,7 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 			const scene = scenes.scenes[0];
 
 			if (playerStatePath) {
-				playerApi = await apiFor(playerStatePath);
+				playerApi = await apiFor(browser, playerStatePath);
 				const inviteResponse = await ownerApi.post(`/api/v1/campaigns/${campaignId}/invites`, {
 					data: {}
 				});

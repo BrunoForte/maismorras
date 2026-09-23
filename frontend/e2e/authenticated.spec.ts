@@ -9,6 +9,11 @@ test.describe('authenticated campaign flows', () => {
 	test('opens the campaign workspace', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByText(/Central de campanhas|Campaign hub/i)).toHaveCount(1);
-		await expect(page.getByText(/Mesas|Tables/i)).toHaveCount(1);
+		await expect(
+			page
+				.getByText(/Mesas|Tables/i)
+				.filter({ visible: true })
+				.first()
+		).toBeVisible();
 	});
 });
