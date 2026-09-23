@@ -66,7 +66,8 @@ jobs:
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USERNAME: ${{ github.actor }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
-      - run: supabase start
+      - name: Start only Postgres and apply migrations
+        run: supabase db start
       - run: supabase test db
       - if: always()
         run: supabase stop --no-backup
