@@ -436,6 +436,25 @@
 			sheet = characterId
 				? (await getCharacterForGM(session, campaignId, characterId)).sheet
 				: (await getMyCharacter(session, campaignId)).sheet;
+			sheet.attacks ??= [];
+			sheet.attacks = sheet.attacks.map((attack) => {
+				const attackType =
+					attack.attackType ??
+					(/\b(arco|besta|dist[aâ]ncia|ranged|longbow|shortbow|crossbow)\b/i.test(
+						`${attack.name} ${attack.notes}`
+					)
+						? 'ranged'
+						: 'melee');
+				const ability = attack.ability ?? (attackType === 'ranged' ? 'dexterity' : 'strength');
+				return attack.ability
+					? { ...attack, attackType, ability }
+					: {
+							...attack,
+							attackType,
+							ability,
+							attackBonus: attack.attackBonus - modifier(sheet.abilityScores[ability])
+						};
+			});
 			sheet.inventory ??= [];
 			sheet.resources ??= [];
 			sheet.spellSlots ??= [];
@@ -700,19 +719,20 @@
 			.split(/\n|,/)
 			.map((feat) => feat.trim())
 			.filter(Boolean);
-	const featDescription = (feat: string) =>
-		optionsFor('feat').find(
-			(entry) =>
-				optionLabel(entry).toLowerCase() === feat.toLowerCase() ||
-				entry.name.toLowerCase() === feat.toLowerCase()
-		)?.summary ||
-		String(
-			(
-				optionsFor('feat').find((entry) => optionLabel(entry).toLowerCase() === feat.toLowerCase())
-					?.rules as Record<string, unknown> | undefined
-			)?.description ?? ''
-		) ||
-		'Talento privado ou sem descrição cadastrada no compêndio.';
+	const featDescription = (feat: string) => {
+		const entry = optionsFor('feat').find(
+			(item) =>
+				optionLabel(item).toLowerCase() === feat.toLowerCase() ||
+				item.name.toLowerCase() === feat.toLowerCase()
+		);
+		if (!entry) return 'Talento privado ou sem descrição cadastrada no compêndio.';
+		const rules = entry.rules ?? {};
+		const description = String(rules.description ?? entry.summary ?? '').trim();
+		const benefits = Array.isArray(rules.benefits)
+			? rules.benefits.map((benefit) => String(benefit).trim()).filter(Boolean)
+			: [];
+		return [...new Set([description, ...benefits].filter(Boolean))].join('\n\n') || entry.summary;
+	};
 	function addFeat() {
 		const feat = newFeat.trim();
 		if (!feat || featList().some((item) => item.toLowerCase() === feat.toLowerCase())) return;
@@ -1061,10 +1081,8 @@
 	function addWeaponAttack(item: InventoryItem) {
 		const rules = item.rules;
 		if (rules.category !== 'weapon') return;
-		const ability =
-			rules.attackAbility === 'dexterity'
-				? sheet.abilityScores.dexterity
-				: sheet.abilityScores.strength;
+		const abilityKey = rules.attackAbility === 'dexterity' ? 'dexterity' : 'strength';
+		const ability = sheet.abilityScores[abilityKey];
 		const abilityModifier = modifier(ability);
 		const damage =
 			`${String(rules.damage ?? '')}${abilityModifier ? ` ${modifierText(abilityModifier)}` : ''} ${String(rules.damageType ?? '')}`.trim();
@@ -1072,7 +1090,9 @@
 			...sheet.attacks,
 			{
 				name: item.name,
-				attackBonus: abilityModifier + sheet.proficiencyBonus,
+				attackType: abilityKey === 'dexterity' ? 'ranged' : 'melee',
+				ability: abilityKey,
+				attackBonus: sheet.proficiencyBonus,
 				damage,
 				notes: `Item do compêndio · ${Array.isArray(rules.properties) ? rules.properties.join(', ') : ''}`
 			}
@@ -1273,9 +1293,10 @@
 		rollingAttack = index;
 		beginDiceBatch();
 		try {
+			const ability = attack.ability ?? 'strength';
 			await rollSheet(
 				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
-				attack.attackBonus,
+				modifier(sheet.abilityScores[ability]) + attack.attackBonus,
 				attack.damage
 			);
 		} catch {
@@ -1355,8 +1376,19 @@
 	function addAttack() {
 		sheet.attacks = [
 			...sheet.attacks,
-			{ name: 'Novo ataque', attackBonus: 0, damage: '', notes: '' }
+			{
+				name: 'Novo ataque',
+				attackType: 'melee',
+				ability: 'strength',
+				attackBonus: 0,
+				damage: '',
+				notes: ''
+			}
 		];
+	}
+	function setAttackType(attack: Sheet['attacks'][number], value: string) {
+		attack.attackType = value === 'ranged' ? 'ranged' : 'melee';
+		attack.ability = attack.attackType === 'ranged' ? 'dexterity' : 'strength';
 	}
 	function addSpell() {
 		const name = newSpellName.trim();
@@ -1863,7 +1895,7 @@
 							<h3>{$appLocale === 'en' ? 'Attacks' : 'Ataques'}</h3>
 							<button onclick={addAttack}>+ {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button>
 						</div>
-						{#each sheet.attacks as attack, index}<div class="line-item">
+						{#each sheet.attacks as attack, index}<div class="line-item attack-row">
 								<label
 									class="token-roll-toggle"
 									title={$appLocale === 'en' ? 'Show on token' : 'Exibir no token'}
@@ -1872,11 +1904,43 @@
 										checked={(sheet.visibleRolls ?? []).includes(`attack:${index}`)}
 										onchange={() => toggleVisibleRoll(`attack:${index}`)}
 									/>⌁</label
-								><input bind:value={attack.name} placeholder="Nome" /><input
+								><input
+									class="attack-name"
+									bind:value={attack.name}
+									placeholder="Nome do ataque"
+								/><select
+									class="attack-type"
+									aria-label={$appLocale === 'en' ? 'Attack range' : 'Tipo de ataque'}
+									value={attack.attackType ?? 'melee'}
+									onchange={(event) => setAttackType(attack, event.currentTarget.value)}
+									><option value="melee">{$appLocale === 'en' ? 'Melee' : 'Corpo a corpo'}</option
+									><option value="ranged">{$appLocale === 'en' ? 'Ranged' : 'À distância'}</option
+									></select
+								><select
+									class="attack-ability"
+									aria-label={$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
+									value={attack.ability ?? 'strength'}
+									onchange={(event) =>
+										(attack.ability = event.currentTarget.value as keyof Sheet['abilityScores'])}
+									>{#each attributes as attribute}<option value={attribute.key}
+											>{abilityLabel(attribute.key)} ({modifier(
+												sheet.abilityScores[attribute.key]
+											) >= 0
+												? '+'
+												: ''}{modifier(sheet.abilityScores[attribute.key])})</option
+										>{/each}</select
+								><input
+									class="attack-bonus"
 									type="number"
 									bind:value={attack.attackBonus}
-									aria-label="Bônus de ataque"
-								/><input bind:value={attack.damage} placeholder="Dano" /><button
+									aria-label={$appLocale === 'en'
+										? 'Additional attack bonus'
+										: 'Bônus adicional de ataque'}
+								/><input
+									class="attack-damage"
+									bind:value={attack.damage}
+									placeholder="Dano"
+								/><button
 									class="roll-custom"
 									onclick={() => void rollCustomAttack(attack, index)}
 									disabled={rollingAttack === index}>{rollingAttack === index ? '…' : '🎲'}</button
@@ -1889,7 +1953,7 @@
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
 							<label class="roll-mode"
-								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
+								><select bind:value={rollMode} aria-label="Modo de rolagem"
 									><option value="advantage" disabled={hasAttackDisadvantage()}
 										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
 									><option value="normal">Normal</option><option value="disadvantage"
@@ -1897,11 +1961,11 @@
 									></select
 								></label
 							>
-							<span
-								>{$appLocale === 'en'
-									? 'Mark proficient skills. Expertise is granted by class progression.'
-									: 'Marque as perícias proficientes. Especializações vêm da Progressão de classe.'}</span
-							>
+							{#if isNewCharacter}<span
+									>{$appLocale === 'en'
+										? 'Mark proficient skills. Expertise is granted by class progression.'
+										: 'Marque as perícias proficientes. Especializações vêm da Progressão de classe.'}</span
+								>{/if}
 						</div>
 						<div class="skills-grid">
 							{#each skills as [name, ability]}<div class="skill-row">
@@ -3140,9 +3204,23 @@
 		gap: 0.45rem;
 		margin-top: 0.45rem;
 	}
+	.line-item.attack-row {
+		grid-template-columns:
+			28px minmax(170px, 2.4fr) minmax(96px, 0.9fr) minmax(112px, 1.1fr) 72px
+			minmax(130px, 1.3fr) 40px 32px;
+		align-items: center;
+	}
+	.attack-row > input,
+	.attack-row > select {
+		width: 100%;
+		min-width: 0;
+	}
+	.attack-row .attack-bonus {
+		text-align: center;
+	}
 	.notes {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1rem;
 	}
 	.legacy-equipment {
@@ -3227,6 +3305,34 @@
 		}
 		.notes {
 			grid-template-columns: 1fr;
+		}
+		.line-item.attack-row {
+			grid-template-columns: 28px minmax(0, 1fr) 84px 70px;
+			gap: 0.35rem;
+		}
+		.attack-row .token-roll-toggle {
+			grid-area: 1 / 1;
+		}
+		.attack-row .attack-name {
+			grid-area: 1 / 2 / 2 / 5;
+		}
+		.attack-row .attack-type {
+			grid-area: 2 / 2;
+		}
+		.attack-row .attack-ability {
+			grid-area: 2 / 3;
+		}
+		.attack-row .attack-bonus {
+			grid-area: 2 / 4;
+		}
+		.attack-row .attack-damage {
+			grid-area: 3 / 2 / 4 / 3;
+		}
+		.attack-row .roll-custom {
+			grid-area: 3 / 3;
+		}
+		.attack-row > button:last-child {
+			grid-area: 3 / 4;
 		}
 		.species-traits > div {
 			align-items: flex-start;

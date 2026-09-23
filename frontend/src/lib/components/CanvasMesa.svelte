@@ -50,7 +50,11 @@
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
-	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import {
+		campaignAssetPath,
+		clearSignedAssetCache,
+		getSignedAssetUrl
+	} from '$lib/services/assetApi';
 
 	let {
 		scene,
@@ -112,6 +116,7 @@
 		string,
 		{ path: string | null; url: string | null; expiresAt: number }
 	>();
+	const tokenImageRetries = new SvelteMap<string, number>();
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -310,13 +315,16 @@
 			motor?.setWallsVisible(wallsVisible);
 			const carregados = await Promise.all(
 				response.tokens.map(async (token, index) => {
+					const assetPath = token.imageUrl
+						? (campaignAssetPath(token.imageUrl) ?? token.imageUrl)
+						: null;
 					const cached = tokenImageCache.get(token.id);
 					const imageUrl =
-						cached?.path === token.imageUrl && cached.expiresAt > Date.now()
+						cached?.path === assetPath && cached.expiresAt > Date.now()
 							? (cached.url ?? undefined)
 							: await resolverImagemToken(token.imageUrl);
 					tokenImageCache.set(token.id, {
-						path: token.imageUrl,
+						path: assetPath,
 						url: imageUrl ?? null,
 						expiresAt: Date.now() + 45 * 60 * 1000
 					});
@@ -338,13 +346,16 @@
 		if (!signal?.tokenId) return;
 		try {
 			const token = await getSceneToken(session, scene.id, signal.tokenId);
+			const assetPath = token.imageUrl
+				? (campaignAssetPath(token.imageUrl) ?? token.imageUrl)
+				: null;
 			const cached = tokenImageCache.get(token.id);
 			const imageUrl =
-				cached?.path === token.imageUrl && cached.expiresAt > Date.now()
+				cached?.path === assetPath && cached.expiresAt > Date.now()
 					? (cached.url ?? undefined)
 					: await resolverImagemToken(token.imageUrl);
 			tokenImageCache.set(token.id, {
-				path: token.imageUrl,
+				path: assetPath,
 				url: imageUrl ?? null,
 				expiresAt: Date.now() + 45 * 60 * 1000
 			});
@@ -371,12 +382,44 @@
 			console.warn('Não foi possível sincronizar o token recebido.', error);
 		}
 	}
+	async function atualizarImagemTokenComFalha(tokenId: number) {
+		const character = $personagens.find((item) => item.id === tokenId);
+		const persistedId = character?.persistedId;
+		if (!character || !persistedId) return;
+		const cached = tokenImageCache.get(persistedId);
+		if (!cached?.path) return;
+		const retries = tokenImageRetries.get(persistedId) ?? 0;
+		if (retries >= 1) {
+			tokenImageCache.set(persistedId, {
+				path: cached.path,
+				url: null,
+				expiresAt: Date.now() + 5 * 60 * 1000
+			});
+			personagens.update((items) =>
+				items.map((item) => (item.id === tokenId ? { ...item, fotoUrl: undefined } : item))
+			);
+			return;
+		}
+		tokenImageRetries.set(persistedId, retries + 1);
+		clearSignedAssetCache(scene.campaignId, cached.path);
+		const freshUrl = await resolverImagemToken(cached.path);
+		tokenImageCache.set(persistedId, {
+			path: cached.path,
+			url: freshUrl ?? null,
+			expiresAt: Date.now() + (freshUrl ? 45 * 60 * 1000 : 5 * 60 * 1000)
+		});
+		personagens.update((items) =>
+			items.map((item) =>
+				item.id === tokenId ? { ...item, fotoUrl: freshUrl ?? undefined } : item
+			)
+		);
+	}
 	async function resolverImagemDeFundo(value: string | null) {
-		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/media/`)) return value;
+		if (!value) return null;
 		return resolverAssetAssinado(value);
 	}
 	async function resolverImagemToken(value: string | null) {
-		if (!value || !value.startsWith(`campaigns/${scene.campaignId}/`)) return value;
+		if (!value) return null;
 		return resolverAssetAssinado(value);
 	}
 	async function resolverAssetAssinado(path: string) {
@@ -667,6 +710,7 @@
 			(x, y) => handleMapTap(x, y),
 			(area) => void saveMeasuredArea(area),
 			(wall) => void saveWall(wall),
+			(tokenId) => void atualizarImagemTokenComFalha(tokenId),
 			scene.gridSize
 		);
 		const observer = new ResizeObserver(([entry]) => {

@@ -31,6 +31,7 @@ export class GameEngine {
 		private readonly onFogPaint?: (x: number, y: number) => void,
 		private readonly onAreaComplete?: (area: MeasuredArea) => void,
 		private readonly onWallComplete?: (wall: Omit<SceneWall, 'id' | 'kind' | 'open'>) => void,
+		private readonly onTokenImageLoadError?: (tokenId: number) => void,
 		gridSize = 70
 	) {
 		this.app = new Application();
@@ -73,7 +74,8 @@ export class GameEngine {
 							this.camera.mundo,
 							this.app.stage,
 							this.onTokenClick,
-							this.onTokenMove
+							this.onTokenMove,
+							this.onTokenImageLoadError
 						);
 						this.tokens.set(p.id, novoToken);
 

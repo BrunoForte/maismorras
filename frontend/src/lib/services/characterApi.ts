@@ -9,7 +9,14 @@ export type AbilityScores = {
 	wisdom: number;
 	charisma: number;
 };
-export type Attack = { name: string; attackBonus: number; damage: string; notes: string };
+export type Attack = {
+	name: string;
+	attackBonus: number;
+	damage: string;
+	notes: string;
+	attackType?: 'melee' | 'ranged';
+	ability?: keyof AbilityScores;
+};
 export type Spell = { entryId?: string; name: string; level: number; notes: string };
 export type CharacterResource = {
 	id: string;

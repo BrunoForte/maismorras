@@ -2,8 +2,9 @@ package library
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -67,7 +68,7 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	}
 	payload, _ := json.Marshal(map[string]int{"expiresIn": 3600})
 	endpoint := h.cfg.SupabaseURL + "/storage/v1/object/sign/campaign-assets/" + escapeStorageObjectPath(in.Path)
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(payload))
+	req, _ := http.NewRequestWithContext(r.Context(), http.MethodPost, endpoint, bytes.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+h.cfg.SupabaseSecretKey)
 	req.Header.Set("apikey", h.cfg.SupabaseSecretKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -77,6 +78,14 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
+		if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusNotFound {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+			message := strings.ToLower(string(body))
+			if resp.StatusCode == http.StatusNotFound || strings.Contains(message, "not found") || strings.Contains(message, "does not exist") {
+				h.removeStaleAssetReferences(r, campaignID, in.Path)
+				return apperror.NotFound("ASSET_NOT_FOUND", "Este arquivo não existe mais no Storage.")
+			}
+		}
 		return apperror.Internal(nil)
 	}
 	var out struct {
@@ -89,6 +98,25 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 		out.SignedURL = h.cfg.SupabaseURL + "/storage/v1" + out.SignedURL
 	}
 	return write(w, http.StatusOK, map[string]any{"url": out.SignedURL, "expiresAt": time.Now().Add(55 * time.Minute).Unix()})
+}
+
+// Remove database references only after Storage definitively reports that the
+// object is missing, so clients stop requesting an asset that no longer exists.
+func (h *Handler) removeStaleAssetReferences(r *http.Request, campaignID, assetPath string) {
+	queries := []struct {
+		name string
+		sql  string
+	}{
+		{"scene tokens", `update public.scene_tokens st set image_url=null from public.scenes s where st.scene_id=s.id and s.campaign_id=$1 and st.image_url=$2`},
+		{"scene backgrounds", `update public.scenes set background_url=null,updated_at=now() where campaign_id=$1 and background_url=$2`},
+		{"actor portraits", `update public.actors set sheet=jsonb_set(sheet,'{portraitPath}','null'::jsonb,true) where campaign_id=$1 and sheet->>'portraitPath'=$2`},
+		{"actor tokens", `update public.actors set token=jsonb_set(token,'{imageUrl}','null'::jsonb,true) where campaign_id=$1 and token->>'imageUrl'=$2`},
+	}
+	for _, query := range queries {
+		if _, err := h.pool.Exec(r.Context(), query.sql, campaignID, assetPath); err != nil {
+			slog.Warn("removed asset reference cleanup failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", campaignID, "reference_type", query.name, "error", err)
+		}
+	}
 }
 
 // Storage object paths contain slash-separated segments. Escape each segment

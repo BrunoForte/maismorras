@@ -28,7 +28,8 @@ export class Token {
 		private mundo: Container,
 		private stage: Container,
 		private readonly onSelecionar?: (tokenId: number) => void,
-		private readonly onMover?: (tokenId: number, x: number, y: number) => boolean | void
+		private readonly onMover?: (tokenId: number, x: number, y: number) => boolean | void,
+		private readonly onImageLoadError?: (tokenId: number) => void
 	) {
 		this.containerPrincipal = new Container();
 		this.containerPrincipal.x = dados.x;
@@ -100,8 +101,8 @@ export class Token {
 			this.containerPrincipal.addChild(this.textoCoordenada);
 
 			this.desenharToken();
-		} catch (e) {
-			console.error('Erro interno do PixiJS ao renderizar:', e);
+		} catch {
+			if (loadSequence === this.fotoLoadSeq) this.onImageLoadError?.(this.id);
 		}
 	}
 

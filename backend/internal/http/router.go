@@ -193,6 +193,7 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			if requestID == "" {
 				requestID = newRequestID()
 			}
+			r.Header.Set("X-Request-ID", requestID)
 			w.Header().Set("X-Request-ID", requestID)
 			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(recorder, r)

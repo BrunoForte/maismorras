@@ -12,12 +12,9 @@ describe('sceneApi request wrapper', () => {
 			.mockResolvedValue(new Response(JSON.stringify({ scenes: [] }), { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
 		await expect(listScenes(session, 'campaign-1')).resolves.toEqual({ scenes: [] });
-		expect(fetchMock).toHaveBeenCalledWith(
-			expect.stringContaining('/api/v1/campaigns/campaign-1/scenes'),
-			expect.objectContaining({
-				headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
-			})
-		);
+		const [url, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+		expect(String(url)).toContain('/api/v1/campaigns/campaign-1/scenes');
+		expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token');
 	});
 
 	it('accepts a 204 response for destructive operations', async () => {
