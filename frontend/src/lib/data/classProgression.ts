@@ -145,6 +145,10 @@ export const canonicalClass = (value: string) =>
 			.trim()
 	] ?? value.toLowerCase().trim();
 
+export function isClassProgressionFeature(entryType: string, rules: Record<string, unknown>) {
+	return entryType === 'feature' && rules.catalog !== 'skills';
+}
+
 export function classFeatures(className: string, level: number, subclass: string) {
 	const data = classData[canonicalClass(className)];
 	if (!data) return [];

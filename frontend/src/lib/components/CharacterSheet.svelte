@@ -38,6 +38,7 @@
 		classFeatures,
 		canonicalClass as progressionClass,
 		defaultResources,
+		isClassProgressionFeature,
 		spellSlots
 	} from '$lib/data/classProgression';
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
@@ -648,7 +649,7 @@
 				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
 		const customFeatures = compendiumEntries
-			.filter((entry) => entry.entryType === 'feature')
+			.filter((entry) => isClassProgressionFeature(entry.entryType, entry.rules))
 			.flatMap((entry) =>
 				Array.isArray(entry.rules.features)
 					? entry.rules.features
