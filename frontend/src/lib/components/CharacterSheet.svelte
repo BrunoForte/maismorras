@@ -74,7 +74,6 @@
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let compendiumSources = $state<CompendiumSource[]>([]);
 	let selectedItemId = $state('');
-	let selectedSpellId = $state('');
 	let customItemName = $state('');
 	let customItemCategory = $state<'weapon' | 'armor' | 'consumable' | 'gear'>('gear');
 	let customItemDamage = $state('');
@@ -82,7 +81,6 @@
 	let customItemBonus = $state(0);
 	let customItemWeight = $state(0);
 	let customItemQuantity = $state(1);
-	let spellCircle = $state('all');
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
 		'profile'
 	);
@@ -1055,7 +1053,7 @@
 				: 'Descanso curto aplicado: recursos de descanso curto restaurados.';
 		await save();
 	}
-	const spellEntries = () =>
+	const spellEntries = (circle?: number) =>
 		compendiumEntries.filter((entry) => {
 			if (entry.entryType !== 'spell') return false;
 			if (spellIsOnSheet(entry.id, entry.name, optionLabel(entry), sheet.spells)) return false;
@@ -1063,7 +1061,7 @@
 			const level = Number(rules.level ?? 0);
 			const classes = Array.isArray(rules.classes) ? rules.classes.map(String) : [];
 			return (
-				(spellCircle === 'all' || level === Number(spellCircle)) &&
+				(circle === undefined || level === circle) &&
 				(!canonicalClass(sheet.class) ||
 					classes.length === 0 ||
 					classes.includes(canonicalClass(sheet.class)))
@@ -1299,21 +1297,6 @@
 			rollingWeaponAction = null;
 		}
 	}
-	function addCompendiumSpell() {
-		const entry = spellEntries().find((spell) => spell.id === selectedSpellId);
-		if (!entry || sheet.spells.some((spell) => spell.name === optionLabel(entry))) return;
-		const rules = entryRules(entry);
-		sheet.spells = [
-			...sheet.spells,
-			{
-				entryId: entry.id,
-				name: optionLabel(entry),
-				level: Number(rules.level ?? 0),
-				notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`
-			}
-		];
-		selectedSpellId = '';
-	}
 	const calculatedArmorClass = () =>
 		calculateArmorClass(sheet.abilityScores, sheet.class, sheet.inventory);
 	const equippedDefense = () =>
@@ -1527,7 +1510,31 @@
 	function addSpell() {
 		const name = newSpellName.trim();
 		if (!name || !addableSpellCircles().includes(newSpellLevel)) return;
-		sheet.spells = [...sheet.spells, { name, level: newSpellLevel, notes: '' }];
+		const normalizedName = (value: string) =>
+			value
+				.trim()
+				.toLocaleLowerCase('pt-BR')
+				.normalize('NFD')
+				.replace(/\p{Diacritic}/gu, '');
+		if (sheet.spells.some((spell) => normalizedName(spell.name) === normalizedName(name))) return;
+		const existingSpell = spellEntries(newSpellLevel).find(
+			(entry) => normalizedName(optionLabel(entry)) === normalizedName(name)
+		);
+		if (existingSpell) {
+			const rules = entryRules(existingSpell);
+			sheet.spells = [
+				...sheet.spells,
+				{
+					entryId: existingSpell.id,
+					name: optionLabel(existingSpell),
+					level: Number(rules.level ?? newSpellLevel),
+					notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`
+				}
+			];
+		} else {
+			// Names not selected from the suggestions remain custom sheet spells.
+			sheet.spells = [...sheet.spells, { name, level: newSpellLevel, notes: '' }];
+		}
 		newSpellName = '';
 	}
 	function removeAttack(index: number) {
@@ -2390,11 +2397,7 @@
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Spells' : 'Magias'}</h3>
 						</div>
-						<div class="compendium-picker spell-picker manual-spell-picker">
-							<input
-								bind:value={newSpellName}
-								placeholder={$appLocale === 'en' ? 'Manual spell name' : 'Nome da magia manual'}
-							/>
+						<div class="compendium-picker spell-picker">
 							<select
 								bind:value={newSpellLevel}
 								aria-label={$appLocale === 'en' ? 'Manual spell circle' : 'Círculo da magia manual'}
@@ -2403,30 +2406,22 @@
 										>{circleLabel(level)}</option
 									>{/each}
 							</select>
-							<button onclick={addSpell} disabled={!newSpellName.trim()}>
-								+ {$appLocale === 'en' ? 'Add spell' : 'Adicionar magia'}
+							<input
+								bind:value={newSpellName}
+								list="spell-suggestions"
+								placeholder={$appLocale === 'en'
+									? 'Search or type a spell name'
+									: 'Busque ou digite o nome da magia'}
+								aria-label={$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}
+							/>
+							<datalist id="spell-suggestions">
+								{#each spellEntries(newSpellLevel) as entry (entry.id)}
+									<option value={optionLabel(entry)}></option>
+								{/each}
+							</datalist>
+							<button type="button" onclick={addSpell} disabled={!newSpellName.trim()}>
+								+ {$appLocale === 'en' ? 'Add' : 'Adicionar'}
 							</button>
-						</div>
-						<div class="compendium-picker spell-picker">
-							<select bind:value={spellCircle}
-								>{#each availableSpellCircles() as circle}<option value={String(circle)}
-										>{circleLabel(circle)}</option
-									>{/each}</select
-							><select bind:value={selectedSpellId}
-								><option value=""
-									>{sheet.class
-										? $appLocale === 'en'
-											? 'Spell available to this class…'
-											: 'Magia disponível para a classe…'
-										: $appLocale === 'en'
-											? 'Set a class to filter spells…'
-											: 'Defina a classe para filtrar magias…'}</option
-								>{#each spellEntries() as entry (entry.id)}<option value={entry.id}
-										>{optionLabel(entry)}</option
-									>{/each}</select
-							><button onclick={addCompendiumSpell} disabled={!selectedSpellId}
-								>{$appLocale === 'en' ? 'Add' : 'Adicionar'}</button
-							>
 						</div>
 						{#each availableSpellCircles() as circle}<section class="spell-circle">
 								<header>
