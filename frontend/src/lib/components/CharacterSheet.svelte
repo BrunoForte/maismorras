@@ -43,6 +43,7 @@
 	} from '$lib/data/classProgression';
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+	import { spellIsOnSheet } from '$lib/utils/spellbook';
 
 	let {
 		campaignId,
@@ -89,6 +90,8 @@
 	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
 	let castingSpell = $state<number | null>(null);
 	let spellSlotChoice = $state<Record<number, number>>({});
+	let newSpellName = $state('');
+	let newSpellLevel = $state(0);
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
@@ -935,6 +938,7 @@
 	const spellEntries = () =>
 		compendiumEntries.filter((entry) => {
 			if (entry.entryType !== 'spell') return false;
+			if (spellIsOnSheet(entry.id, entry.name, optionLabel(entry), sheet.spells)) return false;
 			const rules = entryRules(entry);
 			const level = Number(rules.level ?? 0);
 			const classes = Array.isArray(rules.classes) ? rules.classes.map(String) : [];
@@ -945,10 +949,14 @@
 					classes.includes(canonicalClass(sheet.class)))
 			);
 		});
-	const availableSpellCircles = () => [
-		0,
-		...sheet.spellSlots.filter((slot) => slot.max > 0).map((slot) => slot.level)
-	];
+	const availableSpellCircles = () =>
+		[
+			...new Set([
+				0,
+				...sheet.spellSlots.filter((slot) => slot.max > 0).map((slot) => slot.level),
+				...sheet.spells.map((spell) => spell.level)
+			])
+		].sort((a, b) => a - b);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
 	const spellsForCircle = (circle: number) =>
@@ -1346,7 +1354,10 @@
 		];
 	}
 	function addSpell() {
-		sheet.spells = [...sheet.spells, { name: 'Nova magia', level: 0, notes: '' }];
+		const name = newSpellName.trim();
+		if (!name) return;
+		sheet.spells = [...sheet.spells, { name, level: newSpellLevel, notes: '' }];
+		newSpellName = '';
 	}
 	function removeAttack(index: number) {
 		sheet.attacks = sheet.attacks.filter((_, i) => i !== index);
@@ -2036,9 +2047,23 @@
 					<section>
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Spells' : 'Magias'}</h3>
-							<button onclick={addSpell}
-								>+ {$appLocale === 'en' ? 'Manual spell' : 'Magia manual'}</button
+						</div>
+						<div class="compendium-picker spell-picker manual-spell-picker">
+							<input
+								bind:value={newSpellName}
+								placeholder={$appLocale === 'en' ? 'Manual spell name' : 'Nome da magia manual'}
+							/>
+							<select
+								bind:value={newSpellLevel}
+								aria-label={$appLocale === 'en' ? 'Manual spell circle' : 'Círculo da magia manual'}
 							>
+								{#each Array.from({ length: 10 }, (_, level) => level) as level}<option
+										value={level}>{circleLabel(level)}</option
+									>{/each}
+							</select>
+							<button onclick={addSpell} disabled={!newSpellName.trim()}>
+								+ {$appLocale === 'en' ? 'Add spell' : 'Adicionar magia'}
+							</button>
 						</div>
 						<div class="compendium-picker spell-picker">
 							<select bind:value={spellCircle}
@@ -2919,6 +2944,7 @@
 		grid-template-columns: 130px minmax(0, 1fr) auto;
 	}
 	.compendium-picker select,
+	.compendium-picker input,
 	.inventory-item input {
 		min-width: 0;
 		border: 1px solid #554841;
