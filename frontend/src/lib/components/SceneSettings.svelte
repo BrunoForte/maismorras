@@ -165,7 +165,7 @@
 				>
 				<small class="map-ai-hint">
 					{$appLocale === 'en'
-						? 'The map is always generated as a top-down, non-perspective D&D battle map. The prompt enforces consistent square scale (1.5 m × 1.5 m); the game grid is added separately.'
+						? 'The map prompt always requests a top-down, non-perspective D&D battle map with consistent square scale (1.5 m × 1.5 m); the game grid is added separately.'
 						: 'A geração sempre pede um mapa de batalha de D&D visto de cima, sem perspectiva, com escala consistente de 1,5 m × 1,5 m por quadrado. A grade é adicionada pelo jogo.'}
 				</small>
 			</div>
