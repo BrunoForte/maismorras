@@ -1,5 +1,11 @@
 export type SpellbookSpell = { entryId?: string; name: string };
 
+export function unlockedSpellCircles(slots: { level: number; max: number }[]) {
+	return [...new Set([0, ...slots.filter((slot) => slot.max > 0).map((slot) => slot.level)])].sort(
+		(a, b) => a - b
+	);
+}
+
 const normalizeSpellName = (name: string) =>
 	name
 		.normalize('NFD')

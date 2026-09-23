@@ -43,7 +43,7 @@
 	} from '$lib/data/classProgression';
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
-	import { spellIsOnSheet } from '$lib/utils/spellbook';
+	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 
 	let {
 		campaignId,
@@ -108,6 +108,10 @@
 	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
 	$effect(() => {
 		if (hasAttackDisadvantage() && rollMode === 'advantage') rollMode = 'normal';
+	});
+	$effect(() => {
+		const circles = unlockedSpellCircles(sheet.spellSlots);
+		if (!circles.includes(newSpellLevel)) newSpellLevel = circles.at(-1) ?? 0;
 	});
 	const skills = [
 		['Acrobacia', 'dexterity'],
@@ -957,6 +961,7 @@
 				...sheet.spells.map((spell) => spell.level)
 			])
 		].sort((a, b) => a - b);
+	const addableSpellCircles = () => unlockedSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
 	const spellsForCircle = (circle: number) =>
@@ -1355,7 +1360,7 @@
 	}
 	function addSpell() {
 		const name = newSpellName.trim();
-		if (!name) return;
+		if (!name || !addableSpellCircles().includes(newSpellLevel)) return;
 		sheet.spells = [...sheet.spells, { name, level: newSpellLevel, notes: '' }];
 		newSpellName = '';
 	}
@@ -2057,8 +2062,8 @@
 								bind:value={newSpellLevel}
 								aria-label={$appLocale === 'en' ? 'Manual spell circle' : 'Círculo da magia manual'}
 							>
-								{#each Array.from({ length: 10 }, (_, level) => level) as level}<option
-										value={level}>{circleLabel(level)}</option
+								{#each addableSpellCircles() as level}<option value={level}
+										>{circleLabel(level)}</option
 									>{/each}
 							</select>
 							<button onclick={addSpell} disabled={!newSpellName.trim()}>
