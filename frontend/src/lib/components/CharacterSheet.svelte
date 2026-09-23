@@ -40,6 +40,7 @@
 		classFeatures,
 		canonicalClass as progressionClass,
 		defaultResources,
+		recoverResourcesOnRest,
 		syncResourceMaxima,
 		isClassProgressionFeature,
 		spellSlots
@@ -1139,11 +1140,7 @@
 				return;
 			}
 		}
-		sheet.resources = sheet.resources.map((resource) =>
-			resource.restoreOn === kind || kind === 'long'
-				? { ...resource, current: resource.max }
-				: resource
-		);
+		sheet.resources = recoverResourcesOnRest(sheet.resources, kind);
 		if (kind === 'short')
 			sheet.spellSlots = sheet.spellSlots.map((slot) =>
 				canonicalClass(sheet.class) === 'warlock' ? { ...slot, current: slot.max } : slot

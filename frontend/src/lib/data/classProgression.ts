@@ -165,11 +165,18 @@ export function defaultResources(
 ): CharacterResource[] {
 	const key = canonicalClass(className);
 	const cha = Math.max(1, Math.floor((scores.charisma - 10) / 2));
-	const item = (id: string, name: string, max: number, rest: 'short' | 'long') => ({
+	const item = (
+		id: string,
+		name: string,
+		max: number,
+		rest: 'short' | 'long',
+		shortRestRecovery = 0
+	) => ({
 		id,
 		name,
 		current: max,
 		max,
+		...(shortRestRecovery > 0 ? { shortRestRecovery } : {}),
 		restoreOn: rest
 	});
 	if (key === 'barbarian')
@@ -178,29 +185,44 @@ export function defaultResources(
 				'rage',
 				'Fúria',
 				level >= 17 ? 6 : level >= 12 ? 5 : level >= 6 ? 4 : level >= 3 ? 3 : 2,
-				'long'
+				'long',
+				1
 			)
 		];
 	if (key === 'bard')
 		return [item('bardic-inspiration', 'Inspiração Bárdica', cha, level >= 5 ? 'short' : 'long')];
 	if (key === 'cleric' && level >= 2)
 		return [
-			item('channel-divinity', 'Canalizar Divindade', level >= 18 ? 4 : level >= 6 ? 3 : 2, 'short')
+			item(
+				'channel-divinity',
+				'Canalizar Divindade',
+				level >= 18 ? 4 : level >= 6 ? 3 : 2,
+				'long',
+				1
+			)
 		];
 	if (key === 'druid')
-		return [item('wild-shape', 'Forma Selvagem', level >= 17 ? 4 : level >= 6 ? 3 : 2, 'short')];
+		return [item('wild-shape', 'Forma Selvagem', level >= 17 ? 4 : level >= 6 ? 3 : 2, 'long', 1)];
 	if (key === 'fighter')
 		return [
 			item(
 				'second-wind',
 				'Segundo Fôlego',
 				level >= 17 ? 5 : level >= 10 ? 4 : level >= 4 ? 3 : 2,
-				'short'
+				'long',
+				1
 			),
 			...(level >= 2 ? [item('action-surge', 'Surto de Ação', level >= 17 ? 2 : 1, 'short')] : [])
 		];
 	if (key === 'monk') return [item('focus-points', 'Pontos de Foco', level, 'short')];
-	if (key === 'paladin') return [item('lay-on-hands', 'Imposição das Mãos', level * 5, 'long')];
+	if (key === 'paladin')
+		return [
+			item('divine-sense', 'Sentido Divino', cha, 'long'),
+			item('lay-on-hands', 'Imposição das Mãos', level * 5, 'long'),
+			...(level >= 3
+				? [item('paladin-channel-divinity', 'Canalizar Divindade', level >= 11 ? 3 : 2, 'long', 1)]
+				: [])
+		];
 	if (key === 'sorcerer' && level >= 2)
 		return [item('sorcery-points', 'Pontos de Feitiçaria', level, 'long')];
 	if (key === 'warlock')
@@ -231,6 +253,21 @@ export function syncResourceMaxima(
 			max,
 			current: Math.max(0, Math.min(max, old?.current ?? max))
 		};
+	});
+}
+export function recoverResourcesOnRest(
+	resources: CharacterResource[],
+	kind: 'short' | 'long'
+): CharacterResource[] {
+	return resources.map((resource) => {
+		if (kind === 'long' || resource.restoreOn === 'short')
+			return { ...resource, current: resource.max };
+		if (kind === 'short' && resource.shortRestRecovery)
+			return {
+				...resource,
+				current: Math.min(resource.max, resource.current + resource.shortRestRecovery)
+			};
+		return resource;
 	});
 }
 export function spellSlots(className: string, level: number): SpellSlot[] {

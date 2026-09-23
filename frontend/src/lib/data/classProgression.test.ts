@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	defaultResources,
 	isClassProgressionFeature,
+	recoverResourcesOnRest,
 	syncResourceMaxima
 } from './classProgression';
 
@@ -56,5 +57,25 @@ describe('class resource progression', () => {
 		]);
 		expect(updated.max).toBe(3);
 		expect(updated.current).toBe(3);
+	});
+
+	it('recovers only one use on short rest for resources with partial recovery', () => {
+		const resources = defaultResources('druid', 6, scores).map((resource) => ({
+			...resource,
+			current: 0
+		}));
+		const [afterShortRest] = recoverResourcesOnRest(resources, 'short');
+		expect(afterShortRest.current).toBe(1);
+		const [afterLongRest] = recoverResourcesOnRest(resources, 'long');
+		expect(afterLongRest.current).toBe(afterLongRest.max);
+	});
+
+	it('tracks Paladin Channel Divinity and its level-based maximum', () => {
+		const resources = defaultResources('paladin', 11, scores);
+		const channelDivinity = resources.find(
+			(resource) => resource.id === 'paladin-channel-divinity'
+		);
+		expect(channelDivinity?.max).toBe(3);
+		expect(channelDivinity?.shortRestRecovery).toBe(1);
 	});
 });
