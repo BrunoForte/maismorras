@@ -60,6 +60,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/overlay-settings", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SaveOverlaySettings))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/assets/signed-url", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SignedURL))
+	mux.Handle("PUT /api/v1/campaigns/{campaignID}/assets/audio-kind", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SetAudioKind))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.ListPermissions))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SavePermissions))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.Create))

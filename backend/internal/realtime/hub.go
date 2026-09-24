@@ -62,6 +62,22 @@ func NewHub() *Hub {
 	return &Hub{rooms: map[string]map[*peer]struct{}{}, peersByUser: map[string]int{}, peersByIP: map[string]int{}}
 }
 
+// BroadcastAudioState relays a server-persisted path change to every client in
+// the scene. The handler only supplies state read back from the database.
+func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool) {
+	eventType := "audio.state"
+	if effects {
+		eventType = "audio.effects"
+	}
+	payload, err := json.Marshal(struct {
+		Type  string             `json:"type"`
+		State audioRealtimeState `json:"state"`
+	}{Type: eventType, State: audioRealtimeState{Path: path, Playing: playing, Volume: volume, Position: positionMs, StartedAt: startedAt, Revision: revision}})
+	if err == nil {
+		h.broadcast(sceneID, payload)
+	}
+}
+
 type Handler struct {
 	cfg  config.Config
 	pool *pgxpool.Pool

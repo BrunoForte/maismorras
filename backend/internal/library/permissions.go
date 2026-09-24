@@ -20,6 +20,16 @@ func normalizePermissionSelection(restricted *bool, userIDs []string) (bool, []s
 	return true, userIDs
 }
 
+func permissionResponse(gmID string, userIDs []string, restricted bool) map[string]any {
+	players := make([]string, 0, len(userIDs))
+	for _, userID := range userIDs {
+		if userID != gmID {
+			players = append(players, userID)
+		}
+	}
+	return map[string]any{"userIds": players, "isGM": true, "restricted": restricted}
+}
+
 func (h *Handler) ListPermissions(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
@@ -128,5 +138,8 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 	if err = tx.Commit(r.Context()); err != nil {
 		return apperror.Internal(err)
 	}
-	return h.ListPermissions(w, r)
+	// Do not call ListPermissions here: PUT requests do not carry its required
+	// itemType/itemKey query parameters. That used to commit successfully and
+	// then incorrectly return INVALID_ITEM (400) to the client.
+	return write(w, http.StatusOK, permissionResponse(p.UserID, in.UserIDs, restricted))
 }

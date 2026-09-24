@@ -21,10 +21,19 @@ type Handler struct {
 	pool   *pgxpool.Pool
 	cfg    config.Config
 	client *http.Client
+	audio  audioStateBroadcaster
 }
 
-func NewHandler(pool *pgxpool.Pool, cfg config.Config) *Handler {
-	return &Handler{pool: pool, cfg: cfg, client: &http.Client{Timeout: 8 * time.Second}}
+type audioStateBroadcaster interface {
+	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool)
+}
+
+func NewHandler(pool *pgxpool.Pool, cfg config.Config, audio ...audioStateBroadcaster) *Handler {
+	handler := &Handler{pool: pool, cfg: cfg, client: &http.Client{Timeout: 8 * time.Second}}
+	if len(audio) > 0 {
+		handler.audio = audio[0]
+	}
+	return handler
 }
 
 // SignedURL authorizes the campaign member first, then asks Supabase Storage

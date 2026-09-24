@@ -25,3 +25,38 @@ func TestIsAudioPathRejectsNonAudioAssets(t *testing.T) {
 		}
 	}
 }
+
+func TestReclassifiedAudioPathSupportsExistingAndTaggedAssets(t *testing.T) {
+	campaignID := "campaign-id"
+	tests := []struct {
+		path string
+		kind string
+		want string
+	}{
+		{"campaigns/campaign-id/media/ambient.mp3", "effect", "campaigns/campaign-id/media/effect__ambient.mp3"},
+		{"campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-music__rain.mp3", "effect", "campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-effect__rain.mp3"},
+		{"campaigns/campaign-id/media/sfx__thunder.ogg", "music", "campaigns/campaign-id/media/music__thunder.ogg"},
+	}
+	for _, tt := range tests {
+		got, err := reclassifiedAudioPath(campaignID, tt.path, tt.kind)
+		if err != nil || got != tt.want {
+			t.Errorf("reclassifiedAudioPath(%q, %q) = (%q, %v), want %q", tt.path, tt.kind, got, err, tt.want)
+		}
+	}
+}
+
+func TestReclassifiedAudioPathRejectsUnsafeOrNonAudioPaths(t *testing.T) {
+	for _, path := range []string{
+		"campaigns/other/media/audio.mp3",
+		"campaigns/campaign-id/media/subfolder/audio.mp3",
+		"campaigns/campaign-id/media/../audio.mp3",
+		"campaigns/campaign-id/media/image.png",
+	} {
+		if _, err := reclassifiedAudioPath("campaign-id", path, "effect"); err == nil {
+			t.Errorf("expected path %q to be rejected", path)
+		}
+	}
+	if _, err := reclassifiedAudioPath("campaign-id", "campaigns/campaign-id/media/audio.mp3", "ambient"); err == nil {
+		t.Fatal("expected invalid audio kind to be rejected")
+	}
+}

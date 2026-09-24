@@ -43,6 +43,7 @@
 	let handouts = $state<Handout[]>([]);
 	let uploading = $state(false);
 	let deletingAsset = $state<string | null>(null);
+	let changingAudioKind = $state<string | null>(null);
 	let savingHandout = $state(false);
 	let handoutOpen = $state(false);
 	let editingHandoutId = $state<string | null>(null);
@@ -266,6 +267,31 @@
 			);
 		} finally {
 			deletingAsset = null;
+		}
+	}
+	async function changeAudioKind(asset: Asset, event: Event) {
+		if (changingAudioKind) return;
+		const kind = (event.currentTarget as HTMLSelectElement).value as 'music' | 'effect';
+		if (kind === asset.audioKind) return;
+		changingAudioKind = asset.path;
+		try {
+			await request<{ path: string; kind: 'music' | 'effect' }>(
+				session,
+				`/api/v1/campaigns/${campaignId}/assets/audio-kind`,
+				{ method: 'PUT', body: JSON.stringify({ path: asset.path, kind }) },
+				'Não foi possível alterar o tipo do áudio.'
+			);
+			await loadAssets();
+			message =
+				kind === 'music'
+					? 'Áudio classificado como música.'
+					: 'Áudio classificado como efeito sonoro.';
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível alterar o tipo do áudio.';
+			await loadAssets();
+		} finally {
+			changingAudioKind = null;
 		}
 	}
 	async function loadAssets() {
@@ -634,6 +660,20 @@
 								>{/if}</small
 						>
 						{#if isGM}<div class="asset-actions">
+								{#if asset.type === 'audio'}<label class="asset-audio-kind">
+										<select
+											aria-label={($appLocale === 'en' ? 'Audio type for ' : 'Tipo do áudio: ') +
+												asset.name}
+											value={asset.audioKind ?? 'music'}
+											disabled={changingAudioKind === asset.path}
+											onchange={(event) => void changeAudioKind(asset, event)}
+										>
+											<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
+											<option value="effect"
+												>{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option
+											>
+										</select>
+									</label>{/if}
 								<button
 									class="asset-delete"
 									aria-label={$appLocale === 'en'
@@ -1158,9 +1198,23 @@
 	}
 	.asset-actions {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.3rem;
 		flex: 0 0 auto;
+	}
+	.asset-audio-kind select {
+		max-width: 8.5rem;
+		border: 1px solid #5a493b;
+		border-radius: 5px;
+		padding: 0.28rem 0.35rem;
+		color: #edc77f;
+		background: #2b211e;
+		font-size: 0.66rem;
+	}
+	.asset-audio-kind select:disabled {
+		opacity: 0.6;
+		cursor: wait;
 	}
 	.asset-present {
 		border: 1px solid #5a493b;
