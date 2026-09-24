@@ -8,6 +8,7 @@
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 	import { notifyUserRequestError, request } from '$lib/services/httpClient';
 	import { optimizeImage } from '$lib/services/imageProcessing';
+	import { audioAssetKind } from '$lib/services/audioPlayback';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import {
 		currentPlayerIds,
@@ -35,6 +36,7 @@
 		url: string;
 		thumbnailUrl?: string;
 		type: 'image' | 'audio' | 'document' | 'map';
+		audioKind?: 'music' | 'effect';
 	};
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
@@ -52,6 +54,7 @@
 	let message = $state('');
 	let preview = $state<Asset | null>(null);
 	let draggingFiles = $state(false);
+	let audioUploadKind = $state<'music' | 'effect'>('music');
 	let permissionDialog = $state<{ type: 'asset' | 'note'; key: string; label: string } | null>(
 		null
 	);
@@ -286,7 +289,7 @@
 				const signed = await getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
 				return signed
 					? {
-							name: file.name.replace(/^[a-f0-9-]+-/, ''),
+							name: file.name.replace(/^[a-f0-9-]+-/, '').replace(/^(?:effect|sfx|music)__/, ''),
 							path: `${folder()}/${file.name}`,
 							url: signed,
 							type: file.metadata?.mimetype?.startsWith('audio/')
@@ -296,7 +299,10 @@
 									? ('document' as const)
 									: /map|scene|battle|mapa|cena/i.test(file.name)
 										? ('map' as const)
-										: ('image' as const)
+										: ('image' as const),
+							...(file.metadata?.mimetype?.startsWith('audio/')
+								? { audioKind: audioAssetKind(file.name) }
+								: {})
 						}
 					: null;
 			})
@@ -338,9 +344,14 @@
 			for (const file of accepted) {
 				const optimized = await optimizeImage(file);
 				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+				const audioPrefix = optimized.file.type.startsWith('audio/')
+					? audioUploadKind === 'effect'
+						? 'effect__'
+						: 'music__'
+					: '';
 				const { error } = await supabase.storage
 					.from('campaign-assets')
-					.upload(`${folder()}/${crypto.randomUUID()}-${name}`, optimized.file, {
+					.upload(`${folder()}/${crypto.randomUUID()}-${audioPrefix}${name}`, optimized.file, {
 						contentType: optimized.file.type,
 						cacheControl: '3600'
 					});
@@ -391,6 +402,13 @@
 			>
 		</div>
 		{#if isGM}<div class="actions">
+				<label class="audio-kind-picker">
+					{$appLocale === 'en' ? 'Audio type' : 'Tipo de áudio'}
+					<select bind:value={audioUploadKind} aria-label="Tipo de áudio para novos arquivos">
+						<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
+						<option value="effect">{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option>
+					</select>
+				</label>
 				<label
 					>{uploading
 						? $appLocale === 'en'
@@ -574,7 +592,7 @@
 			class="asset-filters"
 			aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}
 		>
-			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Music' : 'Músicas'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label]}<button
+			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Audio' : 'Áudios'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label]}<button
 					class:active={assetFilter === value}
 					onclick={() => (assetFilter = value as typeof assetFilter)}>{label}</button
 				>{/each}
@@ -604,7 +622,17 @@
 							rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a
 						>{/if}
 					<div class="asset-footer">
-						<small>{asset.name}</small>
+						<small
+							>{asset.name}{#if asset.audioKind}<span class="audio-kind-badge">
+									· {asset.audioKind === 'music'
+										? $appLocale === 'en'
+											? 'Music'
+											: 'Música'
+										: $appLocale === 'en'
+											? 'Sound effect'
+											: 'Efeito sonoro'}</span
+								>{/if}</small
+						>
 						{#if isGM}<div class="asset-actions">
 								<button
 									class="asset-delete"
@@ -817,6 +845,23 @@
 		border: 0;
 		color: #26190e;
 		background: #e0b86f;
+	}
+	.actions .audio-kind-picker {
+		display: grid;
+		gap: 0.2rem;
+		border: 1px solid #765d3d;
+		color: #eee4d6;
+		background: #211b1e;
+		font-weight: 600;
+	}
+	.audio-kind-picker select {
+		max-width: 9rem;
+		border: 1px solid #554841;
+		border-radius: 5px;
+		padding: 0.28rem 0.4rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
 	}
 	.drop-zone {
 		display: grid;

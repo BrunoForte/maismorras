@@ -5,7 +5,12 @@
 	import { loadScene, updateScene } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import type { AudioPlaybackState } from '$lib/services/audioPlayback';
-	import { CrossfadeAudio, withListenerVolume } from '$lib/services/audioPlayback';
+	import {
+		audioAssetDisplayName,
+		audioAssetKind,
+		CrossfadeAudio,
+		withListenerVolume
+	} from '$lib/services/audioPlayback';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
@@ -17,8 +22,10 @@
 		isGM: boolean;
 		onSceneUpdate: (scene: Scene) => void;
 	}>();
-	type Track = { path: string; name: string };
+	type Track = { path: string; name: string; kind: 'music' | 'effect' };
 	let tracks = $state<Track[]>([]);
+	const musicTracks = $derived(tracks.filter((track) => track.kind === 'music'));
+	const effectTracks = $derived(tracks.filter((track) => track.kind === 'effect'));
 	let needsGesture = $state(false);
 	let effectsNeedGesture = $state(false);
 	let sceneSocket: SceneSocket | null = null;
@@ -126,10 +133,16 @@
 			});
 		tracks = (data ?? [])
 			.filter((file) => file.metadata?.mimetype?.startsWith('audio/'))
-			.map((file) => ({
-				path: `campaigns/${scene.campaignId}/media/${file.name}`,
-				name: file.name.replace(/^[a-f0-9-]+-/, '')
-			}));
+			.map((file) => {
+				const path = `campaigns/${scene.campaignId}/media/${file.name}`;
+				const kind = audioAssetKind(file.name);
+				return {
+					path,
+					name: audioAssetDisplayName(file.name.replace(/^[a-f0-9-]+-/, '')),
+					// Keep previously selected, untagged effects usable after introducing categories.
+					kind: path === scene.ambientEffectPath ? 'effect' : kind
+				};
+			});
 	}
 
 	async function save(next: Scene, notify = true) {
@@ -216,17 +229,29 @@
 			ambientAudioStartedAt: playing ? new Date().toISOString() : null,
 			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
 		};
-		const saved = await save(next, false);
 		const state: AudioPlaybackState = {
-			path: saved.ambientAudioPath,
+			path: next.ambientAudioPath,
 			playing,
-			volume: targetVolume(saved.ambientAudioVolume),
+			volume: targetVolume(next.ambientAudioVolume),
 			positionMs,
-			startedAt: playing ? Date.parse(saved.ambientAudioStartedAt ?? '') || Date.now() : 0,
-			revision: saved.ambientAudioRevision ?? 0
+			startedAt: playing ? Date.parse(next.ambientAudioStartedAt ?? '') || Date.now() : 0,
+			revision: next.ambientAudioRevision ?? 0
 		};
-		publishState(state);
+		// Start locally during the click gesture; waiting for the API save first can
+		// outlive the browser's autoplay-activation window and make the first play fail.
 		await applyState(state);
+		try {
+			const saved = await save(next, false);
+			state.revision = saved.ambientAudioRevision ?? state.revision;
+			publishState(state);
+		} catch {
+			await applyState(stateFromScene(scene));
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not update music playback.'
+					: 'Não foi possível atualizar a música.'
+			);
+		}
 	}
 
 	async function selectEffect(event: Event) {
@@ -264,19 +289,18 @@
 		try {
 			const playing = !scene.ambientEffectEnabled;
 			const positionMs = playing ? 0 : Math.round((effectsPlayback?.currentTime ?? 0) * 1000);
-			const saved = await save(
-				{
-					...scene,
-					ambientEffectEnabled: playing,
-					ambientEffectPositionMs: positionMs,
-					ambientEffectStartedAt: playing ? new Date().toISOString() : null,
-					ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
-				},
-				false
-			);
-			const state = effectsStateFromScene(saved);
-			sceneSocket?.publishAudioEffects(state);
+			const next = {
+				...scene,
+				ambientEffectEnabled: playing,
+				ambientEffectPositionMs: positionMs,
+				ambientEffectStartedAt: playing ? new Date().toISOString() : null,
+				ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
+			};
+			const state = effectsStateFromScene(next);
 			await applyEffectsState(state);
+			const saved = await save(next, false);
+			state.revision = saved.ambientEffectRevision ?? state.revision;
+			sceneSocket?.publishAudioEffects(state);
 		} catch {
 			notifyUserRequestError(
 				$appLocale === 'en'
@@ -378,7 +402,8 @@
 						? 'Select campaign music…'
 						: 'Selecionar música da campanha…'}</option
 				>
-				{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
+				{#each musicTracks as track (track.path)}<option value={track.path}>{track.name}</option
+					>{/each}
 			</select>
 			<div class="gm-status">
 				<strong
@@ -387,6 +412,9 @@
 				>
 				{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
 						>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+					>{/if}
+				{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
+						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 					>{/if}
 				<label class="volume-control">
 					<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
@@ -406,9 +434,7 @@
 					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
 						'Nenhuma música'}</strong
 				>
-				{#if needsGesture || effectsNeedGesture}<button
-						class="audio-enable"
-						onclick={() => void enableAudio()}
+				{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 					>{/if}
 				<label class="volume-control">
@@ -439,7 +465,8 @@
 				<option value=""
 					>{$appLocale === 'en' ? 'Select a sound effect…' : 'Selecionar efeito sonoro…'}</option
 				>
-				{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
+				{#each effectTracks as track (track.path)}<option value={track.path}>{track.name}</option
+					>{/each}
 			</select>
 			<div class="gm-status">
 				<strong
@@ -465,9 +492,7 @@
 					>{tracks.find((track) => track.path === scene.ambientEffectPath)?.name ??
 						($appLocale === 'en' ? 'No sound effect' : 'Nenhum efeito sonoro')}</strong
 				>
-				{#if needsGesture || effectsNeedGesture}<button
-						class="audio-enable"
-						onclick={() => void enableAudio()}
+				{#if effectsNeedGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 					>{/if}
 				<label class="volume-control"

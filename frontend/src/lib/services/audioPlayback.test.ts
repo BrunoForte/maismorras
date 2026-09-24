@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CrossfadeAudio, withListenerVolume } from './audioPlayback';
+import {
+	audioAssetDisplayName,
+	audioAssetKind,
+	CrossfadeAudio,
+	withListenerVolume
+} from './audioPlayback';
 
 function audioElement(initialVolume: number) {
 	let volume = initialVolume;
@@ -29,6 +34,12 @@ afterEach(() => {
 });
 
 describe('CrossfadeAudio', () => {
+	it('classifies tagged audio assets while preserving legacy music files', () => {
+		expect(audioAssetKind('campaigns/c1/media/64d0ac2-effect__rain.mp3')).toBe('effect');
+		expect(audioAssetKind('campaigns/c1/media/sfx__thunder.ogg')).toBe('effect');
+		expect(audioAssetKind('campaigns/c1/media/theme.mp3')).toBe('music');
+		expect(audioAssetDisplayName('effect__rain.mp3')).toBe('rain.mp3');
+	});
 	it('applies personal output volume without mutating the shared audio state', () => {
 		const shared = { path: 'music.mp3', playing: true, volume: 0.8, positionMs: 0, startedAt: 10 };
 		expect(withListenerVolume(shared, 50).volume).toBe(0.4);

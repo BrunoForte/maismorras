@@ -54,7 +54,7 @@
 	import { appLocale, distance, distanceText } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
-	import { hasWeaponProficiency } from '$lib/utils/weaponProficiency';
+	import { hasWeaponProficiency, hasWeaponProficiencyInText } from '$lib/utils/weaponProficiency';
 	import { cloneInventoryRules } from '$lib/utils/inventoryRules';
 
 	let {
@@ -124,6 +124,7 @@
 	let portraitBusy = $state(false);
 	let expandedFeature = $state<string | null>(null);
 	let presentationSocket: SceneSocket | null = null;
+	const sceneSocketPublishChat = () => presentationSocket?.publishChatUpdated();
 	let initiativeTokenId = $state<string | null>(null);
 	let resolvedCharacterId = $state<string | null>(null);
 	const hasAttackDisadvantage = () =>
@@ -734,10 +735,23 @@
 	const weaponProficiencyStatus = (item: InventoryItem) => {
 		if (typeof item.rules.proficient === 'boolean') return item.rules.proficient;
 		const rules = compendiumClass()?.rules ?? {};
-		const proficiencies = Array.isArray(rules.weaponProficiencies)
+		const baseProficiencies = Array.isArray(rules.weaponProficiencies)
 			? rules.weaponProficiencies.map((value) => String(value).toLowerCase())
 			: [];
-		return hasWeaponProficiency(proficiencies, item.name, String(item.rules.category ?? ''));
+		const subclass = compendiumEntries.find(
+			(entry) =>
+				entry.entryType === 'subclass' &&
+				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
+		);
+		const subclassProficiencies = Array.isArray(subclass?.rules.weaponProficiencies)
+			? subclass.rules.weaponProficiencies.map((value) => String(value).toLowerCase())
+			: [];
+		const category = String(item.rules.category ?? '');
+		const proficiencies = [...baseProficiencies, ...subclassProficiencies];
+		return (
+			hasWeaponProficiency(proficiencies, item.name, category) ||
+			hasWeaponProficiencyInText(JSON.stringify(subclass?.rules ?? {}), item.name, category)
+		);
 	};
 	const weaponProficiencyBonus = (item: InventoryItem) =>
 		weaponProficiencyStatus(item) ? sheet.proficiencyBonus : 0;
@@ -1158,6 +1172,7 @@
 					}
 				}
 			];
+			sceneSocketPublishChat();
 		} catch (error) {
 			message = error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
 		}
@@ -1309,6 +1324,55 @@
 		sheet.spells
 			.map((spell, index) => ({ spell, index }))
 			.filter((item) => item.spell.level === circle);
+	const spellOrigin = (spell: Sheet['spells'][number]) => {
+		if (spell.origin) return spell.origin;
+		const rules = spellCompendiumEntry(spell)?.rules ?? {};
+		const origin = String(
+			rules.origin ?? rules.originType ?? rules.sourceType ?? rules.featureSource ?? ''
+		).toLowerCase();
+		if (/species|race|racial|ancestr|ra[cç]a/.test(origin)) return 'species';
+		if (/feat|talent|talento/.test(origin)) return 'feat';
+		return 'class';
+	};
+	const normalizeSpellSource = (value: string) =>
+		value
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLocaleLowerCase()
+			.trim();
+	const grantedSpells = () => {
+		const granted: Sheet['spells'] = sheet.spells.filter((spell) => spellOrigin(spell) !== 'class');
+		const sourceTexts = [
+			{ origin: 'species' as const, text: activeSpeciesTraits().join(' ') },
+			...featList().flatMap((feat) => {
+				const entry = optionsFor('feat').find(
+					(candidate) =>
+						optionLabel(candidate).toLowerCase() === feat.toLowerCase() ||
+						candidate.name.toLowerCase() === feat.toLowerCase()
+				);
+				return entry ? [{ origin: 'feat' as const, text: JSON.stringify(entry.rules) }] : [];
+			})
+		];
+		for (const entry of compendiumEntries.filter((item) => item.entryType === 'spell')) {
+			const names = [entry.name, optionLabel(entry)].map(normalizeSpellSource);
+			const source = sourceTexts.find(({ text }) => {
+				const normalized = normalizeSpellSource(text);
+				return names.some((name) => name.length > 2 && normalized.includes(name));
+			});
+			if (!source) continue;
+			const name = optionLabel(entry);
+			if (granted.some((spell) => normalizeSpellSource(spell.name) === normalizeSpellSource(name)))
+				continue;
+			granted.push({
+				entryId: entry.id,
+				name,
+				level: Number(entry.rules.level ?? 0),
+				notes: '',
+				origin: source.origin
+			});
+		}
+		return granted;
+	};
 	const circleLabel = (circle: number) =>
 		circle === 0
 			? $appLocale === 'en'
@@ -1480,6 +1544,7 @@
 						}
 					}
 				];
+				sceneSocketPublishChat();
 				$diceOverlay = {
 					expression: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
 					total: result.total,
@@ -1526,6 +1591,7 @@
 						}
 					}
 				];
+				sceneSocketPublishChat();
 				$diceOverlay = {
 					expression: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
 					total: damage.total,
@@ -1596,6 +1662,7 @@
 				detalhesRolagem: { ...attack, modificador: bonus, label }
 			}
 		];
+		sceneSocketPublishChat();
 		$diceOverlay = {
 			expression: label,
 			total: attack.total,
@@ -1632,6 +1699,7 @@
 				}
 			}
 		];
+		sceneSocketPublishChat();
 		$diceOverlay = {
 			expression: `${label} · dano${critical ? ' crítico' : ''}`,
 			total: result.total,
@@ -1725,6 +1793,7 @@
 					}
 				}
 			];
+			sceneSocketPublishChat();
 			$diceOverlay = {
 				expression: spell.name,
 				total: result.total,
@@ -1786,6 +1855,7 @@
 					}
 				}
 			];
+			sceneSocketPublishChat();
 			if (result.dados?.length) {
 				$diceOverlay = {
 					expression: `${result.spellName} · ${result.expression ?? 'rolagem'}`,
@@ -2387,7 +2457,7 @@
 							/>
 						</label>
 					</section>
-					{#if sheet.resources.length}<section class="resources">
+					{#if sheet.resources.length || grantedSpells().length}<section class="resources">
 							<h3>{$appLocale === 'en' ? 'Resources' : 'Recursos'}</h3>
 							{#each sheet.resources as resource, index}<div>
 									<strong>{resource.name}</strong><span
@@ -2417,6 +2487,23 @@
 											>{$appLocale === 'en' ? 'Auto' : 'Auto'}</button
 										>{/if}
 								</div>{/each}
+							{#if grantedSpells().length}<div class="granted-spells">
+									<h4>
+										{$appLocale === 'en' ? 'Species and feat spells' : 'Magias de raça e talentos'}
+									</h4>
+									{#each grantedSpells() as spell, index (spell.entryId ?? `${spell.name}-${index}`)}<div
+										>
+											<strong>{spellDisplayName(spell)}</strong><span
+												>{circleLabel(spell.level)} · {spellOrigin(spell) === 'species'
+													? $appLocale === 'en'
+														? 'Species'
+														: 'Raça'
+													: $appLocale === 'en'
+														? 'Feat'
+														: 'Talento'}</span
+											>
+										</div>{/each}
+								</div>{/if}
 						</section>{/if}
 					<section class="combat-equipment">
 						<div class="section-title">
@@ -2519,6 +2606,19 @@
 															? 'Not proficient'
 															: 'Não proficiente'}
 												</span>
+												<label class="weapon-proficiency-override">
+													<input
+														type="checkbox"
+														checked={weaponProficiencyStatus(item)}
+														onchange={(event) => {
+															item.rules = {
+																...item.rules,
+																proficient: event.currentTarget.checked
+															};
+															syncTokenSoon();
+														}}
+													/>{$appLocale === 'en' ? 'Manual proficiency' : 'Proficiência manual'}
+												</label>
 												<label>
 													{$appLocale === 'en' ? 'Damage' : 'Dano'}
 													<input
@@ -2591,7 +2691,88 @@
 															? '🎲 Damage'
 															: '🎲 Dano'}</button
 												>
-											</div>{/if}
+											</div>
+											<div class="weapon-profile-list">
+												<button
+													type="button"
+													class="secondary-button"
+													onclick={() => addWeaponAttackProfile(item)}
+												>
+													+ {$appLocale === 'en' ? 'Alternate attack' : 'Golpe'}
+												</button>
+												{#each weaponAttackProfiles(item) as profile (profile.id)}
+													<details class="weapon-profile">
+														<summary>{profile.name}</summary>
+														<div class="weapon-profile-fields">
+															<input
+																aria-label="Nome do golpe"
+																bind:value={profile.name}
+																oninput={syncTokenSoon}
+															/>
+															<textarea
+																aria-label="Descrição do golpe"
+																bind:value={profile.description}
+																oninput={syncTokenSoon}></textarea>
+															<label
+																>{$appLocale === 'en' ? 'Ability' : 'Atributo'}<select
+																	bind:value={profile.attackAbility}
+																	onchange={syncTokenSoon}
+																	>{#each attributes as attribute}<option value={attribute.key}
+																			>{abilityLabel(attribute.key)}</option
+																		>{/each}</select
+																></label
+															>
+															<label
+																>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}<input
+																	type="number"
+																	bind:value={profile.attackBonus}
+																	oninput={syncTokenSoon}
+																/></label
+															>
+															<label
+																>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
+																	bind:value={profile.damage}
+																	oninput={syncTokenSoon}
+																/></label
+															>
+															<label
+																>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+																	type="number"
+																	bind:value={profile.damageBonus}
+																	oninput={syncTokenSoon}
+																/></label
+															>
+															{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
+																	><input
+																		type="checkbox"
+																		bind:checked={profile.greatWeaponFighting}
+																		onchange={syncTokenSoon}
+																	/>{$appLocale === 'en'
+																		? 'Great Weapon Fighting'
+																		: 'Luta com Armas Grandes'}</label
+																>{/if}
+															<div class="weapon-combat-actions">
+																<button
+																	class="roll-weapon"
+																	onclick={() => void rollWeapon(item, 'attack', profile)}
+																	disabled={rollingWeaponAction !== null}
+																	>🎲 {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
+																><button
+																	onclick={() => void rollWeapon(item, 'damage', profile)}
+																	disabled={rollingWeaponAction !== null ||
+																		!/^\d+d\d+/i.test(profile.damage)}
+																	>🎲 {$appLocale === 'en' ? 'Damage' : 'Dano'}</button
+																><button
+																	class="danger-button"
+																	onclick={() => removeWeaponAttackProfile(item, profile.id)}
+																	>×</button
+																>
+															</div>
+														</div>
+													</details>
+												{/each}
+											</div>
+										{/if}
 									</article>{/each}
 							</div>{:else}<p class="empty-inline">
 								{$appLocale === 'en'
@@ -2608,129 +2789,132 @@
 										></label
 									>{/each}
 							</div>{/if}
-						{#each weaponItems() as item (weaponKey(item))}<section class="weapon-variants">
-								<header>
-									<strong
-										>{item.name} · {$appLocale === 'en'
-											? 'Alternate attacks'
-											: 'Golpes alternativos'}</strong
-									>
-									<button
-										type="button"
-										class="secondary-button"
-										onclick={() => addWeaponAttackProfile(item)}
-										>+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}</button
-									>
-								</header>
-								{#each weaponAttackProfiles(item) as profile (profile.id)}<article
-										class="weapon-variant"
-									>
-										<div class="weapon-variant-heading">
-											<input
-												aria-label={$appLocale === 'en' ? 'Attack name' : 'Nome do golpe'}
-												value={profile.name}
+						{#if false}{#each weaponItems() as item (weaponKey(item))}<section
+									class="weapon-variants"
+								>
+									<header>
+										<strong
+											>{item.name} · {$appLocale === 'en'
+												? 'Alternate attacks'
+												: 'Golpes alternativos'}</strong
+										>
+										<button
+											type="button"
+											class="secondary-button"
+											onclick={() => addWeaponAttackProfile(item)}
+											>+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}</button
+										>
+									</header>
+									{#each weaponAttackProfiles(item) as profile (profile.id)}<article
+											class="weapon-variant"
+										>
+											<div class="weapon-variant-heading">
+												<input
+													aria-label={$appLocale === 'en' ? 'Attack name' : 'Nome do golpe'}
+													value={profile.name}
+													oninput={(event) => {
+														profile.name = event.currentTarget.value;
+														syncTokenSoon();
+													}}
+												/>
+												<button
+													type="button"
+													class="danger-button"
+													onclick={() => removeWeaponAttackProfile(item, profile.id)}
+													aria-label={$appLocale === 'en' ? 'Remove attack' : 'Remover golpe'}
+													>×</button
+												>
+											</div>
+											<textarea
+												value={profile.description}
 												oninput={(event) => {
-													profile.name = event.currentTarget.value;
+													profile.description = event.currentTarget.value;
 													syncTokenSoon();
 												}}
-											/>
-											<button
-												type="button"
-												class="danger-button"
-												onclick={() => removeWeaponAttackProfile(item, profile.id)}
-												aria-label={$appLocale === 'en' ? 'Remove attack' : 'Remover golpe'}
-												>×</button
-											>
-										</div>
-										<textarea
-											value={profile.description}
-											oninput={(event) => {
-												profile.description = event.currentTarget.value;
-												syncTokenSoon();
-											}}
-											placeholder={$appLocale === 'en'
-												? 'Ability or attack description'
-												: 'Descrição da habilidade ou do golpe'}></textarea>
-										<div class="weapon-combat-fields">
-											<label
-												>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
-													value={profile.attackAbility}
-													onchange={(event) => {
-														profile.attackAbility = event.currentTarget
-															.value as keyof Sheet['abilityScores'];
-														syncTokenSoon();
-													}}
-													>{#each attributes as attribute}<option value={attribute.key}
-															>{abilityLabel(attribute.key)}</option
-														>{/each}</select
-												></label
-											>
-											<label
-												>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}<input
-													type="number"
-													min="-10"
-													max="10"
-													value={profile.attackBonus}
-													oninput={(event) => {
-														profile.attackBonus = Number(event.currentTarget.value) || 0;
-														syncTokenSoon();
-													}}
-												/></label
-											>
-											<label
-												>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
-													value={profile.damage}
-													oninput={(event) => {
-														profile.damage = event.currentTarget.value;
-														syncTokenSoon();
-													}}
-												/></label
-											>
-											<label
-												>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
-													type="number"
-													min="-10"
-													max="10"
-													value={profile.damageBonus}
-													oninput={(event) => {
-														profile.damageBonus = Number(event.currentTarget.value) || 0;
-														syncTokenSoon();
-													}}
-												/></label
-											>
-										</div>
-										{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
-												class="weapon-rule-toggle"
-												><input
-													type="checkbox"
-													checked={profile.greatWeaponFighting}
-													onchange={(event) => {
-														profile.greatWeaponFighting = event.currentTarget.checked;
-														syncTokenSoon();
-													}}
-												/>{$appLocale === 'en'
-													? 'Great Weapon Fighting: damage dice 1–2 become 3'
-													: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
-											>{/if}
-										<div class="weapon-combat-actions">
-											<button
-												class="roll-weapon"
-												onclick={() => void rollWeapon(item, 'attack', profile)}
-												disabled={rollingWeaponAction !== null}
-												>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:attack`
-													? '…'
-													: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
-											>
-											<button
-												onclick={() => void rollWeapon(item, 'damage', profile)}
-												disabled={rollingWeaponAction !== null || !/^\d+d\d+/i.test(profile.damage)}
-												>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:damage`
-													? '…'
-													: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
-											>
-										</div>
-									</article>{/each}
-							</section>{/each}
+												placeholder={$appLocale === 'en'
+													? 'Ability or attack description'
+													: 'Descrição da habilidade ou do golpe'}></textarea>
+											<div class="weapon-combat-fields">
+												<label
+													>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
+														value={profile.attackAbility}
+														onchange={(event) => {
+															profile.attackAbility = event.currentTarget
+																.value as keyof Sheet['abilityScores'];
+															syncTokenSoon();
+														}}
+														>{#each attributes as attribute}<option value={attribute.key}
+																>{abilityLabel(attribute.key)}</option
+															>{/each}</select
+													></label
+												>
+												<label
+													>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}<input
+														type="number"
+														min="-10"
+														max="10"
+														value={profile.attackBonus}
+														oninput={(event) => {
+															profile.attackBonus = Number(event.currentTarget.value) || 0;
+															syncTokenSoon();
+														}}
+													/></label
+												>
+												<label
+													>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
+														value={profile.damage}
+														oninput={(event) => {
+															profile.damage = event.currentTarget.value;
+															syncTokenSoon();
+														}}
+													/></label
+												>
+												<label
+													>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+														type="number"
+														min="-10"
+														max="10"
+														value={profile.damageBonus}
+														oninput={(event) => {
+															profile.damageBonus = Number(event.currentTarget.value) || 0;
+															syncTokenSoon();
+														}}
+													/></label
+												>
+											</div>
+											{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
+													class="weapon-rule-toggle"
+													><input
+														type="checkbox"
+														checked={profile.greatWeaponFighting}
+														onchange={(event) => {
+															profile.greatWeaponFighting = event.currentTarget.checked;
+															syncTokenSoon();
+														}}
+													/>{$appLocale === 'en'
+														? 'Great Weapon Fighting: damage dice 1–2 become 3'
+														: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
+												>{/if}
+											<div class="weapon-combat-actions">
+												<button
+													class="roll-weapon"
+													onclick={() => void rollWeapon(item, 'attack', profile)}
+													disabled={rollingWeaponAction !== null}
+													>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:attack`
+														? '…'
+														: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
+												>
+												<button
+													onclick={() => void rollWeapon(item, 'damage', profile)}
+													disabled={rollingWeaponAction !== null ||
+														!/^\d+d\d+/i.test(profile.damage)}
+													>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:damage`
+														? '…'
+														: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
+												>
+											</div>
+										</article>{/each}
+								</section>{/each}{/if}
 					</section>
 					<section class="combat-attacks">
 						<div class="section-title">
@@ -3062,6 +3246,20 @@
 													>{circleLabel(spell.level)} · {expandedSpell === index ? '⌃' : '⌄'}</span
 												></button
 											>{#if expandedSpell === index}<div class="spell-details">
+													<label
+														>{$appLocale === 'en' ? 'Spell source' : 'Origem da magia'}
+														<select bind:value={spell.origin}>
+															<option value="class"
+																>{$appLocale === 'en' ? 'Class' : 'Classe'}</option
+															>
+															<option value="species"
+																>{$appLocale === 'en' ? 'Species / race' : 'Raça'}</option
+															>
+															<option value="feat"
+																>{$appLocale === 'en' ? 'Feat' : 'Talento'}</option
+															>
+														</select>
+													</label>
 													<label
 														>{$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}<input
 															bind:value={spell.name}
@@ -3733,7 +3931,7 @@
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;
-		inset: 0;
+		inset: 0 0 4.8rem;
 		display: grid;
 		place-items: center;
 		padding: 1rem;
@@ -3751,12 +3949,13 @@
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
 		top: 5.8rem;
+		bottom: 4.8rem;
 		left: 1rem;
 		width: min(390px, calc(100vw - 2rem));
 		min-width: min(320px, calc(100vw - 2rem));
 		max-width: calc(100vw - 1rem);
 		min-height: 320px;
-		max-height: calc(100vh - 7rem);
+		max-height: calc(100dvh - 10.6rem);
 		resize: both;
 		overflow: auto;
 		pointer-events: auto;
@@ -3779,7 +3978,7 @@
 	}
 	.sheet {
 		width: min(100%, 940px);
-		max-height: min(92vh, 900px);
+		max-height: min(calc(100dvh - 6rem), 900px);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -3916,8 +4115,25 @@
 		gap: 0.5rem;
 	}
 	.initiative-roll {
+		border: 1px solid #8c6d43;
+		border-radius: 7px;
+		padding: 0.45rem 0.7rem;
+		color: #f5e4c0;
+		background: linear-gradient(180deg, #423126, #2b211c);
+		font-family: inherit;
+		font-size: 0.75rem;
+		font-weight: 650;
 		min-height: 2.35rem;
 		white-space: nowrap;
+		cursor: pointer;
+	}
+	.initiative-roll:hover:not(:disabled) {
+		border-color: #d8ad67;
+		background: #493020;
+	}
+	.initiative-roll:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 	.initiative-advantage-toggle {
 		display: flex;
@@ -4379,7 +4595,7 @@
 	}
 	.weapon-combat-list {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+		grid-template-columns: minmax(0, 1fr);
 		gap: 0.65rem;
 	}
 	.weapon-combat-card {
@@ -4502,6 +4718,76 @@
 	}
 	.weapon-proficiency.unproficient {
 		color: #e3a09a;
+	}
+	.weapon-proficiency-override {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: #c5b5a5;
+		font-size: 0.72rem;
+	}
+	.weapon-proficiency-override input {
+		accent-color: #d8ad67;
+	}
+	.weapon-profile-list,
+	.weapon-profile-fields {
+		display: grid;
+		gap: 0.5rem;
+	}
+	.weapon-profile-list > button {
+		justify-self: start;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.4rem 0.65rem;
+		color: #f0d29d;
+		background: #2b211c;
+		font: inherit;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+	.weapon-profile {
+		padding: 0.5rem;
+		border: 1px solid #4f433d;
+		border-radius: 7px;
+		background: #211b1e;
+	}
+	.weapon-profile summary {
+		color: #e8c786;
+		cursor: pointer;
+	}
+	.weapon-profile-fields {
+		margin-top: 0.55rem;
+	}
+	.weapon-profile-fields input,
+	.weapon-profile-fields textarea,
+	.weapon-profile-fields select {
+		min-width: 0;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.45rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.granted-spells {
+		grid-column: 1 / -1;
+		display: grid;
+		gap: 0.4rem;
+		padding-top: 0.65rem;
+		border-top: 1px solid #493c39;
+	}
+	.granted-spells h4 {
+		margin: 0;
+		color: #e8c786;
+	}
+	.granted-spells > div {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.granted-spells span {
+		color: #bcae9f;
+		font-size: 0.76rem;
 	}
 	.weapon-combat-summary {
 		color: #b9aa9b;
@@ -4871,12 +5157,13 @@
 	}
 	@media (max-width: 700px) {
 		.sheet-backdrop {
+			inset-block-end: 6.8rem;
 			padding: 0;
 		}
 		.sheet {
 			width: 100%;
-			max-height: 100dvh;
-			height: 100dvh;
+			max-height: calc(100dvh - 6.8rem);
+			height: calc(100dvh - 6.8rem);
 			border: 0;
 			border-radius: 0;
 		}
@@ -4968,6 +5255,13 @@
 		}
 		.spell-picker {
 			grid-template-columns: 1fr;
+		}
+	}
+	@media (max-width: 700px) {
+		.sheet-backdrop.docked .sheet {
+			bottom: 6.8rem;
+			height: auto;
+			max-height: calc(100dvh - 12.6rem);
 		}
 	}
 </style>

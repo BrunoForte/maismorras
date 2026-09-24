@@ -7,6 +7,21 @@ export type AudioPlaybackState = {
 	revision?: number;
 };
 
+export type AudioAssetKind = 'music' | 'effect';
+
+/** Legacy audio files remain music; new uploads carry an explicit, path-stable kind prefix. */
+export function audioAssetKind(name: string): AudioAssetKind {
+	return /(?:^|[-/])(?:effect|sfx)__/.test(name) ? 'effect' : 'music';
+}
+
+export function audioAssetDisplayName(name: string): string {
+	return name
+		.split('/')
+		.at(-1)!
+		.replace(/^[a-f0-9-]+-/, '')
+		.replace(/^(?:effect|sfx|music)__/, '');
+}
+
 /** Applies a listener's local output preference without changing shared scene state. */
 export function withListenerVolume(
 	state: AudioPlaybackState,

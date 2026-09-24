@@ -43,7 +43,7 @@
 			setTimeout(() => {
 				revealTimers.delete(messageId);
 				revealedRollIds.add(messageId);
-			}, 2500)
+			}, 0)
 		);
 	};
 	let visibleMessages = $derived(
@@ -84,6 +84,7 @@
 				for (const message of nextMessages) {
 					if (knownMessageIds.has(message.id)) continue;
 					knownMessageIds.add(message.id);
+					if ($chatMensagens.some((current) => current.id === message.id)) continue;
 					if (message.tipo === 'rolagem') queueRollReveal(message.id);
 					if (message.tipo === 'rolagem' && message.detalhesRolagem)
 						$diceOverlay = {

@@ -88,6 +88,7 @@
 					detalhesRolagem: result
 				}
 			];
+			sceneSocket?.publishChatUpdated();
 			$diceOverlay = { expression: result.expressao, total: result.total, dice: result.dados };
 		} finally {
 			rolling = false;

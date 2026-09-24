@@ -926,6 +926,7 @@
 					}
 				}
 			];
+			sceneSocket?.publishChatUpdated();
 			sceneSocket?.publishRefresh();
 		} catch (error) {
 			persistenceError =
@@ -958,6 +959,7 @@
 					}
 				}
 			];
+			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name}`,
 				total: attack.total,
@@ -990,6 +992,7 @@
 					}
 				}
 			];
+			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name} · dano`,
 				total: damage.total,
@@ -1303,6 +1306,7 @@
 				>{/if}
 			{#if isGM || personagemSelecionado.isOwned}<div class="token-rolls">
 					<span>{$appLocale === 'en' ? 'Token rolls' : 'Rolagem do token'}</span><button
+						class="token-initiative-button"
 						onclick={() => void rollSelectedInitiative()}
 						>⚔️ {$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}</button
 					>
@@ -1996,6 +2000,20 @@
 		background: #2b211c;
 		font-size: 0.68rem;
 		cursor: pointer;
+	}
+	.token-rolls .token-initiative-button {
+		min-height: 2.25rem;
+		border-color: #8c6d43;
+		border-radius: 7px;
+		padding: 0.45rem 0.7rem;
+		color: #f5e4c0;
+		background: linear-gradient(180deg, #423126, #2b211c);
+		font-size: 0.75rem;
+		font-weight: 650;
+	}
+	.token-rolls .token-initiative-button:hover:not(:disabled) {
+		border-color: #d8ad67;
+		background: #493020;
 	}
 	.npc-actions {
 		display: grid;
