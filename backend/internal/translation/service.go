@@ -89,6 +89,10 @@ func (s *Service) Translate(ctx context.Context, fields map[string]string) (map[
 		return nil, fmt.Errorf("translation provider returned an incomplete field set")
 	}
 	for key := range fields {
+		// PostgreSQL JSONB cannot store U+0000. Some translation responses
+		// occasionally include it in generated text; remove it before the
+		// repository serializes the translation for persistence.
+		translated[key] = strings.ReplaceAll(translated[key], "\x00", "")
 		if strings.TrimSpace(translated[key]) == "" {
 			return nil, fmt.Errorf("translation provider returned an empty translation for %q", key)
 		}

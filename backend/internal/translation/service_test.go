@@ -31,6 +31,23 @@ func TestTranslatePreservesFieldContract(t *testing.T) {
 	}
 }
 
+func TestTranslateRemovesNullCharactersRejectedByPostgresJSONB(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"pt-BR\":\"Bênção\\u0000 dimensional\"}"}}]}`))
+	}))
+	defer server.Close()
+
+	service := NewService(server.Client(), server.URL, "sk_test", "openai-fast")
+	translated, err := service.Translate(context.Background(), map[string]string{"pt-BR": "Boon of Dimensional Travel"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if translated["pt-BR"] != "Bênção dimensional" {
+		t.Fatalf("translation = %q, want NUL-free text", translated["pt-BR"])
+	}
+}
+
 func TestTranslateRequiresConfiguration(t *testing.T) {
 	service := NewService(http.DefaultClient, "", "", "")
 	if _, err := service.Translate(context.Background(), map[string]string{"pt-BR": "Wizard"}); err != ErrNotConfigured {
