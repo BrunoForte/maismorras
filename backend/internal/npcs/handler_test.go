@@ -36,3 +36,29 @@ func TestValidateNPCStatBlock(t *testing.T) {
 		t.Fatal("expected invalid save DC to be rejected")
 	}
 }
+
+func TestValidateNPCClassLevelAndGender(t *testing.T) {
+	valid := Sheet{HitPointsCurrent: 8, HitPointsMax: 8, ArmorClass: 13, Size: 1, Color: 1, ClassName: "ladino", Level: 5, Gender: "feminino"}
+	if err := validate("Batedora", valid); err != nil {
+		t.Fatalf("expected generated NPC metadata to be valid, got %v", err)
+	}
+
+	for _, tc := range []struct {
+		label string
+		edit  func(*Sheet)
+	}{
+		{"level over 20", func(sheet *Sheet) { sheet.Level = 21 }},
+		{"class without level", func(sheet *Sheet) { sheet.Level = 0 }},
+		{"negative level", func(sheet *Sheet) { sheet.Level = -1 }},
+		{"unknown class", func(sheet *Sheet) { sheet.ClassName = "classe-inventada" }},
+		{"unresolved unisex", func(sheet *Sheet) { sheet.Gender = "unissex" }},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			sheet := valid
+			tc.edit(&sheet)
+			if err := validate("Batedora", sheet); err == nil {
+				t.Fatalf("expected %s to be rejected", tc.label)
+			}
+		})
+	}
+}

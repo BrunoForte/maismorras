@@ -18,6 +18,9 @@ var (
 // Sheet holds only the combat data that is useful to create and run an NPC token.
 // Narrative detail remains in the NPC's notes, avoiding a second full character-sheet format.
 type Sheet struct {
+	ClassName        string    `json:"className,omitempty"`
+	Level            int       `json:"level,omitempty"`
+	Gender           string    `json:"gender,omitempty"`
 	HitPointsCurrent int       `json:"hitPointsCurrent"`
 	HitPointsMax     int       `json:"hitPointsMax"`
 	ArmorClass       int       `json:"armorClass"`

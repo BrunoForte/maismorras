@@ -481,6 +481,8 @@
 		overflow: hidden;
 	}
 	.live-overlay {
+		position: relative;
+		isolation: isolate;
 		min-height: 100dvh;
 		padding: clamp(1rem, 3vw, 2.8rem);
 		color: #f7eedf;
@@ -506,9 +508,14 @@
 		border: var(--overlay-border-width, 0) solid var(--overlay-border, transparent);
 		box-shadow: var(--overlay-shadow, none);
 	}
+	.overlay-header {
+		position: relative;
+		z-index: 50;
+	}
 	.map-preview {
 		position: relative;
 		isolation: isolate;
+		z-index: 20;
 		width: min(1100px, 100%);
 		height: min(60dvh, 680px);
 		margin: 0 auto;
@@ -522,7 +529,7 @@
 	.map-grid {
 		position: absolute;
 		inset: 0;
-		z-index: -1;
+		z-index: 0;
 		background-image:
 			linear-gradient(#d8ad6733 1px, transparent 1px),
 			linear-gradient(90deg, #d8ad6733 1px, transparent 1px);
@@ -530,6 +537,7 @@
 	}
 	.map-token {
 		position: absolute;
+		z-index: 1;
 		display: grid;
 		place-items: center;
 		border: 2px solid #f7dfaa;
@@ -569,6 +577,8 @@
 	}
 	.token-strip,
 	.roll-feed {
+		position: relative;
+		z-index: 30;
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.55rem;
@@ -612,6 +622,7 @@
 	}
 	.roll-feed {
 		justify-content: end;
+		z-index: 60;
 	}
 	.roll-item {
 		min-width: 7.5rem;
@@ -635,6 +646,8 @@
 		cursor: pointer;
 	}
 	.camera-grid {
+		position: relative;
+		z-index: 10;
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.6rem;

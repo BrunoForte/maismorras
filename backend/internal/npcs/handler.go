@@ -73,10 +73,24 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 func validate(name string, sheet Sheet) error {
-	if name == "" || len([]rune(name)) > 120 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Size < 1 || sheet.Size > 6 || sheet.Color < 0 || sheet.Color > 16777215 || len(sheet.Traits) > 20 || len(sheet.Actions) > 30 || !validStatBlock(sheet) {
+	invalidLevel := sheet.Level < 0 || sheet.Level > 20 || (sheet.ClassName != "" && sheet.Level == 0)
+	invalidGender := sheet.Gender != "" && sheet.Gender != "masculino" && sheet.Gender != "feminino"
+	if name == "" || len([]rune(name)) > 120 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Size < 1 || sheet.Size > 6 || sheet.Color < 0 || sheet.Color > 16777215 || len(sheet.Traits) > 20 || len(sheet.Actions) > 30 || !validNPCClass(sheet.ClassName) || invalidLevel || invalidGender || !validStatBlock(sheet) {
 		return apperror.BadRequest("INVALID_NPC", "Confira nome, PV, CA, tamanho e cor do NPC.")
 	}
 	return nil
+}
+
+func validNPCClass(className string) bool {
+	if className == "" {
+		return true // NPCs existentes sem metadados de classe continuam compatíveis.
+	}
+	switch className {
+	case "barbaro", "bardo", "clerigo", "druida", "feiticeiro", "guerreiro", "ladino", "mago", "monge", "paladino", "patrulheiro", "bruxo":
+		return true
+	default:
+		return false
+	}
 }
 func validStatBlock(sheet Sheet) bool {
 	for _, score := range []int{sheet.Abilities.Strength, sheet.Abilities.Dexterity, sheet.Abilities.Constitution, sheet.Abilities.Intelligence, sheet.Abilities.Wisdom, sheet.Abilities.Charisma} {

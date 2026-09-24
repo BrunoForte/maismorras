@@ -6,6 +6,9 @@ export type NPC = {
 	campaignId: string;
 	name: string;
 	sheet: {
+		className?: string;
+		level?: number;
+		gender?: 'masculino' | 'feminino';
 		hitPointsCurrent: number;
 		hitPointsMax: number;
 		armorClass: number;
