@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CrossfadeAudio } from './audioPlayback';
+import { CrossfadeAudio, withListenerVolume } from './audioPlayback';
 
 function audioElement(initialVolume: number) {
 	let volume = initialVolume;
@@ -29,6 +29,14 @@ afterEach(() => {
 });
 
 describe('CrossfadeAudio', () => {
+	it('applies personal output volume without mutating the shared audio state', () => {
+		const shared = { path: 'music.mp3', playing: true, volume: 0.8, positionMs: 0, startedAt: 10 };
+		expect(withListenerVolume(shared, 50).volume).toBe(0.4);
+		expect(withListenerVolume(shared, 150).volume).toBe(0.8);
+		expect(withListenerVolume(shared, -10).volume).toBe(0);
+		expect(shared.volume).toBe(0.8);
+	});
+
 	it('clamps fade progress when an animation frame timestamp precedes its start', async () => {
 		const element = audioElement(1);
 		const frames: FrameRequestCallback[] = [];

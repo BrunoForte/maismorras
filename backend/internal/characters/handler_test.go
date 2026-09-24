@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -136,5 +137,30 @@ func TestValidateAcceptsSpeciesLineage(t *testing.T) {
 	sheet.SpeciesLineage = "Drow"
 	if err := validate(sheet); err != nil {
 		t.Fatalf("expected lineage to be valid, got %v", err)
+	}
+}
+
+func TestInventoryWeaponAbilitySurvivesSheetJSONRoundTrip(t *testing.T) {
+	sheet := validSheet()
+	sheet.Inventory = []InventoryItem{{
+		EntryID:  "longbow",
+		Name:     "Arco longo",
+		Quantity: 1,
+		Rules:    json.RawMessage(`{"category":"weapon","attackAbility":"dexterity"}`),
+	}}
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		t.Fatalf("marshal sheet: %v", err)
+	}
+	var restored Sheet
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatalf("unmarshal sheet: %v", err)
+	}
+	var rules map[string]any
+	if err := json.Unmarshal(restored.Inventory[0].Rules, &rules); err != nil {
+		t.Fatalf("unmarshal item rules: %v", err)
+	}
+	if got := rules["attackAbility"]; got != "dexterity" {
+		t.Fatalf("attack ability = %v, want dexterity", got)
 	}
 }

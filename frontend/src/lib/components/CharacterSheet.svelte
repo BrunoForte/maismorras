@@ -111,6 +111,8 @@
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
+	let sheetEditRevision = 0;
+	let saveQueued = false;
 	let minimized = $state(false);
 	let activeConditions = $state<string[]>([]);
 	let previousLevel = $state(1);
@@ -705,7 +707,9 @@
 		sheet.inventory.reduce((total, item) => total + itemWeight(item), 0);
 	const weaponRange = (item: InventoryItem): 'melee' | 'ranged' => {
 		const type = `${String(item.rules.attackType ?? '')} ${String(item.rules.category ?? '')} ${String(item.rules.range ?? '')}`;
-		return /ranged|à distância|distancia/i.test(type) ? 'ranged' : 'melee';
+		return /ranged|à distância|distancia|arco|besta|zarabatana/i.test(`${type} ${item.name}`)
+			? 'ranged'
+			: 'melee';
 	};
 	const weaponAbility = (item: InventoryItem) => {
 		const value = String(item.rules.attackAbility ?? '');
@@ -1272,7 +1276,9 @@
 				name: optionLabel(entry),
 				quantity: 1,
 				equipped: false,
-				rules: entry.rules
+				// Inventory keeps a private snapshot: editing an equipped item must not
+				// mutate the shared compendium object (and then be overwritten on refresh).
+				rules: structuredClone(entry.rules ?? {})
 			}
 		];
 		selectedItemId = '';
@@ -1791,16 +1797,23 @@
 		sheet.spells = sheet.spells.filter((_, i) => i !== index);
 	}
 	async function save() {
+		if (saving) {
+			saveQueued = true;
+			return;
+		}
 		saving = true;
 		message = '';
+		const savedRevision = sheetEditRevision;
 		try {
 			// CA is derived from the authoritative sheet data; never persist a manual override.
 			sheet.armorClass = calculatedArmorClass();
+			const snapshot = JSON.parse(JSON.stringify(sheet)) as Sheet;
 			const savedCharacter = characterId
-				? await saveCharacterForGM(session, campaignId, characterId, sheet)
-				: await saveMyCharacter(session, campaignId, sheet);
+				? await saveCharacterForGM(session, campaignId, characterId, snapshot)
+				: await saveMyCharacter(session, campaignId, snapshot);
 			resolvedCharacterId = savedCharacter.id;
-			sheet = savedCharacter.sheet;
+			// A slow response must not erase edits made while that request was in flight.
+			if (sheetEditRevision === savedRevision) sheet = savedCharacter.sheet;
 			isNewCharacter = false;
 			message = 'Ficha salva.';
 			onTokenCreated();
@@ -1808,12 +1821,19 @@
 			message = error instanceof Error ? error.message : 'Não foi possível salvar a ficha.';
 		} finally {
 			saving = false;
+			if (saveQueued || sheetEditRevision !== savedRevision) {
+				saveQueued = false;
+				if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
+				tokenSyncTimer = setTimeout(() => void save(), 0);
+			}
 		}
 	}
 	function syncTokenSoon() {
+		sheetEditRevision += 1;
 		if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
 		tokenSyncTimer = setTimeout(() => {
-			if (!saving) void save();
+			if (saving) saveQueued = true;
+			else void save();
 		}, 450);
 	}
 	async function createBoardToken() {
@@ -2363,7 +2383,10 @@
 													<select
 														value={weaponAbility(item)}
 														onchange={(event) => {
-															item.rules.attackAbility = event.currentTarget.value;
+															item.rules = {
+																...item.rules,
+																attackAbility: event.currentTarget.value
+															};
 															syncTokenSoon();
 														}}
 													>

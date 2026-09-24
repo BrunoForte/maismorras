@@ -7,6 +7,18 @@ export type AudioPlaybackState = {
 	revision?: number;
 };
 
+/** Applies a listener's local output preference without changing shared scene state. */
+export function withListenerVolume(
+	state: AudioPlaybackState,
+	listenerPercent: number
+): AudioPlaybackState {
+	const local = Math.max(
+		0,
+		Math.min(100, Number.isFinite(listenerPercent) ? listenerPercent : 100)
+	);
+	return { ...state, volume: Math.max(0, Math.min(1, state.volume * (local / 100))) };
+}
+
 /** Crossfades two HTMLAudioElements without replacing the active source on refreshes. */
 export class CrossfadeAudio {
 	private activeIndex = 0;

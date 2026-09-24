@@ -5,7 +5,7 @@
 	import { loadScene, updateScene } from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import type { AudioPlaybackState } from '$lib/services/audioPlayback';
-	import { CrossfadeAudio } from '$lib/services/audioPlayback';
+	import { CrossfadeAudio, withListenerVolume } from '$lib/services/audioPlayback';
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
@@ -22,7 +22,10 @@
 	let sceneSocket: SceneSocket | null = null;
 	let playback: CrossfadeAudio | null = null;
 	let lastState: AudioPlaybackState | null = null;
-	const targetVolume = (value = scene.ambientAudioVolume) => Math.max(0, Math.min(1, value / 100));
+	let listenerVolume = $state(100);
+	const targetVolume = (value?: number) =>
+		Math.max(0, Math.min(1, (value ?? scene.ambientAudioVolume) / 100));
+	const volumeStorageKey = () => `maismorras-audio-volume:${scene.campaignId}:${session.user.id}`;
 
 	function stateFromScene(value: Scene): AudioPlaybackState {
 		return {
@@ -42,8 +45,21 @@
 	async function applyState(state: AudioPlaybackState) {
 		lastState = state;
 		if (!playback) return;
-		const applied = await playback.apply(state, signed);
+		const applied = await playback.apply(withListenerVolume(state, listenerVolume), signed);
 		needsGesture = state.playing && !applied;
+	}
+
+	function setListenerVolume(event: Event) {
+		listenerVolume = Math.max(
+			0,
+			Math.min(100, Number((event.currentTarget as HTMLInputElement).value) || 0)
+		);
+		try {
+			localStorage.setItem(volumeStorageKey(), String(listenerVolume));
+		} catch {
+			// Audio volume remains usable when browser storage is disabled.
+		}
+		if (lastState) void applyState(lastState);
 	}
 
 	async function refreshScene() {
@@ -159,6 +175,12 @@
 	}
 
 	onMount(() => {
+		try {
+			const storedVolume = Number(localStorage.getItem(volumeStorageKey()));
+			if (Number.isFinite(storedVolume)) listenerVolume = Math.max(0, Math.min(100, storedVolume));
+		} catch {
+			// Keep the default personal volume if browser storage is disabled.
+		}
 		const first = document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
 		const second = document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null;
 		if (first && second) playback = new CrossfadeAudio([first, second]);
@@ -205,15 +227,27 @@
 			>
 			{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
 		</select>
-		{#if scene.ambientAudioPath}<div class="gm-status">
-				<strong
-					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
-						'Música selecionada'}</strong
-				>
-				<button onclick={() => void toggle()}
+		<div class="gm-status">
+			<strong
+				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
+					($appLocale === 'en' ? 'No music selected' : 'Nenhuma música selecionada')}</strong
+			>
+			{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
 					>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
-				>
-			</div>{/if}
+				>{/if}
+			<label class="volume-control">
+				<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
+				<input
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={listenerVolume}
+					oninput={setListenerVolume}
+				/>
+				<output>{listenerVolume}%</output>
+			</label>
+		</div>
 	{:else}<div class="listener-status">
 			<strong
 				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
@@ -222,6 +256,18 @@
 			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 					>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 				>{/if}
+			<label class="volume-control">
+				<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
+				<input
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={listenerVolume}
+					oninput={setListenerVolume}
+				/>
+				<output>{listenerVolume}%</output>
+			</label>
 		</div>{/if}
 </div>
 
@@ -263,7 +309,7 @@
 		color: #eee4d6;
 	}
 	.listener-status {
-		pointer-events: none;
+		pointer-events: auto;
 	}
 	.listener-status strong,
 	.gm-status strong {
@@ -281,6 +327,23 @@
 		font-weight: 700;
 		pointer-events: auto;
 	}
+	.volume-control {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		min-width: 8rem;
+		color: #eee4d6;
+		font-size: 0.78rem;
+	}
+	.volume-control input {
+		width: clamp(4rem, 9vw, 8rem);
+		accent-color: #e0b86f;
+	}
+	.volume-control output {
+		min-width: 2.5em;
+		text-align: end;
+		font-variant-numeric: tabular-nums;
+	}
 	@media (max-width: 600px) {
 		.ambient-player {
 			flex-wrap: wrap;
@@ -290,6 +353,14 @@
 		}
 		.gm-status {
 			width: 100%;
+			flex-wrap: wrap;
+		}
+		.volume-control {
+			flex: 1 1 100%;
+		}
+		.volume-control input {
+			flex: 1;
+			width: auto;
 		}
 	}
 </style>
