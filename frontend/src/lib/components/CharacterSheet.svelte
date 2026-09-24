@@ -2044,35 +2044,37 @@
 					</section>
 					<section class="profile-combat-fields">
 						<h3>{$appLocale === 'en' ? 'Combat profile' : 'Perfil de combate'}</h3>
-						<label
-							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
-								type="number"
-								min="-20"
-								max="20"
-								bind:value={sheet.initiative}
-								oninput={syncTokenSoon}
-							/>
-						</label>
-						<div class="initiative-roll-control">
+						<div class="initiative-bonus-control">
+							<label
+								>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
+									type="number"
+									min="-20"
+									max="20"
+									bind:value={sheet.initiative}
+									oninput={syncTokenSoon}
+								/>
+							</label>
 							<label class="initiative-advantage-toggle">
 								<input
 									type="checkbox"
+									class="switch-input"
 									checked={sheet.initiativeAdvantage ?? false}
 									onchange={(event) => void setInitiativeAdvantage(event.currentTarget.checked)}
 								/>
+								<span class="switch-track" aria-hidden="true"></span>
 								{$appLocale === 'en'
 									? 'Advantage on next initiative'
 									: 'Vantagem na próxima iniciativa'}
 							</label>
-							<button
-								type="button"
-								class="secondary-button"
-								onclick={() => void rollSheetInitiative()}
-								disabled={!initiativeTokenId}
-							>
-								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
-							</button>
 						</div>
+						<button
+							type="button"
+							class="secondary-button"
+							onclick={() => void rollSheetInitiative()}
+							disabled={!initiativeTokenId}
+						>
+							{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
+						</button>
 						<label>
 							>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
 								type="number"
@@ -3499,18 +3501,67 @@
 		grid-column: 1 / -1;
 		margin: 0;
 	}
-	.initiative-roll-control {
-		grid-column: 1 / -1;
-		display: flex;
+	.initiative-bonus-control {
+		grid-column: span 2;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(110px, max-content);
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.65rem;
-		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
 	.initiative-advantage-toggle {
 		display: flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.5rem;
+		font-size: 0.78rem;
+		cursor: pointer;
+	}
+	.initiative-advantage-toggle .switch-input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		clip-path: inset(50%);
+	}
+	.switch-track {
+		position: relative;
+		flex: 0 0 auto;
+		width: 2.25rem;
+		height: 1.25rem;
+		border: 1px solid #80603b;
+		border-radius: 999px;
+		background: #30282a;
+		transition:
+			background 140ms ease,
+			border-color 140ms ease;
+	}
+	.switch-track::after {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 0.95rem;
+		height: 0.95rem;
+		border-radius: 50%;
+		background: #c6b8ac;
+		content: '';
+		transition:
+			transform 140ms ease,
+			background 140ms ease;
+	}
+	.switch-input:checked + .switch-track {
+		border-color: #c89655;
+		background: #684829;
+	}
+	.switch-input:checked + .switch-track::after {
+		transform: translateX(1rem);
+		background: #ffe0a5;
+	}
+	.switch-input:focus-visible + .switch-track {
+		outline: 2px solid #f2d49a;
+		outline-offset: 2px;
 	}
 	.combat h3 {
 		grid-column: 1 / -1;

@@ -19,6 +19,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale, distanceText } from '$lib/stores/locale';
+	import { srdTranslationQueue, startSrdTranslationQueue } from '$lib/services/srdTranslationQueue';
 	let {
 		campaignId,
 		sceneId = null,
@@ -588,42 +589,34 @@
 			message = 'As entradas SRD já possuem tradução ou não têm texto para traduzir.';
 			return;
 		}
-		batchTranslating = true;
 		message = '';
-		let completed = 0;
-		let failedEntry: CompendiumEntry | null = null;
-		let failureMessage = '';
-		try {
-			for (let index = 0; index < pending.length; index += 1) {
-				const entry = pending[index];
-				batchProgress = `${index + 1}/${pending.length} · ${displayName(entry)}`;
-				try {
-					const updated = await translateCompendiumEntry(session, campaignId, entry.id);
-					entries = entries.map((item) => (item.id === updated.id ? updated : item));
-					completed += 1;
-				} catch (error) {
-					failedEntry = entry;
-					failureMessage =
-						error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')
-							? 'A requisição foi interrompida ou excedeu o tempo limite.'
-							: error instanceof Error
-								? error.message
-								: 'Falha do provedor de tradução.';
-					break;
-				}
-			}
-			message = failedEntry
-				? `Lote pausado em “${displayName(failedEntry)}” após ${completed}/${pending.length} tradução(ões). As concluídas foram salvas; tente novamente após corrigir: ${failureMessage}`
-				: `Tradução concluída para ${completed} entrada(s) SRD.`;
-		} catch (error) {
-			message =
-				error instanceof Error ? error.message : 'Não foi possível concluir a tradução em lote.';
-		} finally {
-			batchTranslating = false;
-			batchProgress = '';
-		}
+		await startSrdTranslationQueue(
+			campaignId,
+			pending,
+			(entry) => translateCompendiumEntry(session, campaignId, entry.id),
+			displayName
+		);
 	}
-	onMount(() => void load());
+	onMount(() => {
+		void load();
+		return srdTranslationQueue.subscribe((state) => {
+			if (state.campaignId !== campaignId) return;
+			batchTranslating = state.status === 'running';
+			batchProgress =
+				state.status === 'running'
+					? `${Math.min(state.completed + 1, state.total)}/${state.total} · ${state.currentName}`
+					: '';
+			if (state.updatedEntry) {
+				entries = entries.map((item) =>
+					item.id === state.updatedEntry?.id ? state.updatedEntry : item
+				);
+			}
+			if (state.status === 'completed')
+				message = `Tradução concluída para ${state.completed} entrada(s) SRD.`;
+			else if (state.status === 'failed')
+				message = `Lote pausado em “${state.currentName}” após ${state.completed}/${state.total} tradução(ões). As concluídas foram salvas; tente novamente após corrigir: ${state.error}`;
+		});
+	});
 </script>
 
 <main class="compendium">

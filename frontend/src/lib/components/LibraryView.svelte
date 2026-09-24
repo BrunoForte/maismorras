@@ -46,7 +46,8 @@
 	let assetFilter = $state<'all' | 'image' | 'map' | 'audio' | 'document'>('all');
 	let handoutTitle = $state('');
 	let handoutBody = $state('');
-	let handoutVisibility = $state<'gm' | 'players'>('players');
+	let handoutAudience = $state<'gm' | 'all' | 'selected'>('all');
+	let handoutUserIds = $state<string[]>([]);
 	let message = $state('');
 	let preview = $state<Asset | null>(null);
 	let draggingFiles = $state(false);
@@ -68,8 +69,8 @@
 			handouts = (
 				await request<{ notes: Handout[] }>(session, `/api/v1/campaigns/${campaignId}/notes`)
 			).notes;
-		} catch {
-			message = '';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível carregar os handouts.';
 		}
 	}
 	async function saveHandout() {
@@ -87,30 +88,75 @@
 					body: JSON.stringify({
 						title: handoutTitle.trim(),
 						body: handoutBody,
-						visibility: handoutVisibility
+						visibility: 'gm'
 					})
 				}
 			);
+			if (handoutAudience !== 'gm') {
+				await saveLibraryPermissions(
+					session,
+					campaignId,
+					'note',
+					handout.id,
+					handoutAudience === 'selected' ? handoutUserIds : [],
+					handoutAudience === 'selected'
+				);
+				handout.visibility = 'players';
+			}
 			handouts = editingHandoutId
 				? handouts.map((item) => (item.id === handout.id ? handout : item))
 				: [handout, ...handouts];
 			handoutTitle = '';
 			handoutBody = '';
-			handoutVisibility = 'players';
+			handoutAudience = 'all';
+			handoutUserIds = [];
 			editingHandoutId = null;
 			handoutOpen = false;
-		} catch {
-			message = '';
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível salvar o handout.';
+			await loadHandouts();
 		} finally {
 			savingHandout = false;
 		}
 	}
-	function editHandout(handout: Handout) {
+	async function editHandout(handout: Handout) {
 		editingHandoutId = handout.id;
 		handoutTitle = handout.title;
 		handoutBody = handout.body;
-		handoutVisibility = handout.visibility;
-		handoutOpen = true;
+		handoutAudience = handout.visibility === 'gm' ? 'gm' : 'all';
+		handoutUserIds = [];
+		try {
+			const [roster, access] = await Promise.all([
+				listParticipants(session, campaignId),
+				handout.visibility === 'players'
+					? loadLibraryPermissions(session, campaignId, 'note', handout.id)
+					: Promise.resolve(null)
+			]);
+			participants = roster.participants.filter((participant) => participant.role === 'player');
+			if (access?.restricted) {
+				handoutAudience = 'selected';
+				handoutUserIds = access.userIds;
+			}
+			handoutOpen = true;
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível carregar jogadores da mesa.';
+		}
+	}
+	async function openNewHandout() {
+		editingHandoutId = null;
+		handoutTitle = '';
+		handoutBody = '';
+		handoutAudience = 'all';
+		handoutUserIds = [];
+		try {
+			const roster = await listParticipants(session, campaignId);
+			participants = roster.participants.filter((participant) => participant.role === 'player');
+			handoutOpen = true;
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível carregar jogadores da mesa.';
+		}
 	}
 	async function editPermissions(itemType: 'asset' | 'note', itemKey: string, label: string) {
 		if (!isGM) return;
@@ -124,8 +170,9 @@
 			permissionUsers = current.userIds;
 			permissionRestricted = current.restricted;
 			participants = roster.participants.filter((participant) => participant.role === 'player');
-		} catch {
-			message = '';
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível carregar as permissões do item.';
 			permissionDialog = null;
 		} finally {
 			loadingPermissions = false;
@@ -135,6 +182,11 @@
 		permissionUsers = permissionUsers.includes(userId)
 			? permissionUsers.filter((id) => id !== userId)
 			: [...permissionUsers, userId];
+	}
+	function toggleHandoutUser(userId: string) {
+		handoutUserIds = handoutUserIds.includes(userId)
+			? handoutUserIds.filter((id) => id !== userId)
+			: [...handoutUserIds, userId];
 	}
 	async function savePermissionSelection() {
 		if (!permissionDialog || savingPermissions) return;
@@ -154,8 +206,9 @@
 				);
 			permissionDialog = null;
 			message = 'Acesso atualizado.';
-		} catch {
-			message = '';
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível salvar as permissões do item.';
 		} finally {
 			savingPermissions = false;
 		}
@@ -338,13 +391,8 @@
 						onchange={upload}
 						disabled={uploading}
 					/></label
-				><button
-					onclick={() => {
-						editingHandoutId = null;
-						handoutTitle = '';
-						handoutBody = '';
-						handoutOpen = !handoutOpen;
-					}}>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
+				><button onclick={() => void openNewHandout()}
+					>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
 				><button onclick={onnotes}
 					>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button
 				>
@@ -409,14 +457,60 @@
 				placeholder={$appLocale === 'en'
 					? 'Text, links, and guidance for the table'
 					: 'Texto, links e orientações para a mesa'}></textarea>
+			<fieldset class="handout-audience">
+				<legend
+					>{$appLocale === 'en'
+						? 'Who can see this handout?'
+						: 'Quem pode ver este handout?'}</legend
+				>
+				<label
+					><input
+						type="radio"
+						name="handout-audience"
+						value="all"
+						bind:group={handoutAudience}
+					/>{$appLocale === 'en' ? 'All players' : 'Todos os jogadores'}</label
+				>
+				<label
+					><input
+						type="radio"
+						name="handout-audience"
+						value="selected"
+						bind:group={handoutAudience}
+					/>{$appLocale === 'en' ? 'Selected players' : 'Jogadores selecionados'}</label
+				>
+				<label
+					><input
+						type="radio"
+						name="handout-audience"
+						value="gm"
+						bind:group={handoutAudience}
+					/>{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</label
+				>
+				{#if handoutAudience === 'selected'}<div class="handout-player-list">
+						{#each participants as participant (participant.userId)}<label>
+								<input
+									type="checkbox"
+									checked={handoutUserIds.includes(participant.userId)}
+									onchange={() => toggleHandoutUser(participant.userId)}
+								/>
+								<span
+									><strong
+										>{participant.displayName ||
+											($appLocale === 'en' ? 'Player' : 'Jogador')}</strong
+									>{#if participant.character?.sheet?.name}<small
+											>{participant.character.sheet.name}</small
+										>{/if}</span
+								>
+							</label>{:else}<small
+								>{$appLocale === 'en'
+									? 'No players have joined this campaign yet.'
+									: 'Nenhum jogador entrou nesta mesa ainda.'}</small
+							>{/each}
+					</div>{/if}
+			</fieldset>
 			<div>
-				<select bind:value={handoutVisibility}
-					><option value="players"
-						>{$appLocale === 'en' ? 'Visible to players' : 'Visível aos jogadores'}</option
-					><option value="gm"
-						>{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</option
-					></select
-				><button disabled={savingHandout}
+				<button disabled={savingHandout}
 					>{savingHandout
 						? $appLocale === 'en'
 							? 'Saving…'
@@ -761,9 +855,8 @@
 		border-radius: 10px;
 		background: #211b1e;
 	}
-	.handout-form input,
-	.handout-form textarea,
-	.handout-form select {
+	.handout-form input:not([type='checkbox']):not([type='radio']),
+	.handout-form textarea {
 		border: 1px solid #5a493b;
 		border-radius: 6px;
 		padding: 0.55rem;
@@ -779,6 +872,49 @@
 		display: flex;
 		justify-content: space-between;
 		gap: 0.6rem;
+	}
+	.handout-audience {
+		display: grid;
+		gap: 0.45rem;
+		margin: 0;
+		padding: 0.75rem;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+	}
+	.handout-audience legend {
+		padding: 0 0.25rem;
+		color: #d8ad67;
+		font-size: 0.8rem;
+	}
+	.handout-audience > label,
+	.handout-player-list > label {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 0.5rem;
+		font-size: 0.82rem;
+	}
+	.handout-audience input[type='checkbox'],
+	.handout-audience input[type='radio'] {
+		width: auto;
+		margin: 0;
+		accent-color: #d8ad67;
+	}
+	.handout-player-list {
+		display: grid;
+		gap: 0.4rem;
+		max-height: 9rem;
+		overflow: auto;
+		padding: 0.55rem;
+		border-left: 2px solid #80603b;
+	}
+	.handout-player-list span {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+	.handout-player-list small {
+		color: #ad9e91;
 	}
 	.handout-form button {
 		border: 0;
@@ -1186,8 +1322,7 @@
 	}
 	button:focus-visible,
 	input:focus-visible,
-	textarea:focus-visible,
-	select:focus-visible {
+	textarea:focus-visible {
 		outline: 2px solid #f0cb85;
 		outline-offset: 2px;
 	}

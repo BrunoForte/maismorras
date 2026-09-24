@@ -1438,7 +1438,9 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	}
 	var previousX, previousY, previousSize, gridSize int
 	var activeTokenID *string
-	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size,s.active_token_id::text from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize, &activeTokenID); err != nil {
+	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size,s.active_token_id::text from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize, &activeTokenID); errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, fmt.Errorf("load current token position: %w", ErrTokenNotFound)
+	} else if err != nil {
 		return Token{}, fmt.Errorf("load current token position: %w", err)
 	}
 	if previousX != t.X || previousY != t.Y {
@@ -1453,6 +1455,9 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
 	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,vision_range=$14,light_range=$15,movement_limit=$16,updated_at=now() where id=$17 and scene_id=$18 returning id::text,actor_id::text,owner_id::text,vision_range,light_range,movement_limit`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, t.MovementLimit, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange, &t.LightRange, &t.MovementLimit)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, fmt.Errorf("update token: %w", ErrTokenNotFound)
+	}
 	if err != nil {
 		return Token{}, fmt.Errorf("update token: %w", err)
 	}
@@ -1608,6 +1613,7 @@ var (
 	ErrTokenColorInUse = fmt.Errorf("token color already in use")
 	ErrAlreadyLinked   = fmt.Errorf("character already linked to scene")
 	ErrBlockedMovement = fmt.Errorf("movement blocked by wall")
+	ErrTokenNotFound  = fmt.Errorf("token not found in scene")
 )
 
 func abilityModifier(score int) int {

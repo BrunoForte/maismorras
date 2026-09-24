@@ -3,6 +3,7 @@ package scenes
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -361,6 +362,9 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	token, err := h.repo.UpdateToken(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, t)
 	if err != nil {
+		if !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrTokenNotFound) && !errors.Is(err, ErrBlockedMovement) && !errors.Is(err, ErrTokenColorInUse) {
+			slog.Error("token update failed", "request_id", r.Header.Get("X-Request-ID"), "scene_id", r.PathValue("sceneID"), "token_id", r.PathValue("tokenID"), "error", err)
+		}
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, token)
@@ -509,6 +513,9 @@ func mapError(err error) error {
 	}
 	if errors.Is(err, ErrTokenColorInUse) {
 		return apperror.Conflict("TOKEN_COLOR_IN_USE", "Esta cor já está sendo usada por outro personagem da campanha.")
+	}
+	if errors.Is(err, ErrTokenNotFound) {
+		return apperror.NotFound("TOKEN_NOT_FOUND", "Este token não existe mais nesta cena. Atualize a cena e tente novamente.")
 	}
 	if errors.Is(err, ErrBlockedMovement) {
 		return apperror.BadRequest("WALL_BLOCKED", "Uma parede bloqueia o caminho deste token.")

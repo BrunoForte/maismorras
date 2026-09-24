@@ -19,6 +19,17 @@ func TestTokenColorCollisionMapsToConflict(t *testing.T) {
 	}
 }
 
+func TestMissingTokenMapsToNotFound(t *testing.T) {
+	err := mapError(ErrTokenNotFound)
+	var response *apperror.Error
+	if !errors.As(err, &response) {
+		t.Fatalf("mapError returned %T, want *apperror.Error", err)
+	}
+	if response.Status != http.StatusNotFound || response.Code != "TOKEN_NOT_FOUND" {
+		t.Fatalf("unexpected response: status=%d code=%q", response.Status, response.Code)
+	}
+}
+
 func TestTokenColorsAreDistinctAcrossHueFallback(t *testing.T) {
 	seen := map[int]bool{}
 	for hue := range 360 {
