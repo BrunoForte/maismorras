@@ -55,6 +55,7 @@
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 	import { hasWeaponProficiency } from '$lib/utils/weaponProficiency';
+	import { cloneInventoryRules } from '$lib/utils/inventoryRules';
 
 	let {
 		campaignId,
@@ -1278,7 +1279,7 @@
 				equipped: false,
 				// Inventory keeps a private snapshot: editing an equipped item must not
 				// mutate the shared compendium object (and then be overwritten on refresh).
-				rules: structuredClone(entry.rules ?? {})
+				rules: cloneInventoryRules(entry.rules)
 			}
 		];
 		selectedItemId = '';
