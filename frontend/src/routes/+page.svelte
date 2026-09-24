@@ -749,6 +749,8 @@
 		<div class="persistent-audio" aria-hidden="true">
 			<audio id="maismorras-ambient-a" loop preload="metadata"></audio>
 			<audio id="maismorras-ambient-b" loop preload="metadata"></audio>
+			<audio id="maismorras-effects-a" loop preload="metadata"></audio>
+			<audio id="maismorras-effects-b" loop preload="metadata"></audio>
 		</div>
 		<header class="app-header">
 			<button
@@ -1498,7 +1500,7 @@
 	}
 	.app-shell {
 		min-height: 100vh;
-		padding-bottom: 3.5rem;
+		padding-bottom: 7.5rem;
 		background:
 			radial-gradient(circle at 65% -10%, rgba(126, 82, 40, 0.15), transparent 26%), #141114;
 	}
@@ -2272,7 +2274,7 @@
 	}
 	@media (max-width: 760px) {
 		.app-shell {
-			padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+			padding-bottom: calc(8rem + env(safe-area-inset-bottom));
 		}
 		.app-header {
 			position: sticky;

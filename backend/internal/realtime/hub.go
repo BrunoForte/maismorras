@@ -39,6 +39,19 @@ type peer struct {
 	canControl bool
 }
 
+type audioRealtimeState struct {
+	Path      string  `json:"path"`
+	Playing   bool    `json:"playing"`
+	Volume    float64 `json:"volume"`
+	Position  int64   `json:"positionMs"`
+	StartedAt int64   `json:"startedAt"`
+	Revision  int64   `json:"revision"`
+}
+
+func validAudioRealtimeState(state *audioRealtimeState) bool {
+	return state != nil && len(state.Path) <= 500 && state.Volume >= 0 && state.Volume <= 1 && state.Position >= 0 && state.Position <= 24*60*60*1000 && state.StartedAt >= 0
+}
+
 const maxPeersPerRoom = 100
 const maxTotalPeers = 1000
 const maxPeersPerUser = 10
@@ -124,19 +137,12 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 		var event struct {
-			Type  string          `json:"type"`
-			X     float64         `json:"x"`
-			Y     float64         `json:"y"`
-			Color int             `json:"color"`
-			Data  json.RawMessage `json:"data"`
-			State *struct {
-				Path      string  `json:"path"`
-				Playing   bool    `json:"playing"`
-				Volume    float64 `json:"volume"`
-				Position  int64   `json:"positionMs"`
-				StartedAt int64   `json:"startedAt"`
-				Revision  int64   `json:"revision"`
-			} `json:"state"`
+			Type  string              `json:"type"`
+			X     float64             `json:"x"`
+			Y     float64             `json:"y"`
+			Color int                 `json:"color"`
+			Data  json.RawMessage     `json:"data"`
+			State *audioRealtimeState `json:"state"`
 		}
 		if json.Unmarshal(raw, &event) != nil {
 			continue
@@ -200,13 +206,22 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		case "chat.updated":
 			h.hub.broadcast(sceneID, []byte(`{"type":"chat.updated"}`))
 		case "audio.state":
-			if !peer.canControl || event.State == nil || len(event.State.Path) > 500 || event.State.Volume < 0 || event.State.Volume > 1 || event.State.Position < 0 || event.State.Position > 24*60*60*1000 || event.State.StartedAt < 0 {
+			if !peer.canControl || !validAudioRealtimeState(event.State) {
 				continue
 			}
 			payload, _ := json.Marshal(struct {
 				Type  string `json:"type"`
 				State any    `json:"state"`
 			}{Type: "audio.state", State: event.State})
+			h.hub.broadcast(sceneID, payload)
+		case "audio.effects":
+			if !peer.canControl || !validAudioRealtimeState(event.State) {
+				continue
+			}
+			payload, _ := json.Marshal(struct {
+				Type  string `json:"type"`
+				State any    `json:"state"`
+			}{Type: "audio.effects", State: event.State})
 			h.hub.broadcast(sceneID, payload)
 		case "map.ping":
 			// Pings are transient UI hints, never database commands. Keep their

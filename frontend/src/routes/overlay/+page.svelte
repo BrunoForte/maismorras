@@ -36,8 +36,13 @@
 	let audio = $state<HTMLAudioElement>();
 	let audioB = $state<HTMLAudioElement>();
 	let playback: CrossfadeAudio | null = null;
+	let effectsAudio = $state<HTMLAudioElement>();
+	let effectsAudioB = $state<HTMLAudioElement>();
+	let effectsPlayback: CrossfadeAudio | null = null;
 	let lastAudioState: AudioPlaybackState | null = null;
+	let lastEffectsState: AudioPlaybackState | null = null;
 	let audioBlocked = $state(false);
+	let effectsAudioBlocked = $state(false);
 	type CameraSlot = { url: string; playerName: string; characterName: string };
 	let cameraSlots = $state<CameraSlot[]>([]);
 	let mapBackground = $state('');
@@ -137,6 +142,25 @@
 		);
 		audioBlocked = state.playing && !applied;
 	}
+	async function applyEffectsState(state: AudioPlaybackState) {
+		lastEffectsState = state;
+		if (!effectsPlayback || !session) return;
+		const applied = await effectsPlayback.apply(
+			state,
+			async (path) => (await getSignedAssetUrl(session as Session, campaignId(), path)) ?? ''
+		);
+		effectsAudioBlocked = state.playing && !applied;
+	}
+	function sceneEffectsState(value: Scene): AudioPlaybackState {
+		return {
+			path: value.ambientEffectPath,
+			playing: value.ambientEffectEnabled,
+			volume: Math.max(0, Math.min(1, value.ambientEffectVolume / 100)),
+			positionMs: value.ambientEffectPositionMs ?? 0,
+			startedAt: value.ambientEffectStartedAt ? Date.parse(value.ambientEffectStartedAt) : 0,
+			revision: value.ambientEffectRevision ?? 0
+		};
+	}
 	async function refresh(currentSession: Session) {
 		if (!sceneId() || !campaignId()) {
 			error = 'Informe os parâmetros campaign e scene na URL do overlay.';
@@ -160,6 +184,7 @@
 					: 0,
 				revision: loadedScene.scene.ambientAudioRevision ?? 0
 			});
+			await applyEffectsState(sceneEffectsState(loadedScene.scene));
 			if (client) {
 				if (loadedScene.scene.backgroundUrl) {
 					if (
@@ -234,7 +259,6 @@
 			return;
 		}
 		let disposed = false;
-		if (audio && audioB) playback = new CrossfadeAudio([audio, audioB]);
 		const overlayChannel =
 			'BroadcastChannel' in window
 				? new BroadcastChannel(`maismorras:overlay:${campaignId()}`)
@@ -322,7 +346,12 @@
 					const document = (data as { document?: unknown } | undefined)?.document;
 					if (document) applyLayoutDocument(document);
 					else void loadOverlayLayout(session);
-				}
+				},
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				(state) => void applyEffectsState(state)
 			);
 		});
 		return () => {
@@ -335,9 +364,16 @@
 		};
 	});
 	async function enableAudio() {
-		if (!lastAudioState) return;
-		await applyAudioState({ ...lastAudioState, startedAt: Date.now() });
+		if (lastAudioState) await applyAudioState({ ...lastAudioState, startedAt: Date.now() });
+		if (lastEffectsState) await applyEffectsState({ ...lastEffectsState, startedAt: Date.now() });
 	}
+	$effect(() => {
+		if (audio && audioB && !playback) playback = new CrossfadeAudio([audio, audioB]);
+		if (effectsAudio && effectsAudioB && !effectsPlayback)
+			effectsPlayback = new CrossfadeAudio([effectsAudio, effectsAudioB]);
+		if (playback && lastAudioState) void applyAudioState(lastAudioState);
+		if (effectsPlayback && lastEffectsState) void applyEffectsState(lastEffectsState);
+	});
 	async function login() {
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
@@ -392,8 +428,11 @@
 		</header>
 		<audio bind:this={audio} loop preload="metadata"></audio>
 		<audio bind:this={audioB} loop preload="metadata"></audio>
-		{#if audioBlocked}<button class="audio-enable" onclick={() => void enableAudio()}
-				>Ativar áudio da cena</button
+		<audio bind:this={effectsAudio} loop preload="metadata"></audio>
+		<audio bind:this={effectsAudioB} loop preload="metadata"></audio>
+		{#if audioBlocked || effectsAudioBlocked}<button
+				class="audio-enable"
+				onclick={() => void enableAudio()}>Ativar áudio da cena</button
 			>{/if}
 		<section
 			class="map-preview"

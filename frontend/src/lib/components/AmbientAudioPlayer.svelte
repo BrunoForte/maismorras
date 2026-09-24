@@ -9,6 +9,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
+	import { notifyUserRequestError } from '$lib/services/httpClient';
 
 	let { scene, session, isGM, onSceneUpdate } = $props<{
 		scene: Scene;
@@ -19,13 +20,19 @@
 	type Track = { path: string; name: string };
 	let tracks = $state<Track[]>([]);
 	let needsGesture = $state(false);
+	let effectsNeedGesture = $state(false);
 	let sceneSocket: SceneSocket | null = null;
 	let playback: CrossfadeAudio | null = null;
+	let effectsPlayback: CrossfadeAudio | null = null;
 	let lastState: AudioPlaybackState | null = null;
+	let lastEffectsState: AudioPlaybackState | null = null;
 	let listenerVolume = $state(100);
+	let effectsListenerVolume = $state(100);
 	const targetVolume = (value?: number) =>
 		Math.max(0, Math.min(1, (value ?? scene.ambientAudioVolume) / 100));
 	const volumeStorageKey = () => `maismorras-audio-volume:${scene.campaignId}:${session.user.id}`;
+	const effectsVolumeStorageKey = () =>
+		`maismorras-effects-volume:${scene.campaignId}:${session.user.id}`;
 
 	function stateFromScene(value: Scene): AudioPlaybackState {
 		return {
@@ -38,6 +45,17 @@
 		};
 	}
 
+	function effectsStateFromScene(value: Scene): AudioPlaybackState {
+		return {
+			path: value.ambientEffectPath,
+			playing: value.ambientEffectEnabled,
+			volume: Math.max(0, Math.min(1, value.ambientEffectVolume / 100)),
+			positionMs: value.ambientEffectPositionMs ?? 0,
+			startedAt: value.ambientEffectStartedAt ? Date.parse(value.ambientEffectStartedAt) : 0,
+			revision: value.ambientEffectRevision ?? 0
+		};
+	}
+
 	async function signed(path: string) {
 		return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
 	}
@@ -47,6 +65,16 @@
 		if (!playback) return;
 		const applied = await playback.apply(withListenerVolume(state, listenerVolume), signed);
 		needsGesture = state.playing && !applied;
+	}
+
+	async function applyEffectsState(state: AudioPlaybackState) {
+		lastEffectsState = state;
+		if (!effectsPlayback) return;
+		const applied = await effectsPlayback.apply(
+			withListenerVolume(state, effectsListenerVolume),
+			signed
+		);
+		effectsNeedGesture = state.playing && !applied;
 	}
 
 	function setListenerVolume(event: Event) {
@@ -62,12 +90,26 @@
 		if (lastState) void applyState(lastState);
 	}
 
+	function setEffectsListenerVolume(event: Event) {
+		effectsListenerVolume = Math.max(
+			0,
+			Math.min(100, Number((event.currentTarget as HTMLInputElement).value) || 0)
+		);
+		try {
+			localStorage.setItem(effectsVolumeStorageKey(), String(effectsListenerVolume));
+		} catch {
+			// Efeitos continuam funcionando sem persistência local do volume.
+		}
+		if (lastEffectsState) void applyEffectsState(lastEffectsState);
+	}
+
 	async function refreshScene() {
 		try {
 			const loaded = await loadScene(session, scene.id);
 			if (loaded.scene.id === scene.id) {
 				onSceneUpdate(loaded.scene);
 				await applyState(stateFromScene(loaded.scene));
+				await applyEffectsState(effectsStateFromScene(loaded.scene));
 			}
 		} catch {
 			// A transient realtime refresh must not interrupt the audio already playing.
@@ -98,6 +140,8 @@
 	}
 
 	async function applyRemoteState(state: AudioPlaybackState) {
+		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
+			void loadTracks();
 		onSceneUpdate({
 			...scene,
 			ambientAudioPath: state.path,
@@ -109,6 +153,22 @@
 			ambientAudioRevision: state.revision ?? scene.ambientAudioRevision ?? 0
 		});
 		await applyState(state);
+	}
+
+	async function applyRemoteEffectsState(state: AudioPlaybackState) {
+		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
+			void loadTracks();
+		onSceneUpdate({
+			...scene,
+			ambientEffectPath: state.path,
+			ambientEffectEnabled: state.playing,
+			ambientEffectVolume: Math.round(state.volume * 100),
+			ambientEffectPositionMs: state.positionMs,
+			ambientEffectStartedAt:
+				state.playing && state.startedAt > 0 ? new Date(state.startedAt).toISOString() : null,
+			ambientEffectRevision: state.revision ?? scene.ambientEffectRevision ?? 0
+		});
+		await applyEffectsState(state);
 	}
 
 	function publishState(state: AudioPlaybackState) {
@@ -169,9 +229,66 @@
 		await applyState(state);
 	}
 
+	async function selectEffect(event: Event) {
+		if (!isGM) return;
+		const path = (event.currentTarget as HTMLSelectElement).value;
+		if (path === (scene.ambientEffectPath ?? '')) return;
+		try {
+			const continuePlayback = scene.ambientEffectEnabled && Boolean(path);
+			const startedAt = continuePlayback ? new Date().toISOString() : null;
+			const saved = await save(
+				{
+					...scene,
+					ambientEffectPath: path || null,
+					ambientEffectEnabled: continuePlayback,
+					ambientEffectPositionMs: 0,
+					ambientEffectStartedAt: startedAt,
+					ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
+				},
+				false
+			);
+			const state = effectsStateFromScene(saved);
+			sceneSocket?.publishAudioEffects(state);
+			await applyEffectsState(state);
+		} catch {
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not change the sound effect.'
+					: 'Não foi possível trocar o efeito sonoro.'
+			);
+		}
+	}
+
+	async function toggleEffect() {
+		if (!isGM) return;
+		try {
+			const playing = !scene.ambientEffectEnabled;
+			const positionMs = playing ? 0 : Math.round((effectsPlayback?.currentTime ?? 0) * 1000);
+			const saved = await save(
+				{
+					...scene,
+					ambientEffectEnabled: playing,
+					ambientEffectPositionMs: positionMs,
+					ambientEffectStartedAt: playing ? new Date().toISOString() : null,
+					ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
+				},
+				false
+			);
+			const state = effectsStateFromScene(saved);
+			sceneSocket?.publishAudioEffects(state);
+			await applyEffectsState(state);
+		} catch {
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not update sound playback.'
+					: 'Não foi possível atualizar a reprodução do efeito.'
+			);
+		}
+	}
+
 	async function enableAudio() {
-		if (!lastState) return;
-		await applyState({ ...lastState, startedAt: Date.now() });
+		if (lastState) await applyState({ ...lastState, startedAt: Date.now() });
+		if (lastEffectsState) await applyEffectsState({ ...lastEffectsState, startedAt: Date.now() });
 	}
 
 	onMount(() => {
@@ -181,23 +298,45 @@
 		} catch {
 			// Keep the default personal volume if browser storage is disabled.
 		}
+		try {
+			const storedEffectsVolume = Number(localStorage.getItem(effectsVolumeStorageKey()));
+			if (Number.isFinite(storedEffectsVolume))
+				effectsListenerVolume = Math.max(0, Math.min(100, storedEffectsVolume));
+		} catch {
+			// Use personal default when browser storage is unavailable.
+		}
 		const first = document.getElementById('maismorras-ambient-a') as HTMLAudioElement | null;
 		const second = document.getElementById('maismorras-ambient-b') as HTMLAudioElement | null;
+		const effectsFirst = document.getElementById('maismorras-effects-a') as HTMLAudioElement | null;
+		const effectsSecond = document.getElementById(
+			'maismorras-effects-b'
+		) as HTMLAudioElement | null;
 		if (first && second) playback = new CrossfadeAudio([first, second]);
+		if (effectsFirst && effectsSecond)
+			effectsPlayback = new CrossfadeAudio([effectsFirst, effectsSecond]);
 		void loadTracks();
 		void applyState(stateFromScene(scene));
+		void applyEffectsState(effectsStateFromScene(scene));
 		sceneSocket = connectSceneSocket(
 			session,
 			scene.id,
 			() => void refreshScene(),
 			undefined,
 			undefined,
-			(state) => void applyRemoteState(state)
+			(state) => void applyRemoteState(state),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			(state) => void applyRemoteEffectsState(state)
 		);
 		return () => {
 			sceneSocket?.close();
 			sceneSocket = null;
 			playback = null;
+			effectsPlayback = null;
 		};
 	});
 
@@ -212,67 +351,141 @@
 			void applyState(state);
 		}
 	});
+
+	$effect(() => {
+		const state = effectsStateFromScene(scene);
+		if (
+			!lastEffectsState ||
+			state.path !== lastEffectsState.path ||
+			state.playing !== lastEffectsState.playing ||
+			state.volume !== lastEffectsState.volume
+		)
+			void applyEffectsState(state);
+	});
 </script>
 
-<div
-	class="ambient-player"
-	aria-label={$appLocale === 'en' ? 'Campaign music player' : 'Player de música da campanha'}
->
-	{#if isGM}<select
-			value={scene.ambientAudioPath ?? ''}
-			onchange={(event) => void selectTrack(event)}
-		>
-			<option value=""
-				>{$appLocale === 'en' ? 'Select campaign music…' : 'Selecionar música da campanha…'}</option
+<div class="audio-channels" aria-label="Canais de áudio da campanha">
+	<div
+		class="ambient-player music-player"
+		aria-label={$appLocale === 'en' ? 'Campaign music player' : 'Player de música da campanha'}
+	>
+		{#if isGM}<select
+				value={scene.ambientAudioPath ?? ''}
+				onchange={(event) => void selectTrack(event)}
 			>
-			{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
-		</select>
-		<div class="gm-status">
-			<strong
-				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
-					($appLocale === 'en' ? 'No music selected' : 'Nenhuma música selecionada')}</strong
+				<option value=""
+					>{$appLocale === 'en'
+						? 'Select campaign music…'
+						: 'Selecionar música da campanha…'}</option
+				>
+				{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
+			</select>
+			<div class="gm-status">
+				<strong
+					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
+						($appLocale === 'en' ? 'No music selected' : 'Nenhuma música selecionada')}</strong
+				>
+				{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
+						>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+					>{/if}
+				<label class="volume-control">
+					<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={listenerVolume}
+						oninput={setListenerVolume}
+					/>
+					<output>{listenerVolume}%</output>
+				</label>
+			</div>
+		{:else}<div class="listener-status">
+				<strong
+					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
+						'Nenhuma música'}</strong
+				>
+				{#if needsGesture || effectsNeedGesture}<button
+						class="audio-enable"
+						onclick={() => void enableAudio()}
+						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+					>{/if}
+				<label class="volume-control">
+					<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={listenerVolume}
+						oninput={setListenerVolume}
+					/>
+					<output>{listenerVolume}%</output>
+				</label>
+			</div>{/if}
+	</div>
+
+	<div
+		class="ambient-player effects-player"
+		aria-label={$appLocale === 'en'
+			? 'Campaign sound effects player'
+			: 'Player de efeitos sonoros da campanha'}
+	>
+		{#if isGM}<select
+				value={scene.ambientEffectPath ?? ''}
+				onchange={(event) => void selectEffect(event)}
 			>
-			{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
-					>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
-				>{/if}
-			<label class="volume-control">
-				<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
-				<input
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={listenerVolume}
-					oninput={setListenerVolume}
-				/>
-				<output>{listenerVolume}%</output>
-			</label>
-		</div>
-	{:else}<div class="listener-status">
-			<strong
-				>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
-					'Nenhuma música'}</strong
-			>
-			{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
-					>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
-				>{/if}
-			<label class="volume-control">
-				<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
-				<input
-					type="range"
-					min="0"
-					max="100"
-					step="1"
-					value={listenerVolume}
-					oninput={setListenerVolume}
-				/>
-				<output>{listenerVolume}%</output>
-			</label>
-		</div>{/if}
+				<option value=""
+					>{$appLocale === 'en' ? 'Select a sound effect…' : 'Selecionar efeito sonoro…'}</option
+				>
+				{#each tracks as track (track.path)}<option value={track.path}>{track.name}</option>{/each}
+			</select>
+			<div class="gm-status">
+				<strong
+					>{tracks.find((track) => track.path === scene.ambientEffectPath)?.name ??
+						($appLocale === 'en' ? 'No effect selected' : 'Nenhum efeito selecionado')}</strong
+				>
+				{#if scene.ambientEffectPath}<button onclick={() => void toggleEffect()}
+						>{scene.ambientEffectEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+					>{/if}
+				<label class="volume-control"
+					><span>{$appLocale === 'en' ? 'My effects' : 'Meus efeitos'}</span><input
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={effectsListenerVolume}
+						oninput={setEffectsListenerVolume}
+					/><output>{effectsListenerVolume}%</output></label
+				>
+			</div>
+		{:else}<div class="listener-status">
+				<strong
+					>{tracks.find((track) => track.path === scene.ambientEffectPath)?.name ??
+						($appLocale === 'en' ? 'No sound effect' : 'Nenhum efeito sonoro')}</strong
+				>
+				{#if needsGesture || effectsNeedGesture}<button
+						class="audio-enable"
+						onclick={() => void enableAudio()}
+						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+					>{/if}
+				<label class="volume-control"
+					><span>{$appLocale === 'en' ? 'My effects' : 'Meus efeitos'}</span><input
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						value={effectsListenerVolume}
+						oninput={setEffectsListenerVolume}
+					/><output>{effectsListenerVolume}%</output></label
+				>
+			</div>{/if}
+	</div>
 </div>
 
 <style>
-	.ambient-player {
+	.audio-channels {
 		position: fixed;
 		z-index: 45;
 		box-sizing: border-box;
@@ -283,11 +496,28 @@
 		display: flex;
 		gap: 0.5rem;
 		align-items: center;
-		padding: 0.55rem max(1rem, env(safe-area-inset-right)) 0.55rem
-			max(1rem, env(safe-area-inset-left));
+		padding: 0.55rem max(1rem, env(safe-area-inset-right))
+			calc(0.55rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
 		border-top: 1px solid #5a493b;
 		background: #211b1e;
 		box-shadow: 0 -5px 20px #0008;
+	}
+	.ambient-player {
+		position: static;
+		box-sizing: border-box;
+		min-height: 3rem;
+		width: auto;
+		flex: 1 1 0;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		box-shadow: none;
+	}
+	.effects-player {
+		inset-block-end: auto;
 	}
 	.ambient-player select {
 		width: min(24rem, 55vw);
@@ -344,23 +574,29 @@
 		text-align: end;
 		font-variant-numeric: tabular-nums;
 	}
-	@media (max-width: 600px) {
+	@media (max-width: 760px) {
+		.audio-channels {
+			flex-direction: column;
+			gap: 0.3rem;
+		}
 		.ambient-player {
-			flex-wrap: wrap;
+			width: 100%;
+			min-height: 2.8rem;
 		}
 		.ambient-player select {
-			min-width: 100%;
+			width: min(42vw, 16rem);
+			min-width: 8rem;
 		}
 		.gm-status {
-			width: 100%;
-			flex-wrap: wrap;
+			width: auto;
+			flex: 1;
+			gap: 0.5rem;
 		}
 		.volume-control {
-			flex: 1 1 100%;
+			flex: 0 1 auto;
 		}
 		.volume-control input {
-			flex: 1;
-			width: auto;
+			width: clamp(3.5rem, 14vw, 6rem);
 		}
 	}
 </style>

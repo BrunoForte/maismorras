@@ -12,6 +12,12 @@ export type Scene = {
 	ambientAudioPositionMs: number;
 	ambientAudioStartedAt: string | null;
 	ambientAudioRevision: number;
+	ambientEffectPath: string | null;
+	ambientEffectEnabled: boolean;
+	ambientEffectVolume: number;
+	ambientEffectPositionMs: number;
+	ambientEffectStartedAt: string | null;
+	ambientEffectRevision: number;
 	gridSize: number;
 	mapWidthCells: number;
 	mapHeightCells: number;

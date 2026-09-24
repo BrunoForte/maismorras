@@ -6,6 +6,7 @@ import type { SceneArea, SceneEffect, SceneWall } from './sceneApi';
 
 type SceneRefresh = { type: 'scene.refresh' };
 type AudioStateEvent = { type: 'audio.state'; state: AudioPlaybackState };
+type AudioEffectsEvent = { type: 'audio.effects'; state: AudioPlaybackState };
 type PresentationUpdated = { type: 'presentation.updated'; data?: unknown };
 type LayoutUpdated = { type: 'overlay.layout.updated'; data?: unknown };
 export type TokenUpdateSignal = { tokenId: string; deleted?: boolean };
@@ -26,6 +27,7 @@ export type SceneSocket = {
 	publishRefresh: () => void;
 	publishPing: (x: number, y: number, color?: number) => void;
 	publishAudioState: (state: AudioPlaybackState) => void;
+	publishAudioEffects: (state: AudioPlaybackState) => void;
 	publishPresentationUpdated: (data?: unknown) => void;
 	publishLayoutUpdated: (data?: unknown) => void;
 	publishTokenUpdated: (data: TokenUpdateSignal) => void;
@@ -38,6 +40,7 @@ type Subscriber = {
 	onRefresh: () => void;
 	onPing?: (ping: Omit<MapPing, 'type'>) => void;
 	onAudio?: (state: AudioPlaybackState) => void;
+	onAudioEffects?: (state: AudioPlaybackState) => void;
 	onPresentation?: (data?: unknown) => void;
 	onLayout?: (data?: unknown) => void;
 	onTokens?: (data?: TokenUpdateSignal) => void;
@@ -57,6 +60,7 @@ class SharedSceneConnection {
 	private readonly pendingPayloads: (
 		| SceneRefresh
 		| AudioStateEvent
+		| AudioEffectsEvent
 		| PresentationUpdated
 		| LayoutUpdated
 		| TokenUpdated
@@ -92,6 +96,7 @@ class SharedSceneConnection {
 			publishRefresh: () => this.publish({ type: 'scene.refresh' }),
 			publishPing: (x, y, color = 0xf2cf77) => this.publish({ type: 'map.ping', x, y, color }),
 			publishAudioState: (state) => this.publish({ type: 'audio.state', state }),
+			publishAudioEffects: (state) => this.publish({ type: 'audio.effects', state }),
 			publishPresentationUpdated: (data) => this.publish({ type: 'presentation.updated', data }),
 			publishLayoutUpdated: (data) => this.publish({ type: 'overlay.layout.updated', data }),
 			publishTokenUpdated: (data) => this.publish({ type: 'token.updated', data }),
@@ -128,6 +133,7 @@ class SharedSceneConnection {
 				const payload = JSON.parse(String(event.data)) as
 					| SceneRefresh
 					| AudioStateEvent
+					| AudioEffectsEvent
 					| PresentationUpdated
 					| LayoutUpdated
 					| TokenUpdated
@@ -141,6 +147,8 @@ class SharedSceneConnection {
 					for (const subscriber of this.subscribers) subscriber.onPresentation?.(payload.data);
 				if (payload.type === 'audio.state')
 					for (const subscriber of this.subscribers) subscriber.onAudio?.(payload.state);
+				if (payload.type === 'audio.effects')
+					for (const subscriber of this.subscribers) subscriber.onAudioEffects?.(payload.state);
 				if (payload.type === 'overlay.layout.updated')
 					for (const subscriber of this.subscribers) subscriber.onLayout?.(payload.data);
 				if (payload.type === 'token.updated')
@@ -169,6 +177,7 @@ class SharedSceneConnection {
 		payload:
 			| SceneRefresh
 			| AudioStateEvent
+			| AudioEffectsEvent
 			| PresentationUpdated
 			| LayoutUpdated
 			| TokenUpdated
@@ -214,7 +223,8 @@ export function connectSceneSocket(
 	onTokens?: (data?: TokenUpdateSignal) => void,
 	onCombat?: (data?: unknown) => void,
 	onChat?: () => void,
-	onSceneDelta?: (data: SceneDelta) => void
+	onSceneDelta?: (data: SceneDelta) => void,
+	onAudioEffects?: (state: AudioPlaybackState) => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -227,6 +237,7 @@ export function connectSceneSocket(
 		onPing,
 		onStatus,
 		onAudio,
+		onAudioEffects,
 		onPresentation,
 		onLayout,
 		onTokens,

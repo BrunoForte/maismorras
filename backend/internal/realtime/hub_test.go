@@ -50,3 +50,23 @@ func TestPresentationRealtimeOnlyAllowsPlayerInvalidations(t *testing.T) {
 		t.Fatal("GM should be able to publish a presentation update")
 	}
 }
+
+func TestAudioRealtimeStateValidation(t *testing.T) {
+	valid := &audioRealtimeState{Path: "campaigns/c1/media/rain.mp3", Playing: true, Volume: 0.65, Position: 1200, StartedAt: 1_700_000_000_000, Revision: 2}
+	if !validAudioRealtimeState(valid) {
+		t.Fatal("expected normal playback state to be valid")
+	}
+	for _, invalid := range []*audioRealtimeState{
+		nil,
+		{Path: "rain.mp3", Volume: -0.01},
+		{Path: "rain.mp3", Volume: 1.01},
+		{Path: "rain.mp3", Volume: 0.5, Position: -1},
+		{Path: "rain.mp3", Volume: 0.5, Position: 24*60*60*1000 + 1},
+		{Path: "rain.mp3", Volume: 0.5, StartedAt: -1},
+		{Path: string(make([]byte, 501)), Volume: 0.5},
+	} {
+		if validAudioRealtimeState(invalid) {
+			t.Errorf("expected invalid state to be rejected: %#v", invalid)
+		}
+	}
+}

@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
 select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
@@ -15,6 +15,7 @@ select ok(not exists (select 1 from pg_policies where schemaname='public' and ta
 select ok((select qual like '%gm%' from pg_policies where schemaname='public' and tablename='library_item_permissions' and policyname='campaign gms manage item permissions' and cmd='ALL'), 'GM-only item permission policy remains the sole read/write policy');
 select ok((select qual like '%library_item_permissions%' from pg_policies where schemaname='public' and tablename='notes' and policyname='notes_member_select'), 'handout reads enforce per-player permissions');
 select ok((select qual like '%library_item_permissions%' from pg_policies where schemaname='public' and tablename='scene_presentations' and policyname='campaign members can read permitted presentations'), 'presentation reads enforce per-player permissions');
-select ok((select qual like '%ambient_audio_enabled%' and qual like '%library_item_permissions%' from pg_policies where schemaname='storage' and tablename='objects' and policyname='campaign members read permitted assets'), 'Storage reads enforce media permissions and active audio');
+select ok((select qual like '%ambient_audio_enabled%' and qual like '%ambient_effect_enabled%' and qual like '%library_item_permissions%' from pg_policies where schemaname='storage' and tablename='objects' and policyname='campaign members read permitted assets'), 'Storage reads enforce media permissions, active music and active effects');
+select ok((select count(*) = 6 from information_schema.columns where table_schema='public' and table_name='scenes' and column_name like 'ambient_effect_%'), 'sound effects have independent persisted playback state');
 select * from finish();
 rollback;

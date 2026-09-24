@@ -54,7 +54,7 @@ func (h *Handler) UpdateScene(w http.ResponseWriter, r *http.Request) error {
 	if in.MapHeightCells == 0 {
 		in.MapHeightCells = 20
 	}
-	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || !validMapDimensions(in.MapWidthCells, in.MapHeightCells) || in.AmbientAudioVolume < 0 || in.AmbientAudioVolume > 100 || !validSceneSettings(in) {
+	if in.Name == "" || len([]rune(in.Name)) > 120 || in.GridSize < 20 || in.GridSize > 200 || !validMapDimensions(in.MapWidthCells, in.MapHeightCells) || in.AmbientAudioVolume < 0 || in.AmbientAudioVolume > 100 || in.AmbientEffectVolume < 0 || in.AmbientEffectVolume > 100 || !validSceneSettings(in) {
 		return apperror.BadRequest("INVALID_SCENE", "Confira nome, grid, dimensões do mapa, acesso de jogadores e visão da cena.")
 	}
 	scene, err := h.repo.UpdateScene(r.Context(), r.PathValue("sceneID"), p.UserID, in)

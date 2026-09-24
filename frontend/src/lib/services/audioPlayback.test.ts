@@ -37,6 +37,39 @@ describe('CrossfadeAudio', () => {
 		expect(shared.volume).toBe(0.8);
 	});
 
+	it('keeps music and sound effects in independent simultaneous playback engines', async () => {
+		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+			callback(performance.now() + 1000);
+			return 1;
+		});
+		const musicElements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const effectElements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const music = new CrossfadeAudio(musicElements);
+		const effects = new CrossfadeAudio(effectElements);
+		const state = (path: string) => ({
+			path,
+			playing: true,
+			volume: 0.65,
+			positionMs: 0,
+			startedAt: Date.now(),
+			revision: 1
+		});
+
+		await Promise.all([
+			music.apply(state('music.mp3'), async (path) => path),
+			effects.apply(state('rain.mp3'), async (path) => path)
+		]);
+
+		expect(music.path).toBe('music.mp3');
+		expect(effects.path).toBe('rain.mp3');
+		expect(
+			musicElements.some((element) => (element.play as ReturnType<typeof vi.fn>).mock.calls.length)
+		).toBe(true);
+		expect(
+			effectElements.some((element) => (element.play as ReturnType<typeof vi.fn>).mock.calls.length)
+		).toBe(true);
+	});
+
 	it('clamps fade progress when an animation frame timestamp precedes its start', async () => {
 		const element = audioElement(1);
 		const frames: FrameRequestCallback[] = [];
