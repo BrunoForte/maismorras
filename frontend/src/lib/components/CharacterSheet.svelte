@@ -106,6 +106,7 @@
 	let castingSpell = $state<number | null>(null);
 	let expandedSpell = $state<number | null>(null);
 	let expandedWeapon = $state<string | null>(null);
+	let expandedInventoryItem = $state<number | null>(null);
 	let spellSlotChoice = $state<Record<number, number>>({});
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
@@ -693,6 +694,7 @@
 					equipmentCategory({ name: entry.name, rules: entryRules(entry) }) === inventoryFilter)
 		);
 	const weaponItems = () => sheet.inventory.filter((item) => equipmentCategory(item) === 'weapon');
+	const weaponKey = (item: InventoryItem) => `${item.entryId}:${sheet.inventory.indexOf(item)}`;
 	const visibleInventory = () =>
 		sheet.inventory.filter(
 			(item) => inventoryFilter === 'all' || equipmentCategory(item) === inventoryFilter
@@ -802,6 +804,54 @@
 			? enabled.filter((itemKey) => itemKey !== key)
 			: [...enabled, key];
 	}
+	type WeaponAttackProfile = {
+		id: string;
+		name: string;
+		description: string;
+		attackAbility: keyof Sheet['abilityScores'];
+		damage: string;
+		attackBonus: number;
+		damageBonus: number;
+		greatWeaponFighting: boolean;
+	};
+	const weaponAttackProfiles = (item: InventoryItem): WeaponAttackProfile[] =>
+		(Array.isArray(item.rules.attackProfiles) ? item.rules.attackProfiles : []).filter(
+			(profile): profile is WeaponAttackProfile =>
+				typeof profile === 'object' &&
+				profile !== null &&
+				typeof (profile as WeaponAttackProfile).id === 'string'
+		);
+	function addWeaponAttackProfile(item: InventoryItem) {
+		const profiles = weaponAttackProfiles(item);
+		const profile: WeaponAttackProfile = {
+			id: crypto.randomUUID(),
+			name: $appLocale === 'en' ? `Attack ${profiles.length + 2}` : `Golpe ${profiles.length + 2}`,
+			description: '',
+			attackAbility: weaponAbility(item),
+			damage: String(item.rules.damage ?? ''),
+			attackBonus: 0,
+			damageBonus: 0,
+			greatWeaponFighting: false
+		};
+		item.rules = { ...item.rules, attackProfiles: [...profiles, profile] };
+		syncTokenSoon();
+	}
+	function removeWeaponAttackProfile(item: InventoryItem, profileId: string) {
+		item.rules = {
+			...item.rules,
+			attackProfiles: weaponAttackProfiles(item).filter((profile) => profile.id !== profileId)
+		};
+		syncTokenSoon();
+	}
+	const hasGreatWeaponFighting = () =>
+		/Great Weapon Fighting|Luta com Armas Grandes/i.test(`${sheet.feats}\n${sheet.features}`);
+	const weaponSupportsGreatWeaponFighting = (item: InventoryItem) => {
+		const rules = JSON.stringify(item.rules);
+		return (
+			/two.?handed|versatile|duas m[aã]os|vers[aá]til/i.test(rules) &&
+			!/ammunition|ranged|range/i.test(rules)
+		);
+	};
 	const weaponBonusTotals = (item: InventoryItem) => {
 		const effects = selectedWeaponEffects(item);
 		return {
@@ -1358,10 +1408,17 @@
 	function removeInventoryItem(index: number) {
 		sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index);
 	}
-	async function rollWeapon(item: InventoryItem, action: 'attack' | 'damage') {
+	async function rollWeapon(
+		item: InventoryItem,
+		action: 'attack' | 'damage',
+		profile?: WeaponAttackProfile
+	) {
 		const rules = item.rules;
-		const damageMatch = String(rules.damage ?? '').match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
-		const actionKey = `${item.entryId}:${action}`;
+		const damageFormula = profile?.damage || String(rules.damage ?? '');
+		const damageMatch = damageFormula.match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
+		const profileKey = profile?.id ?? 'default';
+		const stableWeaponKey = weaponKey(item);
+		const actionKey = `${stableWeaponKey}:${profileKey}:${action}`;
 		if (equipmentCategory(item) !== 'weapon' || rollingWeaponAction) return;
 		if (action === 'damage' && !damageMatch) {
 			message =
@@ -1381,7 +1438,7 @@
 			message = 'Esta condição impede ações e reações; o ataque não pode ser rolado.';
 			return;
 		}
-		const abilityKey = weaponAbility(item);
+		const abilityKey = profile?.attackAbility ?? weaponAbility(item);
 		const abilityModifier = modifier(sheet.abilityScores[abilityKey]);
 		const itemBonus = weaponItemBonus(item);
 		const proficiencyBonus = weaponProficiencyBonus(item);
@@ -1391,7 +1448,12 @@
 		beginDiceBatch();
 		try {
 			if (action === 'attack') {
-				const attackBonus = abilityModifier + proficiencyBonus + itemBonus + effects.attack;
+				const attackBonus =
+					abilityModifier +
+					proficiencyBonus +
+					itemBonus +
+					effects.attack +
+					(profile?.attackBonus ?? 0);
 				const attackMode = selectedAttackMode();
 				const event = await rollDice(
 					session,
@@ -1402,20 +1464,24 @@
 				);
 				const result = event.payload as { expressao: string; dados: number[]; total: number };
 				const critical = result.dados.includes(20);
-				lastCriticalWeapon = critical ? item.entryId : null;
+				lastCriticalWeapon = critical ? `${stableWeaponKey}:${profileKey}` : null;
 				$chatMensagens = [
 					...$chatMensagens,
 					{
 						id: String(event.id),
 						autor: event.author,
-						texto: `${item.name} · ataque${critical ? ' · CRÍTICO!' : ''}`,
+						texto: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque${critical ? ' · CRÍTICO!' : ''}`,
 						tipo: 'rolagem',
 						canal: 'combat',
-						detalhesRolagem: { ...result, modificador: attackBonus, label: `${item.name} · ataque` }
+						detalhesRolagem: {
+							...result,
+							modificador: attackBonus,
+							label: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`
+						}
 					}
 				];
 				$diceOverlay = {
-					expression: `${item.name} · ataque`,
+					expression: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
 					total: result.total,
 					dice: result.dados,
 					nonce: crypto.randomUUID()
@@ -1423,34 +1489,45 @@
 			} else {
 				const baseModifier =
 					damageMatch?.[3] === '-' ? -Number(damageMatch[4] ?? 0) : Number(damageMatch?.[4] ?? 0);
-				const damageModifier = baseModifier + abilityModifier + itemBonus + effects.damage;
-				const isCritical = lastCriticalWeapon === item.entryId;
+				const damageModifier =
+					baseModifier + abilityModifier + itemBonus + effects.damage + (profile?.damageBonus ?? 0);
+				const isCritical = lastCriticalWeapon === `${stableWeaponKey}:${profileKey}`;
 				const diceCount = Number(damageMatch![1]) * (isCritical ? 2 : 1);
 				const event = await rollDice(
 					session,
 					campaignId,
 					`${diceCount}d${damageMatch![2]}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
 					undefined,
-					'combat'
+					'combat',
+					profile?.greatWeaponFighting ? 3 : undefined
 				);
-				const damage = event.payload as { expressao: string; dados: number[]; total: number };
+				const damage = event.payload as {
+					expressao: string;
+					dados: number[];
+					total: number;
+					regraAplicada?: string;
+					dadosOriginais?: number[];
+				};
+				const attackName = `${item.name}${profile ? ` · ${profile.name}` : ''}`;
 				$chatMensagens = [
 					...$chatMensagens,
 					{
 						id: String(event.id),
 						autor: event.author,
-						texto: `${item.name} · dano${isCritical ? ' crítico' : ''} (${String(rules.damageType ?? '')})`,
+						texto: `${attackName} · dano${isCritical ? ' crítico' : ''}${damage.regraAplicada ? ` · ${damage.regraAplicada}` : ''} (${String(rules.damageType ?? '')})`,
 						tipo: 'rolagem',
 						canal: 'combat',
 						detalhesRolagem: {
 							...damage,
 							modificador: damageModifier,
-							label: `${item.name} · dano${isCritical ? ' crítico' : ''}`
+							label: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
+							regraAplicada: damage.regraAplicada,
+							dadosOriginais: damage.dadosOriginais
 						}
 					}
 				];
 				$diceOverlay = {
-					expression: `${item.name} · dano${isCritical ? ' crítico' : ''}`,
+					expression: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
 					total: damage.total,
 					dice: damage.dados,
 					nonce: crypto.randomUUID()
@@ -2075,7 +2152,12 @@
 									oninput={syncTokenSoon}
 								/>
 							</label>
-							<label class="initiative-advantage-toggle">
+							<label
+								class="initiative-advantage-toggle"
+								title={$appLocale === 'en'
+									? 'Advantage on the next initiative roll'
+									: 'Aplica vantagem à próxima rolagem de iniciativa'}
+							>
 								<input
 									type="checkbox"
 									class="switch-input"
@@ -2083,19 +2165,17 @@
 									onchange={(event) => void setInitiativeAdvantage(event.currentTarget.checked)}
 								/>
 								<span class="switch-track" aria-hidden="true"></span>
-								{$appLocale === 'en'
-									? 'Advantage on next initiative'
-									: 'Vantagem na próxima iniciativa'}
+								{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}
 							</label>
+							<button
+								type="button"
+								class="secondary-button initiative-roll"
+								onclick={() => void rollSheetInitiative()}
+								disabled={!initiativeTokenId}
+							>
+								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
+							</button>
 						</div>
-						<button
-							type="button"
-							class="secondary-button"
-							onclick={() => void rollSheetInitiative()}
-							disabled={!initiativeTokenId}
-						>
-							{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
-						</button>
 						<label>
 							>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
 								type="number"
@@ -2343,17 +2423,18 @@
 							<h3>{$appLocale === 'en' ? 'Weapon attacks' : 'Ataques com armas'}</h3>
 						</div>
 						{#if weaponItems().length}<div class="weapon-combat-list">
-								{#each weaponItems() as item (item.entryId)}<article class="weapon-combat-card">
+								{#each weaponItems() as item (weaponKey(item))}<article class="weapon-combat-card">
 										<button
 											class="weapon-toggle"
 											type="button"
-											aria-expanded={expandedWeapon === item.entryId}
+											aria-expanded={expandedWeapon === weaponKey(item)}
 											onclick={() =>
-												(expandedWeapon = expandedWeapon === item.entryId ? null : item.entryId)}
+												(expandedWeapon =
+													expandedWeapon === weaponKey(item) ? null : weaponKey(item))}
 											><strong>{item.name}</strong><span
-												>{expandedWeapon === item.entryId ? '⌃' : '⌄'}</span
+												>{expandedWeapon === weaponKey(item) ? '⌃' : '⌄'}</span
 											></button
-										>{#if expandedWeapon === item.entryId}<div class="weapon-modifications">
+										>{#if expandedWeapon === weaponKey(item)}<div class="weapon-modifications">
 												<label
 													>{$appLocale === 'en'
 														? 'Enchantment bonus'
@@ -2376,6 +2457,18 @@
 															? 'Notes on this weapon'
 															: 'Ex.: runas, ajustes…'}
 													/>
+												</label>
+												<label class="weapon-description-field">
+													{$appLocale === 'en' ? 'Description / ability' : 'Descrição / função'}
+													<textarea
+														value={String(item.rules.playerDescription ?? '')}
+														oninput={(event) => {
+															item.rules.playerDescription = event.currentTarget.value;
+															syncTokenSoon();
+														}}
+														placeholder={$appLocale === 'en'
+															? 'Item function or special ability'
+															: 'Função do item ou habilidade especial'}></textarea>
 												</label>
 											</div>
 											<div class="weapon-combat-fields">
@@ -2483,7 +2576,7 @@
 													class="roll-weapon"
 													onclick={() => void rollWeapon(item, 'attack')}
 													disabled={rollingWeaponAction !== null}
-													>{rollingWeaponAction === `${item.entryId}:attack`
+													>{rollingWeaponAction === `${weaponKey(item)}:default:attack`
 														? '…'
 														: $appLocale === 'en'
 															? '🎲 Attack'
@@ -2492,7 +2585,7 @@
 													onclick={() => void rollWeapon(item, 'damage')}
 													disabled={rollingWeaponAction !== null ||
 														!String(item.rules.damage ?? '').match(/^\d+d\d+/i)}
-													>{rollingWeaponAction === `${item.entryId}:damage`
+													>{rollingWeaponAction === `${weaponKey(item)}:default:damage`
 														? '…'
 														: $appLocale === 'en'
 															? '🎲 Damage'
@@ -2515,6 +2608,129 @@
 										></label
 									>{/each}
 							</div>{/if}
+						{#each weaponItems() as item (weaponKey(item))}<section class="weapon-variants">
+								<header>
+									<strong
+										>{item.name} · {$appLocale === 'en'
+											? 'Alternate attacks'
+											: 'Golpes alternativos'}</strong
+									>
+									<button
+										type="button"
+										class="secondary-button"
+										onclick={() => addWeaponAttackProfile(item)}
+										>+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}</button
+									>
+								</header>
+								{#each weaponAttackProfiles(item) as profile (profile.id)}<article
+										class="weapon-variant"
+									>
+										<div class="weapon-variant-heading">
+											<input
+												aria-label={$appLocale === 'en' ? 'Attack name' : 'Nome do golpe'}
+												value={profile.name}
+												oninput={(event) => {
+													profile.name = event.currentTarget.value;
+													syncTokenSoon();
+												}}
+											/>
+											<button
+												type="button"
+												class="danger-button"
+												onclick={() => removeWeaponAttackProfile(item, profile.id)}
+												aria-label={$appLocale === 'en' ? 'Remove attack' : 'Remover golpe'}
+												>×</button
+											>
+										</div>
+										<textarea
+											value={profile.description}
+											oninput={(event) => {
+												profile.description = event.currentTarget.value;
+												syncTokenSoon();
+											}}
+											placeholder={$appLocale === 'en'
+												? 'Ability or attack description'
+												: 'Descrição da habilidade ou do golpe'}></textarea>
+										<div class="weapon-combat-fields">
+											<label
+												>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
+													value={profile.attackAbility}
+													onchange={(event) => {
+														profile.attackAbility = event.currentTarget
+															.value as keyof Sheet['abilityScores'];
+														syncTokenSoon();
+													}}
+													>{#each attributes as attribute}<option value={attribute.key}
+															>{abilityLabel(attribute.key)}</option
+														>{/each}</select
+												></label
+											>
+											<label
+												>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}<input
+													type="number"
+													min="-10"
+													max="10"
+													value={profile.attackBonus}
+													oninput={(event) => {
+														profile.attackBonus = Number(event.currentTarget.value) || 0;
+														syncTokenSoon();
+													}}
+												/></label
+											>
+											<label
+												>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
+													value={profile.damage}
+													oninput={(event) => {
+														profile.damage = event.currentTarget.value;
+														syncTokenSoon();
+													}}
+												/></label
+											>
+											<label
+												>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+													type="number"
+													min="-10"
+													max="10"
+													value={profile.damageBonus}
+													oninput={(event) => {
+														profile.damageBonus = Number(event.currentTarget.value) || 0;
+														syncTokenSoon();
+													}}
+												/></label
+											>
+										</div>
+										{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
+												class="weapon-rule-toggle"
+												><input
+													type="checkbox"
+													checked={profile.greatWeaponFighting}
+													onchange={(event) => {
+														profile.greatWeaponFighting = event.currentTarget.checked;
+														syncTokenSoon();
+													}}
+												/>{$appLocale === 'en'
+													? 'Great Weapon Fighting: damage dice 1–2 become 3'
+													: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
+											>{/if}
+										<div class="weapon-combat-actions">
+											<button
+												class="roll-weapon"
+												onclick={() => void rollWeapon(item, 'attack', profile)}
+												disabled={rollingWeaponAction !== null}
+												>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:attack`
+													? '…'
+													: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
+											>
+											<button
+												onclick={() => void rollWeapon(item, 'damage', profile)}
+												disabled={rollingWeaponAction !== null || !/^\d+d\d+/i.test(profile.damage)}
+												>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:damage`
+													? '…'
+													: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
+											>
+										</div>
+									</article>{/each}
+							</section>{/each}
 					</section>
 					<section class="combat-attacks">
 						<div class="section-title">
@@ -2738,8 +2954,21 @@
 							>
 						</div>
 						{#if visibleInventory().length}<div class="inventory-list">
-								{#each visibleInventory() as item}<div class="inventory-item">
-										<strong>{itemLabel(item)}</strong><input
+								{#each visibleInventory() as item (weaponKey(item))}<div class="inventory-item">
+										<button
+											type="button"
+											class="inventory-item-expand"
+											aria-expanded={expandedInventoryItem === sheet.inventory.indexOf(item)}
+											onclick={() =>
+												(expandedInventoryItem =
+													expandedInventoryItem === sheet.inventory.indexOf(item)
+														? null
+														: sheet.inventory.indexOf(item))}
+											>{itemLabel(item)}
+											<span
+												>{expandedInventoryItem === sheet.inventory.indexOf(item) ? '⌃' : '⌄'}</span
+											></button
+										><input
 											type="number"
 											min="0"
 											max="9999"
@@ -2752,7 +2981,21 @@
 											>{:else}<small class="inventory-weight">—</small>{/if}<button
 											onclick={() => removeInventoryItem(sheet.inventory.indexOf(item))}>×</button
 										>
-									</div>{/each}
+									</div>
+									{#if expandedInventoryItem === sheet.inventory.indexOf(item)}<label
+											class="inventory-item-description"
+											>{$appLocale === 'en'
+												? 'Description / function'
+												: 'Descrição / função'}<textarea
+												value={String(item.rules.playerDescription ?? '')}
+												oninput={(event) => {
+													item.rules.playerDescription = event.currentTarget.value;
+													syncTokenSoon();
+												}}
+												placeholder={$appLocale === 'en'
+													? 'What does this item do?'
+													: 'O que este item faz?'}></textarea></label
+										>{/if}{/each}
 							</div>{:else}<p class="empty-inline">
 								{$appLocale === 'en'
 									? 'No items in this category. Choose a category and add items from the compendium.'
@@ -2927,7 +3170,147 @@
 															>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button
 														>
 													</div>
-												</div>{/if}
+												</div>
+											{/if}
+											<!--
+								{#each weaponItems() as item}
+													<section class="weapon-variants">
+														<header>
+															<strong
+																>{$appLocale === 'en'
+																	? 'Alternate attacks'
+																	: 'Golpes alternativos'}</strong
+															>
+															<button
+																type="button"
+																class="secondary-button"
+																onclick={() => addWeaponAttackProfile(item)}
+															>
+																+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}
+															</button>
+														</header>
+														{#each weaponAttackProfiles(item) as profile (profile.id)}<div
+																class="weapon-variant"
+															>
+																<div class="weapon-variant-heading">
+																	<input
+																		aria-label={$appLocale === 'en'
+																			? 'Attack name'
+																			: 'Nome do golpe'}
+																		value={profile.name}
+																		oninput={(event) => {
+																			profile.name = event.currentTarget.value;
+																			syncTokenSoon();
+																		}}
+																	/>
+																	<button
+																		type="button"
+																		class="danger-button"
+																		onclick={() => removeWeaponAttackProfile(item, profile.id)}
+																		aria-label={$appLocale === 'en'
+																			? 'Remove attack'
+																			: 'Remover golpe'}>×</button
+																	>
+																</div>
+																<textarea
+																	value={profile.description}
+																	oninput={(event) => {
+																		profile.description = event.currentTarget.value;
+																		syncTokenSoon();
+																	}}
+																	placeholder={$appLocale === 'en'
+																		? 'Ability or attack description'
+																		: 'Descrição da habilidade ou do golpe'}></textarea>
+																<div class="weapon-combat-fields">
+																	<label
+																		>{$appLocale === 'en'
+																			? 'Attack ability'
+																			: 'Atributo do ataque'}<select
+																			value={profile.attackAbility}
+																			onchange={(event) => {
+																				profile.attackAbility = event.currentTarget
+																					.value as keyof Sheet['abilityScores'];
+																				syncTokenSoon();
+																			}}
+																			>{#each attributes as attribute}<option value={attribute.key}
+																					>{abilityLabel(attribute.key)}</option
+																				>{/each}</select
+																		></label
+																	>
+																	<label
+																		>{$appLocale === 'en'
+																			? 'Attack bonus'
+																			: 'Bônus de ataque'}<input
+																			type="number"
+																			min="-10"
+																			max="10"
+																			value={profile.attackBonus}
+																			oninput={(event) => {
+																				profile.attackBonus =
+																					Number(event.currentTarget.value) || 0;
+																				syncTokenSoon();
+																			}}
+																		/></label
+																	>
+																	<label
+																		>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
+																			value={profile.damage}
+																			oninput={(event) => {
+																				profile.damage = event.currentTarget.value;
+																				syncTokenSoon();
+																			}}
+																		/></label
+																	>
+																	<label
+																		>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+																			type="number"
+																			min="-10"
+																			max="10"
+																			value={profile.damageBonus}
+																			oninput={(event) => {
+																				profile.damageBonus =
+																					Number(event.currentTarget.value) || 0;
+																				syncTokenSoon();
+																			}}
+																		/></label
+																	>
+																</div>
+																{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
+																		class="weapon-rule-toggle"
+																		><input
+																			type="checkbox"
+																			checked={profile.greatWeaponFighting}
+																			onchange={(event) => {
+																				profile.greatWeaponFighting = event.currentTarget.checked;
+																				syncTokenSoon();
+																			}}
+																		/>{$appLocale === 'en'
+																			? 'Great Weapon Fighting: damage dice 1–2 become 3'
+																			: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
+																	>{/if}
+																<div class="weapon-combat-actions">
+																	<button
+																		class="roll-weapon"
+																		onclick={() => void rollWeapon(item, 'attack', profile)}
+																		disabled={rollingWeaponAction !== null}
+																		>{rollingWeaponAction ===
+																		`${weaponKey(item)}:${profile.id}:attack`
+																			? '…'
+																			: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
+																	>
+																	<button
+																		onclick={() => void rollWeapon(item, 'damage', profile)}
+																		disabled={rollingWeaponAction !== null ||
+																			!/^\d+d\d+/i.test(profile.damage)}
+																		>{rollingWeaponAction ===
+																		`${weaponKey(item)}:${profile.id}:damage`
+																			? '…'
+																			: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
+																	>
+																</div>
+															</div>{/each}
+													</section>
+								-->
 										</article>{/each}{:else}<p>
 										{$appLocale === 'en'
 											? `No ${circle === 0 ? 'cantrips' : `level ${circle} spells`} added.`
@@ -3528,9 +3911,13 @@
 	.initiative-bonus-control {
 		grid-column: span 2;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(110px, max-content);
-		align-items: center;
+		grid-template-columns: minmax(0, 1fr) max-content max-content;
+		align-items: end;
 		gap: 0.5rem;
+	}
+	.initiative-roll {
+		min-height: 2.35rem;
+		white-space: nowrap;
 	}
 	.initiative-advantage-toggle {
 		display: flex;
@@ -4043,6 +4430,58 @@
 		background: #121012;
 		font: inherit;
 	}
+	.weapon-modifications .weapon-description-field {
+		grid-column: 1 / -1;
+	}
+	.weapon-description-field textarea,
+	.weapon-variant textarea,
+	.inventory-item-description textarea {
+		width: 100%;
+		min-width: 0;
+		min-height: 3rem;
+		resize: vertical;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.45rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.weapon-variants {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 0.65rem;
+	}
+	.weapon-variants > header,
+	.weapon-variant-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.weapon-variants > header strong {
+		color: #d6b879;
+		font-size: 0.78rem;
+	}
+	.weapon-variant {
+		display: grid;
+		gap: 0.55rem;
+		border: 1px solid #493e39;
+		border-radius: 7px;
+		padding: 0.65rem;
+		background: #1b1719;
+	}
+	.weapon-variant-heading input {
+		flex: 1;
+		min-width: 0;
+	}
+	.weapon-rule-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		color: #d7c7af;
+		font-size: 0.72rem;
+	}
 	.weapon-combat-actions {
 		display: flex;
 		align-items: center;
@@ -4225,7 +4664,29 @@
 		background: #181416;
 		font-size: 0.78rem;
 	}
-	.inventory-item > strong {
+	.inventory-item-expand {
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.4rem;
+		border: 0;
+		padding: 0;
+		color: #f0d8aa;
+		background: transparent;
+		text-align: left;
+		font: inherit;
+	}
+	.inventory-item-expand span {
+		color: #c9a972;
+	}
+	.inventory-item-description {
+		display: grid;
+		gap: 0.3rem;
+		color: #bcae9f;
+		font-size: 0.72rem;
+	}
+	.inventory-item-expand {
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
@@ -4455,8 +4916,15 @@
 		}
 		.spell-details,
 		.weapon-combat-fields,
-		.weapon-modifications {
+		.weapon-modifications,
+		.initiative-bonus-control {
 			grid-template-columns: 1fr;
+		}
+		.initiative-bonus-control {
+			grid-column: 1 / -1;
+		}
+		.initiative-roll {
+			width: 100%;
 		}
 		.spell-description-field,
 		.spell-actions {

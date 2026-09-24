@@ -27,11 +27,13 @@ type Handler struct{ pool *pgxpool.Pool }
 var diceExpression = regexp.MustCompile(`^(\d{1,3})d(\d{1,4})(?:([+-])(\d{1,5}))?$`)
 
 type DiceResult struct {
-	Expression string `json:"expressao"`
-	Dice       []int  `json:"dados"`
-	Modifier   int    `json:"modificador"`
-	Total      int    `json:"total"`
-	Channel    string `json:"channel,omitempty"`
+	Expression   string `json:"expressao"`
+	Dice         []int  `json:"dados"`
+	OriginalDice []int  `json:"dadosOriginais,omitempty"`
+	Modifier     int    `json:"modificador"`
+	Total        int    `json:"total"`
+	Channel      string `json:"channel,omitempty"`
+	RuleApplied  string `json:"regraAplicada,omitempty"`
 }
 
 func NewHandler(pool *pgxpool.Pool) *Handler { return &Handler{pool: pool} }
@@ -115,9 +117,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 		}
 	} else {
 		var payload struct {
-			Expression string `json:"expression"`
-			Mode       string `json:"mode"`
-			Channel    string `json:"channel"`
+			Expression       string `json:"expression"`
+			Mode             string `json:"mode"`
+			Channel          string `json:"channel"`
+			MinimumDamageDie int    `json:"minimumDamageDie"`
 		}
 		if err := json.Unmarshal(in.Payload, &payload); err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
@@ -128,9 +131,15 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 		if payload.Channel != "" && payload.Channel != "chat" && payload.Channel != "combat" {
 			return apperror.BadRequest("INVALID_ROLL", "Canal de rolagem inválido.")
 		}
+		if payload.MinimumDamageDie != 0 && (payload.MinimumDamageDie != 3 || payload.Channel != "combat" || payload.Mode != "" || !validMinimumDamageRoll(payload.Expression)) {
+			return apperror.BadRequest("INVALID_ROLL", "Regra de dano inválida para esta rolagem.")
+		}
 		result, err := rollWithMode(strings.TrimSpace(payload.Expression), payload.Mode)
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
+		}
+		if payload.MinimumDamageDie == 3 {
+			result = applyMinimumDamageDie(result, 3)
 		}
 		result.Channel = payload.Channel
 		in.Payload, _ = json.Marshal(result)
@@ -142,6 +151,44 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 	_ = h.pool.QueryRow(r.Context(), `select display_name from profiles where id=$1`, p.UserID).Scan(&item.Author)
 	return write(w, http.StatusCreated, item)
+}
+
+func validMinimumDamageRoll(expression string) bool {
+	match := diceExpression.FindStringSubmatch(strings.ReplaceAll(strings.TrimSpace(expression), " ", ""))
+	if match == nil {
+		return false
+	}
+	sides, err := strconv.Atoi(match[2])
+	if err != nil {
+		return false
+	}
+	switch sides {
+	case 4, 6, 8, 10, 12:
+		return true
+	default:
+		return false
+	}
+}
+
+func applyMinimumDamageDie(result DiceResult, minimum int) DiceResult {
+	if minimum < 2 || len(result.Dice) == 0 {
+		return result
+	}
+	adjusted := append([]int(nil), result.Dice...)
+	changed := false
+	for index, face := range adjusted {
+		if face < minimum {
+			result.Total += minimum - face
+			adjusted[index] = minimum
+			changed = true
+		}
+	}
+	if changed {
+		result.OriginalDice = append([]int(nil), result.Dice...)
+		result.Dice = adjusted
+		result.RuleApplied = "Great Weapon Fighting: resultados 1 e 2 tratados como 3"
+	}
+	return result
 }
 
 // roll uses crypto/rand, never browser-provided values. The client requests an

@@ -81,9 +81,13 @@ export const rollDice = (
 	campaignId: string,
 	expression: string,
 	mode?: 'advantage' | 'disadvantage',
-	channel: 'chat' | 'combat' = 'chat'
+	channel: 'chat' | 'combat' = 'chat',
+	minimumDamageDie?: 3
 ) =>
 	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
-		body: JSON.stringify({ type: 'dice.roll', payload: { expression, mode, channel } })
+		body: JSON.stringify({
+			type: 'dice.roll',
+			payload: { expression, mode, channel, ...(minimumDamageDie ? { minimumDamageDie } : {}) }
+		})
 	});
