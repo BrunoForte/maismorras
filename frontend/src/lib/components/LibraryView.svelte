@@ -10,6 +10,7 @@
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import {
+		currentPlayerIds,
 		loadLibraryPermissions,
 		saveLibraryPermissions
 	} from '$lib/services/libraryPermissionsApi';
@@ -98,7 +99,12 @@
 					campaignId,
 					'note',
 					handout.id,
-					handoutAudience === 'selected' ? handoutUserIds : [],
+					handoutAudience === 'selected'
+						? currentPlayerIds(
+								handoutUserIds,
+								participants.map((participant) => participant.userId)
+							)
+						: [],
 					handoutAudience === 'selected'
 				);
 				handout.visibility = 'players';
@@ -135,7 +141,10 @@
 			participants = roster.participants.filter((participant) => participant.role === 'player');
 			if (access?.restricted) {
 				handoutAudience = 'selected';
-				handoutUserIds = access.userIds;
+				handoutUserIds = currentPlayerIds(
+					access.userIds,
+					participants.map((participant) => participant.userId)
+				);
 			}
 			handoutOpen = true;
 		} catch (error) {
@@ -167,9 +176,12 @@
 				loadLibraryPermissions(session, campaignId, itemType, itemKey),
 				listParticipants(session, campaignId)
 			]);
-			permissionUsers = current.userIds;
-			permissionRestricted = current.restricted;
 			participants = roster.participants.filter((participant) => participant.role === 'player');
+			permissionUsers = currentPlayerIds(
+				current.userIds,
+				participants.map((participant) => participant.userId)
+			);
+			permissionRestricted = current.restricted;
 		} catch (error) {
 			message =
 				error instanceof Error ? error.message : 'Não foi possível carregar as permissões do item.';
@@ -197,7 +209,10 @@
 				campaignId,
 				permissionDialog.type,
 				permissionDialog.key,
-				permissionUsers,
+				currentPlayerIds(
+					permissionUsers,
+					participants.map((participant) => participant.userId)
+				),
 				permissionRestricted
 			);
 			if (permissionDialog.type === 'note')

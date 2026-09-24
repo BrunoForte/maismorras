@@ -1,6 +1,13 @@
 import type { Session } from '@supabase/supabase-js';
 import { request } from './httpClient';
 export type LibraryPermission = { userIds: string[]; isGM: boolean; restricted: boolean };
+
+/** Drops stale selections for users who are no longer players in this campaign. */
+export function currentPlayerIds(selected: string[], currentPlayers: string[]): string[] {
+	const allowed = new Set(currentPlayers);
+	return [...new Set(selected.map((id) => id.trim()).filter((id) => id && allowed.has(id)))];
+}
+
 export async function loadLibraryPermissions(
 	session: Session,
 	campaignId: string,
