@@ -2,6 +2,36 @@ package scenes
 
 import "testing"
 
+func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {
+	rolls := []int{4, 17}
+	if got := highestRoll(rolls); got != 17 {
+		t.Fatalf("highestRoll(%v) = %d, want 17", rolls, got)
+	}
+}
+
+func TestRollD20CountAndBounds(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		advantage bool
+		wantCount int
+	}{{"normal", false, 1}, {"advantage", true, 2}} {
+		t.Run(test.name, func(t *testing.T) {
+			rolls, err := rollD20(test.advantage)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rolls) != test.wantCount {
+				t.Fatalf("got %d d20 results, want %d", len(rolls), test.wantCount)
+			}
+			for _, roll := range rolls {
+				if roll < 1 || roll > 20 {
+					t.Fatalf("d20 result out of range: %d", roll)
+				}
+			}
+		})
+	}
+}
+
 func TestPresentationDismissalRequiresEmptyHiddenPayload(t *testing.T) {
 	if !isPresentationDismissal(Presentation{}) {
 		t.Fatal("empty presentation should be dismissible")

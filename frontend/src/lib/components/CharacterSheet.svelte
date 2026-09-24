@@ -9,13 +9,19 @@
 		getCharacterForGM,
 		getMyCharacter,
 		rollMyCharacter,
+		setCharacterInitiativeAdvantage,
 		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
 		type CharacterSheet as Sheet,
 		type InventoryItem
 	} from '$lib/services/characterApi';
-	import { createTokenFromCharacter, listSceneEffects, loadScene } from '$lib/services/sceneApi';
+	import {
+		createTokenFromCharacter,
+		listSceneEffects,
+		loadScene,
+		rollTokenInitiative
+	} from '$lib/services/sceneApi';
 	import {
 		createCompendiumEntry,
 		getCompendium,
@@ -114,6 +120,8 @@
 	let portraitBusy = $state(false);
 	let expandedFeature = $state<string | null>(null);
 	let presentationSocket: SceneSocket | null = null;
+	let initiativeTokenId = $state<string | null>(null);
+	let resolvedCharacterId = $state<string | null>(null);
 	const hasAttackDisadvantage = () =>
 		activeConditions.some((condition) => ['Cego', 'Envenenado', 'Impedido'].includes(condition));
 	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
@@ -448,9 +456,11 @@
 			})
 			.catch(() => undefined);
 		try {
-			sheet = characterId
-				? (await getCharacterForGM(session, campaignId, characterId)).sheet
-				: (await getMyCharacter(session, campaignId)).sheet;
+			const loadedCharacter = characterId
+				? await getCharacterForGM(session, campaignId, characterId)
+				: await getMyCharacter(session, campaignId);
+			resolvedCharacterId = loadedCharacter.id;
+			sheet = loadedCharacter.sheet;
 			sheet.attacks ??= [];
 			sheet.attacks = sheet.attacks.map((attack) => {
 				const attackType =
@@ -484,6 +494,7 @@
 					? scene.tokens.find((item) => item.actorId === characterId)
 					: scene.tokens.find((item) => item.isOwner);
 				if (token) {
+					initiativeTokenId = token.id;
 					setDiceColor(token.color);
 					const effects = await listSceneEffects(session, sceneId);
 					activeConditions = effects.effects
@@ -500,13 +511,70 @@
 		}
 	});
 	onMount(() => {
-		if (!isGM || !sceneId) return;
-		presentationSocket = connectSceneSocket(session, sceneId, () => {});
+		if (!sceneId) return;
+		presentationSocket = connectSceneSocket(
+			session,
+			sceneId,
+			() => {},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => {
+				if (!resolvedCharacterId) return;
+				void getCharacterForGM(session, campaignId, resolvedCharacterId)
+					.then(
+						(character) =>
+							(sheet.initiativeAdvantage = character.sheet.initiativeAdvantage ?? false)
+					)
+					.catch(() => undefined);
+			}
+		);
 		return () => {
 			presentationSocket?.close();
 			presentationSocket = null;
 		};
 	});
+	async function setInitiativeAdvantage(enabled: boolean) {
+		if (!resolvedCharacterId) {
+			message = 'Salve a ficha antes de configurar a vantagem de iniciativa.';
+			return;
+		}
+		try {
+			const result = await setCharacterInitiativeAdvantage(
+				session,
+				campaignId,
+				resolvedCharacterId,
+				enabled
+			);
+			sheet.initiativeAdvantage = result.enabled;
+			message = enabled ? 'Vantagem preparada para a próxima iniciativa.' : 'Vantagem desativada.';
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: 'Não foi possível alterar a vantagem da iniciativa.';
+		}
+	}
+	async function rollSheetInitiative() {
+		if (!initiativeTokenId || !sceneId) {
+			message = 'Esta ficha ainda não está vinculada a um token na cena.';
+			return;
+		}
+		try {
+			const result = await rollTokenInitiative(session, sceneId, initiativeTokenId);
+			sheet.initiativeAdvantage = false;
+			const dice = result.rolls ?? [result.roll];
+			const label = result.advantage ? `Iniciativa · vantagem (${dice.join(' e ')})` : 'Iniciativa';
+			diceOverlay.set({ expression: `${sheet.name} · ${label}`, total: result.initiative, dice });
+			presentationSocket?.publishCombatUpdated();
+			message = `${label}: ${result.roll} ${result.bonus >= 0 ? '+' : '−'} ${Math.abs(result.bonus)} = ${result.initiative}`;
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
+		}
+	}
 	async function refreshPortraitPreview() {
 		if (!sheet.portraitPath || !supabase) {
 			portraitPreview = null;
@@ -1665,6 +1733,7 @@
 	function setAttackType(attack: Sheet['attacks'][number], value: string) {
 		attack.attackType = value === 'ranged' ? 'ranged' : 'melee';
 		attack.ability = attack.attackType === 'ranged' ? 'dexterity' : 'strength';
+		syncTokenSoon();
 	}
 	function addSpell() {
 		const name = newSpellName.trim();
@@ -1727,11 +1796,11 @@
 		try {
 			// CA is derived from the authoritative sheet data; never persist a manual override.
 			sheet.armorClass = calculatedArmorClass();
-			sheet = (
-				characterId
-					? await saveCharacterForGM(session, campaignId, characterId, sheet)
-					: await saveMyCharacter(session, campaignId, sheet)
-			).sheet;
+			const savedCharacter = characterId
+				? await saveCharacterForGM(session, campaignId, characterId, sheet)
+				: await saveMyCharacter(session, campaignId, sheet);
+			resolvedCharacterId = savedCharacter.id;
+			sheet = savedCharacter.sheet;
 			isNewCharacter = false;
 			message = 'Ficha salva.';
 			onTokenCreated();
@@ -1984,6 +2053,26 @@
 								oninput={syncTokenSoon}
 							/>
 						</label>
+						<div class="initiative-roll-control">
+							<label class="initiative-advantage-toggle">
+								<input
+									type="checkbox"
+									checked={sheet.initiativeAdvantage ?? false}
+									onchange={(event) => void setInitiativeAdvantage(event.currentTarget.checked)}
+								/>
+								{$appLocale === 'en'
+									? 'Advantage on next initiative'
+									: 'Vantagem na próxima iniciativa'}
+							</label>
+							<button
+								type="button"
+								class="secondary-button"
+								onclick={() => void rollSheetInitiative()}
+								disabled={!initiativeTokenId}
+							>
+								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
+							</button>
+						</div>
 						<label>
 							>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
 								type="number"
@@ -2271,8 +2360,10 @@
 													{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
 													<select
 														value={weaponAbility(item)}
-														onchange={(event) =>
-															(item.rules.attackAbility = event.currentTarget.value)}
+														onchange={(event) => {
+															item.rules.attackAbility = event.currentTarget.value;
+															syncTokenSoon();
+														}}
 													>
 														{#each attributes as attribute}
 															<option value={attribute.key}>
@@ -2429,8 +2520,10 @@
 									class="attack-ability"
 									aria-label={$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
 									value={attack.ability ?? 'strength'}
-									onchange={(event) =>
-										(attack.ability = event.currentTarget.value as keyof Sheet['abilityScores'])}
+									onchange={(event) => {
+										attack.ability = event.currentTarget.value as keyof Sheet['abilityScores'];
+										syncTokenSoon();
+									}}
 									>{#each attributes as attribute}<option value={attribute.key}
 											>{abilityLabel(attribute.key)} ({modifier(
 												sheet.abilityScores[attribute.key]
@@ -3405,6 +3498,19 @@
 	.profile-combat-fields h3 {
 		grid-column: 1 / -1;
 		margin: 0;
+	}
+	.initiative-roll-control {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.65rem;
+		flex-wrap: wrap;
+	}
+	.initiative-advantage-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
 	}
 	.combat h3 {
 		grid-column: 1 / -1;

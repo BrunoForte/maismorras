@@ -41,6 +41,7 @@ type Sheet struct {
 	SkillExpertise       []string        `json:"skillExpertise"`
 	ArmorClass           int             `json:"armorClass"`
 	Initiative           int             `json:"initiative"`
+	InitiativeAdvantage  bool            `json:"initiativeAdvantage"`
 	Speed                int             `json:"speed"`
 	HitPointsCurrent     int             `json:"hitPointsCurrent"`
 	HitPointsMax         int             `json:"hitPointsMax"`
@@ -544,7 +545,7 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 		insert into actors(campaign_id,owner_id,kind,name,sheet)
 		values($1,$2,'character',$3,$4)
 		on conflict (campaign_id,owner_id) where kind='character'
-		do update set name=excluded.name,sheet=excluded.sheet
+		do update set name=excluded.name,sheet=jsonb_set(excluded.sheet,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true)
 		returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, userID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
 	if err != nil {
 		return Character{}, fmt.Errorf("save character: %w", err)
@@ -558,21 +559,24 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	return item, nil
 }
 
-// GetForGM lets the campaign narrator open a character already linked to this
-// campaign. A player never receives this route, so a sheet remains private
-// from other players even when they share a table.
+// GetForGM lets the campaign narrator or the sheet owner open a character linked
+// to the campaign. Other players cannot read another player's sheet.
 func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, userID string) (Character, error) {
-	if err := r.requireGM(ctx, campaignID, userID); err != nil {
-		return Character{}, err
-	}
 	var item Character
 	var raw []byte
-	err := r.pool.QueryRow(ctx, `select id::text,campaign_id::text,owner_id::text,sheet from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	err := r.pool.QueryRow(ctx, `select id::text,campaign_id::text,coalesce(owner_id::text,''),sheet from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Character{}, ErrNotFound
 	}
 	if err != nil {
 		return Character{}, fmt.Errorf("get character for gm: %w", err)
+	}
+	var ownerID *string
+	if item.OwnerID != "" {
+		ownerID = &item.OwnerID
+	}
+	if err := r.authorizeCharacterWrite(ctx, campaignID, ownerID, userID); err != nil {
+		return Character{}, err
 	}
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
@@ -580,10 +584,18 @@ func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, user
 	return item, nil
 }
 
-// SaveForGM is deliberately separate from SaveMine. This makes the authority
-// boundary explicit: only the GM can update another member's linked sheet.
+// SaveForGM allows the owner to edit their own linked sheet and the GM to
+// administer any sheet in the campaign. The owner check is campaign-scoped.
 func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, userID string, sheet Sheet) (Character, error) {
-	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+	var currentOwnerID *string
+	err := r.pool.QueryRow(ctx, `select owner_id::text from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&currentOwnerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	}
+	if err != nil {
+		return Character{}, err
+	}
+	if err := r.authorizeCharacterWrite(ctx, campaignID, currentOwnerID, userID); err != nil {
 		return Character{}, err
 	}
 	raw, err := json.Marshal(sheet)
@@ -591,7 +603,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 		return Character{}, err
 	}
 	var item Character
-	err = r.pool.QueryRow(ctx, `update actors set name=$1,sheet=$2 where id=$3 and campaign_id=$4 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	err = r.pool.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id is not distinct from $5::uuid and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, currentOwnerID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Character{}, ErrNotFound
 	}
@@ -605,6 +617,45 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 		return Character{}, err
 	}
 	return item, nil
+}
+
+func (r *Repository) authorizeCharacterWrite(ctx context.Context, campaignID string, ownerID *string, userID string) error {
+	isGM := r.requireGM(ctx, campaignID, userID) == nil
+	isOwner := ownerID != nil && *ownerID == userID
+	isMember := false
+	if !isGM && isOwner {
+		member, err := r.isMember(ctx, campaignID, userID)
+		if err != nil {
+			return err
+		}
+		isMember = member
+	}
+	if !characterAccessAllowed(isGM, isMember, isOwner) {
+		return ErrForbidden
+	}
+	return nil
+}
+
+func characterAccessAllowed(isGM, isMember, isOwner bool) bool {
+	return isGM || (isMember && isOwner)
+}
+
+// SetInitiativeAdvantage manages a one-use initiative preference independently
+// from ordinary sheet saves, so stale editors cannot accidentally re-arm it.
+func (r *Repository) SetInitiativeAdvantage(ctx context.Context, campaignID, characterID, userID string, enabled bool) error {
+	var ownerID *string
+	err := r.pool.QueryRow(ctx, `select owner_id::text from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&ownerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if err := r.authorizeCharacterWrite(ctx, campaignID, ownerID, userID); err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{initiativeAdvantage}',to_jsonb($1::boolean),true) where id=$2 and campaign_id=$3 and owner_id is not distinct from $4::uuid and kind='character'`, enabled, characterID, campaignID, ownerID)
+	return err
 }
 func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, userID string) error {
 	if err := r.requireGM(ctx, campaignID, userID); err != nil {

@@ -169,21 +169,28 @@ export const setCombat = (session: Session, sceneId: string, activeTokenId: stri
 		}
 	);
 export const rollSceneInitiative = (session: Session, sceneId: string) =>
-	request<{ tokens: { id: string; initiative: number }[] }>(
-		session,
-		`/api/v1/scenes/${sceneId}/combat/roll-initiative`,
-		{
-			method: 'POST'
-		}
-	);
+	request<{
+		tokens: {
+			id: string;
+			name: string;
+			initiative: number;
+			initiativeRolls: number[];
+			initiativeAdvantage: boolean;
+		}[];
+	}>(session, `/api/v1/scenes/${sceneId}/combat/roll-initiative`, {
+		method: 'POST'
+	});
 export const rollTokenInitiative = (session: Session, sceneId: string, tokenId: string) =>
-	request<{ tokenId: string; roll: number; bonus: number; initiative: number }>(
-		session,
-		`/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`,
-		{
-			method: 'POST'
-		}
-	);
+	request<{
+		tokenId: string;
+		roll: number;
+		rolls: number[];
+		advantage: boolean;
+		bonus: number;
+		initiative: number;
+	}>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/roll-initiative`, {
+		method: 'POST'
+	});
 export const setTokenInitiative = (
 	session: Session,
 	sceneId: string,

@@ -64,6 +64,7 @@ export type CharacterSheet = {
 	skillExpertise: string[];
 	armorClass: number;
 	initiative: number;
+	initiativeAdvantage?: boolean;
 	speed: number;
 	hitPointsCurrent: number;
 	hitPointsMax: number;
@@ -120,7 +121,8 @@ function normalizeCharacter(character: Character): Character {
 		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0,
 		initiative:
 			character.sheet.initiative ??
-			Math.floor(((character.sheet.abilityScores?.dexterity ?? 10) - 10) / 2)
+			Math.floor(((character.sheet.abilityScores?.dexterity ?? 10) - 10) / 2),
+		initiativeAdvantage: character.sheet.initiativeAdvantage ?? false
 	};
 	return character;
 }
@@ -147,6 +149,17 @@ export const saveCharacterForGM = (
 		method: 'PUT',
 		body: JSON.stringify(sheet)
 	}).then(normalizeCharacter);
+export const setCharacterInitiativeAdvantage = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	enabled: boolean
+) =>
+	request<{ enabled: boolean }>(
+		session,
+		`/api/v1/campaigns/${campaignId}/characters/${characterId}/initiative-advantage`,
+		{ method: 'PATCH', body: JSON.stringify({ enabled }) }
+	);
 export const createCharacterForGM = (session: Session, campaignId: string, ownerId: string) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters`, {
 		method: 'POST',
@@ -226,6 +239,7 @@ export function createEmptySheet(): CharacterSheet {
 		skillExpertise: [],
 		armorClass: 10,
 		initiative: 0,
+		initiativeAdvantage: false,
 		speed: 9,
 		hitPointsCurrent: 10,
 		hitPointsMax: 10,

@@ -906,9 +906,9 @@
 				)
 			);
 			$diceOverlay = {
-				expression: `${personagemSelecionado.nome} · iniciativa`,
+				expression: `${personagemSelecionado.nome} · iniciativa${result.advantage ? ' · vantagem' : ''}`,
 				total: result.initiative,
-				dice: [result.roll]
+				dice: result.rolls?.length ? result.rolls : [result.roll]
 			};
 			$chatMensagens = [
 				...$chatMensagens,

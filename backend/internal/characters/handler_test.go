@@ -5,6 +5,27 @@ import (
 	"testing"
 )
 
+func TestCharacterAccessIsLimitedToOwnerOrCampaignGM(t *testing.T) {
+	cases := []struct {
+		name              string
+		gm, member, owner bool
+		want              bool
+	}{
+		{name: "campaign GM", gm: true, want: true},
+		{name: "sheet owner who is a member", member: true, owner: true, want: true},
+		{name: "other campaign member", member: true, want: false},
+		{name: "owner outside campaign", owner: true, want: false},
+		{name: "outsider", want: false},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := characterAccessAllowed(test.gm, test.member, test.owner); got != test.want {
+				t.Fatalf("characterAccessAllowed(%t, %t, %t) = %t, want %t", test.gm, test.member, test.owner, got, test.want)
+			}
+		})
+	}
+}
+
 func TestAbilityModifierUsesDNDHalfDownForNegativeScores(t *testing.T) {
 	cases := map[int]int{1: -5, 9: -1, 10: 0, 11: 0, 18: 4}
 	for score, want := range cases {

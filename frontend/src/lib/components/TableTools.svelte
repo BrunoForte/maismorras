@@ -120,6 +120,14 @@
 					? { ...token, iniciativa: values.get(token.persistedId)! }
 					: token
 			);
+			for (const token of result.tokens) {
+				const dice = token.initiativeRolls?.length ? token.initiativeRolls : [token.initiative];
+				diceOverlay.set({
+					expression: `${token.name} · iniciativa${token.initiativeAdvantage ? ' · vantagem' : ''}`,
+					total: token.initiative,
+					dice
+				});
+			}
 			$chatMensagens = await loadMessages(session, campaignId);
 			sceneSocket?.publishCombatUpdated();
 		} finally {
@@ -134,6 +142,11 @@
 			$personagens = $personagens.map((item) =>
 				item.persistedId === result.tokenId ? { ...item, iniciativa: result.initiative } : item
 			);
+			diceOverlay.set({
+				expression: `Iniciativa${result.advantage ? ' · vantagem' : ''}`,
+				total: result.initiative,
+				dice: result.rolls?.length ? result.rolls : [result.roll]
+			});
 			$chatMensagens = await loadMessages(session, campaignId);
 			sceneSocket?.publishTokenUpdated({ tokenId: result.tokenId });
 		} finally {

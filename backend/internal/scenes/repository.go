@@ -56,6 +56,8 @@ type CombatInitiative struct {
 type InitiativeResult struct {
 	TokenID    string `json:"tokenId"`
 	Roll       int    `json:"roll"`
+	Rolls      []int  `json:"rolls"`
+	Advantage  bool   `json:"advantage"`
 	Bonus      int    `json:"bonus"`
 	Initiative int    `json:"initiative"`
 }
@@ -111,25 +113,27 @@ type Token struct {
 	OwnerID *string `json:"-"`
 	// IsOwner is deliberately a boolean instead of exposing OwnerID to browsers.
 	// It lets a player open only the sheet tied to their own token.
-	IsOwner         bool       `json:"isOwner"`
-	Name            string     `json:"name"`
-	ImageURL        *string    `json:"imageUrl"`
-	Color           int        `json:"color"`
-	X               int        `json:"x"`
-	Y               int        `json:"y"`
-	Size            int        `json:"size"`
-	HPCurrent       int        `json:"hpCurrent"`
-	HPMax           int        `json:"hpMax"`
-	ArmorClass      int        `json:"armorClass"`
-	Initiative      int        `json:"initiative"`
-	InitiativeBonus int        `json:"initiativeBonus"`
-	VisionRange     int        `json:"visionRange"`
-	LightRange      int        `json:"lightRange"`
-	MovementLimit   int        `json:"movementLimit"`
-	MovementSpent   float64    `json:"movementSpent"`
-	Statuses        []string   `json:"statuses"`
-	Hidden          bool       `json:"hidden"`
-	Visibility      Visibility `json:"visibility"`
+	IsOwner             bool       `json:"isOwner"`
+	Name                string     `json:"name"`
+	ImageURL            *string    `json:"imageUrl"`
+	Color               int        `json:"color"`
+	X                   int        `json:"x"`
+	Y                   int        `json:"y"`
+	Size                int        `json:"size"`
+	HPCurrent           int        `json:"hpCurrent"`
+	HPMax               int        `json:"hpMax"`
+	ArmorClass          int        `json:"armorClass"`
+	Initiative          int        `json:"initiative"`
+	InitiativeBonus     int        `json:"initiativeBonus"`
+	InitiativeRolls     []int      `json:"initiativeRolls,omitempty"`
+	InitiativeAdvantage bool       `json:"initiativeAdvantage,omitempty"`
+	VisionRange         int        `json:"visionRange"`
+	LightRange          int        `json:"lightRange"`
+	MovementLimit       int        `json:"movementLimit"`
+	MovementSpent       float64    `json:"movementSpent"`
+	Statuses            []string   `json:"statuses"`
+	Hidden              bool       `json:"hidden"`
+	Visibility          Visibility `json:"visibility"`
 }
 
 // Visibility defines exactly which private attributes a non-owner player may receive.
@@ -989,36 +993,82 @@ func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string)
 	if err != nil || role != "gm" {
 		return nil, ErrForbidden
 	}
-	rows, err := r.pool.Query(ctx, `select id::text,initiative_bonus from scene_tokens where scene_id=$1 order by id`, sceneID)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	items := []Token{}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `select id::text,name,initiative_bonus,actor_id::text from scene_tokens where scene_id=$1 order by id for update`, sceneID)
+	if err != nil {
+		return nil, err
+	}
+	type rollTarget struct {
+		token   Token
+		actorID *string
+	}
+	targets := []rollTarget{}
 	for rows.Next() {
-		var item Token
-		if err := rows.Scan(&item.ID, &item.InitiativeBonus); err != nil {
+		var target rollTarget
+		if err := rows.Scan(&target.token.ID, &target.token.Name, &target.token.InitiativeBonus, &target.actorID); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		roll, err := rand.Int(rand.Reader, big.NewInt(20))
-		if err != nil {
-			return nil, fmt.Errorf("roll initiative: %w", err)
-		}
-		item.Initiative = int(roll.Int64()) + 1 + item.InitiativeBonus
-		if _, err := r.pool.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, item.Initiative, item.ID, sceneID); err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+		targets = append(targets, target)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, err
 	}
 	rows.Close()
-	if _, err := r.pool.Exec(ctx, `delete from scene_token_turn_movement where scene_id=$1`, sceneID); err != nil {
+	items := []Token{}
+	logResults := []string{}
+	for _, target := range targets {
+		item := target.token
+		advantage := false
+		if target.actorID != nil {
+			var raw []byte
+			if err := tx.QueryRow(ctx, `select sheet from actors where id=$1 for update`, *target.actorID).Scan(&raw); err == nil {
+				var initiativePreference struct {
+					Advantage bool `json:"initiativeAdvantage"`
+				}
+				if err := json.Unmarshal(raw, &initiativePreference); err != nil {
+					return nil, err
+				}
+				advantage = initiativePreference.Advantage
+				if advantage {
+					if _, err := tx.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{initiativeAdvantage}','false'::jsonb,true) where id=$1`, *target.actorID); err != nil {
+						return nil, err
+					}
+				}
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return nil, err
+			}
+		}
+		rolls, err := rollD20(advantage)
+		if err != nil {
+			return nil, fmt.Errorf("roll initiative: %w", err)
+		}
+		item.InitiativeRolls = rolls
+		item.InitiativeAdvantage = advantage
+		item.Initiative = highestRoll(rolls) + item.InitiativeBonus
+		if _, err := tx.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, item.Initiative, item.ID, sceneID); err != nil {
+			return nil, err
+		}
+		if advantage {
+			logResults = append(logResults, fmt.Sprintf("%s: %v (vantagem) %+d = %d", item.Name, rolls, item.InitiativeBonus, item.Initiative))
+		} else {
+			logResults = append(logResults, fmt.Sprintf("%s: %d %+d = %d", item.Name, rolls[0], item.InitiativeBonus, item.Initiative))
+		}
+		items = append(items, item)
+	}
+	if _, err := tx.Exec(ctx, `delete from scene_token_turn_movement where scene_id=$1`, sceneID); err != nil {
 		return nil, err
 	}
-	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada para %d combatentes.", len(items))})
-	if _, err := r.pool.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
+	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada: %s", strings.Join(logResults, " · "))})
+	if _, err := tx.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return items, nil
@@ -1032,9 +1082,14 @@ func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, 
 	if err != nil {
 		return InitiativeResult{}, ErrForbidden
 	}
-	var ownerID *string
+	var ownerID, actorID *string
 	var bonus int
-	if err := r.pool.QueryRow(ctx, `select owner_id::text,initiative_bonus from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&ownerID, &bonus); err != nil {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return InitiativeResult{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err := tx.QueryRow(ctx, `select coalesce(st.owner_id,a.owner_id)::text,st.actor_id::text,st.initiative_bonus from scene_tokens st left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&ownerID, &actorID, &bonus); err != nil {
 		if err == pgx.ErrNoRows {
 			return InitiativeResult{}, ErrForbidden
 		}
@@ -1043,20 +1098,72 @@ func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, 
 	if role != "gm" && (ownerID == nil || *ownerID != userID) {
 		return InitiativeResult{}, ErrForbidden
 	}
-	rolled, err := rand.Int(rand.Reader, big.NewInt(20))
+	advantage := false
+	if actorID != nil {
+		var raw []byte
+		if err := tx.QueryRow(ctx, `select sheet from actors where id=$1 for update`, *actorID).Scan(&raw); err != nil {
+			return InitiativeResult{}, err
+		}
+		var initiativePreference struct {
+			Advantage bool `json:"initiativeAdvantage"`
+		}
+		if err := json.Unmarshal(raw, &initiativePreference); err != nil {
+			return InitiativeResult{}, err
+		}
+		advantage = initiativePreference.Advantage
+		if advantage {
+			if _, err := tx.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{initiativeAdvantage}','false'::jsonb,true) where id=$1`, *actorID); err != nil {
+				return InitiativeResult{}, err
+			}
+		}
+	}
+	rolls, err := rollD20(advantage)
 	if err != nil {
 		return InitiativeResult{}, fmt.Errorf("roll token initiative: %w", err)
 	}
-	result := InitiativeResult{TokenID: tokenID, Roll: int(rolled.Int64()) + 1, Bonus: bonus}
+	result := InitiativeResult{TokenID: tokenID, Rolls: rolls, Roll: highestRoll(rolls), Advantage: advantage, Bonus: bonus}
 	result.Initiative = result.Roll + result.Bonus
-	if _, err := r.pool.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, result.Initiative, tokenID, sceneID); err != nil {
+	if _, err := tx.Exec(ctx, `update scene_tokens set initiative=$1,updated_at=now() where id=$2 and scene_id=$3`, result.Initiative, tokenID, sceneID); err != nil {
 		return InitiativeResult{}, err
 	}
-	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada: %d %+d = %d.", result.Roll, result.Bonus, result.Initiative)})
-	if _, err := r.pool.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
+	rollLabel := fmt.Sprintf("%d", result.Roll)
+	if advantage {
+		rollLabel = fmt.Sprintf("%v (vantagem)", rolls)
+	}
+	payload, _ := json.Marshal(map[string]string{"text": fmt.Sprintf("⚔️ Iniciativa rolada: %s %+d = %d.", rollLabel, result.Bonus, result.Initiative)})
+	if _, err := tx.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
+		return InitiativeResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return InitiativeResult{}, err
 	}
 	return result, nil
+}
+
+func rollD20(advantage bool) ([]int, error) {
+	count := 1
+	if advantage {
+		count = 2
+	}
+	rolls := make([]int, 0, count)
+	for range count {
+		roll, err := rand.Int(rand.Reader, big.NewInt(20))
+		if err != nil {
+			return nil, err
+		}
+		rolls = append(rolls, int(roll.Int64())+1)
+	}
+	return rolls, nil
+}
+
+func highestRoll(rolls []int) int {
+	best := 0
+	for _, roll := range rolls {
+		if roll > best {
+			best = roll
+		}
+	}
+	return best
 }
 func (r *Repository) CreateToken(ctx context.Context, sceneID, userID string, t Token) (Token, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)

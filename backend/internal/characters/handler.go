@@ -118,6 +118,21 @@ func (h *Handler) SaveForGM(w http.ResponseWriter, r *http.Request) error {
 	}
 	return write(w, http.StatusOK, item)
 }
+
+func (h *Handler) SetInitiativeAdvantage(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&input); err != nil {
+		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
+	}
+	if err := h.repo.SetInitiativeAdvantage(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, input.Enabled); err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]bool{"enabled": input.Enabled})
+}
+
 func (h *Handler) DeleteForGM(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID); errors.Is(err, ErrForbidden) {
