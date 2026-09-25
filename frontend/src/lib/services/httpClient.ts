@@ -59,6 +59,17 @@ function userFacingMessage(status: number, body: unknown, fallback: string): str
 	if (status === 408) return 'A operação demorou mais que o esperado. Tente novamente.';
 	if (status === 429)
 		return 'Muitas tentativas em pouco tempo. Aguarde um instante e tente novamente.';
+	const errorCode =
+		typeof body === 'object' &&
+		body !== null &&
+		'error' in body &&
+		typeof body.error === 'object' &&
+		body.error !== null &&
+		'code' in body.error
+			? String(body.error.code)
+			: '';
+	if (status === 502 && errorCode === 'TRANSLATION_PROVIDER_ERROR')
+		return 'O serviço externo de tradução falhou temporariamente. As traduções já salvas foram preservadas; tente novamente para continuar pelas pendentes.';
 	if (status >= 500)
 		return 'O serviço encontrou um erro. Tente novamente; se persistir, informe o horário da tentativa.';
 	const candidate =

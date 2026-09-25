@@ -122,4 +122,40 @@ describe('request timeout', () => {
 		expect(onError.mock.calls[0][0].detail.message).not.toContain('db.go');
 		browserWindow.removeEventListener('maismorras:request-error', onError);
 	});
+
+	it('explains translation provider outages without exposing internal details', async () => {
+		const onError = vi.fn();
+		const browserWindow = new EventTarget();
+		vi.stubGlobal('window', browserWindow);
+		browserWindow.addEventListener('maismorras:request-error', onError);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						error: {
+							code: 'TRANSLATION_PROVIDER_ERROR',
+							message: 'provider request failed: secret stack at provider.go:42'
+						}
+					}),
+					{ status: 502, headers: { 'Content-Type': 'application/json' } }
+				)
+			)
+		);
+
+		await expect(
+			request({ access_token: 'token', user: { id: 'user-1' } } as Session, '/translate')
+		).rejects.toMatchObject({
+			status: 502,
+			message:
+				'O serviço externo de tradução falhou temporariamente. As traduções já salvas foram preservadas; tente novamente para continuar pelas pendentes.'
+		});
+
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect(onError.mock.calls[0][0].detail.message).toContain(
+			'traduções já salvas foram preservadas'
+		);
+		expect(onError.mock.calls[0][0].detail.message).not.toContain('provider.go');
+		browserWindow.removeEventListener('maismorras:request-error', onError);
+	});
 });
