@@ -117,6 +117,7 @@
 	let loadingCampaigns = $state(false);
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
+	let standaloneSheet = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
 	type WorkspaceTab =
 		'map' | 'sheets' | 'library' | 'compendium' | 'bestiary' | 'campaign' | 'overlay';
@@ -346,10 +347,13 @@
 			await loadCampaigns(currentSession);
 			const requestedCampaignId = new URLSearchParams(window.location.search).get('campaign');
 			const requestedSceneId = new URLSearchParams(window.location.search).get('scene');
+			const requestedCharacterId = new URLSearchParams(window.location.search).get('character');
+			standaloneSheet = new URLSearchParams(window.location.search).get('sheetWindow') === '1';
 			const requestedCampaign =
 				invitedCampaign ?? campaigns.find((item) => item.id === requestedCampaignId);
 			if (requestedCampaign) {
 				await openCampaign(requestedCampaign);
+				if (requestedCharacterId) openCharacter(requestedCharacterId, '');
 				if (requestedSceneId) {
 					const requestedScene = availableScenes.find((item) => item.id === requestedSceneId);
 					if (requestedScene) activeScene = requestedScene;
@@ -529,6 +533,19 @@
 	function openCharacter(characterId: string, ownerName: string) {
 		editingCharacter = { id: characterId, ownerName };
 		sheetOpen = true;
+	}
+	function openCharacterWindow(characterId: string) {
+		if (!activeCampaign) return;
+		const url = new URL('/', window.location.origin);
+		url.searchParams.set('campaign', activeCampaign.id);
+		url.searchParams.set('character', characterId);
+		url.searchParams.set('sheetWindow', '1');
+		const popup = window.open(
+			url,
+			`maismorras-sheet-${characterId}`,
+			'popup,width=1400,height=900,resizable=yes,scrollbars=no'
+		);
+		popup?.focus();
 	}
 	function selectScene(sceneId: string) {
 		const scene = availableScenes.find((item) => item.id === sceneId);
@@ -944,8 +961,10 @@
 										scene={activeScene}
 										{session}
 										isGM={activeCampaign.role === 'gm'}
+										campaignId={activeCampaign.id}
 										onopensheet={(actorId) =>
 											activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
+										onopennewwindow={openCharacterWindow}
 									/>{:else}<p class="status-message">Carregando mapa…</p>{/if}
 								{#if DiceOverlayComponent}<DiceOverlayComponent />{/if}
 								{#if TableToolsComponent}<TableToolsComponent
@@ -1082,8 +1101,12 @@
 					isGM={activeCampaign.role === 'gm'}
 					characterId={editingCharacter?.id}
 					characterOwnerName={editingCharacter?.ownerName ?? ''}
-					docked={workspaceTab === 'map'}
-					onclose={() => (sheetOpen = false)}
+					docked={workspaceTab === 'map' && !standaloneSheet}
+					standalone={standaloneSheet}
+					onclose={() => {
+						if (standaloneSheet) window.close();
+						else sheetOpen = false;
+					}}
 					onTokenCreated={() => void reloadActiveScene()}
 				/>{/if}
 			{#if participantsOpen && ParticipantsPanelComponent && activeScene}<ParticipantsPanelComponent

@@ -177,7 +177,7 @@
 				];
 				knownMessageIds.add(String(event.id));
 				$diceOverlay = {
-					expression: result.expressao,
+					expression: `${event.author} · ${result.expressao}`,
 					notation: result.expressao,
 					total: result.total,
 					dice: result.dados

@@ -65,6 +65,7 @@
 		characterId = null,
 		characterOwnerName = '',
 		docked = false,
+		standalone = false,
 		onclose,
 		onTokenCreated
 	}: {
@@ -75,6 +76,7 @@
 		characterId?: string | null;
 		characterOwnerName?: string;
 		docked?: boolean;
+		standalone?: boolean;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -422,6 +424,40 @@
 		const profile = speciesProfile();
 		if (!profile) return [];
 		return [...profile.traits, ...(profile.lineages?.[sheet.speciesLineage] ?? [])];
+	};
+	const speciesTraitDescription = (trait: string) => {
+		const english = $appLocale === 'en';
+		if (/vis[aã]o no escuro/i.test(trait))
+			return english
+				? 'You can see in dim light within the listed range as if it were bright light, and in darkness as if it were dim light. You cannot discern color in darkness, only shades of gray.'
+				: 'Você enxerga na penumbra dentro do alcance indicado como se fosse luz plena e, na escuridão, como se fosse penumbra. Na escuridão, não distingue cores, apenas tons de cinza.';
+		if (/investida de adrenalina|adrenaline rush/i.test(trait))
+			return english
+				? 'As a bonus action, you can take the Dash action to move. You also gain temporary hit points equal to your proficiency bonus. You can use this a number of times equal to your proficiency bonus, regaining all uses after a Long Rest.'
+				: 'Como uma ação bônus, você pode realizar a ação Disparada para se mover. Você também recebe pontos de vida temporários iguais ao seu bônus de proficiência. Pode usar este traço um número de vezes igual ao bônus de proficiência e recupera todos os usos após um Descanso Longo.';
+		if (/resist[eê]ncia incans[aá]vel|relentless endurance/i.test(trait))
+			return english
+				? 'When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. Once used, this trait returns after a Long Rest.'
+				: 'Quando você é reduzido a 0 pontos de vida, mas não morre instantaneamente, pode ficar com 1 ponto de vida em vez disso. Após usar este traço, você só pode usá-lo novamente depois de um Descanso Longo.';
+		if (/sorte|lucky/i.test(trait))
+			return english
+				? 'When you roll a 1 on a d20 test, you can reroll the die and must use the new roll.'
+				: 'Quando obtém 1 em um teste com d20, você pode rolar o dado novamente e deve usar o novo resultado.';
+		if (/arma de sopro|breath weapon/i.test(trait))
+			return english
+				? 'You exhale destructive energy in an area. The saving throw, damage, area, and uses are determined by your species rules and level.'
+				: 'Você expele energia destrutiva em uma área. A salvaguarda, o dano, a área e a quantidade de usos seguem as regras da espécie e do nível.';
+		if (/voo drac[oô]nico|draconic flight/i.test(trait))
+			return english
+				? 'Beginning at level 5, you can manifest spectral wings and gain a flying speed for a limited duration, according to the species feature.'
+				: 'A partir do nível 5, você manifesta asas espectrais e recebe deslocamento de voo por uma duração limitada, conforme o traço da espécie.';
+		if (/ancestralidade fe[eé]rica|fey ancestry/i.test(trait))
+			return english
+				? 'You have Advantage on saving throws you make to avoid or end the Charmed condition.'
+				: 'Você tem vantagem nas salvaguardas feitas para evitar ou encerrar a condição Enfeitiçado.';
+		return english
+			? 'This trait is applied from the selected species or lineage. Consult its compendium entry for the complete rules text.'
+			: 'Este traço é aplicado pela espécie ou linhagem selecionada. Consulte a entrada correspondente no compêndio para ver o texto completo das regras.';
 	};
 	const speciesSpeed = () =>
 		normalizedSpecies(sheet.species) === 'elf' && sheet.speciesLineage === 'Elfo da Floresta'
@@ -805,6 +841,25 @@
 			];
 		});
 		return [...features, ...feats].flatMap((effect) => {
+			const normalizedName = effect.name
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, '')
+				.toLowerCase();
+			if (/archery|arquearia|estilo de luta.*arco/.test(normalizedName) && range === 'ranged')
+				return [{ key: effect.key, name: effect.name, attackBonus: 2, damageBonus: 0 }];
+			if (/dueling|duelo/.test(normalizedName) && range === 'melee') {
+				const itemRules = JSON.stringify(item.rules);
+				const twoHanded = /two.?handed|duas m[aã]os/.test(itemRules);
+				const anotherEquippedWeapon = sheet.inventory.some(
+					(other) =>
+						other !== item &&
+						other.equipped &&
+						String(other.rules.category ?? '').toLowerCase() === 'weapon'
+				);
+				if (!twoHanded && !anotherEquippedWeapon)
+					return [{ key: effect.key, name: effect.name, attackBonus: 0, damageBonus: 2 }];
+				return [];
+			}
 			const parsed = parseWeaponEffect(effect.key, effect.name, effect.text, range);
 			return parsed ? [parsed] : [];
 		});
@@ -1020,13 +1075,25 @@
 				optionLabel(item).toLowerCase() === feat.toLowerCase() ||
 				item.name.toLowerCase() === feat.toLowerCase()
 		);
-		if (!entry) return 'Talento privado ou sem descrição cadastrada no compêndio.';
+		if (!entry) {
+			if (/great weapon fighting|luta com armas grandes/i.test(feat))
+				return $appLocale === 'en'
+					? 'When you roll damage for a melee weapon attack made with a weapon wielded in two hands, you can reroll a 1 or 2 on a damage die. You must use the new roll.'
+					: 'Ao rolar o dano de um ataque corpo a corpo com uma arma empunhada com as duas mãos, você pode rolar novamente um dado de dano que tenha resultado 1 ou 2. Você deve usar o novo resultado.';
+			return 'Talento privado ou sem descrição cadastrada no compêndio.';
+		}
 		const rules = entry.rules ?? {};
 		const description = String(rules.description ?? entry.summary ?? '').trim();
 		const benefits = Array.isArray(rules.benefits)
 			? rules.benefits.map((benefit) => String(benefit).trim()).filter(Boolean)
 			: [];
-		return [...new Set([description, ...benefits].filter(Boolean))].join('\n\n') || entry.summary;
+		const resolved = [...new Set([description, ...benefits].filter(Boolean))].join('\n\n');
+		if (resolved) return resolved;
+		if (/great weapon fighting|luta com armas grandes/i.test(feat))
+			return $appLocale === 'en'
+				? 'When you roll damage for a melee weapon attack made with a weapon wielded in two hands, you can reroll a 1 or 2 on a damage die. You must use the new roll.'
+				: 'Ao rolar o dano de um ataque corpo a corpo com uma arma empunhada com as duas mãos, você pode rolar novamente um dado de dano que tenha resultado 1 ou 2. Você deve usar o novo resultado.';
+		return entry.summary || 'Descrição ainda não cadastrada no compêndio.';
 	};
 	const spellCompendiumEntry = (spell: Sheet['spells'][number]) =>
 		spell.entryId ? compendiumEntries.find((entry) => entry.id === spell.entryId) : undefined;
@@ -1155,7 +1222,7 @@
 			const result = await rollMyCharacter(session, campaignId, kind, key, mode);
 			const rollCount = Math.max(1, result.dados.length);
 			$diceOverlay = {
-				expression: `${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
+				expression: `${sheet.name || 'Personagem'} · ${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
 				notation: `${rollCount}d20${result.modificador ? `${result.modificador >= 0 ? '+' : ''}${result.modificador}` : ''}`,
 				total: result.total,
 				dice: result.dados,
@@ -1274,7 +1341,7 @@
 					sheet.hitPointsCurrent + result.total
 				);
 				$diceOverlay = {
-					expression: $appLocale === 'en' ? 'Hit die' : 'Dado de vida',
+					expression: `${sheet.name || 'Personagem'} · ${$appLocale === 'en' ? 'Hit die' : 'Dado de vida'}`,
 					notation: `1d${hitDie[1]}${constitutionBonus ? `${constitutionBonus >= 0 ? '+' : ''}${constitutionBonus}` : ''}`,
 					total: result.total,
 					dice: result.dados
@@ -1555,7 +1622,7 @@
 				];
 				sceneSocketPublishChat();
 				$diceOverlay = {
-					expression: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
+					expression: `${sheet.name || 'Personagem'} · ${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
 					notation: result.expressao,
 					total: result.total,
 					dice: result.dados,
@@ -1603,7 +1670,7 @@
 				];
 				sceneSocketPublishChat();
 				$diceOverlay = {
-					expression: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
+					expression: `${sheet.name || 'Personagem'} · ${attackName} · dano${isCritical ? ' crítico' : ''}`,
 					notation: damage.expressao,
 					total: damage.total,
 					dice: damage.dados,
@@ -1675,7 +1742,7 @@
 		];
 		sceneSocketPublishChat();
 		$diceOverlay = {
-			expression: label,
+			expression: `${sheet.name || 'Personagem'} · ${label}`,
 			notation: attack.expressao,
 			total: attack.total,
 			dice: attack.dados,
@@ -1713,7 +1780,7 @@
 		];
 		sceneSocketPublishChat();
 		$diceOverlay = {
-			expression: `${label} · dano${critical ? ' crítico' : ''}`,
+			expression: `${sheet.name || 'Personagem'} · ${label} · dano${critical ? ' crítico' : ''}`,
 			notation: result.expressao,
 			total: result.total,
 			dice: result.dados,
@@ -1808,7 +1875,7 @@
 			];
 			sceneSocketPublishChat();
 			$diceOverlay = {
-				expression: spell.name,
+				expression: `${sheet.name || 'Personagem'} · ${spell.name}`,
 				notation: result.expressao,
 				total: result.total,
 				dice: result.dados,
@@ -1872,7 +1939,7 @@
 			sceneSocketPublishChat();
 			if (result.dados?.length) {
 				$diceOverlay = {
-					expression: `${result.spellName} · ${result.expression ?? 'rolagem'}`,
+					expression: `${sheet.name || 'Personagem'} · ${result.spellName} · ${result.expression ?? 'rolagem'}`,
 					notation: result.expression,
 					total: result.total ?? 0,
 					dice: result.dados,
@@ -2027,6 +2094,7 @@
 <div
 	class="sheet-backdrop"
 	class:docked
+	class:standalone
 	role="presentation"
 	onclick={(event) => {
 		if (event.currentTarget === event.target) onclose();
@@ -2144,14 +2212,14 @@
 						</div>
 					</section>
 					<section class="identity">
-						<label
+						<label class="identity-name"
 							>{$appLocale === 'en' ? 'Name' : 'Nome'}<input
 								bind:value={sheet.name}
 								maxlength="120"
 								placeholder={$appLocale === 'en' ? 'Character name' : 'Nome do personagem'}
 							/></label
 						>
-						<label
+						<label class="identity-class"
 							>{$appLocale === 'en' ? 'Class' : 'Classe'}<input
 								bind:value={sheet.class}
 								onchange={onClassChanged}
@@ -2159,16 +2227,7 @@
 								placeholder={$appLocale === 'en' ? 'E.g. Fighter' : 'Ex.: Guerreiro'}
 							/></label
 						>
-						<label
-							>{$appLocale === 'en' ? 'Level' : 'Nível'}<input
-								type="number"
-								min="1"
-								max="20"
-								bind:value={sheet.level}
-								onchange={onLevelChanged}
-							/></label
-						>
-						{#if subclassOptions().length}<label
+						{#if subclassOptions().length}<label class="identity-subclass"
 								>{$appLocale === 'en' ? 'Subclass' : 'Subclasse'}<select
 									bind:value={sheet.subclass}
 									onchange={syncProgression}
@@ -2178,7 +2237,16 @@
 										>{/each}</select
 								></label
 							>{/if}
-						<label
+						<label class="identity-level"
+							>{$appLocale === 'en' ? 'Level' : 'Nível'}<input
+								type="number"
+								min="1"
+								max="20"
+								bind:value={sheet.level}
+								onchange={onLevelChanged}
+							/></label
+						>
+						<label class="identity-species"
 							>{$appLocale === 'en' ? 'Species' : 'Espécie'}<input
 								bind:value={sheet.species}
 								onchange={onSpeciesChanged}
@@ -2186,8 +2254,14 @@
 								placeholder={$appLocale === 'en' ? 'E.g. Human' : 'Ex.: Humano'}
 							/></label
 						>
+						<label class="identity-background"
+							>{$appLocale === 'en' ? 'Background' : 'Antecedente'}<input
+								bind:value={sheet.background}
+								list="background-options"
+							/></label
+						>
 						{#if lineageOptions().length}
-							<label
+							<label class="identity-lineage"
 								>{$appLocale === 'en' ? 'Lineage / legacy' : 'Linhagem / legado'}<select
 									bind:value={sheet.speciesLineage}
 									onchange={onLineageChanged}
@@ -2198,15 +2272,17 @@
 								></label
 							>
 						{/if}
-						<label
-							>{$appLocale === 'en' ? 'Background' : 'Antecedente'}<input
-								bind:value={sheet.background}
-								list="background-options"
-							/></label
-						>
-						<label
+						<label class="identity-alignment"
 							>{$appLocale === 'en' ? 'Alignment' : 'Alinhamento'}<input
 								bind:value={sheet.alignment}
+							/></label
+						>
+						<label class="identity-proficiency"
+							>{$appLocale === 'en' ? 'Proficiency bonus' : 'Bônus de proficiência'}<input
+								type="number"
+								min="0"
+								max="20"
+								bind:value={sheet.proficiencyBonus}
 							/></label
 						>
 						<datalist id="class-options"
@@ -2227,16 +2303,38 @@
 					</section>
 					<section class="profile-combat-fields">
 						<h3>{$appLocale === 'en' ? 'Combat profile' : 'Perfil de combate'}</h3>
-						<div class="initiative-bonus-control">
-							<label
-								>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
-									type="number"
-									min="-20"
-									max="20"
-									bind:value={sheet.initiative}
-									oninput={syncTokenSoon}
-								/>
-							</label>
+						<label>
+							{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
+								type="number"
+								min="0"
+								value={displayedSpeed()}
+								onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)}
+							/></label
+						>
+						<label class="hit-dice-label">
+							<span
+								>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}
+								<small>{sheet.level - sheet.hitDiceSpent}/{sheet.level}</small></span
+							><input bind:value={sheet.hitDice} />
+						</label>
+						<label
+							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
+								type="number"
+								min="-20"
+								max="20"
+								bind:value={sheet.initiative}
+								oninput={syncTokenSoon}
+							/></label
+						>
+						<div class="initiative-actions">
+							<button
+								type="button"
+								class="secondary-button initiative-roll"
+								onclick={() => void rollSheetInitiative()}
+								disabled={!initiativeTokenId}
+							>
+								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
+							</button>
 							<label
 								class="initiative-advantage-toggle"
 								title={$appLocale === 'en'
@@ -2252,37 +2350,7 @@
 								<span class="switch-track" aria-hidden="true"></span>
 								{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}
 							</label>
-							<button
-								type="button"
-								class="secondary-button initiative-roll"
-								onclick={() => void rollSheetInitiative()}
-								disabled={!initiativeTokenId}
-							>
-								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
-							</button>
 						</div>
-						<label>
-							>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
-								type="number"
-								min="0"
-								value={displayedSpeed()}
-								onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)}
-							/></label
-						><label
-							>{$appLocale === 'en' ? 'Proficiency bonus' : 'Bônus de proficiência'}<input
-								type="number"
-								min="0"
-								max="20"
-								bind:value={sheet.proficiencyBonus}
-							/></label
-						><label
-							>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}<input
-								bind:value={sheet.hitDice}
-							/><small
-								>{sheet.level - sheet.hitDiceSpent}/{sheet.level}
-								{$appLocale === 'en' ? 'available' : 'disponíveis'}</small
-							></label
-						>
 					</section>
 					{#if speciesProfile()}
 						<section
@@ -2302,11 +2370,12 @@
 									)}</span
 								>
 							</div>
-							<ul>
-								{#each activeSpeciesTraits() as trait}<li>
-										{distanceText(trait, $appLocale)}
-									</li>{/each}
-							</ul>
+							<div class="species-trait-list">
+								{#each activeSpeciesTraits() as trait (trait)}<details class="species-trait">
+										<summary>{distanceText(trait, $appLocale)}</summary>
+										<p>{speciesTraitDescription(trait)}</p>
+									</details>{/each}
+							</div>
 							<small
 								>{$appLocale === 'en'
 									? 'These traits are calculated from the selected species and lineage. HP, spells, and uses appear here for the table; complete current combat values and add the desired spells to the sheet.'
@@ -2334,9 +2403,9 @@
 					</section>
 					<section class="saving-throws">
 						<div class="section-title">
-							<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de resistência'}</h3>
+							<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de Salvaguarda'}</h3>
 							<label class="roll-mode"
-								>d20 <select bind:value={rollMode} aria-label="Modo de rolagem"
+								><select bind:value={rollMode} aria-label="Modo de rolagem"
 									><option value="advantage" disabled={hasAttackDisadvantage()}
 										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
 									><option value="normal">Normal</option><option value="disadvantage"
@@ -2365,11 +2434,11 @@
 												attribute.key,
 												$appLocale === 'en'
 													? `${abilityLabel(attribute.key)} saving throw`
-													: `Resistência de ${abilityLabel(attribute.key)}`
+													: `Salvaguarda de ${abilityLabel(attribute.key)}`
 											)}
 										aria-label={$appLocale === 'en'
 											? `Roll ${abilityLabel(attribute.key)} saving throw`
-											: `Rolar resistência de ${abilityLabel(attribute.key)}`}>🎲</button
+											: `Rolar Salvaguarda de ${abilityLabel(attribute.key)}`}>Salvaguarda</button
 									>
 								</article>{/each}
 						</div>
@@ -3045,7 +3114,7 @@
 										class="skill-roll"
 										onclick={() => void rollSkill(name, ability)}
 										aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}
-										>🎲</button
+										>⚄</button
 									>
 								</div>{/each}
 						</div>
@@ -3966,8 +4035,8 @@
 		top: 5.8rem;
 		bottom: 4.8rem;
 		left: 1rem;
-		width: min(390px, calc(100vw - 2rem));
-		min-width: min(320px, calc(100vw - 2rem));
+		width: min(780px, calc(100vw - 2rem));
+		min-width: min(640px, calc(100vw - 2rem));
 		max-width: calc(100vw - 1rem);
 		min-height: 320px;
 		max-height: calc(100dvh - 10.6rem);
@@ -3975,6 +4044,19 @@
 		overflow: auto;
 		pointer-events: auto;
 		box-shadow: 0 18px 48px #000a;
+	}
+	.sheet-backdrop.standalone {
+		inset: 0;
+		padding: 0;
+		background: #100d10;
+		backdrop-filter: none;
+	}
+	.sheet-backdrop.standalone .sheet {
+		width: 100vw;
+		height: 100dvh;
+		max-height: 100dvh;
+		border: 0;
+		border-radius: 0;
 	}
 	.sheet.minimized {
 		width: auto !important;
@@ -4115,19 +4197,61 @@
 	.combat,
 	.profile-combat-fields {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.7rem;
+	}
+	.identity {
+		grid-template-areas:
+			'name class subclass level'
+			'species background alignment proficiency'
+			'lineage lineage lineage lineage';
+	}
+	.identity-name {
+		grid-area: name;
+	}
+	.identity-class {
+		grid-area: class;
+	}
+	.identity-subclass {
+		grid-area: subclass;
+	}
+	.identity-level {
+		grid-area: level;
+	}
+	.identity-species {
+		grid-area: species;
+	}
+	.identity-background {
+		grid-area: background;
+	}
+	.identity-alignment {
+		grid-area: alignment;
+	}
+	.identity-proficiency {
+		grid-area: proficiency;
+	}
+	.identity-lineage {
+		grid-area: lineage;
 	}
 	.profile-combat-fields h3 {
 		grid-column: 1 / -1;
 		margin: 0;
 	}
-	.initiative-bonus-control {
-		grid-column: span 2;
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) max-content max-content;
+	.initiative-actions {
+		display: flex;
 		align-items: end;
+		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+	.hit-dice-label > span {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+	}
+	.hit-dice-label small {
+		color: #d8ad67;
+		font-size: 0.72rem;
+		font-weight: 700;
 	}
 	.initiative-roll {
 		border: 1px solid #8c6d43;
@@ -4469,9 +4593,6 @@
 		font: inherit;
 		font-size: 0.75rem;
 	}
-	.identity label:first-child {
-		grid-column: span 2;
-	}
 	label {
 		display: grid;
 		gap: 0.3rem;
@@ -4519,20 +4640,36 @@
 		font-size: 0.72rem;
 		line-height: 1.4;
 	}
-	.species-traits ul {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
+	.species-trait-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+		gap: 0.45rem;
 	}
-	.species-traits li {
+	.species-trait {
 		border: 1px solid rgba(124, 161, 189, 0.35);
-		border-radius: 999px;
-		padding: 0.25rem 0.45rem;
+		border-radius: 7px;
 		color: #d5e4ed;
 		font-size: 0.7rem;
+	}
+	.species-trait summary {
+		padding: 0.45rem 0.55rem;
+		cursor: pointer;
+	}
+	.species-trait[open] summary {
+		color: #f1d59e;
+	}
+	.species-trait p {
+		margin: 0;
+		padding: 0 0.55rem 0.55rem;
+		color: #b9c8d3;
+		font-size: 0.68rem;
+		line-height: 1.5;
+	}
+	.saving-throws .section-title h3 {
+		white-space: nowrap;
+	}
+	.skills-grid {
+		margin-top: 0.85rem;
 	}
 	h3 {
 		margin-bottom: 0.55rem;
@@ -5202,10 +5339,16 @@
 		.identity,
 		.combat,
 		.profile-combat-fields {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
-		.identity label:first-child {
-			grid-column: span 2;
+		.identity {
+			grid-template-areas:
+				'name name'
+				'class subclass'
+				'level level'
+				'species background'
+				'alignment proficiency'
+				'lineage lineage';
 		}
 		.abilities {
 			grid-template-columns: repeat(3, 1fr);
@@ -5213,20 +5356,23 @@
 		.saving-throws > div {
 			grid-template-columns: repeat(3, 1fr);
 		}
+		.saving-throws .section-title h3 {
+			font-size: clamp(0.72rem, 3vw, 0.9rem);
+		}
 		.expertise-choices > div {
 			grid-template-columns: 1fr;
 		}
 		.spell-details,
 		.weapon-combat-fields,
-		.weapon-modifications,
-		.initiative-bonus-control {
+		.weapon-modifications {
 			grid-template-columns: 1fr;
 		}
-		.initiative-bonus-control {
+		.initiative-actions {
 			grid-column: 1 / -1;
+			align-items: center;
 		}
 		.initiative-roll {
-			width: 100%;
+			width: auto;
 		}
 		.spell-description-field,
 		.spell-actions {

@@ -66,7 +66,7 @@ describe('DiceBoxRuntime', () => {
 		expect(firstGroup).toHaveLength(3);
 
 		await runtime.playBatch([roll], '3d-table');
-		expect(box.reroll).toHaveBeenCalledWith(firstGroup, { remove: true });
+		expect(box.reroll).toHaveBeenCalledWith(firstGroup, { remove: true, newStartPoint: false });
 		expect(box.getRollResults?.()?.at(-1)?.rolls).toHaveLength(3);
 		expect(box.clear).not.toHaveBeenCalled();
 	});

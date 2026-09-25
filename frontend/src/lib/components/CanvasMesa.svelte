@@ -50,6 +50,11 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import { rollDice } from '$lib/services/eventApi';
+	import {
+		getCharacterForGM,
+		getMyCharacter,
+		setCharacterInitiativeAdvantage
+	} from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
 	import {
 		campaignAssetPath,
@@ -61,12 +66,16 @@
 		scene,
 		session,
 		isGM,
-		onopensheet = () => {}
+		campaignId = scene.campaignId,
+		onopensheet = () => {},
+		onopennewwindow = () => {}
 	}: {
 		scene: Scene;
 		session: Session;
 		isGM: boolean;
+		campaignId?: string;
 		onopensheet?: (actorId: string) => void;
+		onopennewwindow?: (actorId: string) => void;
 	} = $props();
 
 	let canvasMesa: HTMLCanvasElement;
@@ -79,6 +88,67 @@
 	let personagemSelecionado = $derived(
 		$personagens.find((personagem) => personagem.id === tokenSelecionadoId)
 	);
+	let initiativeAdvantageByActor = $state<Record<string, boolean>>({});
+	let characterSummaryByActor = $state<
+		Record<
+			string,
+			{
+				name: string;
+				class: string;
+				subclass: string;
+				level: number;
+				species: string;
+				background: string;
+				proficiencyBonus: number;
+			}
+		>
+	>({});
+	$effect(() => {
+		const actorId = personagemSelecionado?.actorId;
+		if (
+			!actorId ||
+			npcSelecionado ||
+			(!isGM && !personagemSelecionado?.isOwned) ||
+			actorId in initiativeAdvantageByActor
+		)
+			return;
+		let cancelled = false;
+		const request = isGM
+			? getCharacterForGM(session, campaignId, actorId)
+			: getMyCharacter(session, campaignId);
+		void request
+			.then((character) => {
+				if (!cancelled) {
+					const { sheet } = character;
+					characterSummaryByActor = {
+						...characterSummaryByActor,
+						[actorId]: {
+							name: sheet.name,
+							class: sheet.class,
+							subclass: sheet.subclass,
+							level: sheet.level,
+							species: sheet.species,
+							background: sheet.background,
+							proficiencyBonus: sheet.proficiencyBonus
+						}
+					};
+					personagens.update((tokens) =>
+						tokens.map((token) =>
+							token.actorId === actorId ? { ...token, nome: sheet.name || token.nome } : token
+						)
+					);
+					initiativeAdvantageByActor = {
+						...initiativeAdvantageByActor,
+						[actorId]: character.sheet.initiativeAdvantage ?? false
+					};
+				}
+			})
+			.catch(() => {
+				if (!cancelled)
+					initiativeAdvantageByActor = { ...initiativeAdvantageByActor, [actorId]: false };
+			});
+		return () => (cancelled = true);
+	});
 	$effect(() => setDiceColor(personagemSelecionado?.cor));
 	let atoresNPC = $state<NPC[]>([]);
 	let npcSelecionado = $derived(
@@ -900,6 +970,10 @@
 				scene.id,
 				personagemSelecionado.persistedId
 			);
+			initiativeAdvantageByActor = {
+				...initiativeAdvantageByActor,
+				[personagemSelecionado.actorId ?? '']: false
+			};
 			personagens.update((tokens) =>
 				tokens.map((token) =>
 					token.persistedId === result.tokenId ? { ...token, iniciativa: result.initiative } : token
@@ -932,6 +1006,22 @@
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
+		}
+	}
+	async function toggleSelectedInitiativeAdvantage(enabled: boolean) {
+		const actorId = personagemSelecionado?.actorId;
+		if (!actorId || (!isGM && !personagemSelecionado?.isOwned)) return;
+		try {
+			const result = await setCharacterInitiativeAdvantage(session, campaignId, actorId, enabled);
+			initiativeAdvantageByActor = {
+				...initiativeAdvantageByActor,
+				[actorId]: result.enabled
+			};
+		} catch (error) {
+			persistenceError =
+				error instanceof Error
+					? error.message
+					: 'Não foi possível atualizar a vantagem da iniciativa.';
 		}
 	}
 	async function rolarAcaoDeNPC(action: NPC['sheet']['actions'][number]) {
@@ -1198,7 +1288,10 @@
 					<span class="inspector-eyebrow"
 						>{$appLocale === 'en' ? 'SELECTED TOKEN' : 'TOKEN SELECIONADO'}</span
 					>
-					<h2>{personagemSelecionado.nome}</h2>
+					<h2>
+						{characterSummaryByActor[personagemSelecionado.actorId ?? '']?.name ||
+							personagemSelecionado.nome}
+					</h2>
 				</div>
 				<button
 					class="close-button"
@@ -1211,6 +1304,19 @@
 					><b>INI</b>{personagemSelecionado.iniciativa}</span
 				><span><b>TAM</b>{personagemSelecionado.tamanho}×{personagemSelecionado.tamanho}</span>
 			</div>
+			{#if personagemSelecionado.actorId && !npcSelecionado && characterSummaryByActor[personagemSelecionado.actorId]}
+				{@const summary = characterSummaryByActor[personagemSelecionado.actorId]}
+				<div class="linked-character-summary">
+					<strong
+						>{summary.class}{summary.subclass ? ` · ${summary.subclass}` : ''} · Nível {summary.level}</strong
+					>
+					<span
+						>{summary.species || 'Espécie não definida'} · {summary.background ||
+							'Antecedente não definido'}</span
+					>
+					<small>Bônus de proficiência +{summary.proficiencyBonus}</small>
+				</div>
+			{/if}
 			{#if isGM || personagemSelecionado.isOwned}<div class="token-appearance">
 					<strong>Aparência do token</strong>
 					<label
@@ -1301,6 +1407,10 @@
 					class="open-sheet"
 					onclick={() => onopensheet(personagemSelecionado.actorId!)}
 					>{$appLocale === 'en' ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button
+				><button
+					class="open-sheet-new-window"
+					onclick={() => onopennewwindow(personagemSelecionado.actorId!)}
+					>{$appLocale === 'en' ? 'Open sheet in new window' : 'Abrir ficha em nova janela'}</button
 				>{/if}
 			{#if isGM && personagemSelecionado.persistedId}<button
 					class="remove-token"
@@ -1313,6 +1423,17 @@
 						onclick={() => void rollSelectedInitiative()}
 						>⚔️ {$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}</button
 					>
+					{#if personagemSelecionado.actorId && !npcSelecionado}<label
+							class="token-initiative-advantage"
+						>
+							<input
+								type="checkbox"
+								checked={initiativeAdvantageByActor[personagemSelecionado.actorId] ?? false}
+								onchange={(event) =>
+									void toggleSelectedInitiativeAdvantage(event.currentTarget.checked)}
+							/>
+							<span>{$appLocale === 'en' ? 'Advantage next time' : 'Vantagem na próxima'}</span>
+						</label>{/if}
 				</div>{/if}
 			{#if isGM && npcSelecionado?.sheet.actions.length}
 				<div class="npc-actions">
@@ -1923,6 +2044,26 @@
 		background: rgba(27, 22, 27, 0.95);
 		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
 		backdrop-filter: blur(12px);
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.token-inspector > header,
+	.token-inspector > .quick-stats,
+	.token-inspector > .linked-character-summary,
+	.token-inspector > .hp-control,
+	.token-inspector > .token-rolls {
+		order: 0;
+	}
+	.token-inspector > .token-appearance,
+	.token-inspector > .vision-control,
+	.token-inspector > .visibility-control,
+	.token-inspector > .official-effects,
+	.token-inspector > .remove-token {
+		order: 5;
+	}
+	.token-inspector > .token-appearance {
+		margin-top: auto;
 	}
 	.token-appearance {
 		display: grid;
@@ -1981,6 +2122,24 @@
 			600 1.2rem Georgia,
 			serif;
 	}
+	.linked-character-summary {
+		display: grid;
+		gap: 0.25rem;
+		margin: 0 0 0.5rem;
+		border: 1px solid rgba(216, 173, 103, 0.25);
+		border-radius: 7px;
+		padding: 0.55rem 0.65rem;
+		background: rgba(53, 42, 34, 0.5);
+	}
+	.linked-character-summary strong {
+		color: #f0d29d;
+		font-size: 0.75rem;
+	}
+	.linked-character-summary span,
+	.linked-character-summary small {
+		color: #c5b7a9;
+		font-size: 0.67rem;
+	}
 	.token-rolls {
 		display: flex;
 		flex-wrap: wrap;
@@ -2017,6 +2176,25 @@
 	.token-rolls .token-initiative-button:hover:not(:disabled) {
 		border-color: #d8ad67;
 		background: #493020;
+	}
+	.token-initiative-advantage {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		min-height: 2.25rem;
+		border: 1px solid #594a3e;
+		border-radius: 7px;
+		padding: 0.4rem 0.55rem;
+		color: #d8c5aa;
+		font-size: 0.7rem;
+		cursor: pointer;
+	}
+	.token-initiative-advantage input {
+		width: 1rem;
+		accent-color: #d8ad67;
+	}
+	.open-sheet-new-window {
+		margin-top: 0.3rem;
 	}
 	.npc-actions {
 		display: grid;

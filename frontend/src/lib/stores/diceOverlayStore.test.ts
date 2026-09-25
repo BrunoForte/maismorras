@@ -6,6 +6,10 @@ import {
 	diceRendererEffective,
 	diceRendererMode,
 	diceRendererError,
+	activeDiceRolls,
+	completedDiceRollNonces,
+	diceOverlay,
+	reportDiceAnimationComplete,
 	setDiceRendererMode,
 	setDiceColor,
 	reportDiceRendererFailure
@@ -15,6 +19,7 @@ describe('dice renderer preferences', () => {
 	afterEach(() => {
 		setDiceRendererMode('2d');
 		setDiceColor(null);
+		diceOverlay.set(null);
 	});
 
 	it('supports the lightweight 2D fallback', () => {
@@ -42,5 +47,18 @@ describe('dice renderer preferences', () => {
 
 		expect(get(diceRendererEffective)).toBe('2d');
 		expect(get(diceRendererError)).toMatch(/Não foi possível iniciar os dados 3D/);
+	});
+
+	it('waits on each roll nonce and clears completion state between batches', async () => {
+		diceOverlay.set({ expression: 'Percepção', total: 14, dice: [11], notation: '1d20+3' });
+		await Promise.resolve();
+		const [roll] = get(activeDiceRolls);
+		expect(roll.nonce).toBeTruthy();
+		expect(get(completedDiceRollNonces)).not.toContain(roll.nonce);
+
+		reportDiceAnimationComplete([roll.nonce!]);
+		expect(get(completedDiceRollNonces)).toContain(roll.nonce);
+		diceOverlay.set(null);
+		expect(get(completedDiceRollNonces)).toEqual([]);
 	});
 });

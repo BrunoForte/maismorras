@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { activeDiceRolls, reportDiceRendererFailure } from '$lib/stores/diceOverlayStore';
+	import {
+		activeDiceRolls,
+		reportDiceAnimationComplete,
+		reportDiceRendererFailure
+	} from '$lib/stores/diceOverlayStore';
 	import { DiceBoxRuntime, diceNotation, type DiceBoxPort } from '$lib/services/diceBoxRuntime';
 
 	let { mode = '3d-overlay' }: { mode?: '3d-overlay' | '3d-table' } = $props();
@@ -12,12 +16,13 @@
 		add: (notation: string, options?: { themeColor?: string }) => Promise<unknown> | unknown;
 		reroll: (
 			die: Record<string, unknown> | Record<string, unknown>[],
-			options?: { remove?: boolean }
+			options?: { remove?: boolean; newStartPoint?: boolean }
 		) => Promise<unknown> | unknown;
 		clear?: () => void;
 	} | null = null;
 	let initialized = false;
 	let runtime: DiceBoxRuntime | null = null;
+	let clearTimer: ReturnType<typeof setTimeout> | undefined;
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- private de-duplication cache
 	const seen = new Set<string>();
 
@@ -63,6 +68,7 @@
 		}>
 	) {
 		if (!initialized || !runtime) return;
+		if (clearTimer) clearTimeout(clearTimer);
 		const unseen = results.filter((result) => {
 			const id = result.nonce ?? `${result.expression}-${result.total}`;
 			if (seen.has(id)) return false;
@@ -70,24 +76,34 @@
 			return true;
 		});
 		if (seen.size > 100) seen.delete(seen.values().next().value as string);
-		await runtime.playBatch(
-			unseen.map((result) => ({
-				notation: diceNotation(result),
-				color: result.color,
-				slot: result.slot ?? `${result.color ?? 'default'}:${diceNotation(result)}`
-			})),
-			mode
-		);
+		const rolls = unseen.map((result) => ({
+			notation: diceNotation(result),
+			color: result.color,
+			slot: result.slot ?? `${result.color ?? 'default'}:${diceNotation(result)}`
+		}));
+		try {
+			await runtime.playBatch(rolls, mode);
+		} catch (error) {
+			console.error('DiceBox roll animation failed', error);
+			reportDiceRendererFailure();
+		} finally {
+			reportDiceAnimationComplete(unseen.map((result) => result.nonce).filter(Boolean) as string[]);
+		}
 	}
 
 	$effect(() => {
 		if (!$activeDiceRolls.length) {
-			if (mode === '3d-overlay' && initialized) runtime?.clearTemporary();
+			if (mode === '3d-overlay' && initialized) {
+				if (clearTimer) clearTimeout(clearTimer);
+				// Keep the settled dice visible briefly after the result card closes.
+				clearTimer = setTimeout(() => runtime?.clearTemporary(), 5000);
+			}
 			return;
 		}
 		void playBatch($activeDiceRolls);
 	});
 	onDestroy(() => {
+		if (clearTimer) clearTimeout(clearTimer);
 		if (initialized) box?.clear?.();
 	});
 </script>

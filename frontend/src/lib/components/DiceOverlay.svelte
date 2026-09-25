@@ -2,10 +2,12 @@
 	import { tick } from 'svelte';
 	import {
 		activeDiceRolls,
+		completedDiceRollNonces,
 		diceRendererEffective,
 		diceRendererError,
 		diceRendererMode,
 		diceOverlay,
+		reportDiceAnimationComplete,
 		restoreDicePreference,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
@@ -15,6 +17,7 @@
 	let visible = $state(false);
 	let retrying = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	void $activeDiceRolls;
 	void $diceRendererEffective;
@@ -31,14 +34,30 @@
 			return;
 		}
 		visible = false;
-		void tick().then(() => (visible = true));
 		if (timer) clearTimeout(timer);
-		// O modo persistente limpa apenas o cartão/estado ativo; o DiceBox continua
-		// montado e mantém os dados físicos que já pararam na mesa.
-		timer = setTimeout(() => {
-			visible = false;
-			diceOverlay.set(null);
-		}, 2500);
+		if (fallbackTimer) clearTimeout(fallbackTimer);
+		if ($diceRendererEffective === '2d') {
+			// The lightweight visual is a short animation; do not block indefinitely.
+			fallbackTimer = setTimeout(() => {
+				reportDiceAnimationComplete(
+					$activeDiceRolls.map((roll) => roll.nonce).filter(Boolean) as string[]
+				);
+			}, 700);
+		}
+	});
+	$effect(() => {
+		const rolls = $activeDiceRolls;
+		const completed = $completedDiceRollNonces;
+		if (!rolls.length || !rolls.every((roll) => roll.nonce && completed.includes(roll.nonce)))
+			return;
+		void tick().then(() => {
+			visible = true;
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => {
+				visible = false;
+				diceOverlay.set(null);
+			}, 3000);
+		});
 	});
 	const sides = (expression: string) =>
 		Number(expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
@@ -77,9 +96,11 @@
 						d{sides(result.expression)}
 					</div>{/if}
 				<div class="result">
-					<span>{result.expression}</span><strong>{result.total}</strong><small
-						>[{result.dice.join(', ')}]</small
-					>
+					<span>{result.expression}</span><strong>{result.total}</strong>
+					{#if $diceRendererEffective !== '2d'}<small class="result-source"
+							>Resultado oficial do servidor</small
+						>{/if}
+					<small>[{result.dice.join(', ')}]</small>
 				</div>
 			</article>{/each}
 	</div>
@@ -181,6 +202,9 @@
 	.result small {
 		color: #d8bd8e;
 		font-size: 0.68rem;
+	}
+	.result .result-source {
+		color: #f0d29d;
 	}
 	.result strong {
 		color: #f4d796;

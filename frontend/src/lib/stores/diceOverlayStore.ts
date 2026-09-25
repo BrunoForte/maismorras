@@ -15,6 +15,7 @@ export type DiceOverlayResult = {
 };
 const state = writable<DiceOverlayResult | null>(null);
 export const activeDiceRolls = writable<DiceOverlayResult[]>([]);
+export const completedDiceRollNonces = writable<string[]>([]);
 export const diceRendererMode = writable<DiceRendererMode>('auto');
 export const diceRendererEffective = writable<EffectiveDiceRenderer>('2d');
 export const diceRendererError = writable('');
@@ -112,6 +113,17 @@ export function reportDiceRendererFailure() {
 	diceRendererEffective.set('2d');
 }
 
+export function reportDiceAnimationComplete(nonces: string[]) {
+	if (!nonces.length) return;
+	completedDiceRollNonces.update((completed) => {
+		const next = [...new Set([...completed, ...nonces])].slice(-32);
+		return next.length === completed.length &&
+			next.every((nonce, index) => nonce === completed[index])
+			? completed
+			: next;
+	});
+}
+
 export function setDice3dPreference(enabled: boolean) {
 	setDiceRendererMode(enabled ? '3d-overlay' : '2d');
 }
@@ -159,6 +171,7 @@ export const diceOverlay: Writable<DiceOverlayResult | null> = {
 		}
 		current = null;
 		activeDiceRolls.set([]);
+		completedDiceRollNonces.set([]);
 		state.set(null);
 		schedulePromotion();
 	},

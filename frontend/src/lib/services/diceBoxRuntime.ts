@@ -5,7 +5,7 @@ export interface DiceBoxPort {
 	add: (notation: string, options?: { themeColor?: string }) => Promise<unknown> | unknown;
 	reroll: (
 		die: DiceBoxDie | DiceBoxDie[],
-		options?: { remove?: boolean }
+		options?: { remove?: boolean; newStartPoint?: boolean }
 	) => Promise<unknown> | unknown;
 	clear: () => void;
 	getRollResults?: () => Array<{ rolls?: DiceBoxDie[] }>;
@@ -46,7 +46,9 @@ export class DiceBoxRuntime {
 	private async playPersistent(roll: DiceBoxRoll) {
 		const previous = this.persistentDice.get(roll.slot);
 		if (previous?.length) {
-			await this.box.reroll(previous, { remove: true });
+			// Reuse the physical dice where they stopped; DiceBox otherwise chooses a
+			// fresh launch point on every reroll.
+			await this.box.reroll(previous, { remove: true, newStartPoint: false });
 			const result = this.lastRollDice();
 			if (result.length) this.persistentDice.set(roll.slot, result);
 			return;
