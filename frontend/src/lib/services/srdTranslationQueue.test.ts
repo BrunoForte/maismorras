@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import type { CompendiumEntry } from './compendiumApi';
+import { ApiError } from './httpClient';
 import {
 	srdTranslationQueue,
 	startSrdTranslationQueue,
@@ -31,6 +32,27 @@ afterEach(() => {
 });
 
 describe('SRD translation queue', () => {
+	it('retries transient gateway errors and continues without duplicating completed entries', async () => {
+		vi.useFakeTimers();
+		let attempts = 0;
+		const task = startSrdTranslationQueue(
+			'campaign-retry',
+			[entry('spell-1')],
+			async (item) => {
+				attempts += 1;
+				if (attempts === 1) throw new ApiError(502, 'gateway temporarily unavailable');
+				return { ...item, translations: { 'pt-BR': 'Mago' } };
+			},
+			(item) => item.name
+		);
+		await vi.advanceTimersByTimeAsync(800);
+		await task;
+		expect(attempts).toBe(2);
+		expect(get(srdTranslationQueue).status).toBe('completed');
+		expect(get(srdTranslationQueue).completed).toBe(1);
+		vi.useRealTimers();
+	});
+
 	it('continues sequentially in the module queue and publishes each persisted result', async () => {
 		const calls: string[] = [];
 		const updates: string[] = [];

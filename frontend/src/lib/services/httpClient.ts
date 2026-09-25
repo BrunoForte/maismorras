@@ -114,7 +114,8 @@ export async function request<T>(
 	path: string,
 	init: RequestInit = {},
 	fallback = 'Não foi possível concluir a operação.',
-	timeoutMs = 15_000
+	timeoutMs = 15_000,
+	notifyErrors = true
 ): Promise<T> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -132,13 +133,13 @@ export async function request<T>(
 	} catch (error) {
 		if (controller.signal.aborted && !init.signal?.aborted) {
 			const message = userFacingMessage(408, null, fallback);
-			reportRequestError(message);
+			if (notifyErrors) reportRequestError(message);
 			throw new ApiError(408, message);
 		}
 		if (!init.signal?.aborted) {
 			const message =
 				'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
-			reportRequestError(message);
+			if (notifyErrors) reportRequestError(message);
 			throw new ApiError(0, message);
 		}
 		throw error;
@@ -148,7 +149,7 @@ export async function request<T>(
 	const body = await readBody(response);
 	if (!response.ok) {
 		const message = userFacingMessage(response.status, body, fallback);
-		reportRequestError(message);
+		if (notifyErrors) reportRequestError(message);
 		throw new ApiError(response.status, message, body);
 	}
 	return (body === null ? undefined : body) as T;

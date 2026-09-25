@@ -62,7 +62,8 @@ export const translateCompendiumEntry = (session: Session, campaignId: string, e
 		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}/translate`,
 		{ method: 'POST' },
 		'Não foi possível traduzir esta entrada.',
-		130_000
+		130_000,
+		false
 	);
 export const updateCompendiumEntry = (
 	session: Session,
