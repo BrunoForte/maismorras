@@ -12,6 +12,7 @@ import {
 	reportDiceAnimationComplete,
 	setDiceRendererMode,
 	setDiceColor,
+	diceResultDisplayDuration,
 	reportDiceRendererFailure
 } from './diceOverlayStore';
 
@@ -60,5 +61,16 @@ describe('dice renderer preferences', () => {
 		expect(get(completedDiceRollNonces)).toContain(roll.nonce);
 		diceOverlay.set(null);
 		expect(get(completedDiceRollNonces)).toEqual([]);
+	});
+
+	it('queues up to ten simultaneous results, in four-per-row groups, with proportional display time', async () => {
+		for (let index = 0; index < 10; index += 1) {
+			diceOverlay.set({ expression: `Teste ${index + 1}`, total: index + 1, dice: [index + 1] });
+		}
+		await Promise.resolve();
+		expect(get(activeDiceRolls)).toHaveLength(10);
+		expect(diceResultDisplayDuration(1)).toBe(5000);
+		expect(diceResultDisplayDuration(10)).toBe(14000);
+		expect(diceResultDisplayDuration(20)).toBe(14000);
 	});
 });

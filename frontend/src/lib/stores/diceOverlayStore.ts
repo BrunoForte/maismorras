@@ -28,6 +28,11 @@ let flushScheduled = false;
 let batchDepth = 0;
 let rollSequence = 0;
 
+export function diceResultDisplayDuration(rollCount: number) {
+	const count = Math.min(10, Math.max(1, Math.floor(rollCount)));
+	return 5000 + (count - 1) * 1000;
+}
+
 function withNonce(value: DiceOverlayResult): DiceOverlayResult {
 	const nonce =
 		typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -143,7 +148,8 @@ export function finishDiceBatch() {
 
 function promoteBatch() {
 	if (current || pending.length === 0) return;
-	const batch = pending.splice(0, 4);
+	// Display concurrent rolls in rows of four (4 + 4 + 2 at the ten-roll cap).
+	const batch = pending.splice(0, 10);
 	current = batch[0] ?? null;
 	activeDiceRolls.set(batch);
 	state.set(current);

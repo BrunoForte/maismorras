@@ -8,6 +8,7 @@
 		diceRendererError,
 		diceRendererMode,
 		diceOverlay,
+		diceResultDisplayDuration,
 		reportDiceAnimationComplete,
 		restoreDicePreference,
 		setDiceRendererMode
@@ -59,10 +60,11 @@
 		void tick().then(() => {
 			visible = true;
 			if (timer) clearTimeout(timer);
+			const displayDuration = diceResultDisplayDuration(rolls.length);
 			timer = setTimeout(() => {
 				visible = false;
 				diceOverlay.set(null);
-			}, 3000);
+			}, displayDuration);
 		});
 	});
 	const sides = (expression: string) =>
@@ -118,12 +120,11 @@
 		z-index: 7;
 		left: 50%;
 		top: 50%;
-		display: flex;
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		align-items: center;
 		gap: 0.75rem;
-		max-width: min(94vw, 900px);
-		flex-wrap: wrap;
-		justify-content: center;
+		width: min(94vw, 900px);
 		transform: translate(-50%, -50%);
 		pointer-events: none;
 		animation: appear 0.24s ease-out both;
@@ -159,6 +160,8 @@
 		display: flex;
 		align-items: center;
 		gap: 0.45rem;
+		min-width: 0;
+		justify-content: center;
 	}
 	.die {
 		display: grid;
@@ -245,6 +248,16 @@
 		.dice-overlay,
 		.die {
 			animation: none;
+		}
+	}
+	@media (max-width: 640px) {
+		.dice-overlay {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0.5rem;
+		}
+		.die {
+			width: 3.25rem;
+			height: 3.25rem;
 		}
 	}
 </style>

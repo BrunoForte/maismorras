@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DiceBoxRuntime, diceNotation, unseenDiceRolls, type DiceBoxPort } from './diceBoxRuntime';
+import {
+	DiceBoxRuntime,
+	diceNotation,
+	randomDiceThrow,
+	unseenDiceRolls,
+	type DiceBoxPort
+} from './diceBoxRuntime';
 
 function fakeBox() {
 	let nextId = 0;
@@ -61,6 +67,16 @@ describe('DiceBoxRuntime', () => {
 		expect(box.diceList.map((die) => die.value)).toEqual([18, 7, 2, 4, 1, 6]);
 		runtime.clearTemporary();
 		expect(box.clear).toHaveBeenCalledOnce();
+	});
+
+	it('uses the installed DiceBox clearDice API and safely ignores absent legacy clear methods', () => {
+		const box = fakeBox();
+		box.clearDice = vi.fn();
+		const runtime = new DiceBoxRuntime(box);
+
+		expect(() => runtime.clearTemporary()).not.toThrow();
+		expect(box.clearDice).toHaveBeenCalledOnce();
+		expect(box.clear).not.toHaveBeenCalled();
 	});
 
 	it('reuses persistent dice and remaps their visible faces to authoritative results', async () => {
@@ -150,5 +166,12 @@ describe('DiceBoxRuntime', () => {
 		await expect(
 			runtime.playBatch([{ notation: 'd6', dice: [7], slot: 'invalid' }], '3d-overlay')
 		).rejects.toThrow('O resultado recebido não cabe em um d6.');
+	});
+
+	it('generates varied physical impulses for automatic persistent rerolls', () => {
+		const values = [0, 1, 0.5, 0, 1, 0.5];
+		const impulse = randomDiceThrow(() => values.shift() ?? 0.5);
+		expect(impulse.velocity).toEqual({ x: -900, y: 900, z: 1450 });
+		expect(impulse.spin).toEqual({ x: -30, y: 30, z: 0 });
 	});
 });

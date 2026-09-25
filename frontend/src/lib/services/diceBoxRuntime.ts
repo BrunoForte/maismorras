@@ -4,7 +4,8 @@ export interface DiceBoxPort {
 	roll: (notation: string) => Promise<unknown> | unknown;
 	add: (notation: string) => Promise<unknown> | unknown;
 	reroll: (diceIds: number[]) => Promise<unknown> | unknown;
-	clear: () => void;
+	clearDice?: () => void;
+	clear?: () => void;
 	diceList: DiceBoxDie[];
 	swapDiceFace: (die: DiceBoxDie, result: number) => void;
 	renderer?: { render: (scene: unknown, camera: unknown) => void };
@@ -46,6 +47,21 @@ export type DiceBoxRoll = {
 	color?: string;
 	slot: string;
 };
+
+export function randomDiceThrow(random: () => number = Math.random) {
+	return {
+		velocity: {
+			x: (random() - 0.5) * 1800,
+			y: (random() - 0.5) * 1800,
+			z: 1000 + random() * 900
+		},
+		spin: {
+			x: (random() - 0.5) * 60,
+			y: (random() - 0.5) * 60,
+			z: (random() - 0.5) * 60
+		}
+	};
+}
 
 /** Filters reactive re-renders so a roll is animated at most once per event nonce. */
 export function unseenDiceRolls<T extends { nonce?: string; expression: string; total: number }>(
@@ -129,6 +145,17 @@ export class DiceBoxRuntime {
 		await animation;
 	}
 
+	private applyRandomThrow(die: DiceBoxDie) {
+		const body = (die as PersistentDiePort).body;
+		if (!body) return;
+		body.type = (body.constructor as { DYNAMIC?: number }).DYNAMIC ?? 1;
+		body.updateMassProperties?.();
+		body.wakeUp?.();
+		const impulse = randomDiceThrow();
+		body.velocity.set(impulse.velocity.x, impulse.velocity.y, impulse.velocity.z);
+		body.angularVelocity.set(impulse.spin.x, impulse.spin.y, impulse.spin.z);
+	}
+
 	setAuthoritativeDieFace(die: DiceBoxDie, value: number) {
 		this.box.swapDiceFace(die, value);
 		const item = die as PersistentDiePort;
@@ -146,7 +173,8 @@ export class DiceBoxRuntime {
 	}
 
 	clearTemporary() {
-		this.box.clear();
+		if (this.box.clearDice) this.box.clearDice();
+		else this.box.clear?.();
 	}
 
 	private async playPersistentBatch(rolls: DiceBoxRoll[]) {
@@ -163,7 +191,9 @@ export class DiceBoxRuntime {
 			const values = existing.flatMap((entry) => entry.values);
 			const ids = dice.map((die) => this.box.diceList.indexOf(die));
 			if (ids.some((id) => id < 0)) throw new Error('Dado persistente não encontrado na mesa.');
-			await this.box.reroll(ids);
+			const animation = this.box.reroll(ids);
+			dice.forEach((die) => this.applyRandomThrow(die));
+			await animation;
 			dice.forEach((die, index) => {
 				this.box.swapDiceFace(die, values[index]);
 				const storeResult = die['storeRolledValue'];

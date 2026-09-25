@@ -429,7 +429,10 @@
 	onDestroy(() => {
 		if (clearTimer) clearTimeout(clearTimer);
 		for (const entry of boxes.values()) {
-			void entry.then(({ box }) => box.clear());
+			void entry.then(({ box }) => {
+				if (box.clearDice) box.clearDice();
+				else box.clear?.();
+			});
 		}
 		boxes.clear();
 		readyBoxes.clear();
