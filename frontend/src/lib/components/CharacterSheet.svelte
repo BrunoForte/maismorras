@@ -3982,11 +3982,11 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		border: 1px solid #765d3d;
-		border-radius: 14px;
+		border: 1px solid var(--mm-border-strong, #765d3d);
+		border-radius: var(--mm-radius-dialog, 14px);
 		color: #eee4d6;
 		background: #1b171a;
-		box-shadow: 0 30px 90px #000;
+		box-shadow: var(--mm-shadow-dialog, 0 30px 90px #000);
 	}
 	.sheet > header,
 	.sheet > footer {

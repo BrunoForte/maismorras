@@ -1310,34 +1310,11 @@
 {/if}
 
 <style>
-	:global(*) {
-		box-sizing: border-box;
-	}
 	:global(body) {
 		margin: 0;
 		min-width: 320px;
-		color: #f4eee4;
-		background: #100e11;
-		font-family:
-			Inter,
-			ui-sans-serif,
-			system-ui,
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			sans-serif;
-	}
-	:global(button),
-	:global(input) {
-		font: inherit;
-	}
-	:global(button) {
-		cursor: pointer;
-	}
-	:global(button:focus-visible),
-	:global(input:focus-visible) {
-		outline: 2px solid #d8ad67;
-		outline-offset: 3px;
+		color: var(--mm-text, #f4eee4);
+		background: var(--mm-bg, #100e11);
 	}
 	.loading-screen,
 	.auth-shell {

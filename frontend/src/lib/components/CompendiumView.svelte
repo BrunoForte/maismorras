@@ -604,7 +604,7 @@
 			batchTranslating = state.status === 'running';
 			batchProgress =
 				state.status === 'running'
-					? `${Math.min(state.completed + 1, state.total)}/${state.total} · ${state.currentName}`
+					? `${Math.min(state.processed + 1, state.total)}/${state.total} · ${state.currentName}`
 					: '';
 			if (state.updatedEntry) {
 				entries = entries.map((item) =>
@@ -613,8 +613,13 @@
 			}
 			if (state.status === 'completed')
 				message = `Tradução concluída para ${state.completed} entrada(s) SRD.`;
-			else if (state.status === 'failed')
-				message = `Lote pausado em “${state.currentName}” após ${state.completed}/${state.total} tradução(ões). As concluídas foram salvas; tente novamente após corrigir: ${state.error}`;
+			else if (state.status === 'failed') {
+				const failedNames = state.failedEntries.slice(0, 3).join('”, “');
+				const remaining = state.failedEntries.length - 3;
+				const batchStatus =
+					state.processed >= state.total ? 'Lote finalizado com pendências' : 'Lote pausado';
+				message = `${batchStatus} após ${state.completed}/${state.total} traduções salvas. ${state.failedEntries.length} entrada(s) pendente(s): “${failedNames}”${remaining > 0 ? ` e mais ${remaining}` : ''}. Clique novamente para tentar apenas as pendentes. ${state.error}`;
+			}
 		});
 	});
 </script>
@@ -1102,7 +1107,7 @@
 		min-height: 510px;
 		display: grid;
 		gap: 1rem;
-		padding: clamp(1.25rem, 3vw, 2.5rem);
+		padding: var(--mm-content-gutter, clamp(1rem, 2.5vw, 2rem));
 		color: #eee4d6;
 	}
 	.compendium > header {

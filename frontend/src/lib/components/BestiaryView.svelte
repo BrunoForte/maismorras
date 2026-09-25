@@ -692,7 +692,7 @@
 <style>
 	.bestiary {
 		min-height: 520px;
-		padding: clamp(1.25rem, 3vw, 2.5rem);
+		padding: var(--mm-content-gutter, clamp(1rem, 2.5vw, 2rem));
 		color: #eee4d6;
 	}
 	.bestiary > header {

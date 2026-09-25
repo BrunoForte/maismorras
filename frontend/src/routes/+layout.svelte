@@ -37,6 +37,78 @@
 	</div>{/if}
 
 <style>
+	:global(:root) {
+		color-scheme: dark;
+		--mm-bg: #100e11;
+		--mm-surface: #171316;
+		--mm-surface-raised: #211b1e;
+		--mm-surface-soft: #2b2224;
+		--mm-border: #403536;
+		--mm-border-strong: #765d3d;
+		--mm-accent: #d8ad67;
+		--mm-accent-bright: #e0b86f;
+		--mm-text: #f4eee4;
+		--mm-text-muted: #b6a89b;
+		--mm-danger: #8f5049;
+		--mm-space-1: 0.25rem;
+		--mm-space-2: 0.5rem;
+		--mm-space-3: 0.75rem;
+		--mm-space-4: 1rem;
+		--mm-space-5: 1.5rem;
+		--mm-space-6: 2rem;
+		--mm-content-gutter: clamp(1rem, 2.5vw, 2rem);
+		--mm-radius-control: 7px;
+		--mm-radius-card: 10px;
+		--mm-radius-dialog: 14px;
+		--mm-shadow-panel: 0 18px 48px #0008;
+		--mm-shadow-dialog: 0 30px 90px #000;
+	}
+	:global(*) {
+		box-sizing: border-box;
+	}
+	:global(body) {
+		color: var(--mm-text);
+		background: var(--mm-bg);
+		font-family:
+			Inter,
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			sans-serif;
+	}
+	:global(button),
+	:global(input),
+	:global(select),
+	:global(textarea) {
+		font: inherit;
+	}
+	:global(button) {
+		cursor: pointer;
+		transition:
+			background-color 140ms ease,
+			border-color 140ms ease,
+			color 140ms ease,
+			box-shadow 140ms ease;
+	}
+	:global(button:disabled) {
+		cursor: not-allowed;
+	}
+	:global(
+		input:not([type='range']):not([type='checkbox']):not([type='radio']):not([type='color']):not(
+				[type='file']
+			)
+	),
+	:global(select),
+	:global(textarea) {
+		border-radius: var(--mm-radius-control);
+	}
+	:global(input),
+	:global(select),
+	:global(textarea) {
+		accent-color: var(--mm-accent);
+	}
 	:global(*) {
 		scrollbar-color: #765d3d #171316;
 		scrollbar-width: thin;
@@ -57,6 +129,14 @@
 	}
 	:global(*::-webkit-scrollbar-thumb:hover) {
 		background: #d8ad67;
+	}
+	:global(button:focus-visible),
+	:global(input:focus-visible),
+	:global(select:focus-visible),
+	:global(textarea:focus-visible),
+	:global([role='button']:focus-visible) {
+		outline: 2px solid var(--mm-accent);
+		outline-offset: 2px;
 	}
 	.request-error-toast {
 		position: fixed;
@@ -90,5 +170,15 @@
 		background: #211b1e;
 		font-size: 1.15rem;
 		cursor: pointer;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		:global(*),
+		:global(*::before),
+		:global(*::after) {
+			scroll-behavior: auto !important;
+			transition-duration: 0.01ms !important;
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+		}
 	}
 </style>

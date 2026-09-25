@@ -20,18 +20,47 @@ const entry = (id: string): CompendiumEntry => ({
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	srdTranslationQueue.set({
 		campaignId: null,
 		status: 'idle',
 		total: 0,
 		completed: 0,
+		processed: 0,
 		currentName: '',
+		failedEntries: [],
 		updatedEntry: null,
 		error: ''
 	});
 });
 
 describe('SRD translation queue', () => {
+	it('defers a repeatedly failing gateway entry and continues the batch', async () => {
+		vi.useFakeTimers();
+		const calls: string[] = [];
+		const task = startSrdTranslationQueue(
+			'campaign-defer',
+			[entry('spell-unstable'), entry('spell-next')],
+			async (item) => {
+				calls.push(item.id);
+				if (item.id === 'spell-unstable')
+					throw new ApiError(502, 'gateway temporarily unavailable');
+				return { ...item, translations: { 'pt-BR': 'Mago' } };
+			},
+			(item) => item.name
+		);
+		await vi.advanceTimersByTimeAsync(2_400);
+		await task;
+
+		expect(calls).toEqual(['spell-unstable', 'spell-unstable', 'spell-unstable', 'spell-next']);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'failed',
+			completed: 1,
+			processed: 2,
+			failedEntries: ['spell-unstable']
+		});
+	});
+
 	it('retries transient gateway errors and continues without duplicating completed entries', async () => {
 		vi.useFakeTimers();
 		let attempts = 0;
