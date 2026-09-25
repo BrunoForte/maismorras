@@ -1,4 +1,5 @@
 import { Application, Container, Graphics } from 'pixi.js';
+import { setMapCameraView } from '$lib/stores/mapCameraStore';
 
 export class Camera {
 	public mundo: Container;
@@ -62,6 +63,7 @@ export class Camera {
 			if (this.arrastandoCamera) {
 				this.mundo.x = e.global.x - this.posicaoInicialCamera.x;
 				this.mundo.y = e.global.y - this.posicaoInicialCamera.y;
+				this.publishView();
 			}
 		});
 
@@ -107,6 +109,7 @@ export class Camera {
 	public resetView() {
 		this.mundo.scale.set(1);
 		this.mundo.position.set(this.app.renderer.width / 2, this.app.renderer.height / 2);
+		this.publishView();
 	}
 
 	public get zoom() {
@@ -121,6 +124,11 @@ export class Camera {
 		if (![view.x, view.y, view.zoom].every(Number.isFinite)) return;
 		this.mundo.position.set(view.x, view.y);
 		this.mundo.scale.set(Math.max(0.3, Math.min(3, view.zoom)));
+		this.publishView();
+	}
+
+	private publishView() {
+		setMapCameraView({ x: this.mundo.x, y: this.mundo.y, zoom: this.mundo.scale.x });
 	}
 
 	private zoomAt(factor: number, x: number, y: number) {
@@ -132,6 +140,7 @@ export class Camera {
 		this.mundo.scale.set(newScale);
 		this.mundo.x = x - worldX * newScale;
 		this.mundo.y = y - worldY * newScale;
+		this.publishView();
 	}
 
 	destroy() {

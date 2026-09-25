@@ -19,6 +19,19 @@ export type DiceBoxRoll = {
 	slot: string;
 };
 
+/** Filters reactive re-renders so a roll is animated at most once per event nonce. */
+export function unseenDiceRolls<T extends { nonce?: string; expression: string; total: number }>(
+	rolls: T[],
+	seen: Set<string>
+): T[] {
+	return rolls.filter((roll) => {
+		const id = roll.nonce ?? `${roll.expression}-${roll.total}`;
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
+
 /** Animates server-authoritative results by remapping the visible face labels. */
 export class DiceBoxRuntime {
 	private persistentDice = new Map<string, DiceBoxDie[]>();

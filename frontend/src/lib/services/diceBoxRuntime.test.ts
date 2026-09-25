@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DiceBoxRuntime, diceNotation, type DiceBoxPort } from './diceBoxRuntime';
+import { DiceBoxRuntime, diceNotation, unseenDiceRolls, type DiceBoxPort } from './diceBoxRuntime';
 
 function fakeBox() {
 	let nextId = 0;
@@ -91,6 +91,16 @@ describe('DiceBoxRuntime', () => {
 			'4d6+2'
 		);
 		expect(diceNotation({ expression: 'Teste', dice: [8, 12] })).toBe('2d20');
+	});
+
+	it('does not replay a persistent die when reactive state is re-rendered or dragged', () => {
+		const seen = new Set<string>();
+		const roll = { nonce: 'roll-1', expression: 'Ataque', total: 18 };
+
+		expect(unseenDiceRolls([roll], seen)).toEqual([roll]);
+		// Pan, zoom, and pointer-drag updates may render the dice layer again but
+		// do not create another roll event; the existing nonce remains consumed.
+		expect(unseenDiceRolls([{ ...roll }], seen)).toEqual([]);
 	});
 
 	it('normalizes implicit dice counts and rejects values outside the die range', async () => {

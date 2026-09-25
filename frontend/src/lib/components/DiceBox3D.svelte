@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { mapCameraView } from '$lib/stores/mapCameraStore';
 	import {
 		activeDiceRolls,
 		reportDiceAnimationComplete,
 		reportDiceRendererFailure
 	} from '$lib/stores/diceOverlayStore';
-	import { DiceBoxRuntime, diceNotation, type DiceBoxPort } from '$lib/services/diceBoxRuntime';
+	import {
+		DiceBoxRuntime,
+		diceNotation,
+		unseenDiceRolls,
+		type DiceBoxPort
+	} from '$lib/services/diceBoxRuntime';
 
 	let { mode = '3d-overlay' }: { mode?: '3d-overlay' | '3d-table' } = $props();
 
@@ -62,7 +68,7 @@
 				theme_texture: 'none',
 				theme_material: 'plastic',
 				theme_customColorset: config,
-				baseScale: 6
+				baseScale: 100
 			});
 			try {
 				await instance.initialize();
@@ -93,12 +99,7 @@
 		}>
 	) {
 		if (clearTimer) clearTimeout(clearTimer);
-		const unseen = results.filter((result) => {
-			const id = result.nonce ?? `${result.expression}-${result.total}`;
-			if (seen.has(id)) return false;
-			seen.add(id);
-			return true;
-		});
+		const unseen = unseenDiceRolls(results, seen);
 		if (seen.size > 100) seen.delete(seen.values().next().value as string);
 		const rolls = unseen.map((result) => ({
 			notation: diceNotation(result),
@@ -154,6 +155,7 @@
 <div
 	bind:this={host}
 	class:dice-table={mode === '3d-table'}
+	style={`--map-camera-x: ${$mapCameraView.x}px; --map-camera-y: ${$mapCameraView.y}px; --map-camera-zoom: ${$mapCameraView.zoom}`}
 	class="dice-box-3d"
 	aria-label={mode === '3d-table' ? 'Dados 3D persistentes na mesa' : 'Dados 3D rolando'}
 ></div>
@@ -170,6 +172,10 @@
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
+	}
+	.dice-box-3d.dice-table :global(.dice-box-instance) {
+		transform: translate(var(--map-camera-x), var(--map-camera-y)) scale(var(--map-camera-zoom));
+		transform-origin: 0 0;
 	}
 	.dice-box-3d :global(canvas) {
 		width: 100%;
