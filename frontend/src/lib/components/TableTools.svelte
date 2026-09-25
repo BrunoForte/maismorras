@@ -93,7 +93,8 @@
 				expression: `${event.author} · ${result.expressao}`,
 				notation: result.expressao,
 				total: result.total,
-				dice: result.dados
+				dice: result.dados,
+				nonce: String(event.id)
 			};
 		} finally {
 			rolling = false;

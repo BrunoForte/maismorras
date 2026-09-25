@@ -51,14 +51,14 @@ export type DiceBoxRoll = {
 export function randomDiceThrow(random: () => number = Math.random) {
 	return {
 		velocity: {
-			x: (random() - 0.5) * 1800,
-			y: (random() - 0.5) * 1800,
-			z: 1000 + random() * 900
+			x: (random() - 0.5) * 1200,
+			y: (random() - 0.5) * 1200,
+			z: 650 + random() * 500
 		},
 		spin: {
-			x: (random() - 0.5) * 60,
-			y: (random() - 0.5) * 60,
-			z: (random() - 0.5) * 60
+			x: (random() - 0.5) * 90,
+			y: (random() - 0.5) * 90,
+			z: (random() - 0.5) * 90
 		}
 	};
 }
@@ -139,9 +139,13 @@ export class DiceBoxRuntime {
 		const Body = body.constructor as { DYNAMIC?: number };
 		body.type = Body.DYNAMIC ?? 1; // Cannon ES Body.DYNAMIC
 		body.updateMassProperties?.();
+		body.sleepState = 0;
 		body.wakeUp?.();
 		body.velocity.set(velocity.x, velocity.y, 1200);
-		body.angularVelocity.set(-velocity.y / 35, velocity.x / 35, (velocity.x - velocity.y) / 90);
+		const speed = Math.hypot(velocity.x, velocity.y);
+		const spin = Math.min(75, Math.max(25, speed / 18));
+		const direction = speed > 0 ? { x: velocity.x / speed, y: velocity.y / speed } : { x: 1, y: 0 };
+		body.angularVelocity.set(-direction.y * spin, direction.x * spin, (Math.random() - 0.5) * spin);
 		await animation;
 	}
 

@@ -289,12 +289,12 @@
 			drag.entry.runtime.releasePersistentDie(drag.die);
 			return;
 		}
-		const nonce = crypto.randomUUID();
 		beginDiceBatch();
 		const animation = drag.entry.runtime.throwPersistentDie(drag.die, velocity);
 		try {
 			const event = await rollDice(session, campaignId, `1d${drag.sides}`, undefined, 'chat', 0);
 			const result = event.payload as { expressao: string; dados: number[]; total: number };
+			const nonce = String(event.id);
 			await animation;
 			const value = result.dados[0];
 			if (!Number.isInteger(value)) throw new Error('O servidor não retornou o resultado do dado.');
@@ -420,7 +420,7 @@
 					for (const entry of boxes.values()) {
 						void entry.then(({ runtime }) => runtime.clearTemporary());
 					}
-				}, 5000);
+				}, 2500);
 			}
 			return;
 		}
@@ -442,7 +442,6 @@
 
 <div
 	bind:this={host}
-	class:dice-table={mode === '3d-table'}
 	style={`--map-camera-x: ${$mapCameraView.x}px; --map-camera-y: ${$mapCameraView.y}px; --map-camera-zoom: ${$mapCameraView.zoom}`}
 	class="dice-box-3d"
 	aria-label={mode === '3d-table' ? 'Dados 3D persistentes na mesa' : 'Dados 3D rolando'}
@@ -464,8 +463,6 @@
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
-	}
-	.dice-box-3d.dice-table :global(.dice-box-instance) {
 		transform: translate(var(--map-camera-x), var(--map-camera-y)) scale(var(--map-camera-zoom));
 		transform-origin: 0 0;
 	}

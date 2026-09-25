@@ -1226,7 +1226,7 @@
 				notation: `${rollCount}d20${result.modificador ? `${result.modificador >= 0 ? '+' : ''}${result.modificador}` : ''}`,
 				total: result.total,
 				dice: result.dados,
-				nonce: crypto.randomUUID()
+				nonce: String(result.eventId)
 			};
 			$chatMensagens = [
 				...$chatMensagens,
@@ -1626,7 +1626,7 @@
 					notation: result.expressao,
 					total: result.total,
 					dice: result.dados,
-					nonce: crypto.randomUUID()
+					nonce: String(event.id)
 				};
 			} else {
 				const baseModifier =
@@ -1674,7 +1674,7 @@
 					notation: damage.expressao,
 					total: damage.total,
 					dice: damage.dados,
-					nonce: crypto.randomUUID()
+					nonce: String(event.id)
 				};
 				if (isCritical) lastCriticalWeapon = null;
 			}
@@ -1746,7 +1746,7 @@
 			notation: attack.expressao,
 			total: attack.total,
 			dice: attack.dados,
-			nonce: crypto.randomUUID()
+			nonce: String(attackEvent.id)
 		};
 	}
 	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
@@ -1784,7 +1784,7 @@
 			notation: result.expressao,
 			total: result.total,
 			dice: result.dados,
-			nonce: crypto.randomUUID()
+			nonce: String(damageEvent.id)
 		};
 		if (critical) lastCriticalAttack = null;
 	}
@@ -1879,7 +1879,7 @@
 				notation: result.expressao,
 				total: result.total,
 				dice: result.dados,
-				nonce: crypto.randomUUID()
+				nonce: String(event.id)
 			};
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Não foi possível rolar a magia.';
@@ -1946,7 +1946,7 @@
 					notation: result.expression,
 					total: result.total ?? 0,
 					dice: result.dados,
-					nonce: crypto.randomUUID()
+					nonce: String(result.eventId)
 				};
 			}
 			message = 'Magia lançada e espaço consumido.';

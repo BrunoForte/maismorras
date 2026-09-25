@@ -979,16 +979,18 @@
 					token.persistedId === result.tokenId ? { ...token, iniciativa: result.initiative } : token
 				)
 			);
+			const rollMessageId = crypto.randomUUID();
 			$diceOverlay = {
 				expression: `${personagemSelecionado.nome} · iniciativa${result.advantage ? ' · vantagem' : ''}`,
 				notation: `${result.rolls?.length ?? 1}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
 				total: result.initiative,
-				dice: result.rolls?.length ? result.rolls : [result.roll]
+				dice: result.rolls?.length ? result.rolls : [result.roll],
+				nonce: rollMessageId
 			};
 			$chatMensagens = [
 				...$chatMensagens,
 				{
-					id: crypto.randomUUID(),
+					id: rollMessageId,
 					autor: personagemSelecionado.nome,
 					texto: `Iniciativa: ${result.roll} ${result.bonus >= 0 ? '+' : ''}${result.bonus} = ${result.initiative}`,
 					tipo: 'rolagem',
@@ -1055,7 +1057,8 @@
 				expression: `${npcSelecionado.name} · ${action.name}`,
 				notation: attack.expressao,
 				total: attack.total,
-				dice: attack.dados
+				dice: attack.dados,
+				nonce: String(attackEvent.id)
 			};
 			const match = action.damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
 			if (!match) return;
@@ -1089,7 +1092,8 @@
 				expression: `${npcSelecionado.name} · ${action.name} · dano`,
 				notation: damage.expressao,
 				total: damage.total,
-				dice: damage.dados
+				dice: damage.dados,
+				nonce: String(damageEvent.id)
 			};
 		} catch (error) {
 			persistenceError =

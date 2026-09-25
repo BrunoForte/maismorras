@@ -5,8 +5,8 @@
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
 	import {
-		diceBatchOpen,
 		diceOverlay,
+		completedDiceRollNonces,
 		diceRendererMode,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
@@ -30,20 +30,24 @@
 	let lastEventId = 0;
 	const knownMessageIds = new SvelteSet<string>();
 	const revealedRollIds = new SvelteSet<string>();
-	const waitingRollIds = new SvelteSet<string>();
 	const revealTimers = new SvelteMap<string, ReturnType<typeof setTimeout>>();
+	function revealRoll(messageId: string) {
+		const timer = revealTimers.get(messageId);
+		if (timer) clearTimeout(timer);
+		revealTimers.delete(messageId);
+		revealedRollIds.add(messageId);
+	}
 	const queueRollReveal = (messageId: string) => {
 		if (revealedRollIds.has(messageId) || revealTimers.has(messageId)) return;
-		if ($diceBatchOpen) {
-			waitingRollIds.add(messageId);
+		if ($completedDiceRollNonces.includes(messageId) || !Number.isSafeInteger(Number(messageId))) {
+			revealRoll(messageId);
 			return;
 		}
 		revealTimers.set(
 			messageId,
 			setTimeout(() => {
-				revealTimers.delete(messageId);
-				revealedRollIds.add(messageId);
-			}, 0)
+				revealRoll(messageId);
+			}, 20_000)
 		);
 	};
 	let visibleMessages = $derived(
@@ -92,7 +96,7 @@
 							notation: message.detalhesRolagem.expressao,
 							total: message.detalhesRolagem.total,
 							dice: message.detalhesRolagem.dados,
-							nonce: crypto.randomUUID()
+							nonce: message.id
 						};
 				}
 				if (nextMessages.length) $chatMensagens = [...$chatMensagens, ...nextMessages].slice(-100);
@@ -108,15 +112,11 @@
 
 	$effect(() => {
 		if (!initialized) return;
-		if (!$diceBatchOpen) {
-			for (const messageId of waitingRollIds) {
-				waitingRollIds.delete(messageId);
-				queueRollReveal(messageId);
-			}
-		}
+		const completed = $completedDiceRollNonces;
 		for (const message of $chatMensagens) {
-			if (message.tipo === 'rolagem' && !revealedRollIds.has(message.id))
-				queueRollReveal(message.id);
+			if (message.tipo !== 'rolagem' || revealedRollIds.has(message.id)) continue;
+			if (completed.includes(message.id)) revealRoll(message.id);
+			else queueRollReveal(message.id);
 		}
 	});
 
@@ -180,7 +180,8 @@
 					expression: `${event.author} · ${result.expressao}`,
 					notation: result.expressao,
 					total: result.total,
-					dice: result.dados
+					dice: result.dados,
+					nonce: String(event.id)
 				};
 			} else {
 				await saveMessage(session, campaignId, input);

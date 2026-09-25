@@ -135,7 +135,8 @@ describe('DiceBoxRuntime', () => {
 		expect(box.reroll).toHaveBeenCalledWith([0]);
 		expect(die.body.type).toBe(1);
 		expect(die.body.velocity).toMatchObject({ x: 150, y: -80, z: 1200 });
-		expect(die.body.angularVelocity).toMatchObject({ x: 80 / 35, y: 150 / 35 });
+		expect(die.body.angularVelocity.x).toBeCloseTo((80 / Math.hypot(150, -80)) * 25);
+		expect(die.body.angularVelocity.y).toBeCloseTo((150 / Math.hypot(150, -80)) * 25);
 		expect(die.body.wakeUp).toHaveBeenCalledOnce();
 	});
 
@@ -171,7 +172,7 @@ describe('DiceBoxRuntime', () => {
 	it('generates varied physical impulses for automatic persistent rerolls', () => {
 		const values = [0, 1, 0.5, 0, 1, 0.5];
 		const impulse = randomDiceThrow(() => values.shift() ?? 0.5);
-		expect(impulse.velocity).toEqual({ x: -900, y: 900, z: 1450 });
-		expect(impulse.spin).toEqual({ x: -30, y: 30, z: 0 });
+		expect(impulse.velocity).toEqual({ x: -600, y: 600, z: 900 });
+		expect(impulse.spin).toEqual({ x: -45, y: 45, z: 0 });
 	});
 });
