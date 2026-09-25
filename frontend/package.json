@@ -38,7 +38,7 @@
 		"vitest": "^5.0.0"
 	},
 	"dependencies": {
-		"@3d-dice/dice-box": "^1.1.4",
+		"@3d-dice/dice-box-threejs": "^0.0.12",
 		"@supabase/supabase-js": "^2.115.0",
 		"livekit-client": "^2.22.3",
 		"pixi.js": "^8.19.0"

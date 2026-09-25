@@ -1,11 +1,18 @@
-declare module '@3d-dice/dice-box' {
-	const DiceBox: new (config: Record<string, unknown>) => {
-		init(): Promise<unknown>;
-		roll(notation: string, options?: Record<string, unknown>): unknown;
-		add(notation: string, options?: Record<string, unknown>): unknown;
-		reroll?(die: Record<string, unknown>, options?: Record<string, unknown>): unknown;
-		getRollResults?(): Array<{ rolls?: Array<Record<string, unknown>> }>;
-		clear?(): void;
+declare module '@3d-dice/dice-box-threejs' {
+	const DiceBox: new (
+		selector: string,
+		config: Record<string, unknown>
+	) => {
+		initialize(): Promise<unknown>;
+		roll(notation: string): Promise<unknown> | unknown;
+		add(notation: string): Promise<unknown> | unknown;
+		reroll(diceIds: number[]): Promise<unknown> | unknown;
+		swapDiceFace(die: Record<string, unknown>, result: number): void;
+		diceList: Array<Record<string, unknown>>;
+		clear(): void;
+		renderer?: { render(scene: unknown, camera: unknown): void };
+		scene?: unknown;
+		camera?: unknown;
 	};
 	export default DiceBox;
 }
