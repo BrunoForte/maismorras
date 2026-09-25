@@ -19,7 +19,7 @@ import (
 
 var audioUUIDPrefix = regexp.MustCompile(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-)(.*)$`)
 
-func reclassifiedAudioPath(campaignID, assetPath, kind string) (string, error) {
+func configuredAudioPath(campaignID, assetPath, kind string, looping bool) (string, error) {
 	prefix := "campaigns/" + campaignID + "/media/"
 	if kind != "music" && kind != "effect" || !strings.HasPrefix(assetPath, prefix) || strings.Contains(assetPath, "..") || path.IsAbs(assetPath) {
 		return "", errInvalidAudioAsset
@@ -32,13 +32,17 @@ func reclassifiedAudioPath(campaignID, assetPath, kind string) (string, error) {
 	if match := audioUUIDPrefix.FindStringSubmatch(name); match != nil {
 		unique, name = match[1], match[2]
 	}
-	for _, previous := range []string{"effect__", "sfx__", "music__"} {
+	for _, previous := range []string{"effect_loop__", "effect_once__", "music_loop__", "music_once__", "effect__", "sfx__", "music__"} {
 		name = strings.TrimPrefix(name, previous)
 	}
 	if name == "" {
 		return "", errInvalidAudioAsset
 	}
-	return prefix + unique + kind + "__" + name, nil
+	loopMode := "once"
+	if looping {
+		loopMode = "loop"
+	}
+	return prefix + unique + kind + "_" + loopMode + "__" + name, nil
 }
 
 var errInvalidAudioAsset = &invalidAudioAssetError{}
@@ -65,14 +69,19 @@ func (h *Handler) SetAudioKind(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
 	var in struct {
-		Path string `json:"path"`
-		Kind string `json:"kind"`
+		Path    string `json:"path"`
+		Kind    string `json:"kind"`
+		Looping *bool  `json:"looping"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
 	}
 	in.Path = strings.TrimSpace(in.Path)
-	destination, err := reclassifiedAudioPath(campaignID, in.Path, in.Kind)
+	looping := in.Kind == "music"
+	if in.Looping != nil {
+		looping = *in.Looping
+	}
+	destination, err := configuredAudioPath(campaignID, in.Path, in.Kind, looping)
 	if err != nil {
 		return apperror.BadRequest("INVALID_AUDIO_ASSET", "Selecione um áudio desta campanha e um tipo válido.")
 	}
@@ -84,7 +93,7 @@ func (h *Handler) SetAudioKind(w http.ResponseWriter, r *http.Request) error {
 		return apperror.Forbidden("Somente o narrador pode alterar o tipo de áudio.")
 	}
 	if destination == in.Path {
-		return write(w, http.StatusOK, map[string]string{"path": destination, "kind": in.Kind})
+		return write(w, http.StatusOK, map[string]any{"path": destination, "kind": in.Kind, "looping": looping})
 	}
 	if h.cfg.SupabaseURL == "" || h.cfg.SupabaseSecretKey == "" {
 		return apperror.ServiceUnavailable("Storage seguro não está configurado no servidor.")
@@ -128,7 +137,7 @@ func (h *Handler) SetAudioKind(w http.ResponseWriter, r *http.Request) error {
 			h.audio.BroadcastAudioState(state.id, state.path, state.playing, state.volume, state.positionMs, state.startedAt, state.revision, state.effects)
 		}
 	}
-	return write(w, http.StatusOK, map[string]string{"path": destination, "kind": in.Kind})
+	return write(w, http.StatusOK, map[string]any{"path": destination, "kind": in.Kind, "looping": looping})
 }
 
 var errStorageObjectMissing = &storageObjectMissingError{}

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	audioAssetDisplayName,
 	audioAssetKind,
+	audioAssetLooping,
 	CrossfadeAudio,
 	withListenerVolume
 } from './audioPlayback';
@@ -37,8 +38,14 @@ describe('CrossfadeAudio', () => {
 	it('classifies tagged audio assets while preserving legacy music files', () => {
 		expect(audioAssetKind('campaigns/c1/media/64d0ac2-effect__rain.mp3')).toBe('effect');
 		expect(audioAssetKind('campaigns/c1/media/sfx__thunder.ogg')).toBe('effect');
+		expect(audioAssetKind('campaigns/c1/media/uuid-effect_loop__rain.mp3')).toBe('effect');
 		expect(audioAssetKind('campaigns/c1/media/theme.mp3')).toBe('music');
 		expect(audioAssetDisplayName('effect__rain.mp3')).toBe('rain.mp3');
+		expect(audioAssetDisplayName('music_once__theme.mp3')).toBe('theme.mp3');
+		expect(audioAssetLooping('music_loop__theme.mp3')).toBe(true);
+		expect(audioAssetLooping('effect_once__rain.mp3')).toBe(false);
+		expect(audioAssetLooping('effect__rain.mp3')).toBe(false);
+		expect(audioAssetLooping('theme.mp3')).toBe(true);
 	});
 	it('applies personal output volume without mutating the shared audio state', () => {
 		const shared = { path: 'music.mp3', playing: true, volume: 0.8, positionMs: 0, startedAt: 10 };
@@ -67,18 +74,20 @@ describe('CrossfadeAudio', () => {
 		});
 
 		await Promise.all([
-			music.apply(state('music.mp3'), async (path) => path),
-			effects.apply(state('rain.mp3'), async (path) => path)
+			music.apply(state('music_loop__theme.mp3'), async (path) => path),
+			effects.apply(state('effect_once__rain.mp3'), async (path) => path)
 		]);
 
-		expect(music.path).toBe('music.mp3');
-		expect(effects.path).toBe('rain.mp3');
+		expect(music.path).toBe('music_loop__theme.mp3');
+		expect(effects.path).toBe('effect_once__rain.mp3');
 		expect(
 			musicElements.some((element) => (element.play as ReturnType<typeof vi.fn>).mock.calls.length)
 		).toBe(true);
 		expect(
 			effectElements.some((element) => (element.play as ReturnType<typeof vi.fn>).mock.calls.length)
 		).toBe(true);
+		expect(musicElements[1].loop).toBe(true);
+		expect(effectElements[1].loop).toBe(false);
 	});
 
 	it('clamps fade progress when an animation frame timestamp precedes its start', async () => {

@@ -8,7 +8,7 @@
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 	import { notifyUserRequestError, request } from '$lib/services/httpClient';
 	import { optimizeImage } from '$lib/services/imageProcessing';
-	import { audioAssetKind } from '$lib/services/audioPlayback';
+	import { audioAssetKind, audioAssetLooping } from '$lib/services/audioPlayback';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import {
 		currentPlayerIds,
@@ -37,6 +37,7 @@
 		thumbnailUrl?: string;
 		type: 'image' | 'audio' | 'document' | 'map';
 		audioKind?: 'music' | 'effect';
+		audioLooping?: boolean;
 	};
 	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
 	let assets = $state<Asset[]>([]);
@@ -269,26 +270,30 @@
 			deletingAsset = null;
 		}
 	}
-	async function changeAudioKind(asset: Asset, event: Event) {
+	async function changeAudioSettings(
+		asset: Asset,
+		settings: { kind?: 'music' | 'effect'; looping?: boolean }
+	) {
 		if (changingAudioKind) return;
-		const kind = (event.currentTarget as HTMLSelectElement).value as 'music' | 'effect';
-		if (kind === asset.audioKind) return;
+		const kind = settings.kind ?? asset.audioKind ?? 'music';
+		const looping =
+			settings.looping ??
+			(kind === (asset.audioKind ?? 'music')
+				? (asset.audioLooping ?? kind === 'music')
+				: kind === 'music');
+		if (kind === asset.audioKind && looping === asset.audioLooping) return;
 		changingAudioKind = asset.path;
 		try {
-			await request<{ path: string; kind: 'music' | 'effect' }>(
+			await request<{ path: string; kind: 'music' | 'effect'; looping: boolean }>(
 				session,
 				`/api/v1/campaigns/${campaignId}/assets/audio-kind`,
-				{ method: 'PUT', body: JSON.stringify({ path: asset.path, kind }) },
-				'Não foi possível alterar o tipo do áudio.'
+				{ method: 'PUT', body: JSON.stringify({ path: asset.path, kind, looping }) },
+				'Não foi possível alterar as configurações do áudio.'
 			);
 			await loadAssets();
-			message =
-				kind === 'music'
-					? 'Áudio classificado como música.'
-					: 'Áudio classificado como efeito sonoro.';
+			message = `${kind === 'music' ? 'Música' : 'Efeito sonoro'} ${looping ? 'em loop' : 'sem loop'}.`;
 		} catch (error) {
-			message =
-				error instanceof Error ? error.message : 'Não foi possível alterar o tipo do áudio.';
+			message = error instanceof Error ? error.message : 'Não foi possível alterar o áudio.';
 			await loadAssets();
 		} finally {
 			changingAudioKind = null;
@@ -315,7 +320,9 @@
 				const signed = await getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
 				return signed
 					? {
-							name: file.name.replace(/^[a-f0-9-]+-/, '').replace(/^(?:effect|sfx|music)__/, ''),
+							name: file.name
+								.replace(/^[a-f0-9-]+-/, '')
+								.replace(/^(?:effect|sfx|music)(?:_(?:loop|once))?__/, ''),
 							path: `${folder()}/${file.name}`,
 							url: signed,
 							type: file.metadata?.mimetype?.startsWith('audio/')
@@ -327,7 +334,10 @@
 										? ('map' as const)
 										: ('image' as const),
 							...(file.metadata?.mimetype?.startsWith('audio/')
-								? { audioKind: audioAssetKind(file.name) }
+								? {
+										audioKind: audioAssetKind(file.name),
+										audioLooping: audioAssetLooping(file.name)
+									}
 								: {})
 						}
 					: null;
@@ -345,6 +355,9 @@
 				file.type.startsWith('text/')) &&
 			file.size <= 20 * 1024 * 1024
 		);
+	}
+	function audioLoops(asset: Asset) {
+		return asset.audioLooping ?? asset.audioKind !== 'effect';
 	}
 	async function uploadFiles(files: FileList | File[]) {
 		if (!supabase || uploading) return;
@@ -372,8 +385,8 @@
 				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
 				const audioPrefix = optimized.file.type.startsWith('audio/')
 					? audioUploadKind === 'effect'
-						? 'effect__'
-						: 'music__'
+						? 'effect_once__'
+						: 'music_loop__'
 					: '';
 				const { error } = await supabase.storage
 					.from('campaign-assets')
@@ -623,7 +636,7 @@
 					onclick={() => (assetFilter = value as typeof assetFilter)}>{label}</button
 				>{/each}
 		</nav>{/if}
-	{#if assets.length}<section class="asset-grid">
+	{#if assets.length}<section class="asset-grid" class:audio-list={assetFilter === 'audio'}>
 			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.path)}<article
 					class="asset-card"
 				>
@@ -639,6 +652,7 @@
 						>
 					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio
 							controls
+							loop={asset.audioLooping ?? asset.audioKind !== 'effect'}
 							src={asset.url}
 						></audio>
 					{:else}<span class="document-mark">▤</span><a
@@ -648,17 +662,29 @@
 							rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a
 						>{/if}
 					<div class="asset-footer">
-						<small
-							>{asset.name}{#if asset.audioKind}<span class="audio-kind-badge">
+						<small>
+							{asset.name}
+							{#if asset.audioKind}
+								<span class="audio-kind-badge">
 									· {asset.audioKind === 'music'
 										? $appLocale === 'en'
 											? 'Music'
 											: 'Música'
 										: $appLocale === 'en'
 											? 'Sound effect'
-											: 'Efeito sonoro'}</span
-								>{/if}</small
-						>
+											: 'Efeito sonoro'}
+								</span>
+								<span class="audio-loop-badge">
+									{audioLoops(asset)
+										? $appLocale === 'en'
+											? '· loops'
+											: '· em loop'
+										: $appLocale === 'en'
+											? '· plays once'
+											: '· sem loop'}
+								</span>
+							{/if}
+						</small>
 						{#if isGM}<div class="asset-actions">
 								{#if asset.type === 'audio'}<label class="asset-audio-kind">
 										<select
@@ -666,14 +692,30 @@
 												asset.name}
 											value={asset.audioKind ?? 'music'}
 											disabled={changingAudioKind === asset.path}
-											onchange={(event) => void changeAudioKind(asset, event)}
+											onchange={(event) =>
+												void changeAudioSettings(asset, {
+													kind: (event.currentTarget as HTMLSelectElement).value as
+														'music' | 'effect'
+												})}
 										>
 											<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
 											<option value="effect"
 												>{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option
 											>
 										</select>
-									</label>{/if}
+									</label><label class="asset-audio-loop">
+										<input
+											type="checkbox"
+											checked={asset.audioLooping ?? asset.audioKind !== 'effect'}
+											aria-label={($appLocale === 'en' ? 'Loop ' : 'Repetir em loop: ') +
+												asset.name}
+											disabled={changingAudioKind === asset.path}
+											onchange={(event) =>
+												void changeAudioSettings(asset, {
+													looping: (event.currentTarget as HTMLInputElement).checked
+												})}
+										/>{$appLocale === 'en' ? 'Loop' : 'Loop'}</label
+									>{/if}
 								<button
 									class="asset-delete"
 									aria-label={$appLocale === 'en'
@@ -1146,6 +1188,30 @@
 		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: 0.8rem;
 	}
+	.asset-grid.audio-list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.asset-grid.audio-list article {
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		gap: 0.65rem 1rem;
+		padding: 0.85rem 1rem;
+	}
+	.asset-grid.audio-list audio,
+	.asset-grid.audio-list .asset-footer {
+		grid-column: 1 / -1;
+	}
+	.asset-grid.audio-list audio {
+		height: 42px;
+	}
+	.asset-grid.audio-list .asset-footer {
+		flex-wrap: wrap;
+	}
+	.asset-grid.audio-list small {
+		flex: 1 1 100%;
+		font-size: 0.82rem;
+		white-space: normal;
+	}
 	.asset-grid article {
 		display: grid;
 		gap: 0.45rem;
@@ -1184,6 +1250,9 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	.audio-loop-badge {
+		color: #a99c91;
+	}
 	.asset-delete {
 		flex: 0 0 auto;
 		width: 1.45rem;
@@ -1215,6 +1284,22 @@
 	.asset-audio-kind select:disabled {
 		opacity: 0.6;
 		cursor: wait;
+	}
+	.asset-audio-loop {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.3rem 0.4rem;
+		border: 1px solid #5a493b;
+		border-radius: 5px;
+		color: #edc77f;
+		background: #2b211e;
+		font-size: 0.68rem;
+		white-space: nowrap;
+	}
+	.asset-audio-loop input {
+		margin: 0;
+		accent-color: #d8ad67;
 	}
 	.asset-present {
 		border: 1px solid #5a493b;

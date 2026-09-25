@@ -11,7 +11,14 @@ export type AudioAssetKind = 'music' | 'effect';
 
 /** Legacy audio files remain music; new uploads carry an explicit, path-stable kind prefix. */
 export function audioAssetKind(name: string): AudioAssetKind {
-	return /(?:^|[-/])(?:effect|sfx)__/.test(name) ? 'effect' : 'music';
+	return /(?:^|[-/])(?:effect(?:_(?:loop|once))?|sfx)__/.test(name) ? 'effect' : 'music';
+}
+
+/** Legacy assets default to their category's conventional loop behavior. */
+export function audioAssetLooping(name: string): boolean {
+	if (/(?:^|[-/])(?:music|effect)_once__/.test(name)) return false;
+	if (/(?:^|[-/])(?:music|effect)_loop__/.test(name)) return true;
+	return audioAssetKind(name) === 'music';
 }
 
 export function audioAssetDisplayName(name: string): string {
@@ -19,7 +26,7 @@ export function audioAssetDisplayName(name: string): string {
 		.split('/')
 		.at(-1)!
 		.replace(/^[a-f0-9-]+-/, '')
-		.replace(/^(?:effect|sfx|music)__/, '');
+		.replace(/^(?:effect|sfx|music)(?:_(?:loop|once))?__/, '');
 }
 
 /** Applies a listener's local output preference without changing shared scene state. */
@@ -79,6 +86,7 @@ export class CrossfadeAudio {
 
 		const current = this.elements[this.activeIndex];
 		if (this.activePath === state.path && current.src) {
+			current.loop = audioAssetLooping(state.path);
 			current.volume = volume;
 			this.syncPosition(current, state);
 			if (state.playing) {
@@ -101,6 +109,7 @@ export class CrossfadeAudio {
 		const next = this.elements[nextIndex];
 		next.pause();
 		next.src = url;
+		next.loop = audioAssetLooping(state.path);
 		next.currentTime = Math.max(0, this.positionSeconds(state));
 		next.volume = state.playing ? 0 : volume;
 		next.load();

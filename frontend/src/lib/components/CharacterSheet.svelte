@@ -4093,6 +4093,12 @@
 		padding: 1rem 1.25rem;
 		border-bottom: 1px solid #403536;
 	}
+	.sheet > footer {
+		position: relative;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		border-top: 1px solid #403536;
+	}
 	.sheet-heading {
 		display: grid;
 		gap: 0.42rem;
@@ -5280,6 +5286,12 @@
 		min-height: 64px;
 	}
 	footer span {
+		position: absolute;
+		left: 50%;
+		max-width: 42%;
+		transform: translateX(-50%);
+		text-align: center;
+		pointer-events: none;
 		color: #ffb2aa;
 		font-size: 0.8rem;
 	}
@@ -5287,6 +5299,7 @@
 		color: #a9d8a3;
 	}
 	.save {
+		flex: 0 0 auto;
 		border: 0;
 		border-radius: 7px;
 		padding: 0.65rem 1rem;
@@ -5298,7 +5311,7 @@
 		opacity: 0.6;
 	}
 	.token-button {
-		margin-left: 0.5rem;
+		margin-left: 0;
 		border: 1px solid #9c7141;
 		color: #f0dcae;
 		background: #3c2b22;
@@ -5326,7 +5339,12 @@
 		footer {
 			position: sticky;
 			bottom: 0;
+			gap: 0.4rem;
 			background: #1b171a;
+		}
+		footer span {
+			max-width: 36%;
+			font-size: 0.68rem;
 		}
 		.feat-manager {
 			grid-template-columns: 1fr;
