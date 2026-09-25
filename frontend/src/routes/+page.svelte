@@ -972,7 +972,11 @@
 											activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
 										onopennewwindow={openCharacterWindow}
 									/>{:else}<p class="status-message">Carregando mapa…</p>{/if}
-								{#if DiceOverlayComponent}<DiceOverlayComponent />{/if}
+								{#if DiceOverlayComponent && session}<DiceOverlayComponent
+										{session}
+										campaignId={activeCampaign.id}
+										sceneId={activeScene.id}
+									/>{/if}
 								{#if TableToolsComponent}<TableToolsComponent
 										campaignId={activeCampaign.id}
 										sceneId={activeScene.id}

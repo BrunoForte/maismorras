@@ -86,6 +86,43 @@ describe('DiceBoxRuntime', () => {
 		expect(box.clear).not.toHaveBeenCalled();
 	});
 
+	it('lets a persistent die follow the pointer and applies the flick impulse on release', async () => {
+		const box = fakeBox();
+		const runtime = new DiceBoxRuntime(box);
+		const vector = (z = 0) => ({
+			x: 0,
+			y: 0,
+			z,
+			set(x: number, y: number, nextZ: number) {
+				this.x = x;
+				this.y = y;
+				this.z = nextZ;
+			}
+		});
+		const die = {
+			position: vector(),
+			body: {
+				position: vector(8),
+				velocity: vector(),
+				angularVelocity: vector(),
+				type: 1,
+				wakeUp: vi.fn()
+			}
+		};
+		box.diceList.push(die);
+
+		expect(runtime.movePersistentDie(die, 12, 24)).toBe(true);
+		expect(die.body.type).toBe(4);
+		expect(die.body.position).toMatchObject({ x: 12, y: 24, z: 8 });
+
+		await runtime.throwPersistentDie(die, { x: 150, y: -80 });
+		expect(box.reroll).toHaveBeenCalledWith([0]);
+		expect(die.body.type).toBe(1);
+		expect(die.body.velocity).toMatchObject({ x: 150, y: -80, z: 1200 });
+		expect(die.body.angularVelocity).toMatchObject({ x: 80 / 35, y: 150 / 35 });
+		expect(die.body.wakeUp).toHaveBeenCalledOnce();
+	});
+
 	it('prefers explicit notation and safely infers a d20 fallback', () => {
 		expect(diceNotation({ notation: '4d6+2', expression: 'Dano', dice: [1, 2, 3, 4] })).toBe(
 			'4d6+2'

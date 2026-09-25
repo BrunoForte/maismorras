@@ -12,6 +12,34 @@ export interface DiceBoxPort {
 	camera?: unknown;
 }
 
+type Vector3Port = {
+	x: number;
+	y: number;
+	z: number;
+	set: (x: number, y: number, z: number) => void;
+};
+type PhysicsBodyPort = {
+	position: Vector3Port;
+	velocity: Vector3Port;
+	angularVelocity: Vector3Port;
+	type: number;
+	sleepState?: number;
+	wakeUp?: () => void;
+	updateMassProperties?: () => void;
+};
+type PersistentDiePort = DiceBoxDie & {
+	position?: Vector3Port;
+	shape?: string;
+	notation?: { type?: string };
+	body?: PhysicsBodyPort;
+	geometry?: {
+		boundingSphere?: { radius: number };
+		computeBoundingSphere?: () => void;
+	};
+	result?: Array<{ value?: number }>;
+	storeRolledValue?: (reason: string) => void;
+};
+
 export type DiceBoxRoll = {
 	notation: string;
 	dice: number[];
@@ -37,6 +65,76 @@ export class DiceBoxRuntime {
 	private persistentDice = new Map<string, DiceBoxDie[]>();
 
 	constructor(private readonly box: DiceBoxPort) {}
+
+	getPersistentDice() {
+		return [...this.persistentDice.entries()].flatMap(([slot, dice]) =>
+			dice.map((die) => ({ die, slot }))
+		);
+	}
+
+	getDieDetails(die: DiceBoxDie) {
+		const item = die as PersistentDiePort;
+		item.geometry?.computeBoundingSphere?.();
+		const radius = item.geometry?.boundingSphere?.radius ?? 32;
+		const notation = item.notation?.type ?? item.shape ?? 'd20';
+		const sides = Number(notation.match(/\d+/)?.[0] ?? 20);
+		return {
+			position: item.body?.position ?? item.position,
+			radius,
+			sides,
+			value: item.result?.at(-1)?.value ?? null
+		};
+	}
+
+	movePersistentDie(die: DiceBoxDie, x: number, y: number) {
+		const item = die as PersistentDiePort;
+		const body = item.body;
+		if (!body || !item.position) return false;
+		body.type = 4; // Cannon ES Body.KINEMATIC
+		body.velocity.set(0, 0, 0);
+		body.angularVelocity.set(0, 0, 0);
+		body.position.set(x, y, body.position.z);
+		item.position.x = x;
+		item.position.y = y;
+		return true;
+	}
+
+	releasePersistentDie(die: DiceBoxDie) {
+		const item = die as PersistentDiePort;
+		const body = item.body;
+		if (!body) return;
+		const Body = body.constructor as { DYNAMIC?: number };
+		body.type = Body.DYNAMIC ?? 1; // Cannon ES Body.DYNAMIC
+		body.updateMassProperties?.();
+		body.velocity.set(0, 0, 0);
+		body.angularVelocity.set(0, 0, 0);
+		body.wakeUp?.();
+	}
+
+	async throwPersistentDie(die: DiceBoxDie, velocity: { x: number; y: number }) {
+		const item = die as PersistentDiePort;
+		const body = item.body;
+		const id = this.box.diceList.indexOf(die);
+		if (!body || id < 0) throw new Error('Não foi possível pegar este dado.');
+
+		// reroll starts its animation synchronously; replace its default impulse
+		// before the next animation frame with the direction of the pointer flick.
+		const animation = this.box.reroll([id]);
+		const Body = body.constructor as { DYNAMIC?: number };
+		body.type = Body.DYNAMIC ?? 1; // Cannon ES Body.DYNAMIC
+		body.updateMassProperties?.();
+		body.wakeUp?.();
+		body.velocity.set(velocity.x, velocity.y, 1200);
+		body.angularVelocity.set(-velocity.y / 35, velocity.x / 35, (velocity.x - velocity.y) / 90);
+		await animation;
+	}
+
+	setAuthoritativeDieFace(die: DiceBoxDie, value: number) {
+		this.box.swapDiceFace(die, value);
+		const item = die as PersistentDiePort;
+		item.storeRolledValue?.('forced');
+		this.render();
+	}
 
 	async playBatch(rolls: DiceBoxRoll[], mode: '3d-overlay' | '3d-table') {
 		if (rolls.length === 0) return;
