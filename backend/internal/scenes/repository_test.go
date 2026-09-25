@@ -44,6 +44,26 @@ func TestPresentationDismissalRequiresEmptyHiddenPayload(t *testing.T) {
 	}
 }
 
+func TestPresentationRecipientAuthorization(t *testing.T) {
+	p := Presentation{Visible: true, AudienceRestricted: true, VisibleUserIDs: []string{"player-a"}, OverlayVisible: true}
+	if !presentationVisibleTo(p, "player", "player-a", false) {
+		t.Fatal("selected player should see the presentation")
+	}
+	if presentationVisibleTo(p, "player", "player-b", false) {
+		t.Fatal("unselected player must not see the presentation")
+	}
+	if presentationVisibleTo(p, "player", "player-b", true) {
+		t.Fatal("only the GM session should load content for the OBS overlay")
+	}
+	if !presentationVisibleTo(p, "gm", "gm-id", true) {
+		t.Fatal("GM should see the image in the overlay when that destination is enabled")
+	}
+	p.OverlayVisible = false
+	if presentationVisibleTo(p, "gm", "gm-id", true) {
+		t.Fatal("overlay must stay hidden when the GM did not select it")
+	}
+}
+
 func TestApplyVisibilityRedactsPrivateFieldsForOtherPlayer(t *testing.T) {
 	owner := "owner-id"
 	token := Token{

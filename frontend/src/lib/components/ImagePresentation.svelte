@@ -2,7 +2,11 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import type { Session } from '@supabase/supabase-js';
-	import { getPresentation, savePresentation } from '$lib/services/presentationApi';
+	import {
+		getPresentation,
+		savePresentation,
+		type Presentation
+	} from '$lib/services/presentationApi';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -10,13 +14,33 @@
 	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale } from '$lib/stores/locale';
-	let { sceneId, campaignId, session }: { sceneId: string; campaignId: string; session: Session } =
-		$props();
-	let item = $state({ assetPath: '', title: '', description: '', visible: false });
+	let {
+		sceneId,
+		campaignId,
+		session,
+		isGM
+	}: { sceneId: string; campaignId: string; session: Session; isGM: boolean } = $props();
+	let item = $state<Presentation>({
+		assetPath: '',
+		title: '',
+		description: '',
+		visible: false,
+		visibleUserIds: [],
+		audienceRestricted: false,
+		overlayVisible: false,
+		updatedAt: ''
+	});
 	let url = $state('');
+	let dismissedLocally = $state('');
 	let presentationGeneration = 0;
 	let socket: SceneSocket | null = null;
 	async function dismissPresentation() {
+		if (!isGM) {
+			dismissedLocally = `${item.assetPath}|${item.title}|${item.description}|${item.updatedAt}`;
+			item = { ...item, visible: false };
+			url = '';
+			return;
+		}
 		// Hide immediately so a transient API error cannot trap the narrator
 		// behind the presentation modal.
 		item = { ...item, visible: false };
@@ -26,7 +50,11 @@
 				assetPath: '',
 				title: '',
 				description: '',
-				visible: false
+				visible: false,
+				visibleUserIds: [],
+				audienceRestricted: false,
+				overlayVisible: false,
+				updatedAt: ''
 			});
 			socket?.publishPresentationUpdated();
 		} catch {
@@ -34,19 +62,17 @@
 			// a concise error and a later refresh reconciles state with the server.
 		}
 	}
-	async function applyPresentation(next: {
-		assetPath: string;
-		title: string;
-		description: string;
-		visible: boolean;
-	}) {
+	async function applyPresentation(next: Presentation) {
 		const generation = ++presentationGeneration;
 		item = next;
 		if (!next.visible || !next.assetPath) {
 			url = '';
 			return;
 		}
-		const signed = await getSignedAssetUrl(session, campaignId, next.assetPath);
+		const signed = await getSignedAssetUrl(session, campaignId, next.assetPath, {
+			sceneId,
+			surface: 'presentation'
+		});
 		if (generation === presentationGeneration) url = signed ?? '';
 	}
 	async function applyRealtimePresentation(data?: unknown) {
@@ -59,7 +85,7 @@
 			await load();
 			return;
 		}
-		const next = payload.presentation as Partial<typeof item>;
+		const next = payload.presentation as Partial<Presentation>;
 		if (
 			typeof next.assetPath !== 'string' ||
 			typeof next.title !== 'string' ||
@@ -69,7 +95,19 @@
 			await load();
 			return;
 		}
-		await applyPresentation(next as typeof item);
+		const normalized = {
+			...item,
+			...next,
+			visibleUserIds: Array.isArray(next.visibleUserIds) ? next.visibleUserIds : [],
+			audienceRestricted: next.audienceRestricted === true,
+			overlayVisible: next.overlayVisible === true,
+			updatedAt: typeof next.updatedAt === 'string' ? next.updatedAt : ''
+		};
+		const key = `${normalized.assetPath}|${normalized.title}|${normalized.description}|${normalized.updatedAt}`;
+		if (!isGM && dismissedLocally && dismissedLocally !== key) dismissedLocally = '';
+		await applyPresentation(
+			!isGM && dismissedLocally === key ? { ...normalized, visible: false } : normalized
+		);
 	}
 	async function load() {
 		try {
@@ -111,7 +149,7 @@
 	});
 </script>
 
-{#if item.visible && (url || item.description)}<div
+{#if item.visible && !isGM && (url || item.description)}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
 		onclick={(event) => {
@@ -128,8 +166,13 @@
 		<button
 			class="presentation-close"
 			onclick={() => void dismissPresentation()}
-			aria-label={$appLocale === 'en' ? 'Dismiss image for everyone' : 'Fechar imagem para todos'}
-			>×</button
+			aria-label={isGM
+				? $appLocale === 'en'
+					? 'Dismiss image for everyone'
+					: 'Fechar imagem para todos'
+				: $appLocale === 'en'
+					? 'Close image for me'
+					: 'Fechar imagem para mim'}>×</button
 		>
 		<figure>
 			{#if url}<img src={url} alt={item.title || 'Imagem apresentada'} />{:else}<div

@@ -157,14 +157,28 @@ type Visibility struct {
 }
 type Repository struct{ pool *pgxpool.Pool }
 type Presentation struct {
-	AssetPath   string `json:"assetPath"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Visible     bool   `json:"visible"`
+	AssetPath          string   `json:"assetPath"`
+	Title              string   `json:"title"`
+	Description        string   `json:"description"`
+	Visible            bool     `json:"visible"`
+	VisibleUserIDs     []string `json:"visibleUserIds"`
+	AudienceRestricted bool     `json:"audienceRestricted"`
+	OverlayVisible     bool     `json:"overlayVisible"`
+	UpdatedAt          string   `json:"updatedAt"`
 }
 
 func isPresentationDismissal(p Presentation) bool {
 	return !p.Visible && strings.TrimSpace(p.AssetPath) == "" && strings.TrimSpace(p.Title) == "" && strings.TrimSpace(p.Description) == ""
+}
+
+func presentationVisibleTo(p Presentation, role, userID string, overlay bool) bool {
+	if !p.Visible || (overlay && (!p.OverlayVisible || role != "gm")) {
+		return false
+	}
+	if role == "gm" || overlay || !p.AudienceRestricted {
+		return true
+	}
+	return containsID(p.VisibleUserIDs, userID)
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
@@ -217,13 +231,13 @@ func valueOrEmpty(value *string) string {
 	return *value
 }
 
-func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string) (Presentation, error) {
+func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string, overlay bool) (Presentation, error) {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {
 		return Presentation{}, err
 	}
 	var p Presentation
-	err = r.pool.QueryRow(ctx, `select asset_path,title,description,visible from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Description, &p.Visible)
+	err = r.pool.QueryRow(ctx, `select asset_path,title,description,visible,visible_user_ids::text[],audience_restricted,overlay_visible,updated_at::text from scene_presentations where scene_id=$1`, sceneID).Scan(&p.AssetPath, &p.Title, &p.Description, &p.Visible, &p.VisibleUserIDs, &p.AudienceRestricted, &p.OverlayVisible, &p.UpdatedAt)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "42P01" {
 		return Presentation{}, nil
@@ -234,22 +248,10 @@ func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string
 	if err != nil {
 		return Presentation{}, err
 	}
-	if !p.Visible || role == "gm" || strings.TrimSpace(p.AssetPath) == "" {
+	if role == "gm" && !overlay {
 		return p, nil
 	}
-	var allowed bool
-	err = r.pool.QueryRow(ctx, `select exists(
-		select 1 from scenes s
-		join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2
-		where s.id=$1 and (
-			not exists (select 1 from library_item_permissions lp where lp.campaign_id=s.campaign_id and lp.item_type='asset'::public.library_item_type and lp.item_key=$3)
-			or exists (select 1 from library_item_permissions lp where lp.campaign_id=s.campaign_id and lp.item_type='asset'::public.library_item_type and lp.item_key=$3 and lp.user_id=$2)
-		)
-	)`, sceneID, userID, p.AssetPath).Scan(&allowed)
-	if err != nil {
-		return Presentation{}, err
-	}
-	if !allowed {
+	if !presentationVisibleTo(p, role, userID, overlay) || strings.TrimSpace(p.AssetPath) == "" {
 		return Presentation{}, nil
 	}
 	return p, nil
@@ -259,17 +261,36 @@ func (r *Repository) SavePresentation(ctx context.Context, sceneID, userID strin
 	if err != nil {
 		return err
 	}
-	// Any campaign member may dismiss a visible presentation, but only the GM
-	// may choose or replace the content shown to the table.
-	if role != "gm" && !isPresentationDismissal(p) {
+	// Only the GM may change the shared presentation. Players dismiss it locally.
+	if role != "gm" {
 		return ErrForbidden
 	}
 	if isPresentationDismissal(p) {
 		_, err := r.pool.Exec(ctx, `delete from scene_presentations where scene_id=$1`, sceneID)
 		return err
 	}
-	_, err = r.pool.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible) select $1,campaign_id,$2,$3,$4,$5 from scenes where id=$1 on conflict(scene_id) do update set asset_path=excluded.asset_path,title=excluded.title,description=excluded.description,visible=excluded.visible,updated_at=now()`, sceneID, p.AssetPath, p.Title, p.Description, p.Visible)
+	if p.VisibleUserIDs == nil {
+		p.VisibleUserIDs = []string{}
+	}
+	var validCount int
+	err = r.pool.QueryRow(ctx, `select count(*) from unnest($2::uuid[]) selected(id) join scenes s on s.id=$1 join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=selected.id and m.role='player'::public.campaign_role`, sceneID, p.VisibleUserIDs).Scan(&validCount)
+	if err != nil {
+		return err
+	}
+	if validCount != len(p.VisibleUserIDs) {
+		return ErrForbidden
+	}
+	_, err = r.pool.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible,visible_user_ids,audience_restricted,overlay_visible) select $1,campaign_id,$2,$3,$4,$5,$6,$7,$8 from scenes where id=$1 on conflict(scene_id) do update set asset_path=excluded.asset_path,title=excluded.title,description=excluded.description,visible=excluded.visible,visible_user_ids=excluded.visible_user_ids,audience_restricted=excluded.audience_restricted,overlay_visible=excluded.overlay_visible,updated_at=now()`, sceneID, p.AssetPath, p.Title, p.Description, p.Visible, p.VisibleUserIDs, p.AudienceRestricted, p.OverlayVisible)
 	return err
+}
+
+func containsID(ids []string, id string) bool {
+	for _, candidate := range ids {
+		if candidate == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Repository) GetOverlayLayout(ctx context.Context, sceneID, userID string) (map[string]any, error) {

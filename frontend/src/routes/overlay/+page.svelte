@@ -22,6 +22,7 @@
 	import { request } from '$lib/services/httpClient';
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
+	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -72,6 +73,31 @@
 		blocks: []
 	});
 	let overlayBackground = $state('');
+	let overlayPresentation = $state<Presentation | null>(null);
+	let overlayPresentationUrl = $state('');
+	let overlayPresentationClosed = $state(false);
+	async function loadOverlayPresentation(currentSession: Session | null = session) {
+		if (!currentSession || !sceneId()) return;
+		try {
+			const next = await getPresentation(currentSession, sceneId(), 'overlay');
+			const keyChanged =
+				next.assetPath !== overlayPresentation?.assetPath ||
+				next.title !== overlayPresentation?.title ||
+				next.updatedAt !== overlayPresentation?.updatedAt;
+			overlayPresentation = next.visible && next.overlayVisible ? next : null;
+			if (keyChanged) overlayPresentationClosed = false;
+			if (overlayPresentation?.assetPath) {
+				overlayPresentationUrl =
+					(await getSignedAssetUrl(currentSession, campaignId(), overlayPresentation.assetPath, {
+						sceneId: sceneId(),
+						surface: 'overlay'
+					})) ?? '';
+			} else overlayPresentationUrl = '';
+		} catch {
+			overlayPresentation = null;
+			overlayPresentationUrl = '';
+		}
+	}
 	function applyLayoutDocument(value: unknown) {
 		const document = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 		if (document.profiles && typeof document.profiles === 'object') {
@@ -314,6 +340,7 @@
 				});
 			void loadOverlayLayout(data.session);
 			void refresh(data.session);
+			void loadOverlayPresentation(data.session);
 			const updateFallback = (status: RealtimeStatus) => {
 				if (status === 'connected') {
 					if (fallbackRefreshTimer) clearInterval(fallbackRefreshTimer);
@@ -324,6 +351,7 @@
 					fallbackRefreshTimer = setInterval(() => {
 						void refresh(data.session);
 						void loadOverlayLayout(data.session);
+						void loadOverlayPresentation(data.session);
 					}, 60_000);
 			};
 			socket = connectSceneSocket(
@@ -334,15 +362,13 @@
 					refreshTimer = setTimeout(() => {
 						void refresh(data.session);
 						void loadOverlayLayout(data.session);
+						void loadOverlayPresentation(data.session);
 					}, 180);
 				},
 				undefined,
 				updateFallback,
 				(state) => void applyAudioState(state),
-				(data) => {
-					const presentation = (data as { presentation?: unknown } | undefined)?.presentation;
-					if (!presentation && session) void refresh(session);
-				},
+				() => void loadOverlayPresentation(session),
 				(data) => {
 					const document = (data as { document?: unknown } | undefined)?.document;
 					if (document) applyLayoutDocument(document);
@@ -508,6 +534,25 @@
 						<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
 					</article>{/if}
 			</section>{/if}
+		{#if overlayPresentation && !overlayPresentationClosed}<section
+				class="overlay-presentation"
+				aria-label={overlayPresentation.title || 'Imagem apresentada'}
+			>
+				{#if overlayPresentationUrl}<img
+						src={overlayPresentationUrl}
+						alt={overlayPresentation.title || 'Imagem apresentada'}
+					/>{:else if overlayPresentation.description}<article>
+						<h2>{overlayPresentation.title}</h2>
+						<p>{overlayPresentation.description}</p>
+					</article>{/if}
+				{#if overlayPresentation.title && overlayPresentationUrl}<strong
+						>{overlayPresentation.title}</strong
+					>{/if}
+				<button
+					onclick={() => (overlayPresentationClosed = true)}
+					aria-label="Fechar imagem nesta overlay">×</button
+				>
+			</section>{/if}
 	{/if}
 </main>
 
@@ -530,6 +575,55 @@
 		background:
 			radial-gradient(circle at 15% 0%, #53341caa, transparent 32%),
 			linear-gradient(180deg, #08070bd9, transparent 32%, #08070bd9);
+	}
+	.overlay-presentation {
+		position: fixed;
+		z-index: 10000;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding: 3rem;
+		background: #000d;
+		backdrop-filter: blur(3px);
+	}
+	.overlay-presentation img {
+		display: block;
+		max-width: 94vw;
+		max-height: 88vh;
+		object-fit: contain;
+		border-radius: 12px;
+		box-shadow: 0 20px 80px #000;
+	}
+	.overlay-presentation strong {
+		position: absolute;
+		bottom: 1.2rem;
+		max-width: 85vw;
+		overflow: hidden;
+		color: #f7eedf;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.overlay-presentation article {
+		width: min(90vw, 900px);
+		max-height: 82vh;
+		overflow: auto;
+		padding: 3rem;
+		border: 1px solid #d8ad67;
+		border-radius: 12px;
+		color: #f7eedf;
+		background: #171417;
+	}
+	.overlay-presentation button {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 1px solid #d8ad67;
+		border-radius: 50%;
+		color: #f7eedf;
+		background: #171417;
+		font-size: 1.5rem;
 	}
 	.layout-hidden {
 		display: none !important;

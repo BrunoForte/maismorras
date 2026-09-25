@@ -5,11 +5,15 @@ export type Presentation = {
 	title: string;
 	description: string;
 	visible: boolean;
+	visibleUserIds: string[];
+	audienceRestricted: boolean;
+	overlayVisible: boolean;
+	updatedAt?: string;
 };
-export async function getPresentation(session: Session, sceneId: string) {
+export async function getPresentation(session: Session, sceneId: string, surface?: 'overlay') {
 	return request<Presentation>(
 		session,
-		`/api/v1/scenes/${sceneId}/presentation`,
+		`/api/v1/scenes/${sceneId}/presentation${surface ? '?surface=overlay' : ''}`,
 		{},
 		'Não foi possível carregar a apresentação.'
 	);

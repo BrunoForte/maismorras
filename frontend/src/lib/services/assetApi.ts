@@ -34,24 +34,33 @@ export function clearSignedAssetCache(campaignId?: string, path?: string) {
 		failedRequestCache.clear();
 		return;
 	}
-	const suffix = ':' + campaignId + ':' + (path ?? '');
-	for (const key of signedUrlCache.keys()) if (key.includes(suffix)) signedUrlCache.delete(key);
-	for (const key of missingAssetCache.keys())
-		if (key.includes(suffix)) missingAssetCache.delete(key);
-	for (const key of failedRequestCache.keys())
-		if (key.includes(suffix)) failedRequestCache.delete(key);
+	const matches = (key: string) =>
+		key.includes(':' + campaignId + ':') && (!path || key.endsWith(':' + path));
+	for (const key of signedUrlCache.keys()) if (matches(key)) signedUrlCache.delete(key);
+	for (const key of missingAssetCache.keys()) if (matches(key)) missingAssetCache.delete(key);
+	for (const key of failedRequestCache.keys()) if (matches(key)) failedRequestCache.delete(key);
 }
 
 /** Resolve a private campaign asset through the backend authorization boundary. */
 export async function getSignedAssetUrl(
 	session: Session,
 	campaignId: string,
-	path: string
+	path: string,
+	context?: { sceneId: string; surface: 'presentation' | 'overlay' }
 ): Promise<string | null> {
 	if (!path) return null;
 	const assetPath = campaignAssetPath(path) ?? path;
 	if (/^https?:\/\//i.test(assetPath) || assetPath.startsWith('data:')) return assetPath;
-	const cacheKey = session.user.id + ':' + campaignId + ':' + assetPath;
+	const cacheKey =
+		session.user.id +
+		':' +
+		campaignId +
+		':' +
+		(context?.surface ?? 'library') +
+		':' +
+		(context?.sceneId ?? '') +
+		':' +
+		assetPath;
 	const missingUntil = missingAssetCache.get(cacheKey);
 	if (missingUntil && missingUntil > Date.now()) return null;
 	if (missingUntil) missingAssetCache.delete(cacheKey);
@@ -70,7 +79,11 @@ export async function getSignedAssetUrl(
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ path: assetPath })
+					body: JSON.stringify({
+						path: assetPath,
+						presentationSceneId: context?.sceneId,
+						surface: context?.surface
+					})
 				}
 			);
 			if (!response.ok) {

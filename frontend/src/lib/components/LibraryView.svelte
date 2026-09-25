@@ -19,15 +19,18 @@
 		campaignId,
 		session,
 		isGM,
-		onnotes,
 		onpresent,
 		onhide
 	}: {
 		campaignId: string;
 		session: Session;
 		isGM: boolean;
-		onnotes: () => void;
-		onpresent: (asset: { path: string; name: string }) => void;
+		onpresent: (
+			asset: { path: string; name: string },
+			userIds: string[],
+			restricted: boolean,
+			overlayVisible: boolean
+		) => void;
 		onhide: () => void;
 	} = $props();
 	type Asset = {
@@ -56,7 +59,11 @@
 	let message = $state('');
 	let preview = $state<Asset | null>(null);
 	let draggingFiles = $state(false);
-	let audioUploadKind = $state<'music' | 'effect'>('music');
+	let presentationTarget = $state<Asset | null>(null);
+	let presentationUserIds = $state<string[]>([]);
+	let presentationRestricted = $state(false);
+	let presentationOverlayVisible = $state(true);
+	let loadingPresentationTargets = $state(false);
 	let permissionDialog = $state<{ type: 'asset' | 'note'; key: string; label: string } | null>(
 		null
 	);
@@ -204,6 +211,40 @@
 		handoutUserIds = handoutUserIds.includes(userId)
 			? handoutUserIds.filter((id) => id !== userId)
 			: [...handoutUserIds, userId];
+	}
+	async function openPresentationOptions(asset: Asset) {
+		presentationTarget = asset;
+		presentationUserIds = [];
+		presentationRestricted = false;
+		presentationOverlayVisible = true;
+		loadingPresentationTargets = true;
+		try {
+			const roster = await listParticipants(session, campaignId);
+			participants = roster.participants.filter((participant) => participant.role === 'player');
+		} catch (error) {
+			presentationTarget = null;
+			message = error instanceof Error ? error.message : 'Não foi possível carregar jogadores.';
+		} finally {
+			loadingPresentationTargets = false;
+		}
+	}
+	function togglePresentationUser(userId: string) {
+		presentationUserIds = presentationUserIds.includes(userId)
+			? presentationUserIds.filter((id) => id !== userId)
+			: [...presentationUserIds, userId];
+	}
+	function confirmPresentation() {
+		if (!presentationTarget) return;
+		onpresent(
+			{ path: presentationTarget.path, name: presentationTarget.name },
+			currentPlayerIds(
+				presentationUserIds,
+				participants.map((participant) => participant.userId)
+			),
+			presentationRestricted,
+			presentationOverlayVisible
+		);
+		presentationTarget = null;
 	}
 	async function savePermissionSelection() {
 		if (!permissionDialog || savingPermissions) return;
@@ -383,11 +424,7 @@
 			for (const file of accepted) {
 				const optimized = await optimizeImage(file);
 				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-				const audioPrefix = optimized.file.type.startsWith('audio/')
-					? audioUploadKind === 'effect'
-						? 'effect_once__'
-						: 'music_loop__'
-					: '';
+				const audioPrefix = optimized.file.type.startsWith('audio/') ? 'music_loop__' : '';
 				const { error } = await supabase.storage
 					.from('campaign-assets')
 					.upload(`${folder()}/${crypto.randomUUID()}-${audioPrefix}${name}`, optimized.file, {
@@ -439,15 +476,9 @@
 					? 'Images, maps, documents, and music for this table.'
 					: 'Imagens, mapas, documentos e trilhas desta mesa.'}</span
 			>
+			<a class="icon-catalog-link" href="/icons">Biblioteca de ícones do projeto</a>
 		</div>
 		{#if isGM}<div class="actions">
-				<label class="audio-kind-picker">
-					{$appLocale === 'en' ? 'Audio type' : 'Tipo de áudio'}
-					<select bind:value={audioUploadKind} aria-label="Tipo de áudio para novos arquivos">
-						<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
-						<option value="effect">{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option>
-					</select>
-				</label>
 				<label
 					>{uploading
 						? $appLocale === 'en'
@@ -465,8 +496,6 @@
 					/></label
 				><button onclick={() => void openNewHandout()}
 					>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
-				><button onclick={onnotes}
-					>{$appLocale === 'en' ? 'Private notes' : 'Notas internas'}</button
 				>
 				{#if isGM}<button onclick={onhide}
 						>{$appLocale === 'en' ? 'Hide presentation' : 'Ocultar imagem exibida'}</button
@@ -736,7 +765,7 @@
 										aria-label={$appLocale === 'en'
 											? `Show ${asset.name} to the table`
 											: `Exibir ${asset.name} para a mesa`}
-										onclick={() => onpresent({ path: asset.path, name: asset.name })}>👁</button
+										onclick={() => void openPresentationOptions(asset)}>👁</button
 									>{/if}
 							</div>{/if}
 					</div>
@@ -771,6 +800,78 @@
 			><img src={preview.url} alt={preview.name} />
 			<p>{preview.name}</p>
 		</section>
+	</div>{/if}
+{#if presentationTarget}<div
+		class="permission-backdrop"
+		role="presentation"
+		onclick={(event) => {
+			if (event.target === event.currentTarget) presentationTarget = null;
+		}}
+	>
+		<dialog open class="permission-dialog" aria-modal="true" aria-labelledby="presentation-title">
+			<header>
+				<div>
+					<p>{$appLocale === 'en' ? 'LIVE PRESENTATION' : 'EXIBIÇÃO NA MESA'}</p>
+					<h3 id="presentation-title">
+						{$appLocale === 'en' ? 'Where to show this image?' : 'Onde exibir esta imagem?'}
+					</h3>
+					<span>{presentationTarget.name}</span>
+				</div>
+				<button class="dialog-close" onclick={() => (presentationTarget = null)} aria-label="Fechar"
+					>×</button
+				>
+			</header>
+			{#if loadingPresentationTargets}<p class="permission-empty">Carregando jogadores…</p>{:else}
+				<div class="permission-modes">
+					<label
+						><input
+							type="radio"
+							name="presentation-audience"
+							checked={!presentationRestricted}
+							onchange={() => (presentationRestricted = false)}
+						/>Todos os jogadores</label
+					>
+					<label
+						><input
+							type="radio"
+							name="presentation-audience"
+							checked={presentationRestricted}
+							onchange={() => (presentationRestricted = true)}
+						/>Jogadores selecionados</label
+					>
+				</div>
+				{#if presentationRestricted}<div class="permission-roster">
+						{#each participants as participant (participant.userId)}<label class="player-option">
+								<input
+									type="checkbox"
+									checked={presentationUserIds.includes(participant.userId)}
+									onchange={() => togglePresentationUser(participant.userId)}
+								/>
+								<span class="player-color" aria-hidden="true"></span>
+								<span
+									><strong>{participant.displayName || 'Jogador'}</strong
+									>{#if participant.character?.sheet?.name}<small
+											>{participant.character.sheet.name}</small
+										>{/if}</span
+								>
+							</label>{:else}<p class="permission-empty">Nenhum jogador na mesa.</p>{/each}
+					</div>{/if}
+				<label class="presentation-overlay-option"
+					><input type="checkbox" bind:checked={presentationOverlayVisible} />Também exibir na
+					overlay do OBS</label
+				>
+			{/if}
+			<footer>
+				<button class="secondary-button" onclick={() => (presentationTarget = null)}
+					>Cancelar</button
+				>
+				<button
+					class="primary-button"
+					onclick={confirmPresentation}
+					disabled={loadingPresentationTargets}>Exibir</button
+				>
+			</footer>
+		</dialog>
 	</div>{/if}
 {#if permissionDialog}<div
 		class="permission-backdrop"
@@ -910,12 +1011,26 @@
 	.actions {
 		display: flex;
 		gap: 0.55rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.icon-catalog-link {
+		display: inline-block;
+		margin-top: 0.45rem;
+		color: #edc77f;
+		font-size: 0.75rem;
+		text-decoration: none;
+	}
+	.icon-catalog-link:hover {
+		color: #fff0cd;
+		text-decoration: underline;
 	}
 	.actions label,
 	.actions button {
 		border: 1px solid #765d3d;
 		border-radius: 7px;
-		padding: 0.52rem 0.65rem;
+		min-height: 2.15rem;
+		padding: 0.32rem 0.55rem;
 		color: #edc77f;
 		background: #2b211e;
 		font-size: 0.72rem;
@@ -928,22 +1043,12 @@
 		color: #26190e;
 		background: #e0b86f;
 	}
-	.actions .audio-kind-picker {
-		display: grid;
-		gap: 0.2rem;
-		border: 1px solid #765d3d;
-		color: #eee4d6;
-		background: #211b1e;
-		font-weight: 600;
-	}
-	.audio-kind-picker select {
-		max-width: 9rem;
-		border: 1px solid #554841;
-		border-radius: 5px;
-		padding: 0.28rem 0.4rem;
-		color: #f5ede3;
-		background: #121012;
-		font: inherit;
+	.presentation-overlay-option {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		color: #e8d9c8;
+		font-size: 0.82rem;
 	}
 	.drop-zone {
 		display: grid;

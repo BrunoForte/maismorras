@@ -1894,7 +1894,10 @@
 				assetPath: '',
 				title: spellDisplayName(spell),
 				description: spellDescription(spell) || spell.notes,
-				visible: true
+				visible: true,
+				visibleUserIds: [],
+				audienceRestricted: false,
+				overlayVisible: false
 			};
 			await savePresentation(session, sceneId, presentation);
 			presentationSocket?.publishPresentationUpdated({ presentation });

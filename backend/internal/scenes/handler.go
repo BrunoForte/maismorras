@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"vtt-backend/internal/apperror"
@@ -143,7 +144,7 @@ func (h *Handler) SaveOverlayLayout(w http.ResponseWriter, r *http.Request) erro
 }
 func (h *Handler) GetPresentation(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	item, err := h.repo.GetPresentation(r.Context(), r.PathValue("sceneID"), p.UserID)
+	item, err := h.repo.GetPresentation(r.Context(), r.PathValue("sceneID"), p.UserID, r.URL.Query().Get("surface") == "overlay")
 	if err != nil {
 		return mapError(err)
 	}
@@ -157,6 +158,15 @@ func (h *Handler) SavePresentation(w http.ResponseWriter, r *http.Request) error
 	}
 	if len(item.AssetPath) > 500 || len(item.Title) > 200 || len(item.Description) > 12_000 {
 		return apperror.BadRequest("INVALID_PRESENTATION", "Apresentação inválida.")
+	}
+	if len(item.VisibleUserIDs) > 100 {
+		return apperror.BadRequest("INVALID_PRESENTATION", "Selecione no máximo 100 jogadores.")
+	}
+	for _, id := range item.VisibleUserIDs {
+		valid, _ := regexp.MatchString(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, id)
+		if !valid {
+			return apperror.BadRequest("INVALID_PRESENTATION", "A lista de jogadores contém um identificador inválido.")
+		}
 	}
 	if err := h.repo.SavePresentation(r.Context(), r.PathValue("sceneID"), p.UserID, item); err != nil {
 		return mapError(err)

@@ -42,7 +42,9 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaignID := r.PathValue("campaignID")
 	var in struct {
-		Path string `json:"path"`
+		Path                string `json:"path"`
+		PresentationSceneID string `json:"presentationSceneId"`
+		Surface             string `json:"surface"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
@@ -51,6 +53,9 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	prefix := "campaigns/" + campaignID + "/"
 	if in.Path == "" || !strings.HasPrefix(in.Path, prefix) || strings.Contains(in.Path, "..") || path.IsAbs(in.Path) {
 		return apperror.BadRequest("INVALID_ASSET", "Arquivo inválido para esta campanha.")
+	}
+	if (in.Surface != "" && in.Surface != "presentation" && in.Surface != "overlay") || ((in.Surface == "presentation" || in.Surface == "overlay") && in.PresentationSceneID == "") {
+		return apperror.BadRequest("INVALID_PRESENTATION", "Destino de apresentação inválido.")
 	}
 	var role string
 	if err := h.pool.QueryRow(r.Context(), "select role::text from campaign_members where campaign_id=$1 and user_id=$2", campaignID, p.UserID).Scan(&role); err != nil {
@@ -64,12 +69,19 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
     and (
       m.role='gm'::public.campaign_role
       or ($3 and exists (select 1 from public.scenes s where s.campaign_id=$1 and s.ambient_audio_path=$4 and s.ambient_audio_enabled))
+      or (not $3 and $5 in ('presentation','overlay') and exists (
+        select 1 from public.scene_presentations sp
+        join public.scenes ps on ps.id=sp.scene_id and ps.campaign_id=$1
+        where sp.scene_id=nullif($6,'')::uuid and sp.asset_path=$4 and sp.visible
+          and (( $5='overlay' and m.role='gm'::public.campaign_role and sp.overlay_visible )
+            or ( $5='presentation' and (not sp.audience_restricted or $2=any(sp.visible_user_ids))))
+      ))
       or (not $3 and (
         not exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$4)
         or exists (select 1 from public.library_item_permissions lp where lp.campaign_id=$1 and lp.item_type='asset'::public.library_item_type and lp.item_key=$4 and lp.user_id=$2)
       ))
     )
-)`, campaignID, p.UserID, isAudioPath(in.Path), in.Path).Scan(&allowed); err != nil || !allowed {
+)`, campaignID, p.UserID, isAudioPath(in.Path), in.Path, in.Surface, in.PresentationSceneID).Scan(&allowed); err != nil || !allowed {
 		return apperror.Forbidden("Você não tem acesso a este item.")
 	}
 	if h.cfg.SupabaseURL == "" || h.cfg.SupabaseSecretKey == "" {

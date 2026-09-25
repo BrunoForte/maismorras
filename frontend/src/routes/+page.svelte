@@ -26,7 +26,6 @@
 		typeof import('$lib/components/OverlayLayoutEditor.svelte').default;
 	type ParticipantsPanelComponentType =
 		typeof import('$lib/components/ParticipantsPanel.svelte').default;
-	type NotesPanelComponentType = typeof import('$lib/components/NotesPanel.svelte').default;
 	type NPCsPanelComponentType = typeof import('$lib/components/NPCsPanel.svelte').default;
 	type SceneSettingsComponentType = typeof import('$lib/components/SceneSettings.svelte').default;
 	type FloatingChatComponentType = typeof import('$lib/components/FloatingChat.svelte').default;
@@ -40,7 +39,6 @@
 	let BestiaryViewComponent = $state<BestiaryViewComponentType | null>(null);
 	let OverlayLayoutEditorComponent = $state<OverlayLayoutEditorComponentType | null>(null);
 	let ParticipantsPanelComponent = $state<ParticipantsPanelComponentType | null>(null);
-	let NotesPanelComponent = $state<NotesPanelComponentType | null>(null);
 	let NPCsPanelComponent = $state<NPCsPanelComponentType | null>(null);
 	let SceneSettingsComponent = $state<SceneSettingsComponentType | null>(null);
 	let FloatingChatComponent = $state<FloatingChatComponentType | null>(null);
@@ -79,15 +77,13 @@
 		CharacterSheetComponent ??= (await import('$lib/components/CharacterSheet.svelte')).default;
 	}
 	async function ensureDrawerComponents() {
-		const [participants, notes, npcs, settings, actor] = await Promise.all([
+		const [participants, npcs, settings, actor] = await Promise.all([
 			import('$lib/components/ParticipantsPanel.svelte'),
-			import('$lib/components/NotesPanel.svelte'),
 			import('$lib/components/NPCsPanel.svelte'),
 			import('$lib/components/SceneSettings.svelte'),
 			import('$lib/components/ActorDrawer.svelte')
 		]);
 		ParticipantsPanelComponent ??= participants.default;
-		NotesPanelComponent ??= notes.default;
 		NPCsPanelComponent ??= npcs.default;
 		SceneSettingsComponent ??= settings.default;
 		ActorDrawerComponent ??= actor.default;
@@ -96,8 +92,7 @@
 		if (workspaceTab === 'map' && activeScene) void ensureMapComponents();
 		if (workspaceTab !== 'map') void ensureTabComponent(workspaceTab);
 		if (sheetOpen) void ensureSheetComponent();
-		if (participantsOpen || notesOpen || npcsOpen || sceneSettingsOpen)
-			void ensureDrawerComponents();
+		if (participantsOpen || npcsOpen || sceneSettingsOpen) void ensureDrawerComponents();
 	});
 	type Campaign = {
 		id: string;
@@ -135,7 +130,6 @@
 	}
 	let inviteProcessed = false;
 	let participantsOpen = $state(false);
-	let notesOpen = $state(false);
 	let npcsOpen = $state(false);
 	let availableScenes = $state<Scene[]>([]);
 	let creatingScene = $state(false);
@@ -600,14 +594,22 @@
 			});
 		}
 	}
-	async function presentAsset(asset: { path: string; name: string }) {
+	async function presentAsset(
+		asset: { path: string; name: string },
+		userIds: string[],
+		restricted: boolean,
+		overlayVisible: boolean
+	) {
 		if (!activeCampaign || !activeScene || activeCampaign.role !== 'gm' || !session) return;
 		try {
 			await savePresentation(session, activeScene.id, {
 				assetPath: asset.path,
 				title: asset.name,
 				description: '',
-				visible: true
+				visible: true,
+				visibleUserIds: userIds,
+				audienceRestricted: restricted,
+				overlayVisible
 			});
 			window.dispatchEvent(
 				new CustomEvent('maismorras:presentation-changed', { detail: { sceneId: activeScene.id } })
@@ -625,7 +627,10 @@
 				assetPath: '',
 				title: '',
 				description: '',
-				visible: false
+				visible: false,
+				visibleUserIds: [],
+				audienceRestricted: false,
+				overlayVisible: false
 			});
 			window.dispatchEvent(
 				new CustomEvent('maismorras:presentation-changed', { detail: { sceneId: activeScene.id } })
@@ -755,6 +760,7 @@
 		{#if activeCampaign && activeScene && session}<ImagePresentation
 				sceneId={activeScene.id}
 				campaignId={activeCampaign.id}
+				isGM={activeCampaign.role === 'gm'}
 				{session}
 			/>{/if}
 		{#if activeCampaign && activeScene && session}<AmbientAudioPlayer
@@ -1001,8 +1007,8 @@
 					campaignId={activeCampaign.id}
 					{session}
 					isGM={activeCampaign.role === 'gm'}
-					onnotes={() => (notesOpen = true)}
-					onpresent={(asset) => void presentAsset(asset)}
+					onpresent={(asset, userIds, restricted, overlayVisible) =>
+						void presentAsset(asset, userIds, restricted, overlayVisible)}
 					onhide={() => void hidePresentedAsset()}
 				/>
 			{:else if workspaceTab === 'compendium' && CompendiumViewComponent}<CompendiumViewComponent
@@ -1115,12 +1121,6 @@
 					{session}
 					onclose={() => (participantsOpen = false)}
 					ontokencreated={() => void reloadActiveScene()}
-				/>{/if}
-			{#if notesOpen && NotesPanelComponent}<NotesPanelComponent
-					campaignId={activeCampaign.id}
-					{session}
-					isGM={activeCampaign.role === 'gm'}
-					onclose={() => (notesOpen = false)}
 				/>{/if}
 			{#if npcsOpen && NPCsPanelComponent && activeScene}<NPCsPanelComponent
 					campaignId={activeCampaign.id}
