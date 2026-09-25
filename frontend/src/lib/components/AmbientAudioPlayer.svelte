@@ -518,11 +518,13 @@
 		inset-inline: 0;
 		inset-block-end: 0;
 		width: 100vw;
-		display: flex;
-		gap: 0.5rem;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: clamp(0.35rem, 1vw, 0.75rem);
 		align-items: center;
-		padding: 0.55rem max(1rem, env(safe-area-inset-right))
-			calc(0.55rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+		padding: clamp(0.35rem, 0.8vw, 0.6rem) max(0.55rem, env(safe-area-inset-right))
+			calc(clamp(0.35rem, 0.8vw, 0.6rem) + env(safe-area-inset-bottom))
+			max(0.55rem, env(safe-area-inset-left));
 		border-top: 1px solid #5a493b;
 		background: #211b1e;
 		box-shadow: 0 -5px 20px #0008;
@@ -530,36 +532,40 @@
 	.ambient-player {
 		position: static;
 		box-sizing: border-box;
-		min-height: 3rem;
-		width: auto;
-		flex: 1 1 0;
-		display: flex;
-		gap: 0.5rem;
+		min-width: 0;
+		min-height: 2.8rem;
+		width: 100%;
+		display: grid;
+		grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr);
+		gap: clamp(0.35rem, 0.8vw, 0.75rem);
 		align-items: center;
 		padding: 0;
 		border: 0;
 		background: transparent;
 		box-shadow: none;
+		container-type: inline-size;
 	}
 	.effects-player {
 		inset-block-end: auto;
 	}
 	.ambient-player select {
-		width: min(24rem, 55vw);
-		min-width: 12rem;
+		box-sizing: border-box;
+		width: 100%;
+		min-width: 0;
+		max-width: 100%;
 		border: 1px solid #5a493b;
 		border-radius: 6px;
-		padding: 0.5rem;
+		padding: clamp(0.4rem, 0.6vw, 0.55rem);
 		color: #eee4d6;
 		background: #121012;
 	}
 	.listener-status,
 	.gm-status {
 		display: flex;
-		flex: 1;
+		flex: 1 1 auto;
 		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
+		justify-content: flex-end;
+		gap: clamp(0.35rem, 0.75vw, 0.9rem);
 		min-width: 0;
 		color: #eee4d6;
 	}
@@ -568,15 +574,18 @@
 	}
 	.listener-status strong,
 	.gm-status strong {
+		flex: 1 1 5rem;
+		min-width: 0;
 		overflow: hidden;
 		color: #e8c786;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.ambient-player button {
+		flex: 0 0 auto;
 		border: 1px solid #765d3d;
 		border-radius: 6px;
-		padding: 0.5rem 0.8rem;
+		padding: clamp(0.35rem, 0.6vw, 0.5rem) clamp(0.45rem, 0.8vw, 0.8rem);
 		color: #26190e;
 		background: #e0b86f;
 		font-weight: 700;
@@ -584,14 +593,19 @@
 	}
 	.volume-control {
 		display: flex;
+		flex: 0 1 auto;
 		align-items: center;
-		gap: 0.45rem;
-		min-width: 8rem;
+		gap: clamp(0.2rem, 0.4vw, 0.45rem);
+		min-width: 0;
 		color: #eee4d6;
 		font-size: 0.78rem;
 	}
+	.volume-control span {
+		white-space: nowrap;
+	}
 	.volume-control input {
-		width: clamp(4rem, 9vw, 8rem);
+		width: clamp(3rem, 7vw, 7rem);
+		min-width: 2.5rem;
 		accent-color: #e0b86f;
 	}
 	.volume-control output {
@@ -599,29 +613,43 @@
 		text-align: end;
 		font-variant-numeric: tabular-nums;
 	}
-	@media (max-width: 760px) {
+	@media (max-width: 900px) {
 		.audio-channels {
-			flex-direction: column;
-			gap: 0.3rem;
+			grid-template-columns: minmax(0, 1fr);
+			gap: 0;
 		}
 		.ambient-player {
 			width: 100%;
-			min-height: 2.8rem;
+			grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.5fr);
+			min-height: 2.6rem;
 		}
-		.ambient-player select {
-			width: min(42vw, 16rem);
-			min-width: 8rem;
+	}
+	@media (max-width: 520px) {
+		.audio-channels {
+			padding-inline: max(0.35rem, env(safe-area-inset-right))
+				max(0.35rem, env(safe-area-inset-left));
 		}
+		.ambient-player {
+			grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.4fr);
+			gap: 0.35rem;
+		}
+		.listener-status,
 		.gm-status {
-			width: auto;
-			flex: 1;
-			gap: 0.5rem;
+			gap: 0.3rem;
 		}
-		.volume-control {
-			flex: 0 1 auto;
+		.volume-control span {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
 		}
 		.volume-control input {
-			width: clamp(3.5rem, 14vw, 6rem);
+			width: clamp(2.5rem, 14vw, 4rem);
 		}
 	}
 </style>
