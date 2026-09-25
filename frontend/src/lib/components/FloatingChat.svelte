@@ -88,7 +88,8 @@
 					if (message.tipo === 'rolagem') queueRollReveal(message.id);
 					if (message.tipo === 'rolagem' && message.detalhesRolagem)
 						$diceOverlay = {
-							expression: message.detalhesRolagem.expressao,
+							expression: message.detalhesRolagem.label ?? message.detalhesRolagem.expressao,
+							notation: message.detalhesRolagem.expressao,
 							total: message.detalhesRolagem.total,
 							dice: message.detalhesRolagem.dados,
 							nonce: crypto.randomUUID()
@@ -175,7 +176,12 @@
 					}
 				];
 				knownMessageIds.add(String(event.id));
-				$diceOverlay = { expression: result.expressao, total: result.total, dice: result.dados };
+				$diceOverlay = {
+					expression: result.expressao,
+					notation: result.expressao,
+					total: result.total,
+					dice: result.dados
+				};
 			} else {
 				await saveMessage(session, campaignId, input);
 				$chatMensagens = [

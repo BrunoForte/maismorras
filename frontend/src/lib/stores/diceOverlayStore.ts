@@ -5,6 +5,8 @@ export type EffectiveDiceRenderer = Exclude<DiceRendererMode, 'auto'>;
 
 export type DiceOverlayResult = {
 	expression: string;
+	/** DiceBox notation; expression remains the human-facing label. */
+	notation?: string;
 	total: number;
 	dice: number[];
 	nonce?: string;
@@ -15,6 +17,7 @@ const state = writable<DiceOverlayResult | null>(null);
 export const activeDiceRolls = writable<DiceOverlayResult[]>([]);
 export const diceRendererMode = writable<DiceRendererMode>('auto');
 export const diceRendererEffective = writable<EffectiveDiceRenderer>('2d');
+export const diceRendererError = writable('');
 export const dice3dEnabled = derived(diceRendererEffective, (mode) => mode !== '2d');
 export const diceColor = writable<string | undefined>(undefined);
 export const diceBatchOpen = writable(false);
@@ -25,16 +28,16 @@ let batchDepth = 0;
 let rollSequence = 0;
 
 function withNonce(value: DiceOverlayResult): DiceOverlayResult {
-	if (value.nonce && value.color) return value;
 	const nonce =
 		typeof crypto !== 'undefined' && 'randomUUID' in crypto
 			? crypto.randomUUID()
 			: `roll-${Date.now()}-${rollSequence++}`;
+	const color = value.color ?? get(diceColor);
 	return {
 		...value,
 		nonce: value.nonce ?? nonce,
-		color: value.color ?? get(diceColor),
-		slot: value.slot ?? value.expression
+		color,
+		slot: value.slot ?? `${color ?? 'default'}:${value.notation ?? value.expression}`
 	};
 }
 
@@ -94,11 +97,19 @@ function applyRendererMode(mode: DiceRendererMode) {
 
 export function setDiceRendererMode(mode: DiceRendererMode) {
 	diceRendererMode.set(mode);
+	diceRendererError.set('');
 	applyRendererMode(mode);
 	if (typeof localStorage !== 'undefined') {
 		localStorage.setItem('maismorras:dice-renderer-mode', mode);
 		localStorage.removeItem('maismorras:dice-renderer');
 	}
+}
+
+export function reportDiceRendererFailure() {
+	diceRendererError.set(
+		'Não foi possível iniciar os dados 3D neste navegador. A rolagem continuará no modo 2D; confira o suporte a WebGL e tente novamente.'
+	);
+	diceRendererEffective.set('2d');
 }
 
 export function setDice3dPreference(enabled: boolean) {

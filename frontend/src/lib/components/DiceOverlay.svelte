@@ -3,13 +3,17 @@
 	import {
 		activeDiceRolls,
 		diceRendererEffective,
+		diceRendererError,
+		diceRendererMode,
 		diceOverlay,
-		restoreDicePreference
+		restoreDicePreference,
+		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	type DiceBoxComponent = typeof import('./DiceBox3D.svelte').default;
 	let DiceBox3DComponent = $state<DiceBoxComponent | null>(null);
 
 	let visible = $state(false);
+	let retrying = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
 	void $activeDiceRolls;
@@ -38,10 +42,32 @@
 	});
 	const sides = (expression: string) =>
 		Number(expression.match(/d(4|6|8|10|12|20|100)/i)?.[1] ?? 20);
+	async function retryDiceBox() {
+		retrying = true;
+		DiceBox3DComponent = null;
+		setDiceRendererMode($diceRendererMode === 'auto' ? 'auto' : $diceRendererMode);
+		await tick();
+		if ($diceRendererEffective !== '2d') {
+			try {
+				DiceBox3DComponent = (await import('./DiceBox3D.svelte')).default;
+			} catch {
+				// A falha detalhada já é exibida pelo componente/store.
+			}
+		}
+		retrying = false;
+	}
 </script>
 
 {#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
 	<DiceBox3DComponent mode={$diceRendererEffective} />
+{/if}
+{#if $diceRendererError}
+	<div class="dice-error" role="status">
+		<span>{$diceRendererError}</span>
+		<button type="button" onclick={retryDiceBox} disabled={retrying}>
+			{retrying ? 'Tentando…' : 'Tentar novamente'}
+		</button>
+	</div>
 {/if}
 {#if $activeDiceRolls.length && visible}
 	<div class="dice-overlay" aria-live="polite" aria-label="Rolagens recentes">
@@ -74,6 +100,33 @@
 		transform: translate(-50%, -50%);
 		pointer-events: none;
 		animation: appear 0.24s ease-out both;
+	}
+	.dice-error {
+		position: absolute;
+		z-index: 12;
+		left: 50%;
+		top: 1rem;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		max-width: min(94vw, 42rem);
+		padding: 0.6rem 0.8rem;
+		border: 1px solid #c87965;
+		border-radius: 0.65rem;
+		color: #fff1e8;
+		background: rgba(48, 25, 24, 0.96);
+		box-shadow: 0 8px 24px #0008;
+		font-size: 0.8rem;
+	}
+	.dice-error button {
+		flex: none;
+		padding: 0.4rem 0.65rem;
+		border: 1px solid #d5a87b;
+		border-radius: 0.45rem;
+		color: #fff4df;
+		background: #49362d;
+		cursor: pointer;
 	}
 	.dice-overlay article {
 		display: flex;

@@ -125,6 +125,7 @@
 				const dice = token.initiativeRolls?.length ? token.initiativeRolls : [token.initiative];
 				diceOverlay.set({
 					expression: `${token.name} · iniciativa${token.initiativeAdvantage ? ' · vantagem' : ''}`,
+					notation: `${dice.length}d20`,
 					total: token.initiative,
 					dice
 				});
@@ -145,6 +146,7 @@
 			);
 			diceOverlay.set({
 				expression: `Iniciativa${result.advantage ? ' · vantagem' : ''}`,
+				notation: `${result.rolls?.length ?? 1}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
 				total: result.initiative,
 				dice: result.rolls?.length ? result.rolls : [result.roll]
 			});

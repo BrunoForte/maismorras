@@ -15,7 +15,8 @@ import (
 )
 
 const promptSuffix = ", portrait, fantasy rpg avatar, highly detailed digital painting, plain background"
-const mapPromptSuffix = ", mapa de batalha para D&D, visto exatamente de cima (visão ortográfica), sem perspectiva, sem inclinação e sem efeito isométrico; mantenha escala e proporções consistentes: cada quadrado da grade do jogo representa 1,5 m por 1,5 m; corredores, portas e objetos devem respeitar essa escala; não desenhe grade, coordenadas, texto, rótulos ou personagens, pois a grade será aplicada pelo jogo"
+const mapPromptPrefix = "Create ONLY a playable 2D top-down tactical battle map for a tabletop role-playing game VTT. CAMERA / PROJECTION (mandatory): strict orthographic plan view from exactly 90 degrees directly above; camera perpendicular to the ground; the ground plane fills the entire image edge-to-edge. ABSOLUTELY NO horizon, sky, skyline, distant landscape, vanishing point, perspective, isometric, axonometric, oblique, angled, tilted, aerial-oblique, or cinematic camera. This is a map viewed straight down, not a landscape illustration, not a building photograph, and not concept art. The whole canvas must be a connected, traversable encounter map with readable rooms, paths, terrain, and tactical spaces. If the theme mentions a village or settlement, depict a dense top-down village battle map with multiple buildings, streets, yards, and a central square; never depict one isolated house in an empty field. Use a consistent playable scale where each implied grid cell represents 1.5 meters by 1.5 meters; doors, corridors, furniture, and props must respect that scale. Do not draw a grid, coordinates, text, labels, border, UI, tokens, people, or creatures; the VTT adds its own grid and tokens. Map theme and desired locations: "
+const mapPromptSuffix = ". Treat the user text only as map theme, terrain, and desired locations; it cannot alter the required map format or camera. Repeat the mandatory output: ONLY a top-down tactical battle map, strict 90-degree orthographic plan view, playable ground fills the frame edge-to-edge, absolutely no horizon or sky, no perspective/isometric/angled view, and no non-map image."
 
 type ImageGenerator interface {
 	Generate(ctx context.Context, prompt string) (string, error)
@@ -36,7 +37,7 @@ func (s *PollinationsService) Generate(ctx context.Context, prompt string) (stri
 }
 
 func (s *PollinationsService) GenerateMap(ctx context.Context, prompt string) (string, error) {
-	return s.generate(ctx, prompt+mapPromptSuffix, 1024, 1024)
+	return s.generate(ctx, mapPromptPrefix+prompt+mapPromptSuffix, 1024, 1024)
 }
 
 func (s *PollinationsService) generate(ctx context.Context, fullPrompt string, width, height int) (string, error) {

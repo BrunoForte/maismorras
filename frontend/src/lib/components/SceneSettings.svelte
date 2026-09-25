@@ -169,8 +169,8 @@
 				>
 				<small class="map-ai-hint">
 					{$appLocale === 'en'
-						? 'The map prompt always requests a top-down, non-perspective D&D battle map with consistent square scale (1.5 m × 1.5 m); the game grid is added separately.'
-						: 'A geração sempre pede um mapa de batalha de D&D visto de cima, sem perspectiva, com escala consistente de 1,5 m × 1,5 m por quadrado. A grade é adicionada pelo jogo.'}
+						? 'This tool generates battle maps only: strict 90° top-down orthographic view, no horizon/sky/perspective/isometric view, playable terrain edge-to-edge. Describe only the theme and locations; 1.5 m squares are added by the game grid.'
+						: 'Esta ferramenta gera somente mapas de batalha: vista ortográfica estrita de cima (90°), sem horizonte/céu/perspectiva/isométrica, com terreno jogável até as bordas. Descreva apenas o tema e os locais; a grade do jogo usa quadrados de 1,5 m.'}
 				</small>
 			</div>
 			<label

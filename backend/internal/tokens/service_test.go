@@ -67,10 +67,16 @@ func TestPollinationsServiceGenerateMapAddsFixedScaleAndViewConstraints(t *testi
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, required := range []string{"ruínas élficas", "mapa de batalha para D&D", "visão ortográfica", "sem perspectiva", "1,5 m por 1,5 m", "não desenhe grade"} {
+		for _, required := range []string{"ruínas élficas", "ONLY a playable 2D top-down tactical battle map", "strict orthographic plan view", "exactly 90 degrees directly above", "ABSOLUTELY NO horizon", "no perspective/isometric/angled view", "1.5 meters by 1.5 meters", "Do not draw a grid"} {
 			if !strings.Contains(prompt, required) {
 				t.Errorf("map prompt %q does not contain %q", prompt, required)
 			}
+		}
+		if strings.Index(prompt, "mandatory") > strings.Index(prompt, "Map theme and desired locations") {
+			t.Errorf("mandatory map constraints should precede the user theme prompt: %q", prompt)
+		}
+		if strings.Index(prompt, "Repeat the mandatory output") < strings.Index(prompt, "ruínas élficas") {
+			t.Errorf("mandatory constraints should also follow the user theme prompt: %q", prompt)
 		}
 		w.Header().Set("Content-Type", "image/png")
 		_, _ = w.Write([]byte("fake-png"))

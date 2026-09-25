@@ -907,6 +907,7 @@
 			);
 			$diceOverlay = {
 				expression: `${personagemSelecionado.nome} · iniciativa${result.advantage ? ' · vantagem' : ''}`,
+				notation: `${result.rolls?.length ?? 1}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
 				total: result.initiative,
 				dice: result.rolls?.length ? result.rolls : [result.roll]
 			};
@@ -962,6 +963,7 @@
 			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name}`,
+				notation: attack.expressao,
 				total: attack.total,
 				dice: attack.dados
 			};
@@ -995,6 +997,7 @@
 			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name} · dano`,
+				notation: damage.expressao,
 				total: damage.total,
 				dice: damage.dados
 			};

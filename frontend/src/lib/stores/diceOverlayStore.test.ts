@@ -5,8 +5,10 @@ import {
 	diceColor,
 	diceRendererEffective,
 	diceRendererMode,
+	diceRendererError,
 	setDiceRendererMode,
-	setDiceColor
+	setDiceColor,
+	reportDiceRendererFailure
 } from './diceOverlayStore';
 
 describe('dice renderer preferences', () => {
@@ -32,5 +34,13 @@ describe('dice renderer preferences', () => {
 	it('normalizes miniature colors for DiceBox themes', () => {
 		setDiceColor(0x12abef);
 		expect(get(diceColor)).toBe('#12abef');
+	});
+
+	it('keeps a visible failure message and activates the 2D fallback when DiceBox fails', () => {
+		setDiceRendererMode('3d-overlay');
+		reportDiceRendererFailure();
+
+		expect(get(diceRendererEffective)).toBe('2d');
+		expect(get(diceRendererError)).toMatch(/Não foi possível iniciar os dados 3D/);
 	});
 });

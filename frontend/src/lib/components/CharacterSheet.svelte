@@ -573,7 +573,12 @@
 			sheet.initiativeAdvantage = false;
 			const dice = result.rolls ?? [result.roll];
 			const label = result.advantage ? `Iniciativa · vantagem (${dice.join(' e ')})` : 'Iniciativa';
-			diceOverlay.set({ expression: `${sheet.name} · ${label}`, total: result.initiative, dice });
+			diceOverlay.set({
+				expression: `${sheet.name} · ${label}`,
+				notation: `${dice.length}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
+				total: result.initiative,
+				dice
+			});
 			presentationSocket?.publishCombatUpdated();
 			message = `${label}: ${result.roll} ${result.bonus >= 0 ? '+' : '−'} ${Math.abs(result.bonus)} = ${result.initiative}`;
 		} catch (error) {
@@ -1148,8 +1153,10 @@
 		try {
 			const mode = selectedAttackMode();
 			const result = await rollMyCharacter(session, campaignId, kind, key, mode);
+			const rollCount = Math.max(1, result.dados.length);
 			$diceOverlay = {
 				expression: `${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
+				notation: `${rollCount}d20${result.modificador ? `${result.modificador >= 0 ? '+' : ''}${result.modificador}` : ''}`,
 				total: result.total,
 				dice: result.dados,
 				nonce: crypto.randomUUID()
@@ -1260,6 +1267,7 @@
 					`1d${hitDie[1]}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`
 				);
 				const result = event.payload as { dados: number[]; total: number };
+				const constitutionBonus = modifier(sheet.abilityScores.constitution);
 				sheet.hitDiceSpent += 1;
 				sheet.hitPointsCurrent = Math.min(
 					sheet.hitPointsMax,
@@ -1267,6 +1275,7 @@
 				);
 				$diceOverlay = {
 					expression: $appLocale === 'en' ? 'Hit die' : 'Dado de vida',
+					notation: `1d${hitDie[1]}${constitutionBonus ? `${constitutionBonus >= 0 ? '+' : ''}${constitutionBonus}` : ''}`,
 					total: result.total,
 					dice: result.dados
 				};
@@ -1547,6 +1556,7 @@
 				sceneSocketPublishChat();
 				$diceOverlay = {
 					expression: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
+					notation: result.expressao,
 					total: result.total,
 					dice: result.dados,
 					nonce: crypto.randomUUID()
@@ -1594,6 +1604,7 @@
 				sceneSocketPublishChat();
 				$diceOverlay = {
 					expression: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
+					notation: damage.expressao,
 					total: damage.total,
 					dice: damage.dados,
 					nonce: crypto.randomUUID()
@@ -1665,6 +1676,7 @@
 		sceneSocketPublishChat();
 		$diceOverlay = {
 			expression: label,
+			notation: attack.expressao,
 			total: attack.total,
 			dice: attack.dados,
 			nonce: crypto.randomUUID()
@@ -1702,6 +1714,7 @@
 		sceneSocketPublishChat();
 		$diceOverlay = {
 			expression: `${label} · dano${critical ? ' crítico' : ''}`,
+			notation: result.expressao,
 			total: result.total,
 			dice: result.dados,
 			nonce: crypto.randomUUID()
@@ -1796,6 +1809,7 @@
 			sceneSocketPublishChat();
 			$diceOverlay = {
 				expression: spell.name,
+				notation: result.expressao,
 				total: result.total,
 				dice: result.dados,
 				nonce: crypto.randomUUID()
@@ -1859,6 +1873,7 @@
 			if (result.dados?.length) {
 				$diceOverlay = {
 					expression: `${result.spellName} · ${result.expression ?? 'rolagem'}`,
+					notation: result.expression,
 					total: result.total ?? 0,
 					dice: result.dados,
 					nonce: crypto.randomUUID()

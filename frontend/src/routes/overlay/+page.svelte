@@ -227,7 +227,8 @@
 				else if (!seenRolls.has(message.id) && message.detalhesRolagem) {
 					seenRolls.add(message.id);
 					diceOverlay.set({
-						expression: message.detalhesRolagem.expressao,
+						expression: message.detalhesRolagem.label ?? message.detalhesRolagem.expressao,
+						notation: message.detalhesRolagem.expressao,
 						total: message.detalhesRolagem.total,
 						dice: message.detalhesRolagem.dados,
 						nonce: message.id

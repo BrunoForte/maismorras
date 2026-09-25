@@ -1,23 +1,25 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { activeDiceRolls, diceRendererEffective } from '$lib/stores/diceOverlayStore';
+	import { activeDiceRolls, reportDiceRendererFailure } from '$lib/stores/diceOverlayStore';
+	import { DiceBoxRuntime, diceNotation, type DiceBoxPort } from '$lib/services/diceBoxRuntime';
 
 	let { mode = '3d-overlay' }: { mode?: '3d-overlay' | '3d-table' } = $props();
 
 	let host = $state<HTMLDivElement>();
 	let box: {
 		init: () => Promise<unknown>;
-		roll: (notation: string, options?: { themeColor?: string }) => unknown;
-		add: (notation: string, options?: { themeColor?: string }) => unknown;
-		reroll?: (die: Record<string, unknown>, options?: { remove?: boolean }) => unknown;
-		getRollResults?: () => Array<{ rolls?: Array<Record<string, unknown>> }>;
+		roll: (notation: string, options?: { themeColor?: string }) => Promise<unknown> | unknown;
+		add: (notation: string, options?: { themeColor?: string }) => Promise<unknown> | unknown;
+		reroll: (
+			die: Record<string, unknown> | Record<string, unknown>[],
+			options?: { remove?: boolean }
+		) => Promise<unknown> | unknown;
 		clear?: () => void;
 	} | null = null;
 	let initialized = false;
+	let runtime: DiceBoxRuntime | null = null;
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- private de-duplication cache
 	const seen = new Set<string>();
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- private DiceBox descriptor cache
-	const persistentDice = new Map<string, Record<string, unknown>>();
 
 	onMount(async () => {
 		if (!host) return;
@@ -27,8 +29,9 @@
 			const DiceBoxConstructor = DiceBox as unknown as new (
 				config: Record<string, unknown>
 			) => NonNullable<typeof box>;
+			host.id = `maismorras-dicebox-${crypto.randomUUID()}`;
 			const instance = new DiceBoxConstructor({
-				container: host,
+				container: `#${host.id}`,
 				assetPath: '/assets/dice-box/',
 				theme: 'default',
 				sounds: false,
@@ -39,48 +42,54 @@
 			box = instance as unknown as NonNullable<typeof box>;
 			await instance.init();
 			initialized = true;
-			for (const result of $activeDiceRolls) play(result);
-		} catch {
-			// WebGL/worker indisponível: o DiceOverlay continua como fallback visual.
+			runtime = new DiceBoxRuntime(instance as unknown as DiceBoxPort);
+			await playBatch($activeDiceRolls);
+		} catch (error) {
+			console.error('DiceBox initialization failed', error);
 			initialized = false;
-			diceRendererEffective.set('2d');
+			reportDiceRendererFailure();
 		}
 	});
 
-	async function play(result: {
-		expression: string;
-		nonce?: string;
-		color?: string;
-		slot?: string;
-	}) {
-		if (!initialized || !box) return;
-		const id = result.nonce ?? `${result.expression}`;
-		if (seen.has(id)) return;
-		seen.add(id);
-		const notation = result.expression.replace(/\s+/g, '');
-		// `roll` limpa a mesa; `add` preserva os dados já parados no modo persistente.
-		const options = result.color ? { themeColor: result.color } : undefined;
-		if (mode === '3d-table') {
-			const slot = result.slot ?? result.expression;
-			const previous = persistentDice.get(slot);
-			if (previous && box.reroll) {
-				await box.reroll(previous, { remove: true });
-				const die = box.getRollResults?.().at(-1)?.rolls?.[0];
-				if (die) persistentDice.set(slot, die);
-			} else {
-				await box.add(notation, options);
-				const groups = box.getRollResults?.() ?? [];
-				const die = groups.at(-1)?.rolls?.[0];
-				if (die) persistentDice.set(slot, die);
-			}
-		} else box.roll(notation, options);
+	async function playBatch(
+		results: Array<{
+			expression: string;
+			notation?: string;
+			dice: number[];
+			total: number;
+			nonce?: string;
+			color?: string;
+			slot?: string;
+		}>
+	) {
+		if (!initialized || !runtime) return;
+		const unseen = results.filter((result) => {
+			const id = result.nonce ?? `${result.expression}-${result.total}`;
+			if (seen.has(id)) return false;
+			seen.add(id);
+			return true;
+		});
 		if (seen.size > 100) seen.delete(seen.values().next().value as string);
+		await runtime.playBatch(
+			unseen.map((result) => ({
+				notation: diceNotation(result),
+				color: result.color,
+				slot: result.slot ?? `${result.color ?? 'default'}:${diceNotation(result)}`
+			})),
+			mode
+		);
 	}
 
 	$effect(() => {
-		for (const result of $activeDiceRolls) play(result);
+		if (!$activeDiceRolls.length) {
+			if (mode === '3d-overlay' && initialized) runtime?.clearTemporary();
+			return;
+		}
+		void playBatch($activeDiceRolls);
 	});
-	onDestroy(() => box?.clear?.());
+	onDestroy(() => {
+		if (initialized) box?.clear?.();
+	});
 </script>
 
 <div
