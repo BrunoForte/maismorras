@@ -1,6 +1,6 @@
 import { derived, get, writable, type Writable } from 'svelte/store';
 
-export type DiceRendererMode = 'auto' | '2d' | '3d-overlay' | '3d-table';
+export type DiceRendererMode = 'auto' | '2d' | '3d-overlay';
 export type EffectiveDiceRenderer = Exclude<DiceRendererMode, 'auto'>;
 
 export type DiceOverlayResult = {
@@ -63,8 +63,12 @@ export function setDiceColor(value: number | string | null | undefined) {
 export function restoreDicePreference() {
 	if (typeof localStorage === 'undefined') return;
 	const saved = localStorage.getItem('maismorras:dice-renderer-mode');
-	if (saved === 'auto' || saved === '2d' || saved === '3d-overlay' || saved === '3d-table') {
+	if (saved === 'auto' || saved === '2d' || saved === '3d-overlay') {
 		setDiceRendererMode(saved);
+		return;
+	}
+	if (saved === '3d-table') {
+		setDiceRendererMode('3d-overlay');
 		return;
 	}
 	// Compatibilidade com a preferência binária usada nas versões anteriores.

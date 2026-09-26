@@ -228,14 +228,10 @@
 					>Dados <select
 						value={$diceRendererMode}
 						onchange={(event) =>
-							setDiceRendererMode(
-								event.currentTarget.value as 'auto' | '2d' | '3d-overlay' | '3d-table'
-							)}
+							setDiceRendererMode(event.currentTarget.value as 'auto' | '2d' | '3d-overlay')}
 						aria-label="Modo de renderização dos dados"
 						><option value="auto">Automático</option><option value="2d">Somente efeito 2D</option
-						><option value="3d-overlay">Dados 3D temporários</option><option value="3d-table"
-							>Dados 3D persistentes</option
-						></select
+						><option value="3d-overlay">Dados 3D temporários</option></select
 					></label
 				>
 				<button class:active={channel === 'all'} onclick={() => (channel = 'all')}

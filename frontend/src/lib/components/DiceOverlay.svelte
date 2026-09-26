@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import type { Session } from '@supabase/supabase-js';
 	import {
 		activeDiceRolls,
 		completedDiceRollNonces,
@@ -15,12 +14,6 @@
 	} from '$lib/stores/diceOverlayStore';
 	type DiceBoxComponent = typeof import('./DiceBox3D.svelte').default;
 	let DiceBox3DComponent = $state<DiceBoxComponent | null>(null);
-	let { session, campaignId, sceneId } = $props<{
-		session?: Session;
-		campaignId?: string;
-		sceneId?: string;
-	}>();
-
 	let visible = $state(false);
 	let retrying = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -86,7 +79,7 @@
 </script>
 
 {#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
-	<DiceBox3DComponent mode={$diceRendererEffective} {session} {campaignId} {sceneId} />
+	<DiceBox3DComponent />
 {/if}
 {#if $diceRendererError}
 	<div class="dice-error" role="status">

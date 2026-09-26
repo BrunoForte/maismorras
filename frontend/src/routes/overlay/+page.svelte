@@ -270,13 +270,12 @@
 	onMount(() => {
 		restoreDicePreference();
 		const diceMode = query().get('diceMode');
-		if (
-			diceMode === 'auto' ||
-			diceMode === '2d' ||
-			diceMode === '3d-overlay' ||
-			diceMode === '3d-table'
-		)
+		if (diceMode === 'auto' || diceMode === '2d' || diceMode === '3d-overlay') {
 			setDiceRendererMode(diceMode);
+		} else if (diceMode === '3d-table') {
+			// Links antigos de overlay apontam para o único modo 3D agora suportado.
+			setDiceRendererMode('3d-overlay');
+		}
 		const dicePreference = query().get('dice3d');
 		if (!diceMode && (dicePreference === '1' || dicePreference === '0'))
 			setDice3dPreference(dicePreference === '1');

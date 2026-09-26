@@ -30,10 +30,10 @@ describe('dice renderer preferences', () => {
 		expect(get(dice3dEnabled)).toBe(false);
 	});
 
-	it('keeps persistent 3D as an explicit mode', () => {
-		setDiceRendererMode('3d-table');
-		expect(get(diceRendererMode)).toBe('3d-table');
-		expect(get(diceRendererEffective)).toBe('3d-table');
+	it('supports temporary 3D rendering', () => {
+		setDiceRendererMode('3d-overlay');
+		expect(get(diceRendererMode)).toBe('3d-overlay');
+		expect(get(diceRendererEffective)).toBe('3d-overlay');
 		expect(get(dice3dEnabled)).toBe(true);
 	});
 
