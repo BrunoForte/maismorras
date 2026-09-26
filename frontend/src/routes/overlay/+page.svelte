@@ -30,6 +30,7 @@
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
 	import { getCharacterForGM, type CharacterSheet } from '$lib/services/characterApi';
 	import { getOverlayInitiativeOrder, getOverlayNextCombatant } from '$lib/utils/overlayCombat';
+	import { createOverlaySession, exchangeOverlayPairing } from '$lib/services/overlayPairingApi';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
@@ -195,7 +196,11 @@
 			return;
 		}
 		if (!session) return;
-		overlayBackground = (await getSignedAssetUrl(session, campaignId(), path)) ?? '';
+		overlayBackground =
+			(await getSignedAssetUrl(session, campaignId(), path, {
+				sceneId: sceneId(),
+				surface: 'overlay'
+			})) ?? '';
 	}
 	async function loadOverlayLayout(currentSession: Session | null = session) {
 		try {
@@ -244,7 +249,11 @@
 		if (!playback || !session) return;
 		const applied = await playback.apply(
 			state,
-			async (path) => (await getSignedAssetUrl(session as Session, campaignId(), path)) ?? ''
+			async (path) =>
+				(await getSignedAssetUrl(session as Session, campaignId(), path, {
+					sceneId: sceneId(),
+					surface: 'overlay'
+				})) ?? ''
 		);
 		audioBlocked = state.playing && !applied;
 	}
@@ -253,7 +262,11 @@
 		if (!effectsPlayback || !session) return;
 		const applied = await effectsPlayback.apply(
 			state,
-			async (path) => (await getSignedAssetUrl(session as Session, campaignId(), path)) ?? ''
+			async (path) =>
+				(await getSignedAssetUrl(session as Session, campaignId(), path, {
+					sceneId: sceneId(),
+					surface: 'overlay'
+				})) ?? ''
 		);
 		effectsAudioBlocked = state.playing && !applied;
 	}
@@ -301,7 +314,10 @@
 							return [token.id, token.imageUrl ?? ''] as const;
 						return [
 							token.id,
-							(await getSignedAssetUrl(currentSession, campaignId(), token.imageUrl)) ?? ''
+							(await getSignedAssetUrl(currentSession, campaignId(), token.imageUrl, {
+								sceneId: sceneId(),
+								surface: 'overlay'
+							})) ?? ''
 						] as const;
 					})
 				);
@@ -390,14 +406,45 @@
 			characterName: params.get(`camera${index}Character`) ?? '',
 			characterId: params.get(`camera${index}CharacterId`) ?? undefined
 		}));
-		supabase.auth.getSession().then(({ data }) => {
-			if (disposed || !data.session) {
+		void (async () => {
+			let overlaySession: Session | null = null;
+			const fragment = new URLSearchParams(window.location.hash.slice(1));
+			const pairingCode = fragment.get('pair');
+			const storageKey = `maismorras:overlay-access:${campaignId()}`;
+			try {
+				if (pairingCode) {
+					const exchanged = await exchangeOverlayPairing(pairingCode);
+					localStorage.setItem(storageKey, JSON.stringify(exchanged));
+					history.replaceState(null, '', `${location.pathname}${location.search}`);
+					overlaySession = createOverlaySession(exchanged.accessToken, campaignId());
+				} else {
+					const stored = localStorage.getItem(storageKey);
+					if (stored) {
+						const grant = JSON.parse(stored) as { accessToken?: string; expiresAt?: number };
+						if (grant.accessToken && (grant.expiresAt ?? 0) * 1000 > Date.now())
+							overlaySession = createOverlaySession(grant.accessToken, campaignId());
+						else localStorage.removeItem(storageKey);
+					}
+					if (!overlaySession) {
+						const { data } = await supabase.auth.getSession();
+						overlaySession = data.session;
+					}
+				}
+			} catch (pairError) {
 				authRequired = true;
-				error = 'Faça login no MaisMorras antes de abrir o overlay.';
+				error =
+					pairError instanceof Error ? pairError.message : 'Não foi possível parear esta overlay.';
 				return;
 			}
-			session = data.session;
-			getOverlaySettings(data.session, campaignId())
+			if (disposed) return;
+			if (!overlaySession) {
+				authRequired = true;
+				error =
+					'Esta tela ainda não foi pareada. Gere um link em Campanha > Overlay e abra-o no navegador do OBS.';
+				return;
+			}
+			session = overlaySession;
+			getOverlaySettings(overlaySession, campaignId())
 				.then((settings) => {
 					if (settings.cameras?.length)
 						cameraSlots = settings.cameras.map((camera) => ({
@@ -412,10 +459,10 @@
 				.catch(() => {
 					/* query parameters remain a compatible fallback */
 				});
-			void loadOverlayLayout(data.session);
-			void refresh(data.session);
-			void refreshCombat(data.session);
-			void loadOverlayPresentation(data.session);
+			void loadOverlayLayout(overlaySession as Session);
+			void refresh(overlaySession as Session);
+			void refreshCombat(overlaySession);
+			void loadOverlayPresentation(overlaySession);
 			const updateFallback = (status: RealtimeStatus) => {
 				if (status === 'connected') {
 					if (fallbackRefreshTimer) clearInterval(fallbackRefreshTimer);
@@ -424,20 +471,20 @@
 				}
 				if (!fallbackRefreshTimer)
 					fallbackRefreshTimer = setInterval(() => {
-						void refresh(data.session);
-						void loadOverlayLayout(data.session);
-						void loadOverlayPresentation(data.session);
+						void refresh(overlaySession as Session);
+						void loadOverlayLayout(overlaySession as Session);
+						void loadOverlayPresentation(overlaySession);
 					}, 60_000);
 			};
 			socket = connectSceneSocket(
-				data.session,
+				overlaySession,
 				sceneId(),
 				() => {
 					if (refreshTimer) clearTimeout(refreshTimer);
 					refreshTimer = setTimeout(() => {
-						void refresh(data.session);
-						void loadOverlayLayout(data.session);
-						void loadOverlayPresentation(data.session);
+						void refresh(overlaySession as Session);
+						void loadOverlayLayout(overlaySession as Session);
+						void loadOverlayPresentation(overlaySession);
 					}, 180);
 				},
 				undefined,
@@ -457,7 +504,7 @@
 				undefined,
 				(state) => void applyEffectsState(state)
 			);
-		});
+		})();
 		return () => {
 			disposed = true;
 			overlayChannel?.close();
@@ -555,8 +602,12 @@
 	style:background-color={overlayBackground ? '#09070b' : 'transparent'}
 >
 	{#if authRequired}<section class="overlay-auth">
-			<p class="overlay-error">Faça login no MaisMorras para visualizar esta overlay.</p>
-			<button onclick={() => void login()}>Entrar com Google</button>
+			<p class="overlay-error">{error || 'Esta tela ainda não foi pareada.'}</p>
+			<p>
+				Na mesa, abra Campanha → Overlay e gere um link pareado para colar como URL da fonte de
+				navegador do OBS.
+			</p>
+			<button onclick={() => void login()}>Entrar com Google nesta janela</button>
 		</section>{:else if error}<p class="overlay-error">
 			{error}
 		</p>{:else if !scene || !session}<p class="overlay-loading">Carregando overlay…</p>{:else}

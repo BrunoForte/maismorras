@@ -409,7 +409,8 @@ func (r *Repository) UpdateScene(ctx context.Context, sceneID, userID string, in
 	}
 	return scene, nil
 }
-func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene, []Token, FogState, []Area, []Wall, error) {
+func (r *Repository) Detail(ctx context.Context, sceneID, userID string, overlayOnly ...bool) (Scene, []Token, FogState, []Area, []Wall, error) {
+	overlay := len(overlayOnly) > 0 && overlayOnly[0]
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {
 		return Scene{}, nil, FogState{}, nil, nil, err
@@ -422,7 +423,7 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		return Scene{}, nil, FogState{}, nil, nil, ErrForbidden
 	}
 	query := `select st.id::text,st.actor_id::text,coalesce(st.owner_id,a.owner_id)::text,st.name,st.image_url,st.color,st.position_x,st.position_y,st.size,st.hp_current,st.hp_max,st.armor_class,st.initiative,st.initiative_bonus,st.vision_range,st.light_range,st.movement_limit,coalesce(tm.spent_squares,0),st.statuses,st.is_hidden,st.visibility from scene_tokens st left join actors a on a.id=st.actor_id left join scene_token_turn_movement tm on tm.scene_id=st.scene_id and tm.token_id=st.id where st.scene_id=$1`
-	if role != "gm" {
+	if role != "gm" || overlay {
 		query += ` and is_hidden=false`
 	}
 	rows, err := r.pool.Query(ctx, query, sceneID)
@@ -475,7 +476,14 @@ func (r *Repository) Detail(ctx context.Context, sceneID, userID string) (Scene,
 		if role != "gm" && s.FogEnabled && !tokenIsVisible(t, s.GridSize, visible) {
 			continue
 		}
-		filtered = append(filtered, applyVisibility(t, role, userID))
+		if overlay {
+			visibleToken := applyVisibility(t, "player", "")
+			visibleToken.OwnerID = nil
+			visibleToken.IsOwner = false
+			filtered = append(filtered, visibleToken)
+		} else {
+			filtered = append(filtered, applyVisibility(t, role, userID))
+		}
 	}
 	if role == "gm" {
 		fog = FogState{}
@@ -858,7 +866,7 @@ func (r *Repository) revealTokenVision(ctx context.Context, sceneID string, toke
 	return nil
 }
 
-func (r *Repository) Combat(ctx context.Context, sceneID, userID string) (CombatState, error) {
+func (r *Repository) Combat(ctx context.Context, sceneID, userID string, overlayOnly ...bool) (CombatState, error) {
 	if _, err := r.memberRole(ctx, sceneID, userID); err != nil {
 		return CombatState{}, ErrForbidden
 	}
@@ -867,7 +875,7 @@ func (r *Repository) Combat(ctx context.Context, sceneID, userID string) (Combat
 	if err := r.pool.QueryRow(ctx, `select active_token_id::text from scenes where id=$1`, sceneID).Scan(&state.ActiveTokenID); err != nil {
 		return CombatState{}, err
 	}
-	_, visibleTokens, _, _, _, err := r.Detail(ctx, sceneID, userID)
+	_, visibleTokens, _, _, _, err := r.Detail(ctx, sceneID, userID, overlayOnly...)
 	if err != nil {
 		return CombatState{}, err
 	}

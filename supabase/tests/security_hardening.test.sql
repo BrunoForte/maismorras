@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(20);
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
 select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
@@ -17,5 +17,8 @@ select ok((select qual like '%library_item_permissions%' from pg_policies where 
 select ok((select qual like '%library_item_permissions%' from pg_policies where schemaname='public' and tablename='scene_presentations' and policyname='campaign members can read permitted presentations'), 'presentation reads enforce per-player permissions');
 select ok((select qual like '%ambient_audio_enabled%' and qual like '%ambient_effect_enabled%' and qual like '%library_item_permissions%' from pg_policies where schemaname='storage' and tablename='objects' and policyname='campaign members read permitted assets'), 'Storage reads enforce media permissions, active music and active effects');
 select ok((select count(*) = 6 from information_schema.columns where table_schema='public' and table_name='scenes' and column_name like 'ambient_effect_%'), 'sound effects have independent persisted playback state');
+select ok((select relrowsecurity from pg_class where oid='public.overlay_pairing_codes'::regclass), 'OBS pairing codes have RLS enabled');
+select ok((select relrowsecurity from pg_class where oid='public.overlay_access_sessions'::regclass), 'OBS access grants have RLS enabled');
+select ok(not has_table_privilege('anon','public.overlay_pairing_codes','SELECT') and not has_table_privilege('authenticated','public.overlay_pairing_codes','SELECT') and not has_table_privilege('anon','public.overlay_access_sessions','SELECT') and not has_table_privilege('authenticated','public.overlay_access_sessions','SELECT'), 'pairing secrets are not exposed to Data API roles');
 select * from finish();
 rollback;

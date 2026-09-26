@@ -20,6 +20,7 @@ import (
 	"vtt-backend/internal/library"
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
+	"vtt-backend/internal/overlayaccess"
 	"vtt-backend/internal/realtime"
 	"vtt-backend/internal/scenes"
 	"vtt-backend/internal/tokens"
@@ -58,7 +59,7 @@ func main() {
 		logger.Info("compendium translation provider selected", "provider", "pollinations", "reason", "DeepL API key is not configured")
 	}
 	hub := realtime.NewHub()
-	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub))
+	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub), overlayaccess.NewHandler(pool, cfg))
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

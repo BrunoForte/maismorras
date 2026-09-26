@@ -57,6 +57,31 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 	if (in.Surface != "" && in.Surface != "presentation" && in.Surface != "overlay") || ((in.Surface == "presentation" || in.Surface == "overlay") && in.PresentationSceneID == "") {
 		return apperror.BadRequest("INVALID_PRESENTATION", "Destino de apresentação inválido.")
 	}
+	if p.OverlayOnly {
+		if in.Surface != "overlay" || in.PresentationSceneID == "" {
+			return apperror.Forbidden("A overlay só pode carregar arquivos vinculados ao seu layout ativo.")
+		}
+		var referenced bool
+		err := h.pool.QueryRow(r.Context(), `select exists(
+			select 1 from scenes s where s.id=$2 and s.campaign_id=$1 and (
+				s.background_url=$3
+				or (s.ambient_audio_enabled and s.ambient_audio_path=$3)
+				or (s.ambient_effect_enabled and s.ambient_effect_path=$3)
+				or exists(select 1 from scene_tokens st where st.scene_id=s.id and not st.is_hidden and st.image_url=$3)
+				or exists(select 1 from scene_tokens st join actors a on a.id=st.actor_id where st.scene_id=s.id and not st.is_hidden and (a.sheet->>'portraitPath'=$3 or a.sheet->>'tokenPortraitPath'=$3 or a.token->>'imageUrl'=$3))
+				or exists(select 1 from scene_presentations sp where sp.scene_id=s.id and sp.asset_path=$3 and sp.visible and sp.overlay_visible)
+				or exists(select 1 from scene_overlay_layouts l where l.scene_id=s.id and (
+					l.layout->>'background'=$3 or exists(
+						select 1 from jsonb_each(case when jsonb_typeof(l.layout->'profiles')='object' then l.layout->'profiles' else '{}'::jsonb end) profile
+						where profile.value->>'background'=$3
+					)
+				))
+			)
+		)`, campaignID, in.PresentationSceneID, in.Path).Scan(&referenced)
+		if err != nil || !referenced {
+			return apperror.Forbidden("Este arquivo não está sendo usado pela overlay desta cena.")
+		}
+	}
 	var role string
 	if err := h.pool.QueryRow(r.Context(), "select role::text from campaign_members where campaign_id=$1 and user_id=$2", campaignID, p.UserID).Scan(&role); err != nil {
 		return apperror.Forbidden("Você não participa desta campanha.")

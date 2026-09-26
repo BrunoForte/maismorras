@@ -70,3 +70,16 @@ func TestAudioRealtimeStateValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestOverlayReceivesOnlyReadOnlyRoomEvents(t *testing.T) {
+	for _, raw := range []string{`{"type":"dice.roll"}`, `{"type":"map.ping"}`, `{"type":"scene.delta"}`, `not json`} {
+		if safeOverlayEvent([]byte(raw)) {
+			t.Errorf("overlay should not receive or process this event: %s", raw)
+		}
+	}
+	for _, raw := range []string{`{"type":"scene.refresh"}`, `{"type":"chat.updated"}`, `{"type":"audio.state"}`, `{"type":"combat.updated"}`} {
+		if !safeOverlayEvent([]byte(raw)) {
+			t.Errorf("expected overlay-safe event: %s", raw)
+		}
+	}
+}

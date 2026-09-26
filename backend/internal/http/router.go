@@ -22,17 +22,21 @@ import (
 	"vtt-backend/internal/library"
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
+	"vtt-backend/internal/overlayaccess"
 	"vtt-backend/internal/scenes"
 	"vtt-backend/internal/tokens"
 )
 
 type errorHandler func(http.ResponseWriter, *http.Request) error
 
-func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, libraryHandler *library.Handler, realtimeHandler http.Handler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, libraryHandler *library.Handler, realtimeHandler http.Handler, overlayHandler *overlayaccess.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/tokens/gerar", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.Generate))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/scenes/generate-background", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.GenerateMap))
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
+	mux.Handle("POST /api/v1/overlay/pair", withError(overlayHandler.ExchangePairing))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/overlay-pairings", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, overlayHandler.CreatePairing))
+	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/overlay-pairings", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, overlayHandler.RevokeCampaign))
 	mux.Handle("GET /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.List))
 	mux.Handle("POST /api/v1/campaigns", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Create))
 	mux.Handle("PATCH /api/v1/campaigns/{campaignID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, campaignHandler.Rename))
@@ -45,7 +49,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/character/roll", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.RollMine))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/character/cast-spell", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.CastMineSpell))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/participants", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.ListForGM))
-	mux.Handle("GET /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.GetForGM))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/characters/{characterID}", overlayHandler.AuthenticateOrOverlay(characterHandler.GetForGM))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveForGM))
 	mux.Handle("PATCH /api/v1/campaigns/{campaignID}/characters/{characterID}/initiative-advantage", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SetInitiativeAdvantage))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.DeleteForGM))
@@ -56,10 +60,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/compendium/entries/{entryID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.DeleteEntry))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/import", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.ImportEntries))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/compendium/entries/{entryID}/translate", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.TranslateMissing))
-	mux.Handle("GET /api/v1/campaigns/{campaignID}/overlay-settings", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.GetOverlaySettings))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/overlay-settings", overlayHandler.AuthenticateOrOverlay(sceneHandler.GetOverlaySettings))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/overlay-settings", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SaveOverlaySettings))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/notes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, noteHandler.List))
-	mux.Handle("POST /api/v1/campaigns/{campaignID}/assets/signed-url", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SignedURL))
+	mux.Handle("POST /api/v1/campaigns/{campaignID}/assets/signed-url", overlayHandler.AuthenticateOrOverlay(libraryHandler.SignedURL))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/assets/audio-kind", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SetAudioKind))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.ListPermissions))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/library-permissions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, libraryHandler.SavePermissions))
@@ -70,18 +74,18 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/npcs", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Create))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/npcs/{npcID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Update))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/npcs/{npcID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, npcHandler.Delete))
-	mux.Handle("GET /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.List))
+	mux.Handle("GET /api/v1/campaigns/{campaignID}/events", overlayHandler.AuthenticateOrOverlay(eventHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/events", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, eventHandler.Create))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/scenes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.List))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/scenes", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Create))
-	mux.Handle("GET /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Detail))
+	mux.Handle("GET /api/v1/scenes/{sceneID}", overlayHandler.AuthenticateOrOverlay(sceneHandler.Detail))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/tokens/{tokenID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.TokenDetail))
-	mux.Handle("GET /api/v1/scenes/{sceneID}/overlay-layout", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.GetOverlayLayout))
+	mux.Handle("GET /api/v1/scenes/{sceneID}/overlay-layout", overlayHandler.AuthenticateOrOverlay(sceneHandler.GetOverlayLayout))
 	mux.Handle("PUT /api/v1/scenes/{sceneID}/overlay-layout", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SaveOverlayLayout))
-	mux.Handle("GET /api/v1/scenes/{sceneID}/presentation", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.GetPresentation))
+	mux.Handle("GET /api/v1/scenes/{sceneID}/presentation", overlayHandler.AuthenticateOrOverlay(sceneHandler.GetPresentation))
 	mux.Handle("PUT /api/v1/scenes/{sceneID}/presentation", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SavePresentation))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateScene))
-	mux.Handle("GET /api/v1/scenes/{sceneID}/combat", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Combat))
+	mux.Handle("GET /api/v1/scenes/{sceneID}/combat", overlayHandler.AuthenticateOrOverlay(sceneHandler.Combat))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/effects", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Effects))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/effect-definitions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.EffectDefinitions))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}/fog", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateFog))

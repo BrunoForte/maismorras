@@ -99,6 +99,11 @@ func (h *Handler) GetForGM(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return mapError(err)
 	}
+	if p.OverlayOnly {
+		// The OBS turn card needs identity/progression only, not the complete sheet.
+		item.OwnerID = ""
+		item.Sheet = Sheet{Name: item.Sheet.Name, Class: item.Sheet.Class, Subclass: item.Sheet.Subclass, Level: item.Sheet.Level}
+	}
 	return write(w, http.StatusOK, item)
 }
 

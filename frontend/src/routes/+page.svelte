@@ -12,6 +12,7 @@
 	import { diceRendererMode } from '$lib/stores/diceOverlayStore';
 	import { apiBase } from '$lib/services/apiBase';
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
+	import { createOverlayPairing, revokeOverlayAccess } from '$lib/services/overlayPairingApi';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 
 	let session = $state<Session | null>(null);
@@ -577,22 +578,35 @@
 			});
 	}
 	function openLiveOverlay() {
+		const overlayWindow = window.open('about:blank', '_blank');
+		if (overlayWindow) overlayWindow.opener = null;
+		void createOverlayPairingLink(overlayWindow, false);
+	}
+	async function createOverlayPairingLink(overlayWindow: Window | null, copy: boolean) {
 		if (!activeCampaign || !activeScene || !overlayEnabled) {
 			inviteStatus = 'Ative a overlay antes de abrir o painel de transmissão.';
 			return;
 		}
-		// URLSearchParams is local and only used to construct the share URL.
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
-		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
-		params.set('diceMode', $diceRendererMode);
-		overlayCameras.forEach((camera, index) => {
-			if (!camera.url) return;
-			params.set(`camera${index + 1}`, camera.url);
-			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
-			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
-			if (camera.characterId) params.set(`camera${index + 1}CharacterId`, camera.characterId);
-		});
-		window.open(`/overlay?${params.toString()}`, '_blank', 'noopener,noreferrer');
+		if (!session) {
+			inviteStatus = 'Entre na campanha como narrador para gerar o link do OBS.';
+			return;
+		}
+		try {
+			await saveOverlaySettings(session, activeCampaign.id, {
+				enabled: overlayEnabled,
+				cameras: overlayCameras,
+				activeSceneId: activeScene.id
+			});
+			const pairing = await createOverlayPairing(session, activeCampaign.id, activeScene.id);
+			const url = `${window.location.origin}/overlay?campaign=${encodeURIComponent(activeCampaign.id)}&scene=${encodeURIComponent(activeScene.id)}&diceMode=${encodeURIComponent($diceRendererMode)}#pair=${encodeURIComponent(pairing.code)}`;
+			if (copy) await navigator.clipboard.writeText(url);
+			if (overlayWindow) overlayWindow.location.replace(url);
+			inviteStatus = `Link OBS ${copy ? 'copiado' : 'aberto'}. Código de uso único válido por 10 minutos; o acesso pareado dura 30 dias e pode ser revogado aqui.`;
+		} catch {
+			overlayWindow?.close();
+			inviteStatus =
+				'Não foi possível gerar o link do OBS. Confirme que a overlay está ativada e tente novamente.';
+		}
 	}
 	async function publishOverlayScene() {
 		if (!activeCampaign || !activeScene) return;
@@ -661,19 +675,16 @@
 		}
 	}
 	async function copyLiveOverlayAddress() {
-		if (!activeCampaign || !activeScene) return;
-		// URLSearchParams is local and only used to construct the share URL.
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
-		const params = new URLSearchParams({ campaign: activeCampaign.id, scene: activeScene.id });
-		overlayCameras.forEach((camera, index) => {
-			if (!camera.url) return;
-			params.set(`camera${index + 1}`, camera.url);
-			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
-			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
-			if (camera.characterId) params.set(`camera${index + 1}CharacterId`, camera.characterId);
-		});
-		await navigator.clipboard.writeText(`${window.location.origin}/overlay?${params.toString()}`);
-		inviteStatus = 'Endereço da overlay copiado.';
+		await createOverlayPairingLink(null, true);
+	}
+	async function revokeLiveOverlayAccess() {
+		if (!activeCampaign || !session) return;
+		try {
+			await revokeOverlayAccess(session, activeCampaign.id);
+			inviteStatus = 'Acesso do OBS revogado. Gere um novo link para parear novamente.';
+		} catch {
+			inviteStatus = 'Não foi possível revogar o acesso do OBS. Tente novamente.';
+		}
 	}
 	async function saveOverlayCameras() {
 		if (activeCampaign)
@@ -1146,9 +1157,14 @@
 						</div>
 						<div class="settings-actions">
 							<button class="primary-button" onclick={saveOverlayCameras}>Salvar câmeras</button>
-							<button class="secondary-button" onclick={openLiveOverlay}>Abrir overlay</button>
+							<button class="secondary-button" onclick={openLiveOverlay}
+								>Abrir overlay no navegador</button
+							>
 							<button class="secondary-button" onclick={() => void copyLiveOverlayAddress()}
-								>Copiar link da overlay</button
+								>Gerar link pareado para o OBS</button
+							>
+							<button class="secondary-button" onclick={() => void revokeLiveOverlayAccess()}
+								>Revogar acesso do OBS</button
 							>
 						</div>
 					</section>

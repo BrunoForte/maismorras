@@ -22,9 +22,11 @@ import (
 )
 
 type Principal struct {
-	UserID  string
-	Email   string
-	IsAdmin bool
+	UserID          string
+	Email           string
+	IsAdmin         bool
+	OverlayOnly     bool
+	OverlayCampaign string
 }
 type contextKey struct{}
 

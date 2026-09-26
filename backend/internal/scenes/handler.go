@@ -72,9 +72,14 @@ func validSceneSettings(s Scene) bool {
 }
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	scene, tokens, fog, areas, walls, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID)
+	scene, tokens, fog, areas, walls, err := h.repo.Detail(r.Context(), r.PathValue("sceneID"), p.UserID, p.OverlayOnly)
 	if err != nil {
 		return mapError(err)
+	}
+	if p.OverlayOnly {
+		// The OBS surface needs only visible character tokens; never send fog,
+		// wall, or area editing state through a read-only overlay grant.
+		fog, areas, walls = FogState{}, []Area{}, []Wall{}
 	}
 	return write(w, http.StatusOK, map[string]any{"scene": scene, "tokens": tokens, "fog": fog, "areas": areas, "walls": walls})
 }
@@ -98,6 +103,15 @@ func (h *Handler) GetOverlaySettings(w http.ResponseWriter, r *http.Request) err
 	settings, err := h.repo.GetOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID)
 	if err != nil {
 		return mapError(err)
+	}
+	if p.OverlayOnly {
+		var cameras []map[string]any
+		if json.Unmarshal(settings.Cameras, &cameras) == nil {
+			for _, camera := range cameras {
+				delete(camera, "email")
+			}
+			settings.Cameras, _ = json.Marshal(cameras)
+		}
 	}
 	return write(w, http.StatusOK, settings)
 }
@@ -148,9 +162,17 @@ func (h *Handler) SaveOverlayLayout(w http.ResponseWriter, r *http.Request) erro
 }
 func (h *Handler) GetPresentation(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	item, err := h.repo.GetPresentation(r.Context(), r.PathValue("sceneID"), p.UserID, r.URL.Query().Get("surface") == "overlay")
+	requestedOverlay := r.URL.Query().Get("surface") == "overlay"
+	if p.OverlayOnly && !requestedOverlay {
+		return apperror.Forbidden("A overlay só pode carregar apresentações autorizadas para a transmissão.")
+	}
+	item, err := h.repo.GetPresentation(r.Context(), r.PathValue("sceneID"), p.UserID, requestedOverlay)
 	if err != nil {
 		return mapError(err)
+	}
+	if p.OverlayOnly {
+		item.VisibleUserIDs = []string{}
+		item.AudienceRestricted = false
 	}
 	return write(w, http.StatusOK, item)
 }
@@ -179,7 +201,7 @@ func (h *Handler) SavePresentation(w http.ResponseWriter, r *http.Request) error
 }
 func (h *Handler) Combat(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	state, err := h.repo.Combat(r.Context(), r.PathValue("sceneID"), p.UserID)
+	state, err := h.repo.Combat(r.Context(), r.PathValue("sceneID"), p.UserID, p.OverlayOnly)
 	if err != nil {
 		return mapError(err)
 	}

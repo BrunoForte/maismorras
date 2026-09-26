@@ -80,13 +80,15 @@ class SharedSceneConnection {
 		this.url = new URL('/api/v1/ws', apiBase);
 		this.url.protocol = this.url.protocol === 'https:' ? 'wss:' : 'ws:';
 		this.url.searchParams.set('sceneId', sceneId);
-		this.authSubscription = supabase?.auth.onAuthStateChange((_event, nextSession) => {
-			const nextToken = nextSession?.access_token;
-			if (!nextToken || nextToken === this.token) return;
-			this.token = nextToken;
-			this.socket?.close(1000, 'session refreshed');
-			this.socket = null;
-		}).data.subscription;
+		this.authSubscription = session.access_token.startsWith('obs_access_')
+			? undefined
+			: supabase?.auth.onAuthStateChange((_event, nextSession) => {
+					const nextToken = nextSession?.access_token;
+					if (!nextToken || nextToken === this.token) return;
+					this.token = nextToken;
+					this.socket?.close(1000, 'session refreshed');
+					this.socket = null;
+				}).data.subscription;
 	}
 	add(session: Session, subscriber: Subscriber): SceneSocket {
 		this.token = session.access_token;

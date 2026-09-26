@@ -16,6 +16,7 @@ import (
 	"nhooyr.io/websocket"
 	"vtt-backend/internal/auth"
 	"vtt-backend/internal/config"
+	"vtt-backend/internal/overlayaccess"
 )
 
 // Hub isolates every WebSocket room by scene ID. Clients never write directly to
@@ -30,13 +31,14 @@ type Hub struct {
 	totalPeers  int
 }
 type peer struct {
-	conn       *websocket.Conn
-	mu         sync.Mutex
-	rateMu     sync.Mutex
-	messageLog []time.Time
-	userID     string
-	ip         string
-	canControl bool
+	conn        *websocket.Conn
+	mu          sync.Mutex
+	rateMu      sync.Mutex
+	messageLog  []time.Time
+	userID      string
+	ip          string
+	canControl  bool
+	overlayOnly bool
 }
 
 type audioRealtimeState struct {
@@ -95,6 +97,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.TrimSpace(protocols[1])
+	if overlayaccess.IsOverlayToken(token) {
+		principal, _, err := overlayaccess.ValidateWebSocketToken(r.Context(), h.pool, token, strings.TrimSpace(r.URL.Query().Get("sceneId")))
+		if err != nil {
+			http.Error(w, "overlay access expired or outside campaign", http.StatusForbidden)
+			return
+		}
+		h.connect(w, r.WithContext(auth.WithPrincipal(r.Context(), principal)))
+		return
+	}
 	r.Header.Set("Authorization", "Bearer "+token)
 	auth.Authenticate(h.cfg.SupabaseURL, h.cfg.SupabaseJWTSecret, h.connect).ServeHTTP(w, r)
 }
@@ -130,6 +141,10 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl}
+	peer.overlayOnly = p.OverlayOnly
+	if peer.overlayOnly {
+		peer.canControl = false
+	}
 	conn.SetReadLimit(32 << 10)
 	if !h.hub.join(sceneID, peer) {
 		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
@@ -151,6 +166,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		if !peer.allowMessage() {
 			_ = conn.Close(websocket.StatusPolicyViolation, "message rate limit reached")
 			return nil
+		}
+		if peer.overlayOnly {
+			// A paired OBS connection is view-only: it can subscribe to room events
+			// but cannot publish actions back into the game.
+			continue
 		}
 		var event struct {
 			Type  string              `json:"type"`
@@ -377,6 +397,9 @@ func (h *Hub) broadcast(room string, raw []byte) {
 	h.mu.RLock()
 	peers := make([]*peer, 0, len(h.rooms[room]))
 	for p := range h.rooms[room] {
+		if p.overlayOnly && !safeOverlayEvent(raw) {
+			continue
+		}
 		peers = append(peers, p)
 	}
 	h.mu.RUnlock()
@@ -390,5 +413,20 @@ func (h *Hub) broadcast(room string, raw []byte) {
 				slog.Warn("realtime write failed", "user_id", p.userID, "error", err)
 			}
 		}(p)
+	}
+}
+
+func safeOverlayEvent(raw []byte) bool {
+	var event struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(raw, &event) != nil {
+		return false
+	}
+	switch event.Type {
+	case "scene.refresh", "presentation.updated", "overlay.layout.updated", "token.updated", "combat.updated", "chat.updated", "audio.state", "audio.effects":
+		return true
+	default:
+		return false
 	}
 }

@@ -59,6 +59,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	if role == "gm" {
 		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info')`
 	}
+	if p.OverlayOnly {
+		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type='dice.roll'`
+	}
 	args := []any{campaignID}
 	if afterID > 0 {
 		query += ` and e.id > $2`
