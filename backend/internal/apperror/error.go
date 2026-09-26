@@ -57,6 +57,10 @@ func TranslationProvider(err error) *Error {
 	return &Error{Status: http.StatusBadGateway, Code: "TRANSLATION_PROVIDER_ERROR", Message: "Não foi possível gerar a tradução no provedor externo.", Err: err}
 }
 
+func TranslationQuotaExceeded() *Error {
+	return &Error{Status: http.StatusServiceUnavailable, Code: "TRANSLATION_QUOTA_EXCEEDED", Message: "A cota mensal gratuita do serviço de tradução foi atingida."}
+}
+
 func Internal(err error) *Error {
 	return &Error{Status: http.StatusInternalServerError, Code: "INTERNAL_ERROR", Message: "Ocorreu um erro interno.", Err: err}
 }

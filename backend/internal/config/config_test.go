@@ -6,7 +6,7 @@ import (
 )
 
 func TestLoadUsesSafeDefaults(t *testing.T) {
-	for _, key := range []string{"PORT", "CORS_ORIGIN", "UPSTREAM_TIMEOUT", "TRANSLATION_TIMEOUT", "MAX_IMAGE_BYTES", "SUPABASE_URL"} {
+	for _, key := range []string{"PORT", "CORS_ORIGIN", "UPSTREAM_TIMEOUT", "TRANSLATION_TIMEOUT", "MAX_IMAGE_BYTES", "SUPABASE_URL", "DEEPL_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"} {
 		t.Setenv(key, "")
 	}
 	cfg := Load()
@@ -19,6 +19,9 @@ func TestLoadUsesSafeDefaults(t *testing.T) {
 	if cfg.TranslationTimeout != 120*time.Second {
 		t.Fatalf("translation timeout = %s, want 2m", cfg.TranslationTimeout)
 	}
+	if cfg.DeepLTranslateURL != "https://api-free.deepl.com/v2/translate" || cfg.CloudflareImageModel != "@cf/black-forest-labs/flux-1-schnell" {
+		t.Fatalf("unexpected AI provider defaults: %+v", cfg)
+	}
 }
 
 func TestLoadNormalizesOperationalValues(t *testing.T) {
@@ -28,8 +31,16 @@ func TestLoadNormalizesOperationalValues(t *testing.T) {
 	t.Setenv("TRANSLATION_TIMEOUT", "90s")
 	t.Setenv("MAX_IMAGE_BYTES", "1234")
 	t.Setenv("SUPABASE_URL", "https://project.supabase.co/")
+	t.Setenv("DEEPL_API_KEY", "deepl-test")
+	t.Setenv("DEEPL_TRANSLATE_URL", "https://example.test/translate")
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "account-test")
+	t.Setenv("CLOUDFLARE_API_TOKEN", "token-test")
+	t.Setenv("CLOUDFLARE_IMAGE_MODEL", "@cf/test/model")
 	cfg := Load()
 	if cfg.Port != "9090" || cfg.UpstreamTimeout != 3*time.Second || cfg.TranslationTimeout != 90*time.Second || cfg.MaxImageBytes != 1234 || cfg.SupabaseURL != "https://project.supabase.co" {
 		t.Fatalf("normalization failed: %+v", cfg)
+	}
+	if cfg.DeepLAPIKey != "deepl-test" || cfg.DeepLTranslateURL != "https://example.test/translate" || cfg.CloudflareAccountID != "account-test" || cfg.CloudflareAPIToken != "token-test" || cfg.CloudflareImageModel != "@cf/test/model" {
+		t.Fatalf("provider settings not loaded: %+v", cfg)
 	}
 }

@@ -40,9 +40,23 @@ func main() {
 	}
 
 	client := &http.Client{Timeout: cfg.UpstreamTimeout}
-	imageService := tokens.NewPollinationsService(client, cfg.PollinationsBaseURL, cfg.MaxImageBytes)
+	var imageService tokens.ImageGenerator
+	if cfg.CloudflareAccountID != "" && cfg.CloudflareAPIToken != "" {
+		imageService = tokens.NewCloudflareService(client, cfg.CloudflareAccountID, cfg.CloudflareAPIToken, cfg.CloudflareImageModel, cfg.MaxImageBytes)
+		logger.Info("image generation provider selected", "provider", "cloudflare_workers_ai", "model", cfg.CloudflareImageModel)
+	} else {
+		imageService = tokens.NewPollinationsService(client, cfg.PollinationsBaseURL, cfg.MaxImageBytes)
+		logger.Info("image generation provider selected", "provider", "pollinations", "reason", "Cloudflare Workers AI credentials are not configured")
+	}
 	translationClient := &http.Client{Timeout: cfg.TranslationTimeout}
-	translationService := translation.NewService(translationClient, cfg.PollinationsTextURL, cfg.PollinationsAPIKey, cfg.TranslationModel)
+	var translationService compendium.Translator
+	if cfg.DeepLAPIKey != "" {
+		translationService = translation.NewDeepLService(translationClient, cfg.DeepLTranslateURL, cfg.DeepLAPIKey)
+		logger.Info("compendium translation provider selected", "provider", "deepl")
+	} else {
+		translationService = translation.NewService(translationClient, cfg.PollinationsTextURL, cfg.PollinationsAPIKey, cfg.TranslationModel)
+		logger.Info("compendium translation provider selected", "provider", "pollinations", "reason", "DeepL API key is not configured")
+	}
 	hub := realtime.NewHub()
 	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub))
 

@@ -158,4 +158,31 @@ describe('request timeout', () => {
 		expect(onError.mock.calls[0][0].detail.message).not.toContain('provider.go');
 		browserWindow.removeEventListener('maismorras:request-error', onError);
 	});
+
+	it('explains when the monthly free translation quota is exhausted', async () => {
+		const onError = vi.fn();
+		const browserWindow = new EventTarget();
+		vi.stubGlobal('window', browserWindow);
+		browserWindow.addEventListener('maismorras:request-error', onError);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						error: { code: 'TRANSLATION_QUOTA_EXCEEDED', message: 'private error' }
+					}),
+					{ status: 503, headers: { 'Content-Type': 'application/json' } }
+				)
+			)
+		);
+
+		await expect(
+			request({ access_token: 'token', user: { id: 'user-1' } } as Session, '/translate')
+		).rejects.toMatchObject({
+			status: 503,
+			message: expect.stringContaining('cota mensal gratuita')
+		});
+		expect(onError.mock.calls[0][0].detail.message).not.toContain('private error');
+		browserWindow.removeEventListener('maismorras:request-error', onError);
+	});
 });

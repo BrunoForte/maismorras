@@ -70,6 +70,8 @@ function userFacingMessage(status: number, body: unknown, fallback: string): str
 			: '';
 	if (status === 502 && errorCode === 'TRANSLATION_PROVIDER_ERROR')
 		return 'O serviço externo de tradução falhou temporariamente. As traduções já salvas foram preservadas; tente novamente para continuar pelas pendentes.';
+	if (status === 503 && errorCode === 'TRANSLATION_QUOTA_EXCEEDED')
+		return 'A cota mensal gratuita de tradução terminou. As traduções salvas foram preservadas; tente novamente quando a cota renovar.';
 	if (status >= 500)
 		return 'O serviço encontrou um erro. Tente novamente; se persistir, informe o horário da tentativa.';
 	const candidate =

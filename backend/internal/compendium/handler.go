@@ -9,6 +9,7 @@ import (
 	"strings"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/translation"
 )
 
 type Translator interface {
@@ -129,6 +130,9 @@ func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error
 	translated, err := h.translator.Translate(r.Context(), fields)
 	if err != nil {
 		slog.Error("compendium translation provider failed", "campaign_id", r.PathValue("campaignID"), "entry_id", r.PathValue("entryID"), "error", err)
+		if errors.Is(err, translation.ErrQuotaExceeded) {
+			return apperror.TranslationQuotaExceeded()
+		}
 		return apperror.TranslationProvider(err)
 	}
 	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, translated)
