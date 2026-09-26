@@ -187,7 +187,10 @@ type OverlaySettings struct {
 	Enabled       bool            `json:"enabled"`
 	Cameras       json.RawMessage `json:"cameras"`
 	ActiveSceneID *string         `json:"activeSceneId"`
+	CharacterIDs  []string        `json:"-"`
 }
+
+var ErrInvalidOverlayCharacter = errors.New("overlay character does not belong to campaign")
 
 func (r *Repository) GetOverlaySettings(ctx context.Context, campaignID, userID string) (OverlaySettings, error) {
 	var allowed bool
@@ -215,6 +218,15 @@ func (r *Repository) SaveOverlaySettings(ctx context.Context, campaignID, userID
 	}
 	if !isGM {
 		return OverlaySettings{}, ErrForbidden
+	}
+	for _, characterID := range in.CharacterIDs {
+		var belongsToCampaign bool
+		if err := r.pool.QueryRow(ctx, `select exists(select 1 from actors where id=$1::uuid and campaign_id=$2 and kind='character')`, characterID, campaignID).Scan(&belongsToCampaign); err != nil {
+			return OverlaySettings{}, err
+		}
+		if !belongsToCampaign {
+			return OverlaySettings{}, ErrInvalidOverlayCharacter
+		}
 	}
 	if len(in.Cameras) == 0 {
 		in.Cameras = json.RawMessage("[]")

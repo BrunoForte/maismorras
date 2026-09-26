@@ -2,6 +2,20 @@ package scenes
 
 import "testing"
 
+func TestOverlayCameraCharacterIDs(t *testing.T) {
+	validID := "34c52f5e-b8cb-4f16-b881-c93c3bf5cc74"
+	ids, err := overlayCameraCharacterIDs([]byte(`[{"url":"https://vdo.ninja/one","characterId":"` + validID + `"},"https://vdo.ninja/legacy"]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || ids[0] != validID {
+		t.Fatalf("got character ids %v, want [%s]", ids, validID)
+	}
+	if _, err := overlayCameraCharacterIDs([]byte(`[{"characterId":"not-a-uuid"}]`)); err == nil {
+		t.Fatal("expected invalid character id to be rejected")
+	}
+}
+
 func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {
 	rolls := []int{4, 17}
 	if got := highestRoll(rolls); got != 17 {

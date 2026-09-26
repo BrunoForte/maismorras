@@ -4,6 +4,7 @@ export type OverlayCamera = {
 	url: string;
 	playerName: string;
 	characterName: string;
+	characterId?: string;
 	email?: string;
 };
 export type OverlaySettings = {

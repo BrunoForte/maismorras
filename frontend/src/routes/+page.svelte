@@ -12,6 +12,7 @@
 	import { diceRendererMode } from '$lib/stores/diceOverlayStore';
 	import { apiBase } from '$lib/services/apiBase';
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
+	import { listParticipants, type Participant } from '$lib/services/characterApi';
 
 	let session = $state<Session | null>(null);
 	type CanvasMesaComponentType = typeof import('$lib/components/CanvasMesa.svelte').default;
@@ -145,7 +146,13 @@
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 	};
 	let installPrompt = $state<InstallPromptEvent | null>(null);
-	type OverlayCamera = { url: string; playerName: string; characterName: string; email: string };
+	type OverlayCamera = {
+		url: string;
+		playerName: string;
+		characterName: string;
+		characterId?: string;
+		email: string;
+	};
 	const emptyOverlayCamera = (): OverlayCamera => ({
 		url: '',
 		playerName: '',
@@ -153,6 +160,7 @@
 		email: ''
 	});
 	let overlayCameras = $state<OverlayCamera[]>(Array.from({ length: 6 }, emptyOverlayCamera));
+	let overlayCharacters = $state<Participant[]>([]);
 	let overlayEnabled = $state(false);
 	$effect(() => {
 		if (overlayCameras.at(-1)?.url.trim())
@@ -440,6 +448,16 @@
 		// Tokens pertencem a uma cena. Nunca carregue o estado visual da mesa anterior.
 		personagens.set([]);
 		activeCampaign = campaign;
+		overlayCharacters = [];
+		if (session && campaign.role === 'gm') {
+			try {
+				overlayCharacters = (await listParticipants(session, campaign.id)).participants.filter(
+					(participant) => participant.character
+				);
+			} catch {
+				// A falha na lista de fichas não deve impedir a abertura da mesa.
+			}
+		}
 		overlayEnabled = localStorage.getItem(`maismorras:overlay-enabled:${campaign.id}`) === 'true';
 		let remoteOverlayLoaded = false;
 		try {
@@ -572,6 +590,7 @@
 			params.set(`camera${index + 1}`, camera.url);
 			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
 			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
+			if (camera.characterId) params.set(`camera${index + 1}CharacterId`, camera.characterId);
 		});
 		window.open(`/overlay?${params.toString()}`, '_blank', 'noopener,noreferrer');
 	}
@@ -651,6 +670,7 @@
 			params.set(`camera${index + 1}`, camera.url);
 			if (camera.playerName) params.set(`camera${index + 1}Player`, camera.playerName);
 			if (camera.characterName) params.set(`camera${index + 1}Character`, camera.characterName);
+			if (camera.characterId) params.set(`camera${index + 1}CharacterId`, camera.characterId);
 		});
 		await navigator.clipboard.writeText(`${window.location.origin}/overlay?${params.toString()}`);
 		inviteStatus = 'Endereço da overlay copiado.';
@@ -668,6 +688,20 @@
 				activeSceneId: activeScene?.id ?? null
 			});
 		inviteStatus = 'Câmeras da overlay salvas.';
+	}
+	function linkOverlayCamera(index: number, characterId: string) {
+		const character = overlayCharacters.find(
+			(participant) => participant.character?.id === characterId
+		)?.character;
+		overlayCameras = overlayCameras.map((camera, cameraIndex) =>
+			cameraIndex === index
+				? {
+						...camera,
+						characterId: character?.id,
+						characterName: character?.sheet.name ?? camera.characterName
+					}
+				: camera
+		);
 	}
 	async function addScene() {
 		if (!activeCampaign || !session || creatingScene) return;
@@ -1089,7 +1123,24 @@
 									>
 									<input bind:value={camera.url} placeholder="Link https://vdo.ninja/..." />
 									<input bind:value={camera.playerName} placeholder="Nome do jogador" />
-									<input bind:value={camera.characterName} placeholder="Nome do personagem" />
+									<label class="camera-character-link">
+										<span>Ficha vinculada</span>
+										<select
+											value={camera.characterId ?? ''}
+											onchange={(event) => linkOverlayCamera(index, event.currentTarget.value)}
+										>
+											<option value="">Sem vínculo</option>
+											{#each overlayCharacters as participant (participant.character?.id)}
+												{#if participant.character}<option value={participant.character.id}
+														>{participant.character.sheet.name} · {participant.displayName}</option
+													>{/if}
+											{/each}
+										</select>
+									</label>
+									{#if !camera.characterId}<input
+											bind:value={camera.characterName}
+											placeholder="Nome exibido, se não houver ficha vinculada"
+										/>{/if}
 									<input bind:value={camera.email} type="email" placeholder="E-mail (opcional)" />
 								</fieldset>{/each}
 						</div>
@@ -2120,6 +2171,25 @@
 		background: #211c1e;
 		font-family: inherit;
 		font-size: 0.76rem;
+	}
+	.overlay-camera-grid select {
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		border: 1px solid #5c5045;
+		border-radius: 7px;
+		padding: 0.55rem 0.6rem;
+		color: #eee4d6;
+		background: #211c1e;
+		font: inherit;
+		font-size: 0.76rem;
+	}
+	.camera-character-link {
+		display: grid;
+		gap: 0.3rem;
+		min-width: 0;
+		color: #b6a899;
+		font-size: 0.7rem;
 	}
 	.overlay-camera-grid input::placeholder {
 		color: #84776d;

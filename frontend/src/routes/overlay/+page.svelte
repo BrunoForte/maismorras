@@ -22,6 +22,11 @@
 	import { request } from '$lib/services/httpClient';
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
+	import {
+		cameraCharacterLabel,
+		cameraHPPercent,
+		findCameraCharacterToken
+	} from '$lib/utils/overlayCamera';
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
 	import { getCharacterForGM, type CharacterSheet } from '$lib/services/characterApi';
 	import { getOverlayInitiativeOrder, getOverlayNextCombatant } from '$lib/utils/overlayCombat';
@@ -50,7 +55,12 @@
 	let lastEffectsState: AudioPlaybackState | null = null;
 	let audioBlocked = $state(false);
 	let effectsAudioBlocked = $state(false);
-	type CameraSlot = { url: string; playerName: string; characterName: string };
+	type CameraSlot = {
+		url: string;
+		playerName: string;
+		characterName: string;
+		characterId?: string;
+	};
 	let cameraSlots = $state<CameraSlot[]>([]);
 	let initiativeViewport = $state<HTMLDivElement>();
 	type OverlayBlock = {
@@ -222,6 +232,13 @@
 	const campaignId = () => query().get('campaign') ?? '';
 	const sceneId = () => query().get('scene') ?? '';
 	const visibleTokens = () => tokens.filter((token) => !token.hidden);
+	const cameraToken = (camera: CameraSlot) => findCameraCharacterToken(camera, tokens);
+	const cameraLabel = (camera: CameraSlot, fallback: string) =>
+		cameraCharacterLabel(camera, cameraToken(camera), fallback);
+	const cameraShowsHP = (camera: CameraSlot) => {
+		const token = cameraToken(camera);
+		return token?.visibility.showHP ? token : null;
+	};
 	async function applyAudioState(state: AudioPlaybackState) {
 		lastAudioState = state;
 		if (!playback || !session) return;
@@ -370,7 +387,8 @@
 		cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1).map((index) => ({
 			url: params.get(`camera${index}`) ?? '',
 			playerName: params.get(`camera${index}Player`) ?? '',
-			characterName: params.get(`camera${index}Character`) ?? ''
+			characterName: params.get(`camera${index}Character`) ?? '',
+			characterId: params.get(`camera${index}CharacterId`) ?? undefined
 		}));
 		supabase.auth.getSession().then(({ data }) => {
 			if (disposed || !data.session) {
@@ -381,7 +399,13 @@
 			session = data.session;
 			getOverlaySettings(data.session, campaignId())
 				.then((settings) => {
-					if (settings.cameras?.length) cameraSlots = settings.cameras;
+					if (settings.cameras?.length)
+						cameraSlots = settings.cameras.map((camera) => ({
+							...camera,
+							url: camera.url ?? '',
+							playerName: camera.playerName ?? '',
+							characterName: camera.characterName ?? ''
+						}));
 					if (!query().get('scene') && settings.activeSceneId)
 						applySceneChange(settings.activeSceneId);
 				})
@@ -579,7 +603,9 @@
 				</div>
 			</section>{/if}
 
-		{#if hostCamera()?.url && block('host-camera')?.visible !== false}<article
+		{#if hostCamera()?.url && block('host-camera')?.visible !== false}{@const hostCameraHP =
+				cameraShowsHP(hostCamera() as CameraSlot)}
+			<article
 				class="camera-card host-camera"
 				class:layout-positioned={Boolean(block('host-camera'))}
 				style={layoutBlockStyle('host-camera')}
@@ -591,8 +617,25 @@
 						allow="camera; microphone; autoplay; fullscreen"
 					></iframe>
 				</div>
-				<strong>{hostCamera()?.playerName || 'Narrador'}</strong>
-				{#if hostCamera()?.characterName}<small>{hostCamera()?.characterName}</small>{/if}
+				<strong>{cameraLabel(hostCamera() as CameraSlot, 'Narrador')}</strong>
+				{#if hostCamera()?.playerName && hostCamera()?.playerName !== cameraLabel(hostCamera() as CameraSlot, 'Narrador')}<small
+						>{hostCamera()?.playerName}</small
+					>{/if}
+				{#if hostCameraHP}<div
+						class="camera-hp"
+						class:critical={hostCameraHP.hpCurrent > 0 && cameraHPPercent(hostCameraHP) <= 25}
+						class:unconscious={hostCameraHP.hpCurrent <= 0}
+						aria-label={`Pontos de vida de ${cameraLabel(hostCamera() as CameraSlot, 'Narrador')}: ${hostCameraHP.hpCurrent} de ${hostCameraHP.hpMax}`}
+					>
+						<div class="camera-hp-track">
+							<span style={`width:${cameraHPPercent(hostCameraHP)}%`}></span>
+						</div>
+						<small
+							>{hostCameraHP.hpCurrent <= 0
+								? 'INCONSCIENTE'
+								: `PV ${hostCameraHP.hpCurrent}/${hostCameraHP.hpMax}`}</small
+						>
+					</div>{/if}
 			</article>{/if}
 
 		{#if activeCombatant() && block('active-character')?.visible !== false}<aside
@@ -634,7 +677,9 @@
 				<DiceOverlay viewport />
 			</section>{/if}
 
-		{#each playerCameras() as { camera, index }, playerIndex (index)}{#if block(`camera-${playerIndex + 1}`)?.visible !== false}<article
+		{#each playerCameras() as { camera, index }, playerIndex (index)}{#if block(`camera-${playerIndex + 1}`)?.visible !== false}{@const linkedHP =
+					cameraShowsHP(camera)}
+				<article
 					class="camera-card player-camera"
 					class:layout-positioned={Boolean(block(`camera-${playerIndex + 1}`))}
 					style={playerCameraStyle(playerIndex)}
@@ -646,12 +691,25 @@
 							allow="camera; microphone; autoplay; fullscreen"
 						></iframe>
 					</div>
-					<strong
-						>{camera.characterName || camera.playerName || `Jogador ${playerIndex + 1}`}</strong
-					>
-					{#if camera.characterName && camera.playerName && camera.characterName !== camera.playerName}<small
+					<strong>{cameraLabel(camera, `Jogador ${playerIndex + 1}`)}</strong>
+					{#if camera.playerName && camera.playerName !== cameraLabel(camera, `Jogador ${playerIndex + 1}`)}<small
 							>{camera.playerName}</small
 						>{/if}
+					{#if linkedHP}<div
+							class="camera-hp"
+							class:critical={linkedHP.hpCurrent > 0 && cameraHPPercent(linkedHP) <= 25}
+							class:unconscious={linkedHP.hpCurrent <= 0}
+							aria-label={`Pontos de vida de ${cameraLabel(camera, `Jogador ${playerIndex + 1}`)}: ${linkedHP.hpCurrent} de ${linkedHP.hpMax}`}
+						>
+							<div class="camera-hp-track">
+								<span style={`width:${cameraHPPercent(linkedHP)}%`}></span>
+							</div>
+							<small
+								>{linkedHP.hpCurrent <= 0
+									? 'INCONSCIENTE'
+									: `PV ${linkedHP.hpCurrent}/${linkedHP.hpMax}`}</small
+							>
+						</div>{/if}
 				</article>{/if}{/each}
 		{#if hasLiveKitCamera()}<article
 				class="camera-card livekit-camera"
@@ -872,6 +930,45 @@
 	}
 	.camera-card small {
 		color: #d6c7b4;
+	}
+	.camera-hp {
+		display: grid;
+		grid-template-columns: minmax(2.5rem, 1fr) auto;
+		align-items: center;
+		gap: 0.35rem;
+		width: 100%;
+		min-width: 0;
+		padding: 0.12rem 0.25rem;
+		box-sizing: border-box;
+		border: 1px solid #ffffff26;
+		border-radius: 999px;
+		background: #09080bd9;
+	}
+	.camera-hp-track {
+		height: clamp(3px, 0.45vw, 6px);
+		overflow: hidden;
+		border-radius: 999px;
+		background: #54464a;
+	}
+	.camera-hp-track span {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: linear-gradient(90deg, #b6d477, #60bd77);
+		transition:
+			width 240ms ease,
+			background-color 240ms ease;
+	}
+	.camera-hp.critical .camera-hp-track span {
+		background: linear-gradient(90deg, #f0bd58, #dd803d);
+	}
+	.camera-hp.unconscious .camera-hp-track span {
+		background: #bd4c55;
+	}
+	.camera-hp small {
+		font-size: clamp(0.38rem, 0.55vw, 0.58rem);
+		font-weight: 800;
+		white-space: nowrap;
 	}
 	.active-character-card {
 		position: absolute;

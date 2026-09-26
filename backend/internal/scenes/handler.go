@@ -114,7 +114,11 @@ func (h *Handler) SaveOverlaySettings(w http.ResponseWriter, r *http.Request) er
 	if len(in.Cameras) > 256*1024 || (len(in.Cameras) > 0 && !json.Valid(in.Cameras)) {
 		return apperror.BadRequest("INVALID_OVERLAY_SETTINGS", "Configuração de câmeras inválida.")
 	}
-	settings, err := h.repo.SaveOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID, OverlaySettings{Enabled: in.Enabled, Cameras: in.Cameras, ActiveSceneID: in.ActiveSceneID})
+	characterIDs, err := overlayCameraCharacterIDs(in.Cameras)
+	if err != nil {
+		return apperror.BadRequest("INVALID_OVERLAY_SETTINGS", "Uma câmera está vinculada a uma ficha inválida.")
+	}
+	settings, err := h.repo.SaveOverlaySettings(r.Context(), r.PathValue("campaignID"), p.UserID, OverlaySettings{Enabled: in.Enabled, Cameras: in.Cameras, ActiveSceneID: in.ActiveSceneID, CharacterIDs: characterIDs})
 	if err != nil {
 		return mapError(err)
 	}
@@ -518,6 +522,9 @@ func write(w http.ResponseWriter, status int, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 func mapError(err error) error {
+	if errors.Is(err, ErrInvalidOverlayCharacter) {
+		return apperror.BadRequest("INVALID_OVERLAY_CHARACTER", "A ficha vinculada não pertence a esta campanha.")
+	}
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não tem permissão para operar esta mesa.")
 	}
@@ -531,4 +538,37 @@ func mapError(err error) error {
 		return apperror.BadRequest("WALL_BLOCKED", "Uma parede bloqueia o caminho deste token.")
 	}
 	return apperror.Internal(err)
+}
+
+func overlayCameraCharacterIDs(cameras json.RawMessage) ([]string, error) {
+	if len(cameras) == 0 || string(cameras) == "null" {
+		return nil, nil
+	}
+	var entries []json.RawMessage
+	if err := json.Unmarshal(cameras, &entries); err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		// Legacy settings stored camera URLs as strings; they have no character link.
+		if len(entry) > 0 && entry[0] == '"' {
+			continue
+		}
+		var camera struct {
+			CharacterID string `json:"characterId"`
+		}
+		if err := json.Unmarshal(entry, &camera); err != nil {
+			return nil, err
+		}
+		id := strings.TrimSpace(camera.CharacterID)
+		if id == "" {
+			continue
+		}
+		valid, _ := regexp.MatchString(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, id)
+		if !valid {
+			return nil, errors.New("invalid camera character id")
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
