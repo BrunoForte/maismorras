@@ -12,6 +12,7 @@
 		unseenDiceRolls,
 		type DiceBoxPort
 	} from '$lib/services/diceBoxRuntime';
+	let { viewport = false }: { viewport?: boolean } = $props();
 
 	let host = $state<HTMLDivElement>();
 	type DiceBoxEntry = { box: DiceBoxPort; runtime: DiceBoxRuntime };
@@ -141,6 +142,7 @@
 	bind:this={host}
 	style={`--map-camera-x: ${$mapCameraView.x}px; --map-camera-y: ${$mapCameraView.y}px; --map-camera-zoom: ${$mapCameraView.zoom}`}
 	class="dice-box-3d"
+	class:viewport
 	aria-label="Dados 3D temporários rolando na mesa"
 ></div>
 
@@ -158,6 +160,9 @@
 		pointer-events: none;
 		transform: translate(var(--map-camera-x), var(--map-camera-y)) scale(var(--map-camera-zoom));
 		transform-origin: 0 0;
+	}
+	.dice-box-3d.viewport :global(.dice-box-instance) {
+		transform: none;
 	}
 	.dice-box-3d :global(canvas) {
 		width: 100%;

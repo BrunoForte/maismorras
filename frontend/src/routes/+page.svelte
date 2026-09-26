@@ -1076,13 +1076,16 @@
 						<p class="eyebrow">OVERLAY DA LIVE</p>
 						<h3>Link, cena e câmeras</h3>
 						<p>
-							Configure cinco câmeras de jogadores e uma do narrador. Os nomes serão exibidos junto
-							ao vídeo na overlay.
+							Configure até cinco câmeras de jogadores e uma do narrador. Cole o link de sala do
+							VDO.Ninja; o narrador aparece no topo sobre a iniciativa e as câmeras dos jogadores na
+							base, à frente dos dados. O nome do personagem aparece junto ao vídeo.
 						</p>
 						<div class="overlay-camera-grid">
 							{#each overlayCameras as camera, index (index)}<fieldset>
 									<legend
-										>{index === 5 ? 'Câmera do narrador' : `Câmera do jogador ${index + 1}`}</legend
+										>{index === 5
+											? 'Câmera do narrador · topo esquerdo'
+											: `Câmera do jogador ${index < 5 ? index + 1 : index}`}</legend
 									>
 									<input bind:value={camera.url} placeholder="Link https://vdo.ninja/..." />
 									<input bind:value={camera.playerName} placeholder="Nome do jogador" />

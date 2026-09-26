@@ -12,6 +12,7 @@
 		restoreDicePreference,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
+	let { viewport = false }: { viewport?: boolean } = $props();
 	type DiceBoxComponent = typeof import('./DiceBox3D.svelte').default;
 	let DiceBox3DComponent = $state<DiceBoxComponent | null>(null);
 	let visible = $state(false);
@@ -79,7 +80,7 @@
 </script>
 
 {#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
-	<DiceBox3DComponent />
+	<DiceBox3DComponent {viewport} />
 {/if}
 {#if $diceRendererError}
 	<div class="dice-error" role="status">

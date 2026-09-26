@@ -9,7 +9,7 @@
 		type RealtimeStatus,
 		type SceneSocket
 	} from '$lib/services/sceneRealtime';
-	import { loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
+	import { getCombat, loadScene, type PersistedToken, type Scene } from '$lib/services/sceneApi';
 	import DiceOverlay from '$lib/components/DiceOverlay.svelte';
 	import {
 		diceOverlay,
@@ -23,10 +23,16 @@
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
+	import { getCharacterForGM, type CharacterSheet } from '$lib/services/characterApi';
+	import { getOverlayInitiativeOrder, getOverlayNextCombatant } from '$lib/utils/overlayCombat';
 
 	let session = $state<Session | null>(null);
 	let scene = $state<Scene | null>(null);
 	let tokens = $state<PersistedToken[]>([]);
+	let combat = $state<{
+		activeTokenId: string | null;
+		initiatives: { tokenId: string; initiative: number }[];
+	}>({ activeTokenId: null, initiatives: [] });
 	let imageUrls = $state<Record<string, string>>({});
 	let messages = $state<Mensagem[]>([]);
 	let lastEventId = 0;
@@ -46,7 +52,7 @@
 	let effectsAudioBlocked = $state(false);
 	type CameraSlot = { url: string; playerName: string; characterName: string };
 	let cameraSlots = $state<CameraSlot[]>([]);
-	let mapBackground = $state('');
+	let initiativeViewport = $state<HTMLDivElement>();
 	type OverlayBlock = {
 		id: string;
 		x: number;
@@ -76,6 +82,33 @@
 	let overlayPresentation = $state<Presentation | null>(null);
 	let overlayPresentationUrl = $state('');
 	let overlayPresentationClosed = $state(false);
+	let activeCharacterSheet = $state<CharacterSheet | null>(null);
+	let requestedSheetTokenId = '';
+	const initiativeOrder = () => getOverlayInitiativeOrder(visibleTokens(), combat.initiatives);
+	const activeCombatant = () =>
+		initiativeOrder().find((token) => token.id === combat.activeTokenId) ?? null;
+	const activeInitiativeLabel = () => {
+		const initiative = activeCombatant()?.initiative ?? 0;
+		return `${initiative >= 0 ? '+' : ''}${initiative}`;
+	};
+	const upcomingCombatant = () => getOverlayNextCombatant(initiativeOrder(), combat.activeTokenId);
+	const isCameraUrl = (value: string) => {
+		try {
+			const url = new URL(value);
+			return url.protocol === 'https:' && url.hostname === 'vdo.ninja';
+		} catch {
+			return false;
+		}
+	};
+	const hostCamera = () => {
+		const camera = cameraSlots[5];
+		return camera && isCameraUrl(camera.url) ? camera : null;
+	};
+	const playerCameras = () =>
+		cameraSlots
+			.map((camera, index) => ({ camera, index }))
+			.filter(({ camera, index }) => index !== 5 && isCameraUrl(camera.url));
+	const hasLiveKitCamera = () => Boolean(overlayLayout.livekitUrl && overlayLayout.livekitToken);
 	async function loadOverlayPresentation(currentSession: Session | null = session) {
 		if (!currentSession || !sceneId()) return;
 		try {
@@ -101,11 +134,46 @@
 	function applyLayoutDocument(value: unknown) {
 		const document = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 		if (document.profiles && typeof document.profiles === 'object') {
-			const profiles = document.profiles as Record<string, typeof overlayLayout>;
+			const profiles = document.profiles as Record<string, Partial<typeof overlayLayout>>;
 			const active = String(document.activeProfile ?? Object.keys(profiles)[0] ?? 'Principal');
-			overlayLayout = profiles[active] ?? { background: '', blocks: [] };
-		} else if (value && typeof value === 'object') overlayLayout = value as typeof overlayLayout;
+			overlayLayout = normalizeOverlayLayout(profiles[active]);
+		} else if (value && typeof value === 'object')
+			overlayLayout = normalizeOverlayLayout(value as Partial<typeof overlayLayout>);
 		void resolveOverlayBackground(overlayLayout.background);
+	}
+	function normalizeOverlayLayout(value?: Partial<typeof overlayLayout>) {
+		const defaults = defaultOverlayLayout();
+		const savedBlocks = Array.isArray(value?.blocks) ? value.blocks : [];
+		return {
+			...defaults,
+			...value,
+			blocks: defaults.blocks.map((fallback) => ({
+				...fallback,
+				...savedBlocks.find((item) => item.id === fallback.id)
+			}))
+		};
+	}
+	function defaultOverlayLayout() {
+		const block = (id: string, x: number, y: number, width: number, height: number) => ({
+			id,
+			x,
+			y,
+			width,
+			height,
+			visible: true
+		});
+		return {
+			background: '',
+			blocks: [
+				block('initiative', 50, 7, 94, 15),
+				block('host-camera', 11, 17, 20, 23),
+				block('active-character', 87, 49, 23, 43),
+				block('dice', 50, 57, 36, 52),
+				...Array.from({ length: 5 }, (_, index) =>
+					block(`camera-${index + 1}`, 10 + index * 20, 88, 18, 19)
+				)
+			]
+		};
 	}
 	async function resolveOverlayBackground(path: string) {
 		if (!path) {
@@ -154,11 +222,6 @@
 	const campaignId = () => query().get('campaign') ?? '';
 	const sceneId = () => query().get('scene') ?? '';
 	const visibleTokens = () => tokens.filter((token) => !token.hidden);
-	const recentRolls = () =>
-		messages
-			.filter((message) => message.tipo === 'rolagem')
-			.slice(-4)
-			.reverse();
 	async function applyAudioState(state: AudioPlaybackState) {
 		lastAudioState = state;
 		if (!playback || !session) return;
@@ -199,7 +262,6 @@
 			]);
 			scene = loadedScene.scene;
 			tokens = loadedScene.tokens;
-			const client = supabase;
 			await applyAudioState({
 				path: loadedScene.scene.ambientAudioPath,
 				playing: loadedScene.scene.ambientAudioEnabled,
@@ -211,21 +273,7 @@
 				revision: loadedScene.scene.ambientAudioRevision ?? 0
 			});
 			await applyEffectsState(sceneEffectsState(loadedScene.scene));
-			if (client) {
-				if (loadedScene.scene.backgroundUrl) {
-					if (
-						loadedScene.scene.backgroundUrl.startsWith('http') ||
-						loadedScene.scene.backgroundUrl.startsWith('data:')
-					)
-						mapBackground = loadedScene.scene.backgroundUrl;
-					else
-						mapBackground =
-							(await getSignedAssetUrl(
-								currentSession,
-								campaignId(),
-								loadedScene.scene.backgroundUrl
-							)) ?? '';
-				}
+			if (supabase) {
 				const signedEntries = await Promise.all(
 					loadedScene.tokens.map(async (token) => {
 						if (
@@ -265,6 +313,14 @@
 			error = '';
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Não foi possível carregar o overlay.';
+		}
+	}
+	async function refreshCombat(currentSession: Session | null = session) {
+		if (!currentSession || !sceneId()) return;
+		try {
+			combat = await getCombat(currentSession, sceneId());
+		} catch {
+			combat = { activeTokenId: null, initiatives: [] };
 		}
 	}
 	onMount(() => {
@@ -311,13 +367,11 @@
 		};
 		window.addEventListener('storage', onStorage);
 		const params = query();
-		cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1)
-			.map((index) => ({
-				url: params.get(`camera${index}`) ?? '',
-				playerName: params.get(`camera${index}Player`) ?? '',
-				characterName: params.get(`camera${index}Character`) ?? ''
-			}))
-			.filter((camera) => camera.url.startsWith('https://vdo.ninja/'));
+		cameraSlots = Array.from({ length: 12 }, (_, index) => index + 1).map((index) => ({
+			url: params.get(`camera${index}`) ?? '',
+			playerName: params.get(`camera${index}Player`) ?? '',
+			characterName: params.get(`camera${index}Character`) ?? ''
+		}));
 		supabase.auth.getSession().then(({ data }) => {
 			if (disposed || !data.session) {
 				authRequired = true;
@@ -327,10 +381,7 @@
 			session = data.session;
 			getOverlaySettings(data.session, campaignId())
 				.then((settings) => {
-					if (settings.cameras?.length)
-						cameraSlots = settings.cameras.filter((camera) =>
-							camera.url.startsWith('https://vdo.ninja/')
-						);
+					if (settings.cameras?.length) cameraSlots = settings.cameras;
 					if (!query().get('scene') && settings.activeSceneId)
 						applySceneChange(settings.activeSceneId);
 				})
@@ -339,6 +390,7 @@
 				});
 			void loadOverlayLayout(data.session);
 			void refresh(data.session);
+			void refreshCombat(data.session);
 			void loadOverlayPresentation(data.session);
 			const updateFallback = (status: RealtimeStatus) => {
 				if (status === 'connected') {
@@ -374,7 +426,9 @@
 					else void loadOverlayLayout(session);
 				},
 				undefined,
-				undefined,
+				() => {
+					void refreshCombat(session);
+				},
 				undefined,
 				undefined,
 				(state) => void applyEffectsState(state)
@@ -400,6 +454,32 @@
 		if (playback && lastAudioState) void applyAudioState(lastAudioState);
 		if (effectsPlayback && lastEffectsState) void applyEffectsState(lastEffectsState);
 	});
+	$effect(() => {
+		const activeId = combat.activeTokenId;
+		if (!activeId || !initiativeViewport) return;
+		const activeElement = initiativeViewport.querySelector<HTMLElement>(
+			`[data-token-id="${CSS.escape(activeId)}"]`
+		);
+		activeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+	});
+	$effect(() => {
+		const token = activeCombatant();
+		if (!token?.actorId || !session) {
+			requestedSheetTokenId = '';
+			activeCharacterSheet = null;
+			return;
+		}
+		if (requestedSheetTokenId === token.id) return;
+		requestedSheetTokenId = token.id;
+		activeCharacterSheet = null;
+		void getCharacterForGM(session, campaignId(), token.actorId)
+			.then((character) => {
+				if (combat.activeTokenId === token.id) activeCharacterSheet = character.sheet;
+			})
+			.catch(() => {
+				// A player overlay may not be authorized to retrieve the complete sheet.
+			});
+	});
 	async function login() {
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
@@ -409,16 +489,11 @@
 		if (authError) error = authError.message;
 	}
 
-	const tokenImage = (token: PersistedToken) =>
+	const tokenImage = (token: Pick<PersistedToken, 'id' | 'imageUrl'>) =>
 		imageUrls[token.id] ||
 		(token.imageUrl?.startsWith('http') || token.imageUrl?.startsWith('data:')
 			? token.imageUrl
 			: null);
-	const rollLabel = (message: Mensagem) =>
-		message.detalhesRolagem?.label ||
-		message.texto.split(' · ')[0] ||
-		message.detalhesRolagem?.expressao ||
-		'Rolagem';
 	const block = (id: string) => overlayLayout.blocks.find((item) => item.id === id);
 	const blockStyle = (id: string) => {
 		const item = block(id);
@@ -426,6 +501,22 @@
 			? `--overlay-x:${item.x}%;--overlay-y:${item.y}%;--overlay-width:${item.width ?? 20}%;--overlay-height:${item.height ?? 20}%;--overlay-font:${item.fontSize ?? 1}rem;--overlay-color:${item.color ?? '#f0e0c8'};--overlay-opacity:${(item.opacity ?? 100) / 100};--overlay-border:${item.borderColor ?? '#d8ad67'};--overlay-border-width:${item.borderWidth ?? 1}px;--overlay-shadow:${item.shadow === false ? 'none' : '0 10px 24px #0008'};`
 			: '';
 	};
+	const layoutBlockStyle = (id: string) => {
+		const item = block(id);
+		return item
+			? `${blockStyle(id)}left:${item.x}%;top:${item.y}%;width:${item.width ?? 20}%;height:${item.height ?? 20}%;transform:translate(-50%, -50%);`
+			: '';
+	};
+	function playerCameraStyle(index: number) {
+		const configured = block(`camera-${index + 1}`);
+		const totalCameras = playerCameras().length + (hasLiveKitCamera() ? 1 : 0);
+		if (configured && totalCameras <= 5)
+			return `${layoutBlockStyle(`camera-${index + 1}`)}z-index:40;`;
+		const count = Math.max(1, totalCameras);
+		const width = Math.min(18, 92 / count);
+		const center = ((index + 0.5) / count) * 100;
+		return `left:${center}%;top:88%;width:${width}%;height:19%;transform:translate(-50%,-50%);z-index:40;`;
+	}
 </script>
 
 <svelte:head>
@@ -433,106 +524,146 @@
 	<meta name="theme-color" content="#09070b" />
 </svelte:head>
 
-<main class="live-overlay" aria-label="Overlay da live">
+<main
+	class="live-overlay"
+	aria-label="Overlay da live"
+	style:background-image={overlayBackground ? `url("${overlayBackground}")` : undefined}
+	style:background-color={overlayBackground ? '#09070b' : 'transparent'}
+>
 	{#if authRequired}<section class="overlay-auth">
 			<p class="overlay-error">Faça login no MaisMorras para visualizar esta overlay.</p>
 			<button onclick={() => void login()}>Entrar com Google</button>
 		</section>{:else if error}<p class="overlay-error">
 			{error}
 		</p>{:else if !scene || !session}<p class="overlay-loading">Carregando overlay…</p>{:else}
-		<header
-			class="overlay-header"
-			class:layout-hidden={block('header')?.visible === false}
-			class:layout-positioned={Boolean(block('header'))}
-			style={blockStyle('header')}
-		>
-			<div>
-				<span>MAISMORRAS · LIVE</span>
-				<h1>{scene.name}</h1>
-			</div>
-			<small>{visibleTokens().length} personagens em cena</small>
-		</header>
 		<audio bind:this={audio} loop preload="metadata"></audio>
 		<audio bind:this={audioB} loop preload="metadata"></audio>
 		<audio bind:this={effectsAudio} loop preload="metadata"></audio>
 		<audio bind:this={effectsAudioB} loop preload="metadata"></audio>
 		{#if audioBlocked || effectsAudioBlocked}<button
 				class="audio-enable"
-				onclick={() => void enableAudio()}>Ativar áudio da cena</button
+				onclick={() => void enableAudio()}>Clique para ativar o áudio da transmissão</button
 			>{/if}
-		<section
-			class="map-preview"
-			class:layout-hidden={block('map')?.visible === false}
-			class:layout-positioned={Boolean(block('map'))}
-			aria-label="Mapa da cena"
-			style={`--grid-size: ${scene.gridSize}px; ${blockStyle('map')} background-image: ${mapBackground ? `url("${mapBackground}")` : overlayBackground ? `url("${overlayBackground}")` : 'none'}`}
-		>
-			<div class="map-grid" aria-hidden="true"></div>
-			{#each visibleTokens() as token (token.id)}<div
-					class="map-token"
-					style={`left:${token.x}px;top:${token.y}px;width:${token.size}px;height:${token.size}px;background:${token.color ? `#${token.color.toString(16).padStart(6, '0')}` : '#7b4b37'}`}
-					title={token.name}
-				>
-					{token.name.slice(0, 1).toUpperCase()}
-				</div>{/each}
-			<DiceOverlay />
-		</section>
-		<section
-			class:hidden={block('map')?.visible === false}
-			class="token-strip"
-			aria-label="Personagens na cena"
-		>
-			{#each visibleTokens() as token (token.id)}<article class="token-card">
-					{#if tokenImage(token)}<img src={tokenImage(token) ?? ''} alt="" />{:else}<div
-							class="token-fallback"
-						>
-							{token.name.slice(0, 1).toUpperCase()}
-						</div>{/if}
-					<div>
-						<strong>{token.name}</strong>{#if token.visibility.showHP}<small
-								>{token.hpCurrent}/{token.hpMax} PV</small
-							>{/if}
-					</div>
-				</article>{/each}
-		</section>
-		{#if recentRolls().length && block('rolls')?.visible !== false}<aside
-				class="roll-feed"
-				class:layout-positioned={Boolean(block('rolls'))}
-				aria-label="Últimas rolagens"
-				style={blockStyle('rolls')}
+
+		{#if combat.activeTokenId && initiativeOrder().length && block('initiative')?.visible !== false}<section
+				class="initiative-bar"
+				class:layout-hidden={block('initiative')?.visible === false}
+				class:layout-positioned={Boolean(block('initiative'))}
+				style={layoutBlockStyle('initiative')}
+				aria-label="Ordem de iniciativa"
 			>
-				{#each recentRolls() as message (message.id)}<div class="roll-item">
-						<small>{message.autor} / {rollLabel(message)}</small><strong
-							>{message.detalhesRolagem?.total ?? '—'}</strong
+				<span class="initiative-title">INICIATIVA</span>
+				<div class="initiative-viewport" bind:this={initiativeViewport}>
+					{#each initiativeOrder() as token (token.id)}<article
+							class="initiative-entry"
+							class:active={token.id === combat.activeTokenId}
+							class:up-next={token.id === upcomingCombatant()?.id}
+							data-token-id={token.id}
+							title={`${token.name} · Iniciativa ${token.initiative}`}
 						>
-					</div>{/each}
+							<div
+								class="initiative-portrait"
+								style={`--token-color:${token.color ? `#${token.color.toString(16).padStart(6, '0')}` : '#85613a'}`}
+							>
+								{#if tokenImage(token)}<img src={tokenImage(token) ?? ''} alt="" />{:else}<span
+										>{token.name.slice(0, 1).toUpperCase()}</span
+									>{/if}
+							</div>
+							<strong>{token.name}</strong>
+							<small>{token.initiative}</small>
+							{#if token.id === combat.activeTokenId}<span class="turn-label current">AGORA</span
+								>{/if}
+							{#if token.id === upcomingCombatant()?.id}<span class="turn-label next">A SEGUIR</span
+								>{/if}
+						</article>{/each}
+				</div>
+			</section>{/if}
+
+		{#if hostCamera()?.url && block('host-camera')?.visible !== false}<article
+				class="camera-card host-camera"
+				class:layout-positioned={Boolean(block('host-camera'))}
+				style={layoutBlockStyle('host-camera')}
+			>
+				<div class="camera-frame">
+					<iframe
+						src={hostCamera()?.url ?? ''}
+						title="Câmera do narrador"
+						allow="camera; microphone; autoplay; fullscreen"
+					></iframe>
+				</div>
+				<strong>{hostCamera()?.playerName || 'Narrador'}</strong>
+				{#if hostCamera()?.characterName}<small>{hostCamera()?.characterName}</small>{/if}
+			</article>{/if}
+
+		{#if activeCombatant() && block('active-character')?.visible !== false}<aside
+				class="active-character-card"
+				class:layout-positioned={Boolean(block('active-character'))}
+				style={layoutBlockStyle('active-character')}
+				aria-label={`Resumo de ${activeCombatant()?.name}, personagem da vez`}
+			>
+				<span class="eyebrow">TURNO DE</span>
+				{#if tokenImage(activeCombatant() as PersistedToken)}<img
+						src={tokenImage(activeCombatant() as PersistedToken) ?? ''}
+						alt=""
+					/>{:else}<div class="active-fallback">
+						{activeCombatant()?.name.slice(0, 1).toUpperCase()}
+					</div>{/if}
+				<h2>{activeCombatant()?.name}</h2>
+				{#if activeCharacterSheet && activeCombatant()?.actorId}<p class="character-classline">
+						{activeCharacterSheet.class}{#if activeCharacterSheet.subclass}
+							· {activeCharacterSheet.subclass}
+						{/if} · Nível {activeCharacterSheet.level}
+					</p>{/if}
+				<div class="character-stats">
+					{#if activeCombatant()?.visibility.showHP}<span
+							><small>PV</small>{activeCombatant()?.hpCurrent}/{activeCombatant()?.hpMax}</span
+						>{/if}
+					{#if activeCombatant()?.visibility.showAC}<span
+							><small>CA</small>{activeCombatant()?.armorClass}</span
+						>{/if}
+					<span><small>INICIATIVA</small>{activeInitiativeLabel()}</span>
+				</div>
 			</aside>{/if}
-		{#if cameraSlots.length && block('cameras')?.visible !== false}<section
-				class="camera-grid"
-				class:layout-positioned={Boolean(block('cameras'))}
-				aria-label="Câmeras dos jogadores"
-				style={blockStyle('cameras')}
+
+		{#if block('dice')?.visible !== false}<section
+				class="dice-layer"
+				class:layout-positioned={Boolean(block('dice'))}
+				style={layoutBlockStyle('dice')}
+				aria-label="Dados da rolagem"
 			>
-				{#each cameraSlots as camera, index (camera.url)}<article
-						class="camera-card"
-						class:layout-positioned={Boolean(block(`camera-${index + 1}`))}
-						style={blockStyle(`camera-${index + 1}`)}
-					>
+				<DiceOverlay viewport />
+			</section>{/if}
+
+		{#each playerCameras() as { camera, index }, playerIndex (index)}{#if block(`camera-${playerIndex + 1}`)?.visible !== false}<article
+					class="camera-card player-camera"
+					class:layout-positioned={Boolean(block(`camera-${playerIndex + 1}`))}
+					style={playerCameraStyle(playerIndex)}
+				>
+					<div class="camera-frame">
 						<iframe
 							src={camera.url}
-							title={`Câmera do jogador ${index + 1}`}
+							title={`Câmera de ${camera.playerName || camera.characterName || `jogador ${playerIndex + 1}`}`}
 							allow="camera; microphone; autoplay; fullscreen"
-						></iframe><strong>{camera.playerName || `Jogador ${index + 1}`}</strong
-						>{#if camera.characterName}<small>{camera.characterName}</small>{/if}
-					</article>{/each}
-				{#if overlayLayout.livekitUrl && overlayLayout.livekitToken}<article class="camera-card">
-						<LiveKitPreview
-							serverUrl={overlayLayout.livekitUrl}
-							token={overlayLayout.livekitToken}
-						/>
-						<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
-					</article>{/if}
-			</section>{/if}
+						></iframe>
+					</div>
+					<strong
+						>{camera.characterName || camera.playerName || `Jogador ${playerIndex + 1}`}</strong
+					>
+					{#if camera.characterName && camera.playerName && camera.characterName !== camera.playerName}<small
+							>{camera.playerName}</small
+						>{/if}
+				</article>{/if}{/each}
+		{#if hasLiveKitCamera()}<article
+				class="camera-card livekit-camera"
+				style={playerCameraStyle(playerCameras().length)}
+			>
+				<LiveKitPreview
+					serverUrl={overlayLayout.livekitUrl ?? ''}
+					token={overlayLayout.livekitToken ?? ''}
+				/>
+				<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
+			</article>{/if}
+
 		{#if overlayPresentation && !overlayPresentationClosed}<section
 				class="overlay-presentation"
 				aria-label={overlayPresentation.title || 'Imagem apresentada'}
@@ -565,15 +696,313 @@
 		overflow: hidden;
 	}
 	.live-overlay {
-		position: relative;
+		position: fixed;
+		inset: 0;
 		isolation: isolate;
-		min-height: 100dvh;
-		padding: clamp(1rem, 3vw, 2.8rem);
+		width: 100vw;
+		height: 100dvh;
+		min-height: 0;
+		padding: 0;
+		overflow: hidden;
 		color: #f7eedf;
 		font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-		background:
-			radial-gradient(circle at 15% 0%, #53341caa, transparent 32%),
-			linear-gradient(180deg, #08070bd9, transparent 32%, #08070bd9);
+		background-color: transparent;
+		background-image: none;
+		background-position: center;
+		background-size: cover;
+	}
+	.initiative-bar {
+		position: absolute;
+		z-index: 20;
+		display: flex;
+		align-items: center;
+		gap: clamp(0.35rem, 1vw, 1rem);
+		box-sizing: border-box;
+		padding: clamp(0.25rem, 0.8vw, 0.8rem);
+		border: 1px solid #d8ad6755;
+		border-radius: 999px;
+		background: linear-gradient(90deg, #100c11df, #211a1ddd, #100c11df);
+		box-shadow: 0 8px 28px #0008;
+		backdrop-filter: blur(9px);
+	}
+	.initiative-title {
+		flex: 0 0 auto;
+		margin-left: 20%;
+		color: #e7c684;
+		font-size: clamp(0.5rem, 0.8vw, 0.75rem);
+		font-weight: 850;
+		letter-spacing: 0.13em;
+	}
+	.initiative-viewport {
+		flex: 1 1 auto;
+		display: flex;
+		align-items: center;
+		gap: clamp(0.35rem, 1vw, 1rem);
+		min-width: 0;
+		height: 100%;
+		overflow-x: auto;
+		overflow-y: visible;
+		scrollbar-width: none;
+		scroll-behavior: smooth;
+	}
+	.initiative-viewport::-webkit-scrollbar {
+		display: none;
+	}
+	.initiative-entry {
+		position: relative;
+		flex: 0 0 auto;
+		display: grid;
+		justify-items: center;
+		align-content: center;
+		gap: 0.12rem;
+		min-width: clamp(2.8rem, 5.1vw, 5.5rem);
+		max-height: 100%;
+		color: #d6c8b7;
+		font-size: clamp(0.45rem, 0.66vw, 0.68rem);
+		transition:
+			transform 260ms ease,
+			color 220ms ease;
+	}
+	.initiative-entry strong {
+		max-width: clamp(2.8rem, 5.5vw, 6rem);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: inherit;
+	}
+	.initiative-entry small {
+		color: #baaa94;
+		font-size: 0.9em;
+	}
+	.initiative-entry.active {
+		z-index: 1;
+		color: #fff0ce;
+		transform: translateY(-0.12rem) scale(1.1);
+		animation: turn-slide 420ms ease-out both;
+	}
+	.initiative-entry.up-next .initiative-portrait {
+		border-color: #b4a4d7;
+		box-shadow: 0 0 0 2px #b4a4d744;
+	}
+	.initiative-portrait,
+	.active-fallback {
+		display: grid;
+		place-items: center;
+		overflow: hidden;
+		border: 2px solid #8a775c;
+		border-radius: 50%;
+		color: #fff4da;
+		background: var(--token-color, #85613a);
+		font-weight: 850;
+	}
+	.initiative-portrait {
+		width: clamp(1.45rem, 3.4vw, 3.35rem);
+		aspect-ratio: 1;
+		box-shadow: 0 2px 10px #0009;
+		transition:
+			border-color 220ms ease,
+			box-shadow 220ms ease;
+	}
+	.initiative-portrait img,
+	.active-character-card > img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.initiative-entry.active .initiative-portrait {
+		border-color: #f1ca78;
+		box-shadow:
+			0 0 0 3px #f1ca7866,
+			0 0 24px #e4af4a99;
+	}
+	.turn-label {
+		position: absolute;
+		bottom: -0.8rem;
+		padding: 0.08rem 0.3rem;
+		border-radius: 999px;
+		font-size: clamp(0.38rem, 0.48vw, 0.52rem);
+		font-weight: 900;
+		white-space: nowrap;
+	}
+	.turn-label.current {
+		color: #23190b;
+		background: #e9bf69;
+	}
+	.turn-label.next {
+		color: #e3d7f9;
+		background: #504464;
+	}
+	.host-camera,
+	.player-camera,
+	.livekit-camera {
+		position: absolute;
+		box-sizing: border-box;
+		z-index: 45;
+		display: grid;
+		align-content: end;
+		gap: 0.12rem;
+		color: #f5d38c;
+		font-size: clamp(0.45rem, 0.75vw, 0.76rem);
+		text-align: center;
+		text-shadow: 0 1px 3px #000;
+	}
+	.host-camera {
+		z-index: 50;
+	}
+	.camera-frame {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		border: 1px solid #d8ad67a8;
+		border-radius: clamp(4px, 0.6vw, 10px);
+		background: #0b090de8;
+		box-shadow: 0 5px 18px #0008;
+	}
+	.camera-frame iframe {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border: 0;
+		pointer-events: auto;
+	}
+	.camera-card strong {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.camera-card small {
+		color: #d6c7b4;
+	}
+	.active-character-card {
+		position: absolute;
+		z-index: 22;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: clamp(0.25rem, 0.8vw, 0.75rem);
+		padding: clamp(0.5rem, 1.3vw, 1.25rem);
+		border: 1px solid #d8ad6780;
+		border-radius: clamp(8px, 1vw, 16px);
+		color: #fff0d3;
+		background: linear-gradient(160deg, #211a20e8, #0f0c11eb);
+		box-shadow: 0 12px 32px #0009;
+		backdrop-filter: blur(8px);
+		text-align: center;
+	}
+	.active-character-card .eyebrow {
+		color: #e8c477;
+		font-size: clamp(0.48rem, 0.68vw, 0.72rem);
+		font-weight: 850;
+		letter-spacing: 0.16em;
+	}
+	.active-character-card > img,
+	.active-fallback {
+		width: min(48%, 8rem);
+		aspect-ratio: 1;
+		border: 2px solid #e9bf69;
+		border-radius: 50%;
+		box-shadow: 0 0 22px #d7a9475c;
+	}
+	.active-character-card h2 {
+		max-width: 100%;
+		margin: 0;
+		overflow-wrap: anywhere;
+		font:
+			600 clamp(0.72rem, 1.35vw, 1.35rem)/1.15 Georgia,
+			serif;
+	}
+	.character-classline {
+		max-width: 100%;
+		margin: 0;
+		color: #d8c6a6;
+		font-size: clamp(0.5rem, 0.82vw, 0.82rem);
+		line-height: 1.25;
+	}
+	.character-stats {
+		width: 100%;
+		display: grid;
+		gap: 0.35rem;
+	}
+	.character-stats span {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.4rem;
+		padding-top: 0.3rem;
+		border-top: 1px solid #d8ad6733;
+		font-size: clamp(0.55rem, 0.9vw, 0.88rem);
+	}
+	.character-stats small {
+		color: #c1ad8a;
+		font-size: 0.75em;
+		letter-spacing: 0.07em;
+	}
+	.dice-layer {
+		position: absolute;
+		z-index: 30;
+		isolation: isolate;
+		overflow: visible;
+		pointer-events: none;
+	}
+	.dice-layer :global(.dice-box-3d) {
+		z-index: 1;
+	}
+	.dice-layer :global(.dice-overlay) {
+		z-index: 2;
+		width: min(90%, 44rem);
+		grid-template-columns: repeat(auto-fit, minmax(min(7rem, 40%), 1fr));
+	}
+	.dice-layer :global(.dice-error) {
+		z-index: 4;
+		width: max-content;
+		max-width: 95%;
+		font-size: clamp(0.55rem, 0.85vw, 0.85rem);
+	}
+	.livekit-camera {
+		z-index: 45;
+	}
+	.overlay-auth {
+		position: absolute;
+		z-index: 10001;
+		inset: 0;
+		display: grid;
+		place-content: center;
+		justify-items: center;
+		gap: 1rem;
+		background: #09070be8;
+		text-align: center;
+	}
+	.overlay-error,
+	.overlay-loading {
+		position: absolute;
+		z-index: 10001;
+		inset: 0;
+		display: grid;
+		place-content: center;
+		margin: 0;
+		color: #ead8b7;
+		background: #09070be8;
+		text-align: center;
+	}
+	.overlay-auth button,
+	.audio-enable {
+		border: 1px solid #d8ad67;
+		border-radius: 999px;
+		padding: 0.65rem 1rem;
+		color: #2a1b0e;
+		background: #e0b86f;
+		font: inherit;
+		font-weight: 800;
+		cursor: pointer;
+	}
+	.audio-enable {
+		position: absolute;
+		z-index: 100;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		font-size: clamp(0.65rem, 1vw, 0.9rem);
 	}
 	.overlay-presentation {
 		position: fixed;
@@ -584,6 +1013,7 @@
 		padding: 3rem;
 		background: #000d;
 		backdrop-filter: blur(3px);
+		pointer-events: auto;
 	}
 	.overlay-presentation img {
 		display: block;
@@ -623,235 +1053,48 @@
 		color: #f7eedf;
 		background: #171417;
 		font-size: 1.5rem;
+		pointer-events: auto;
 	}
 	.layout-hidden {
 		display: none !important;
 	}
 	.layout-positioned {
-		position: absolute !important;
 		left: var(--overlay-x, 0%);
 		top: var(--overlay-y, 0%);
 		width: var(--overlay-width, auto);
 		min-height: var(--overlay-height, auto);
-		transform: none;
 		color: var(--overlay-color, inherit);
 		font-size: var(--overlay-font, inherit);
 		opacity: var(--overlay-opacity, 1);
-		box-sizing: border-box;
-		border: var(--overlay-border-width, 0) solid var(--overlay-border, transparent);
+		border-color: var(--overlay-border, transparent);
+		border-width: var(--overlay-border-width, 0);
 		box-shadow: var(--overlay-shadow, none);
 	}
-	.overlay-header {
-		position: relative;
-		z-index: 50;
-	}
-	.map-preview {
-		position: relative;
-		isolation: isolate;
-		z-index: 20;
-		width: min(1100px, 100%);
-		height: min(60dvh, 680px);
-		margin: 0 auto;
-		border: 1px solid #d8ad6755;
-		border-radius: 10px;
-		background-color: #151019;
-		background-position: center;
-		background-size: cover;
-		overflow: hidden;
-	}
-	.map-grid {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		background-image:
-			linear-gradient(#d8ad6733 1px, transparent 1px),
-			linear-gradient(90deg, #d8ad6733 1px, transparent 1px);
-		background-size: var(--grid-size) var(--grid-size);
-	}
-	.map-token {
-		position: absolute;
-		z-index: 1;
-		display: grid;
-		place-items: center;
-		border: 2px solid #f7dfaa;
-		border-radius: 50%;
-		color: #fff4da;
-		font-weight: 800;
-		text-shadow: 0 1px 3px #000;
-		box-shadow: 0 3px 10px #000b;
-	}
-	.overlay-header {
-		display: flex;
-		align-items: end;
-		justify-content: space-between;
-		gap: 1rem;
-		max-width: 1100px;
-		margin: 0 auto;
-		padding: 0.8rem 1rem;
-		border-left: 3px solid #e0b86f;
-		background: #120f14cc;
-		box-shadow: 0 12px 30px #0007;
-	}
-	.overlay-header span {
-		color: #e0b86f;
-		font-size: 0.66rem;
-		font-weight: 800;
-		letter-spacing: 0.2em;
-	}
-	h1 {
-		margin: 0.2rem 0 0;
-		font:
-			500 clamp(1.4rem, 3vw, 2.4rem)/1 Georgia,
-			serif;
-	}
-	.overlay-header small {
-		color: #c4b6a5;
-		font-size: 0.72rem;
-	}
-	.token-strip,
-	.roll-feed {
-		position: relative;
-		z-index: 30;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.55rem;
-		max-width: 1100px;
-		margin: 0.8rem auto 0;
-	}
-	.token-card,
-	.roll-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.4rem 0.6rem;
-		border: 1px solid #d8ad6744;
-		border-radius: 8px;
-		background: #171219dd;
-		backdrop-filter: blur(8px);
-	}
-	.token-card img,
-	.token-fallback {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 50%;
-		object-fit: cover;
-	}
-	.token-fallback {
-		display: grid;
-		place-items: center;
-		color: #2a1b0e;
-		background: #e0b86f;
-		font-weight: 800;
-	}
-	.token-card strong {
-		display: block;
-		font-size: 0.74rem;
-	}
-	.token-card small,
-	.roll-item small {
-		display: block;
-		color: #b9aa9b;
-		font-size: 0.62rem;
-	}
-	.roll-feed {
-		justify-content: end;
-		z-index: 60;
-	}
-	.roll-item {
-		min-width: 7.5rem;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	.roll-item strong {
-		color: #f0cb85;
-		font-size: 1.2rem;
-	}
-	.audio-enable {
-		display: block;
-		margin: 0.7rem auto;
-		border: 1px solid #d8ad67;
-		border-radius: 999px;
-		padding: 0.45rem 0.8rem;
-		color: #2a1b0e;
-		background: #e0b86f;
-		font-size: 0.7rem;
-		font-weight: 800;
-		cursor: pointer;
-	}
-	.camera-grid {
-		position: relative;
-		z-index: 10;
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.6rem;
-		max-width: 1100px;
-		margin: 0.8rem auto 0;
-	}
-	.camera-grid > .camera-card.layout-positioned {
-		position: absolute;
-		margin: 0;
-		max-width: none;
-	}
-	.camera-grid iframe {
-		width: 100%;
-		aspect-ratio: 16 / 9;
-		border: 1px solid #d8ad6744;
-		border-radius: 8px;
-		background: #0c0a0fdd;
-	}
-	.camera-card {
-		display: grid;
-		gap: 0.25rem;
-		color: #f0cb85;
-		font-size: 0.72rem;
-	}
-	.camera-card small {
-		color: #cdbda9;
-	}
-	.overlay-error,
-	.overlay-loading {
-		display: grid;
-		min-height: 80dvh;
-		place-items: center;
-		margin: 0;
-		color: #ead8b7;
-		text-align: center;
-	}
-	.overlay-auth {
-		display: grid;
-		place-items: center;
-		align-content: center;
-		gap: 1rem;
-		min-height: 100dvh;
-		text-align: center;
-	}
-	.overlay-auth button {
-		padding: 0.7rem 1.1rem;
-		border: 1px solid #d8ad67;
-		border-radius: 8px;
-		color: #1b1514;
-		background: #d8ad67;
-		font-weight: 700;
-		cursor: pointer;
-	}
-	@media (max-width: 900px) {
-		.camera-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+	@keyframes turn-slide {
+		from {
+			transform: translateX(0.5rem) translateY(-0.12rem) scale(1.02);
+		}
+		to {
+			transform: translateX(0) translateY(-0.12rem) scale(1.1);
 		}
 	}
-	@media (max-width: 600px) {
-		.live-overlay {
-			padding: 0.75rem;
+	@media (max-width: 700px) {
+		.initiative-bar {
+			gap: 0.25rem;
+			padding: 0.2rem 0.35rem;
 		}
-		.overlay-header {
-			align-items: start;
-			flex-direction: column;
+		.initiative-title {
+			font-size: 0.42rem;
+			letter-spacing: 0.04em;
 		}
-		.roll-feed {
-			justify-content: start;
+		.initiative-entry {
+			min-width: 2.2rem;
 		}
-		.camera-grid {
-			grid-template-columns: 1fr;
+		.initiative-entry strong {
+			max-width: 2.5rem;
+		}
+		.active-character-card {
+			padding: 0.35rem;
 		}
 	}
 </style>

@@ -42,60 +42,76 @@
 		livekitToken: '',
 		blocks: [
 			{
-				id: 'header',
-				label: 'Cabeçalho',
-				x: 4,
-				y: 4,
-				width: 42,
-				height: 10,
-				fontSize: 1,
-				color: '#f0e0c8',
-				opacity: 100,
-				borderColor: '#d8ad67',
-				borderWidth: 1,
-				shadow: true,
-				visible: true,
-				locked: false
-			},
-			{
-				id: 'map',
-				label: 'Mapa e tokens',
-				x: 4,
-				y: 16,
-				width: 68,
-				height: 58,
-				fontSize: 1,
-				color: '#f0e0c8',
-				opacity: 100,
-				borderColor: '#d8ad67',
-				borderWidth: 1,
-				shadow: true,
-				visible: true,
-				locked: false
-			},
-			{
-				id: 'cameras',
-				label: 'Área das câmeras',
-				x: 2,
-				y: 76,
-				width: 96,
-				height: 22,
-				fontSize: 1,
-				color: '#f0e0c8',
-				opacity: 100,
-				borderColor: '#d8ad67',
-				borderWidth: 1,
-				shadow: true,
-				visible: true,
-				locked: false
-			},
-			...Array.from({ length: 6 }, (_, index) => ({
-				id: 'camera-' + (index + 1),
-				label: 'Câmera ' + (index + 1),
-				x: 4 + (index % 3) * 23,
-				y: 78 + Math.floor(index / 3) * 18,
-				width: 20,
+				id: 'initiative',
+				label: 'Barra de iniciativa',
+				x: 50,
+				y: 7,
+				width: 94,
 				height: 15,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'host-camera',
+				label: 'Câmera do narrador',
+				x: 11,
+				y: 17,
+				width: 20,
+				height: 23,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'active-character',
+				label: 'Ficha do turno',
+				x: 87,
+				y: 49,
+				width: 23,
+				height: 43,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			{
+				id: 'dice',
+				label: 'Dados 3D',
+				x: 50,
+				y: 57,
+				width: 36,
+				height: 52,
+				fontSize: 1,
+				color: '#f0e0c8',
+				opacity: 100,
+				borderColor: '#d8ad67',
+				borderWidth: 1,
+				shadow: true,
+				visible: true,
+				locked: false
+			},
+			...Array.from({ length: 5 }, (_, index) => ({
+				id: 'camera-' + (index + 1),
+				label: 'Câmera de jogador ' + (index + 1),
+				x: 10 + index * 20,
+				y: 88,
+				width: 18,
+				height: 19,
 				fontSize: 0.8,
 				color: '#f0e0c8',
 				opacity: 100,
@@ -104,23 +120,7 @@
 				shadow: true,
 				visible: true,
 				locked: false
-			})),
-			{
-				id: 'rolls',
-				label: 'Rolagens',
-				x: 76,
-				y: 16,
-				width: 20,
-				height: 58,
-				fontSize: 1,
-				color: '#f0e0c8',
-				opacity: 100,
-				borderColor: '#d8ad67',
-				borderWidth: 1,
-				shadow: true,
-				visible: true,
-				locked: false
-			}
+			}))
 		]
 	});
 	let layout = $state<Layout>(defaults());
@@ -310,13 +310,15 @@
 		if (!item || item.locked || !workspace) return;
 		const rect = workspace.getBoundingClientRect();
 		const move = (moveEvent: PointerEvent) => {
+			const itemLeft = item.x - item.width / 2;
+			const itemTop = item.y - item.height / 2;
 			item.width = Math.max(
 				8,
-				Math.min(96, ((moveEvent.clientX - rect.left) / rect.width) * 100 - item.x)
+				Math.min(96, ((moveEvent.clientX - rect.left) / rect.width) * 100 - itemLeft)
 			);
 			item.height = Math.max(
 				6,
-				Math.min(96, ((moveEvent.clientY - rect.top) / rect.height) * 100 - item.y)
+				Math.min(96, ((moveEvent.clientY - rect.top) / rect.height) * 100 - itemTop)
 			);
 			layout.blocks = [...layout.blocks];
 		};
@@ -342,8 +344,24 @@
 					? 100
 					: field === 'width' || field === 'height'
 						? 100
-						: 94;
-		item[field] = Math.max(field === 'fontSize' ? 0.5 : 0, Math.min(max, number));
+						: field === 'x'
+							? 100 - item.width / 2
+							: field === 'y'
+								? 100 - item.height / 2
+								: 100;
+		const min =
+			field === 'fontSize'
+				? 0.5
+				: field === 'width'
+					? 8
+					: field === 'height'
+						? 6
+						: field === 'x'
+							? item.width / 2
+							: field === 'y'
+								? item.height / 2
+								: 0;
+		item[field] = Math.max(min, Math.min(max, number));
 		layout.blocks = [...layout.blocks];
 	}
 	async function save() {
@@ -413,6 +431,11 @@
 		}
 		status = 'Faça login para enviar o fundo da overlay.';
 	}
+	function useTransparentBackground() {
+		layout.background = '';
+		backgroundPreview = '';
+		status = 'Fundo transparente selecionado. Salve para aplicar.';
+	}
 </script>
 
 <section class="overlay-editor" aria-label="Editor visual da overlay">
@@ -446,11 +469,22 @@
 			disabled={Object.keys(profiles).length <= 1}>Excluir</button
 		>
 	</div>
-	<p class="hint">Arraste os blocos no quadro. Cada cena possui uma configuração independente.</p>
+	<p class="hint">
+		Arraste e redimensione os elementos. A câmera do narrador fica sobre a iniciativa; as câmeras
+		dos jogadores ficam na base, à frente dos dados. Sem imagem de fundo, a overlay fica
+		transparente para usar o cenário do OBS.
+	</p>
 	<label class="snap-toggle"
 		><input type="checkbox" bind:checked={snapToGrid} /> Alinhar à grade</label
 	>
-	<label class="upload">Fundo <input type="file" accept="image/*" onchange={upload} /></label>
+	<div class="background-controls">
+		<strong>Fundo da overlay</strong>
+		<span>{layout.background ? 'Imagem da campanha' : 'Transparente — usar o fundo do OBS'}</span>
+		<label class="upload"
+			>Escolher imagem <input type="file" accept="image/*" onchange={upload} /></label
+		>
+		<button class="secondary-button" onclick={useTransparentBackground}>Usar transparente</button>
+	</div>
 	<div class="livekit-fields">
 		<label>LiveKit URL<input bind:value={layout.livekitUrl} placeholder="wss://..." /></label><label
 			>Sala<input bind:value={layout.livekitRoom} placeholder="mesa-1" /></label
@@ -470,6 +504,9 @@
 		ondrop={drop}
 		style:background-image={backgroundPreview ? `url(${backgroundPreview})` : undefined}
 	>
+		{#if !backgroundPreview}<span class="transparent-hint"
+				>TRANSPARÊNCIA · FUNDO DEFINIDO NO OBS</span
+			>{/if}
 		{#each layout.blocks as block (block.id)}<button
 				class="block"
 				class:selected={selectedId === block.id}
@@ -745,6 +782,21 @@
 		color: #d8c9b9;
 		font-size: 0.75rem;
 	}
+	.background-controls {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0.35rem 0 0.8rem;
+		color: #c4b6a5;
+		font-size: 0.72rem;
+	}
+	.background-controls strong {
+		color: #f0e0c8;
+	}
+	.background-controls .upload {
+		margin: 0;
+	}
 	.livekit-fields {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -777,8 +829,29 @@
 		border: 1px dashed #806039;
 		border-radius: 10px;
 		background-color: #151019;
+		background-image:
+			linear-gradient(45deg, #201a23 25%, transparent 25%),
+			linear-gradient(-45deg, #201a23 25%, transparent 25%),
+			linear-gradient(45deg, transparent 75%, #201a23 75%),
+			linear-gradient(-45deg, transparent 75%, #201a23 75%);
+		background-position:
+			0 0,
+			0 8px,
+			8px -8px,
+			-8px 0;
+		background-size: 16px 16px;
 		background-position: center;
 		background-size: cover;
+	}
+	.transparent-hint {
+		position: absolute;
+		inset: 50% auto auto 50%;
+		transform: translate(-50%, -50%);
+		color: #a99c91;
+		font-size: clamp(0.55rem, 1vw, 0.8rem);
+		font-weight: 800;
+		letter-spacing: 0.13em;
+		pointer-events: none;
 	}
 	.block {
 		position: absolute;
