@@ -1,6 +1,6 @@
-<!-- eslint-disable svelte/require-each-key -- some editable sheet arrays are positional by design. -->
+<!-- eslint-disable svelte/require-each-key -- some editable sheet controls preserve positional identity. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key, @typescript-eslint/no-unused-vars */
+	/* eslint-disable svelte/require-each-key -- controls represent positional form slots. */
 	import { onMount } from 'svelte';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
@@ -1251,7 +1251,7 @@
 			message = error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
 		}
 	}
-	const rollSkill = (name: string, _ability: keyof Sheet['abilityScores']) =>
+	const rollSkill = (name: string) =>
 		rollAuthorized(
 			'skill',
 			name,
@@ -1700,8 +1700,6 @@
 	}
 	const calculatedArmorClass = () =>
 		calculateArmorClass(sheet.abilityScores, sheet.class, sheet.inventory);
-	const equippedDefense = () =>
-		calculatedArmorClass() - (10 + modifier(sheet.abilityScores.dexterity));
 	$effect(() => {
 		const armorClass = calculatedArmorClass();
 		if (sheet.armorClass !== armorClass) sheet.armorClass = armorClass;
@@ -1828,21 +1826,6 @@
 			rollingAttack = null;
 			rollingAttackAction = null;
 		}
-	}
-	function spellcastingAbility() {
-		const ability = (
-			{
-				bard: 'charisma',
-				cleric: 'wisdom',
-				druid: 'wisdom',
-				paladin: 'charisma',
-				ranger: 'wisdom',
-				sorcerer: 'charisma',
-				warlock: 'charisma',
-				wizard: 'intelligence'
-			} as Record<string, keyof Sheet['abilityScores']>
-		)[canonicalClass(sheet.class)];
-		return ability ?? 'intelligence';
 	}
 	async function rollSpellDamage(spell: Sheet['spells'][number]) {
 		const expression = spell.diceFormula?.trim();
@@ -2485,7 +2468,7 @@
 											: `Escolha ${expertiseChoices()} perícia${expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.`}
 									</p>
 									<div>
-										{#each Array(expertiseChoices()) as _, index}<label
+										{#each [...Array(expertiseChoices()).keys()] as index (index)}<label
 												>{$appLocale === 'en'
 													? `Expertise ${index + 1}`
 													: `Especialização ${index + 1}`}<select
@@ -3115,7 +3098,7 @@
 										>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong
 									><button
 										class="skill-roll"
-										onclick={() => void rollSkill(name, ability)}
+										onclick={() => void rollSkill(name)}
 										aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}
 										>⚄</button
 									>
