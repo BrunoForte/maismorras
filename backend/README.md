@@ -71,7 +71,7 @@ O broker só recebe eventos minimizados depois da validação de autorização. 
 - Investigue se o listener alterna repetidamente entre conexão/falha ou se `retry_ms` chega ao teto de 30 s; confira disponibilidade do Supabase, senha/host/porta da URL dedicada e se a conexão usa modo sessão/direct.
 - `broker_mode`, `origin_instance_id`, `scene_id`, `event_id` e `outcome` permitem seguir a publicação sem expor tokens. `local_peer_count` aparece somente em logs `DEBUG` e não inclui dados pessoais; para habilitá-lo temporariamente, configure `LOG_LEVEL=debug` no serviço e retorne a `info` após o diagnóstico.
 - Uma indisponibilidade do broker não derruba o Cloud Run, mas clientes conectados a instâncias diferentes podem ficar temporariamente divergentes; após reconexão, o frontend invalida uma vez a cena compartilhada e carrega novamente a fonte de verdade REST.
-- O teste opcional de integração PostgreSQL usa `REALTIME_TEST_DATABASE_URL` (conexão 5432 compatível) para validar `pg_notify` entre conexões independentes. Ele não altera tabelas e pode ser omitido no fluxo unitário.
+- Os testes de integração PostgreSQL usam `REALTIME_TEST_DATABASE_URL` para validar `pg_notify` entre conexões independentes e o fan-out entre dois hubs/listeners, incluindo cancelamento e ausência de eco. Eles não alteram tabelas. O CI executa o teste de fan-out contra o Postgres local iniciado pelo Supabase CLI (`127.0.0.1:54322`); localmente, sem essa variável, os testes de integração são ignorados.
 
 ## Docker
 

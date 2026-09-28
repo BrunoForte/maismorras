@@ -69,6 +69,17 @@ jobs:
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase test db
+      - name: Configure Go for realtime integration test
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: Test realtime fanout between independent API instances
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: go test ./internal/realtime -run '^TestPostgresBrokerFanoutAcrossIndependentInstances$' -count=1
       - if: always()
         run: supabase stop --no-backup
   e2e:

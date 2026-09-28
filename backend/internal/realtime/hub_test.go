@@ -129,6 +129,27 @@ func TestPostgresListenURLRequiresPersistentSessionConnection(t *testing.T) {
 	}
 }
 
+func TestLocalSupabaseTestURLIsRestrictedToLoopbackPort(t *testing.T) {
+	for _, value := range []string{
+		"postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+		"postgres://postgres:postgres@localhost:54322/postgres",
+		"postgres://postgres:postgres@[::1]:54322/postgres",
+	} {
+		if !isLocalSupabaseTestURL(value) {
+			t.Errorf("expected local Supabase test URL to be accepted: %s", value)
+		}
+	}
+	for _, value := range []string{
+		"postgres://postgres:postgres@db.example.com:54322/postgres",
+		"postgres://postgres:postgres@127.0.0.1:5432/postgres",
+		"https://127.0.0.1:54322/postgres",
+	} {
+		if isLocalSupabaseTestURL(value) {
+			t.Errorf("expected non-local or unsupported test URL to be rejected: %s", value)
+		}
+	}
+}
+
 func TestOversizedRealtimeEventFallsBackToRefresh(t *testing.T) {
 	got := boundedRealtimePayload([]byte(`{"type":"overlay.layout.updated","data":"` + strings.Repeat("x", maxRealtimePayloadBytes+1) + `"}`))
 	if string(got) != `{"type":"scene.refresh"}` {
