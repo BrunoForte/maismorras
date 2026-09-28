@@ -3,6 +3,8 @@ package library
 import (
 	"reflect"
 	"testing"
+
+	"vtt-backend/internal/audience"
 )
 
 func TestNormalizePermissionSelection(t *testing.T) {
@@ -25,6 +27,18 @@ func TestNormalizePermissionSelection(t *testing.T) {
 				t.Fatalf("normalizePermissionSelection() = (%v, %#v), want (%v, %#v)", restricted, users, tt.wantOnly, tt.wantUsers)
 			}
 		})
+	}
+}
+
+func TestPermissionPolicyMapsLegacyStorageToGenericAudienceModes(t *testing.T) {
+	if got := permissionPolicy(false, []string{"stale-player"}); got.Mode != audience.ModeAll || !got.Allows("any-player") {
+		t.Fatalf("unrestricted permission rows should mean all players, got %#v", got)
+	}
+	if got := permissionPolicy(true, nil); got.Mode != audience.ModeNone || got.Allows("any-player") {
+		t.Fatalf("restricted empty selection should mean nobody, got %#v", got)
+	}
+	if got := permissionPolicy(true, []string{"player-a"}); got.Mode != audience.ModeSelected || !got.Allows("player-a") || got.Allows("player-b") {
+		t.Fatalf("selected policy should only allow configured players, got %#v", got)
 	}
 }
 

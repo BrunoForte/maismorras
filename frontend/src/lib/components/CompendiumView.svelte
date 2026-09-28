@@ -1,6 +1,4 @@
-<!-- eslint-disable svelte/require-each-key -- select options and imported records can be positional. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -680,10 +678,11 @@
 			</div>
 			<div class="form">
 				<select bind:value={sourceId}
-					>{#each privateSources() as source}<option value={source.id}>{source.title}</option
+					>{#each privateSources() as source (source.id)}<option value={source.id}
+							>{source.title}</option
 						>{/each}</select
 				><select bind:value={entryType}
-					>{#each types as [value]}<option {value}>{typeName(value)}</option>{/each}</select
+					>{#each types as [value] (value)}<option {value}>{typeName(value)}</option>{/each}</select
 				><input
 					bind:value={name}
 					maxlength="120"
@@ -868,7 +867,7 @@
 				placeholder={$appLocale === 'en' ? 'Search by name…' : 'Buscar por nome…'}
 			/><select bind:value={filter} onchange={() => (selectedEntryId = null)}
 				><option value="all">{$appLocale === 'en' ? 'All types' : 'Todos os tipos'}</option
-				>{#each types as [value, label]}<option {value}>{label}</option>{/each}</select
+				>{#each types as [value, label] (value)}<option {value}>{label}</option>{/each}</select
 			>
 			<select
 				bind:value={sortMode}
@@ -888,7 +887,9 @@
 				{$appLocale === 'en' ? 'Loading compendium…' : 'Carregando compêndio…'}
 			</p>{:else if visible().length}<div class="catalog-layout">
 				<div class="catalog-list">
-					{#if filter === 'all'}{#each groupedVisible() as group}<section class="category-group">
+					{#if filter === 'all'}{#each groupedVisible() as group (group.label)}<section
+								class="category-group"
+							>
 								<h4>{group.label} <small>{group.entries.length}</small></h4>
 								<div class="entry-grid">
 									{#each group.entries as entry (entry.id)}<button
@@ -979,13 +980,13 @@
 										: 'Copiar para a mesa e vincular imagem'}</button
 								>{/if}
 							{#if detail.abilities}<div class="rules">
-									{#each Object.entries(detail.abilities as Record<string, unknown>) as [ability, score]}<b
+									{#each Object.entries(detail.abilities as Record<string, unknown>) as [ability, score] (ability)}<b
 											>{ability.slice(0, 3).toUpperCase()} {String(score)}</b
 										>{/each}
 								</div>{/if}{#if Array.isArray(detail.actions) && detail.actions.length}<h4>
 									{$appLocale === 'en' ? 'Actions' : 'Ações'}
 								</h4>
-								{#each detail.actions as action, index}<div class="action-card">
+								{#each detail.actions as action, index (index)}<div class="action-card">
 										<strong
 											>{displayAction(
 												entry,

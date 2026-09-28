@@ -81,6 +81,8 @@
 
 {#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
 	<DiceBox3DComponent {viewport} />
+{:else if $diceRendererEffective !== '2d' && $activeDiceRolls.length}
+	<div class="dice-loading" role="status" aria-live="polite">Carregando dados 3D…</div>
 {/if}
 {#if $diceRendererError}
 	<div class="dice-error" role="status">
@@ -139,6 +141,18 @@
 		color: #fff1e8;
 		background: rgba(48, 25, 24, 0.96);
 		box-shadow: 0 8px 24px #0008;
+		font-size: 0.8rem;
+	}
+	.dice-loading {
+		position: fixed;
+		z-index: 120;
+		inset: 1rem auto auto 50%;
+		transform: translateX(-50%);
+		padding: 0.45rem 0.75rem;
+		border: 1px solid rgba(216, 173, 103, 0.55);
+		border-radius: 0.5rem;
+		background: rgba(24, 20, 22, 0.94);
+		color: #f2d49a;
 		font-size: 0.8rem;
 	}
 	.dice-error button {

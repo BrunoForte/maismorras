@@ -1,6 +1,4 @@
-<!-- eslint-disable svelte/require-each-key -- some editable sheet controls preserve positional identity. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key -- controls represent positional form slots. */
 	import { onMount } from 'svelte';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
@@ -8,6 +6,7 @@
 		createEmptySheet,
 		getCharacterForGM,
 		getMyCharacter,
+		restCharacter,
 		rollMyCharacter,
 		setCharacterInitiativeAdvantage,
 		castMySpell,
@@ -44,9 +43,9 @@
 	import {
 		classData,
 		classFeatures,
+		classSavingThrows,
 		canonicalClass as progressionClass,
 		defaultResources,
-		recoverResourcesOnRest,
 		syncResourceMaxima,
 		isClassProgressionFeature,
 		spellSlots
@@ -56,6 +55,18 @@
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 	import { hasWeaponProficiency, hasWeaponProficiencyInText } from '$lib/utils/weaponProficiency';
 	import { cloneInventoryRules } from '$lib/utils/inventoryRules';
+	import CharacterSkillsTab from '$lib/components/character/CharacterSkillsTab.svelte';
+	import CharacterSavingThrows from '$lib/components/character/CharacterSavingThrows.svelte';
+	import {
+		equipmentCategory,
+		itemWeight,
+		modifierText,
+		weaponAbility,
+		weaponItemBonus,
+		weaponRange,
+		weaponRangeFromText,
+		type InventoryCategory
+	} from '$lib/utils/characterEquipment';
 
 	let {
 		campaignId,
@@ -98,7 +109,7 @@
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
 		'profile'
 	);
-	let inventoryFilter = $state<'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear'>('all');
+	let inventoryFilter = $state<InventoryCategory>('all');
 	let rollingWeaponAction = $state<string | null>(null);
 	let lastCriticalWeapon = $state<string | null>(null);
 	let rollingAttack = $state<number | null>(null);
@@ -238,23 +249,6 @@
 				]
 		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
-	const classHitDice: Record<string, string> = Object.fromEntries(
-		Object.entries(classData).map(([name, data]) => [name, data.hitDice])
-	);
-	const classSavingThrows: Record<string, string[]> = {
-		barbarian: ['strength', 'constitution'],
-		bard: ['dexterity', 'charisma'],
-		cleric: ['wisdom', 'charisma'],
-		druid: ['intelligence', 'wisdom'],
-		fighter: ['strength', 'constitution'],
-		monk: ['strength', 'dexterity'],
-		paladin: ['wisdom', 'charisma'],
-		ranger: ['strength', 'dexterity'],
-		rogue: ['dexterity', 'intelligence'],
-		sorcerer: ['constitution', 'charisma'],
-		warlock: ['wisdom', 'charisma'],
-		wizard: ['intelligence', 'wisdom']
-	};
 	type SpeciesProfile = {
 		label: string;
 		speed: number;
@@ -556,7 +550,7 @@
 		presentationSocket = connectSceneSocket(
 			session,
 			sceneId,
-			() => {},
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -709,25 +703,6 @@
 			? entry.translations['pt-BR']
 			: entry.name;
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
-	function equipmentCategory(item: { name: string; rules: Record<string, unknown> }) {
-		const category = String(item.rules.category ?? '');
-		if (['weapon', 'armor', 'consumable', 'tool', 'gear'].includes(category))
-			return category as typeof inventoryFilter;
-		const catalog = String(item.rules.catalog ?? '').toLowerCase();
-		if (catalog === 'weapons' || item.rules.damage) return 'weapon';
-		if (catalog === 'armor' || item.rules.ac || item.rules.armorClass) return 'armor';
-		const name = item.name.toLowerCase();
-		if (/armor|mail|plate|shield|couro|armadura|escudo/.test(name)) return 'armor';
-		if (/potion|acid|fire|ration|po[cç][aã]o|ra[cç][oõ]es/.test(name)) return 'consumable';
-		if (/tools|supplies|kit|instrument|ferramentas|suprimentos/.test(name)) return 'tool';
-		if (
-			/sword|axe|bow|crossbow|dagger|club|mace|spear|hammer|rapier|weapon|espada|arco|besta|adaga|ma[cç]a|lan[cç]a|martelo/.test(
-				name
-			)
-		)
-			return 'weapon';
-		return 'gear';
-	}
 	const itemEntries = () =>
 		compendiumEntries.filter(
 			(entry) =>
@@ -742,37 +717,8 @@
 			(item) => inventoryFilter === 'all' || equipmentCategory(item) === inventoryFilter
 		);
 	const itemLabel = (item: InventoryItem) => item.name;
-	const itemWeight = (item: InventoryItem) => {
-		const weight = Number.parseFloat(String(item.rules.weight ?? 0));
-		return Number.isFinite(weight)
-			? Math.max(0, weight) * Math.max(0, Number(item.quantity) || 0)
-			: 0;
-	};
 	const totalInventoryWeight = () =>
 		sheet.inventory.reduce((total, item) => total + itemWeight(item), 0);
-	const weaponRange = (item: InventoryItem): 'melee' | 'ranged' => {
-		const type = `${String(item.rules.attackType ?? '')} ${String(item.rules.category ?? '')} ${String(item.rules.range ?? '')}`;
-		return /ranged|à distância|distancia|arco|besta|zarabatana/i.test(`${type} ${item.name}`)
-			? 'ranged'
-			: 'melee';
-	};
-	const weaponAbility = (item: InventoryItem) => {
-		const value = String(item.rules.attackAbility ?? '');
-		return attributes.some((attribute) => attribute.key === value)
-			? (value as keyof Sheet['abilityScores'])
-			: weaponRange(item) === 'ranged'
-				? 'dexterity'
-				: 'strength';
-	};
-	const weaponItemBonus = (item: InventoryItem) => {
-		const bonus = Number(item.rules.bonus) || 0;
-		const enchantment = Number(item.rules.enchantmentBonus) || 0;
-		if (item.rules.bonus !== undefined || item.rules.enchantmentBonus !== undefined)
-			return bonus + enchantment;
-		const description = `${String(item.rules.description ?? '')} ${String(item.rules.summary ?? '')}`;
-		const match = description.match(/\+(\d+)\s+bonus to attack rolls? and damage rolls?/i);
-		return match ? Number(match[1]) : 0;
-	};
 	const weaponProficiencyStatus = (item: InventoryItem) => {
 		if (typeof item.rules.proficient === 'boolean') return item.rules.proficient;
 		const rules = compendiumClass()?.rules ?? {};
@@ -811,11 +757,6 @@
 		const damageBonus = damage ? Number(damage[1]) : 0;
 		return attackBonus || damageBonus ? { key, name, attackBonus, damageBonus } : null;
 	};
-	function weaponRangeFromText(text: string): 'melee' | 'ranged' | null {
-		if (/ranged weapons?|à distância/i.test(text)) return 'ranged';
-		if (/melee weapons?|corpo a corpo/i.test(text)) return 'melee';
-		return null;
-	}
 	const weaponEffects = (item: InventoryItem): WeaponEffect[] => {
 		const range = weaponRange(item);
 		const features = derivedFeatures().map((feature) => ({
@@ -933,7 +874,6 @@
 			damage: effects.reduce((total, effect) => total + effect.damageBonus, 0)
 		};
 	};
-	const modifierText = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
 	function canonicalClass(value: string) {
 		const normalized = value
 			.normalize('NFD')
@@ -966,7 +906,7 @@
 			.toLowerCase()
 			.trim();
 	function onClassChanged() {
-		const hitDice = classHitDice[canonicalClass(sheet.class)];
+		const hitDice = classData[canonicalClass(sheet.class)]?.hitDice;
 		if (hitDice) sheet.hitDice = hitDice;
 		if (!subclassOptions().includes(sheet.subclass)) sheet.subclass = '';
 		syncProgression();
@@ -1165,7 +1105,7 @@
 			.filter((trait) => /resistência a /i.test(trait))
 			.map((trait) => trait.replace(/^.*resistência a /i, '').split(' e ')[0]);
 		sheet.automaticTraits = activeSpeciesTraits();
-		const hitDie = classHitDice[canonicalClass(sheet.class)];
+		const hitDie = classData[canonicalClass(sheet.class)]?.hitDice;
 		if (hitDie) sheet.hitDice = hitDie;
 		if (!Number.isFinite(sheet.initiative))
 			sheet.initiative = modifier(sheet.abilityScores.dexterity);
@@ -1318,58 +1258,47 @@
 		syncTokenSoon();
 	}
 	async function rest(kind: 'short' | 'long') {
-		if (kind === 'short') {
-			const hitDie = sheet.hitDice.match(/^1d(\d+)$/i);
-			if (!hitDie || sheet.hitDiceSpent >= sheet.level) {
-				message =
-					$appLocale === 'en'
-						? 'No hit dice available to recover HP during this rest.'
-						: 'Não há dados de vida disponíveis para recuperar PV neste descanso.';
-				return;
+		if (saving) return;
+		saving = true;
+		const savedRevision = sheetEditRevision;
+		try {
+			const result = await restCharacter(session, campaignId, kind, characterId);
+			if (sheetEditRevision === savedRevision) {
+				sheet = result.sheet;
+			} else {
+				sheet.hitPointsCurrent = result.sheet.hitPointsCurrent;
+				sheet.temporaryHP = result.sheet.temporaryHP;
+				sheet.hitDiceSpent = result.sheet.hitDiceSpent;
+				sheet.resources = result.sheet.resources;
+				sheet.spellSlots = result.sheet.spellSlots;
+				sheet.armorClass = result.sheet.armorClass;
+				sheet.proficiencyBonus = result.sheet.proficiencyBonus;
+				sheet.passivePerception = result.sheet.passivePerception;
 			}
-			try {
-				const event = await rollDice(
-					session,
-					campaignId,
-					`1d${hitDie[1]}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`
-				);
-				const result = event.payload as { dados: number[]; total: number };
-				const constitutionBonus = modifier(sheet.abilityScores.constitution);
-				sheet.hitDiceSpent += 1;
-				sheet.hitPointsCurrent = Math.min(
-					sheet.hitPointsMax,
-					sheet.hitPointsCurrent + result.total
-				);
+			if (kind === 'short') {
 				$diceOverlay = {
-					expression: `${sheet.name || 'Personagem'} · ${$appLocale === 'en' ? 'Hit die' : 'Dado de vida'}`,
-					notation: `1d${hitDie[1]}${constitutionBonus ? `${constitutionBonus >= 0 ? '+' : ''}${constitutionBonus}` : ''}`,
-					total: result.total,
-					dice: result.dados
+					expression: result.label ?? `${sheet.name || 'Personagem'} · Dado de vida`,
+					notation: `${sheet.hitDice}${result.modificador ? `${result.modificador > 0 ? '+' : ''}${result.modificador}` : ''}`,
+					total: result.total ?? 0,
+					dice: result.dados ?? []
 				};
-			} catch {
-				message =
-					$appLocale === 'en'
-						? 'Could not roll the hit die.'
-						: 'Não foi possível rolar o dado de vida.';
-				return;
+				sceneSocketPublishChat();
+			}
+			message =
+				kind === 'long'
+					? 'Descanso longo aplicado: PV, recursos e espaços restaurados.'
+					: 'Descanso curto aplicado: dado de vida e recursos recuperados.';
+			onTokenCreated();
+		} catch (error) {
+			message = error instanceof Error ? error.message : 'Não foi possível aplicar o descanso.';
+		} finally {
+			saving = false;
+			if (saveQueued || sheetEditRevision !== savedRevision) {
+				saveQueued = false;
+				if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
+				tokenSyncTimer = setTimeout(() => void save(), 0);
 			}
 		}
-		sheet.resources = recoverResourcesOnRest(sheet.resources, kind);
-		if (kind === 'short')
-			sheet.spellSlots = sheet.spellSlots.map((slot) =>
-				canonicalClass(sheet.class) === 'warlock' ? { ...slot, current: slot.max } : slot
-			);
-		if (kind === 'long') {
-			sheet.hitPointsCurrent = sheet.hitPointsMax;
-			sheet.temporaryHP = 0;
-			sheet.hitDiceSpent = 0;
-			sheet.spellSlots = sheet.spellSlots.map((slot) => ({ ...slot, current: slot.max }));
-		}
-		message =
-			kind === 'long'
-				? 'Descanso longo aplicado: PV, recursos e espaços restaurados.'
-				: 'Descanso curto aplicado: recursos de descanso curto restaurados.';
-		await save();
 	}
 	const spellEntries = (circle?: number) =>
 		compendiumEntries.filter((entry) => {
@@ -2114,7 +2043,7 @@
 				class="sheet-tabs"
 				aria-label={$appLocale === 'en' ? 'Character sheet sections' : 'Seções da ficha'}
 			>
-				{#each sheetTabs() as [tab, label]}
+				{#each sheetTabs() as [tab, label] (tab)}
 					<button
 						class:active={activeTab === tab}
 						onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button
@@ -2219,7 +2148,8 @@
 									onchange={syncProgression}
 									><option value=""
 										>{$appLocale === 'en' ? 'Choose at level 3…' : 'Escolha no nível 3…'}</option
-									>{#each subclassOptions() as subclass}<option value={subclass}>{subclass}</option
+									>{#each subclassOptions() as subclass (subclass)}<option value={subclass}
+											>{subclass}</option
 										>{/each}</select
 								></label
 							>{/if}
@@ -2253,7 +2183,8 @@
 									onchange={onLineageChanged}
 									><option value=""
 										>{$appLocale === 'en' ? 'Choose an option…' : 'Escolha uma opção…'}</option
-									>{#each lineageOptions() as lineage}<option value={lineage}>{lineage}</option
+									>{#each lineageOptions() as lineage (lineage)}<option value={lineage}
+											>{lineage}</option
 										>{/each}</select
 								></label
 							>
@@ -2372,7 +2303,7 @@
 					<section>
 						<h3>{$appLocale === 'en' ? 'Ability scores' : 'Atributos'}</h3>
 						<div class="abilities">
-							{#each attributes as attribute}<label
+							{#each attributes as attribute (attribute.key)}<label
 									><span>{abilityLabel(attribute.key)}</span><input
 										type="number"
 										min="1"
@@ -2387,48 +2318,16 @@
 								>{/each}
 						</div>
 					</section>
-					<section class="saving-throws">
-						<div class="section-title">
-							<h3>{$appLocale === 'en' ? 'Saving throws' : 'Testes de Salvaguarda'}</h3>
-							<label class="roll-mode"
-								><select bind:value={rollMode} aria-label="Modo de rolagem"
-									><option value="advantage" disabled={hasAttackDisadvantage()}
-										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
-									><option value="normal">Normal</option><option value="disadvantage"
-										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option
-									></select
-								></label
-							>
-						</div>
-						<div>
-							{#each attributes as attribute}<article>
-									<label
-										title={$appLocale === 'en'
-											? `${abilityLabel(attribute.key)} saving throw proficiency`
-											: `Proficiência em resistência de ${abilityLabel(attribute.key)}`}
-										><span>{abilityLabel(attribute.key)}</span><input
-											type="checkbox"
-											checked={sheet.savingThrows.includes(attribute.key)}
-											onchange={() => toggleSavingThrow(attribute.key)}
-										/></label
-									><strong
-										>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong
-									><button
-										onclick={() =>
-											void rollAuthorized(
-												'save',
-												attribute.key,
-												$appLocale === 'en'
-													? `${abilityLabel(attribute.key)} saving throw`
-													: `Salvaguarda de ${abilityLabel(attribute.key)}`
-											)}
-										aria-label={$appLocale === 'en'
-											? `Roll ${abilityLabel(attribute.key)} saving throw`
-											: `Rolar Salvaguarda de ${abilityLabel(attribute.key)}`}>Salvaguarda</button
-									>
-								</article>{/each}
-						</div>
-					</section>
+					<CharacterSavingThrows
+						{sheet}
+						{attributes}
+						{abilityLabel}
+						{saveBonus}
+						{toggleSavingThrow}
+						rollSave={(key, label) => rollAuthorized('save', key, label)}
+						{hasAttackDisadvantage}
+						bind:rollMode
+					/>
 					<div class="passive-perception">
 						<span>{$appLocale === 'en' ? 'Passive Perception' : 'Percepção passiva'}</span><strong
 							class="derived-value">{passivePerception()}</strong
@@ -2478,7 +2377,7 @@
 														>{$appLocale === 'en'
 															? 'Choose a skill…'
 															: 'Escolha uma perícia…'}</option
-													>{#each skills as [name]}<option value={name}>{name}</option
+													>{#each skills as [name] (name)}<option value={name}>{name}</option
 														>{/each}</select
 												></label
 											>{/each}
@@ -2490,9 +2389,9 @@
 					<section class="combat">
 						<h3>{$appLocale === 'en' ? 'Combat' : 'Combate'}</h3>
 						<div class="rest-actions">
-							<button onclick={() => rest('short')}
+							<button disabled={saving} onclick={() => rest('short')}
 								>{$appLocale === 'en' ? 'Short rest' : 'Descanso curto'}</button
-							><button onclick={() => rest('long')}
+							><button disabled={saving} onclick={() => rest('long')}
 								>{$appLocale === 'en' ? 'Long rest' : 'Descanso longo'}</button
 							>
 						</div>
@@ -2529,7 +2428,7 @@
 					</section>
 					{#if sheet.resources.length || grantedSpells().length}<section class="resources">
 							<h3>{$appLocale === 'en' ? 'Resources' : 'Recursos'}</h3>
-							{#each sheet.resources as resource, index}<div>
+							{#each sheet.resources as resource, index (resource.id || index)}<div>
 									<strong>{resource.name}</strong><span
 										>{resource.current}/{resource.max} · {resource.restoreOn === 'short'
 											? $appLocale === 'en'
@@ -2641,7 +2540,7 @@
 															syncTokenSoon();
 														}}
 													>
-														{#each attributes as attribute}
+														{#each attributes as attribute (attribute.key)}
 															<option value={attribute.key}>
 																{abilityLabel(attribute.key)} ({modifierText(
 																	modifier(sheet.abilityScores[attribute.key])
@@ -2787,8 +2686,8 @@
 																>{$appLocale === 'en' ? 'Ability' : 'Atributo'}<select
 																	bind:value={profile.attackAbility}
 																	onchange={syncTokenSoon}
-																	>{#each attributes as attribute}<option value={attribute.key}
-																			>{abilityLabel(attribute.key)}</option
+																	>{#each attributes as attribute (attribute.key)}<option
+																			value={attribute.key}>{abilityLabel(attribute.key)}</option
 																		>{/each}</select
 																></label
 															>
@@ -2859,139 +2758,13 @@
 										></label
 									>{/each}
 							</div>{/if}
-						{#if false}{#each weaponItems() as item (weaponKey(item))}<section
-									class="weapon-variants"
-								>
-									<header>
-										<strong
-											>{item.name} · {$appLocale === 'en'
-												? 'Alternate attacks'
-												: 'Golpes alternativos'}</strong
-										>
-										<button
-											type="button"
-											class="secondary-button"
-											onclick={() => addWeaponAttackProfile(item)}
-											>+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}</button
-										>
-									</header>
-									{#each weaponAttackProfiles(item) as profile (profile.id)}<article
-											class="weapon-variant"
-										>
-											<div class="weapon-variant-heading">
-												<input
-													aria-label={$appLocale === 'en' ? 'Attack name' : 'Nome do golpe'}
-													value={profile.name}
-													oninput={(event) => {
-														profile.name = event.currentTarget.value;
-														syncTokenSoon();
-													}}
-												/>
-												<button
-													type="button"
-													class="danger-button"
-													onclick={() => removeWeaponAttackProfile(item, profile.id)}
-													aria-label={$appLocale === 'en' ? 'Remove attack' : 'Remover golpe'}
-													>×</button
-												>
-											</div>
-											<textarea
-												value={profile.description}
-												oninput={(event) => {
-													profile.description = event.currentTarget.value;
-													syncTokenSoon();
-												}}
-												placeholder={$appLocale === 'en'
-													? 'Ability or attack description'
-													: 'Descrição da habilidade ou do golpe'}></textarea>
-											<div class="weapon-combat-fields">
-												<label
-													>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}<select
-														value={profile.attackAbility}
-														onchange={(event) => {
-															profile.attackAbility = event.currentTarget
-																.value as keyof Sheet['abilityScores'];
-															syncTokenSoon();
-														}}
-														>{#each attributes as attribute}<option value={attribute.key}
-																>{abilityLabel(attribute.key)}</option
-															>{/each}</select
-													></label
-												>
-												<label
-													>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}<input
-														type="number"
-														min="-10"
-														max="10"
-														value={profile.attackBonus}
-														oninput={(event) => {
-															profile.attackBonus = Number(event.currentTarget.value) || 0;
-															syncTokenSoon();
-														}}
-													/></label
-												>
-												<label
-													>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
-														value={profile.damage}
-														oninput={(event) => {
-															profile.damage = event.currentTarget.value;
-															syncTokenSoon();
-														}}
-													/></label
-												>
-												<label
-													>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
-														type="number"
-														min="-10"
-														max="10"
-														value={profile.damageBonus}
-														oninput={(event) => {
-															profile.damageBonus = Number(event.currentTarget.value) || 0;
-															syncTokenSoon();
-														}}
-													/></label
-												>
-											</div>
-											{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
-													class="weapon-rule-toggle"
-													><input
-														type="checkbox"
-														checked={profile.greatWeaponFighting}
-														onchange={(event) => {
-															profile.greatWeaponFighting = event.currentTarget.checked;
-															syncTokenSoon();
-														}}
-													/>{$appLocale === 'en'
-														? 'Great Weapon Fighting: damage dice 1–2 become 3'
-														: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
-												>{/if}
-											<div class="weapon-combat-actions">
-												<button
-													class="roll-weapon"
-													onclick={() => void rollWeapon(item, 'attack', profile)}
-													disabled={rollingWeaponAction !== null}
-													>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:attack`
-														? '…'
-														: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
-												>
-												<button
-													onclick={() => void rollWeapon(item, 'damage', profile)}
-													disabled={rollingWeaponAction !== null ||
-														!/^\d+d\d+/i.test(profile.damage)}
-													>{rollingWeaponAction === `${weaponKey(item)}:${profile.id}:damage`
-														? '…'
-														: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
-												>
-											</div>
-										</article>{/each}
-								</section>{/each}{/if}
 					</section>
 					<section class="combat-attacks">
 						<div class="section-title">
 							<h3>{$appLocale === 'en' ? 'Other attacks' : 'Outros ataques'}</h3>
 							<button onclick={addAttack}>+ {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button>
 						</div>
-						{#each sheet.attacks as attack, index}<div class="line-item attack-row">
+						{#each sheet.attacks as attack, index (index)}<div class="line-item attack-row">
 								<label
 									class="token-roll-toggle"
 									title={$appLocale === 'en' ? 'Show on token' : 'Exibir no token'}
@@ -3020,7 +2793,7 @@
 										attack.ability = event.currentTarget.value as keyof Sheet['abilityScores'];
 										syncTokenSoon();
 									}}
-									>{#each attributes as attribute}<option value={attribute.key}
+									>{#each attributes as attribute (attribute.key)}<option value={attribute.key}
 											>{abilityLabel(attribute.key)} ({modifier(
 												sheet.abilityScores[attribute.key]
 											) >= 0
@@ -3061,50 +2834,17 @@
 					</section>
 				{/if}
 				{#if activeTab === 'skills'}
-					<section class="skills">
-						<div class="section-title">
-							<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
-							<label class="roll-mode"
-								><select bind:value={rollMode} aria-label="Modo de rolagem"
-									><option value="advantage" disabled={hasAttackDisadvantage()}
-										>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
-									><option value="normal">Normal</option><option value="disadvantage"
-										>{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option
-									></select
-								></label
-							>
-							{#if isNewCharacter}<span
-									>{$appLocale === 'en'
-										? 'Mark proficient skills. Expertise is granted by class progression.'
-										: 'Marque as perícias proficientes. Especializações vêm da Progressão de classe.'}</span
-								>{/if}
-						</div>
-						<div class="skills-grid">
-							{#each skills as [name, ability]}<div class="skill-row">
-									<label
-										title={$appLocale === 'en'
-											? `${skillLabel(name)} proficiency`
-											: `Proficiência em ${name}`}
-										><input
-											type="checkbox"
-											checked={sheet.skillProficiencies.includes(name)}
-											onchange={() => toggleSkill(name)}
-										/></label
-									><span
-										>{skillLabel(name)}{#if sheet.skillExpertise.includes(name)}<small
-												>{$appLocale === 'en' ? 'expertise' : 'especialização'}</small
-											>{/if}</span
-									><strong
-										>{skillBonus(name, ability) >= 0 ? '+' : ''}{skillBonus(name, ability)}</strong
-									><button
-										class="skill-roll"
-										onclick={() => void rollSkill(name)}
-										aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}
-										>⚄</button
-									>
-								</div>{/each}
-						</div>
-					</section>
+					<CharacterSkillsTab
+						{sheet}
+						{skills}
+						{isNewCharacter}
+						{hasAttackDisadvantage}
+						{skillLabel}
+						{skillBonus}
+						{toggleSkill}
+						{rollSkill}
+						bind:rollMode
+					/>
 				{/if}
 				{#if activeTab === 'inventory'}
 					<section class="inventory-section">
@@ -3120,7 +2860,7 @@
 								? 'Equipment categories'
 								: 'Categorias de equipamento'}
 						>
-							{#each [['all', $appLocale === 'en' ? 'All' : 'Tudo'], ['weapon', $appLocale === 'en' ? 'Weapons' : 'Armas'], ['armor', $appLocale === 'en' ? 'Armor' : 'Armaduras'], ['consumable', $appLocale === 'en' ? 'Consumables' : 'Consumíveis'], ['tool', $appLocale === 'en' ? 'Tools' : 'Ferramentas'], ['gear', $appLocale === 'en' ? 'Other' : 'Outros']] as [filter, label]}<button
+							{#each [['all', $appLocale === 'en' ? 'All' : 'Tudo'], ['weapon', $appLocale === 'en' ? 'Weapons' : 'Armas'], ['armor', $appLocale === 'en' ? 'Armor' : 'Armaduras'], ['consumable', $appLocale === 'en' ? 'Consumables' : 'Consumíveis'], ['tool', $appLocale === 'en' ? 'Tools' : 'Ferramentas'], ['gear', $appLocale === 'en' ? 'Other' : 'Outros']] as [filter, label] (filter)}<button
 									class:active={inventoryFilter === filter}
 									onclick={() => {
 										inventoryFilter = filter as typeof inventoryFilter;
@@ -3267,7 +3007,7 @@
 								bind:value={newSpellLevel}
 								aria-label={$appLocale === 'en' ? 'Manual spell circle' : 'Círculo da magia manual'}
 							>
-								{#each addableSpellCircles() as level}<option value={level}
+								{#each addableSpellCircles() as level (level)}<option value={level}
 										>{circleLabel(level)}</option
 									>{/each}
 							</select>
@@ -3288,7 +3028,7 @@
 								+ {$appLocale === 'en' ? 'Add' : 'Adicionar'}
 							</button>
 						</div>
-						{#each availableSpellCircles() as circle}<section class="spell-circle">
+						{#each availableSpellCircles() as circle (circle)}<section class="spell-circle">
 								<header>
 									<div>
 										<h4>{circleLabel(circle)}</h4>
@@ -3420,7 +3160,8 @@
 																onchange={(event) =>
 																	(spellSlotChoice[index] = Number(event.currentTarget.value))}
 																aria-label="Espaço de magia"
-																>{#each compatibleSlots(spell) as slot}<option value={slot.level}
+																>{#each compatibleSlots(spell) as slot (slot.level)}<option
+																		value={slot.level}
 																		>{circleLabel(slot.level)} · {slot.current}/{slot.max}</option
 																	>{/each}</select
 															><button
@@ -3440,145 +3181,6 @@
 													</div>
 												</div>
 											{/if}
-											<!--
-								{#each weaponItems() as item}
-													<section class="weapon-variants">
-														<header>
-															<strong
-																>{$appLocale === 'en'
-																	? 'Alternate attacks'
-																	: 'Golpes alternativos'}</strong
-															>
-															<button
-																type="button"
-																class="secondary-button"
-																onclick={() => addWeaponAttackProfile(item)}
-															>
-																+ {$appLocale === 'en' ? 'Attack' : 'Golpe'}
-															</button>
-														</header>
-														{#each weaponAttackProfiles(item) as profile (profile.id)}<div
-																class="weapon-variant"
-															>
-																<div class="weapon-variant-heading">
-																	<input
-																		aria-label={$appLocale === 'en'
-																			? 'Attack name'
-																			: 'Nome do golpe'}
-																		value={profile.name}
-																		oninput={(event) => {
-																			profile.name = event.currentTarget.value;
-																			syncTokenSoon();
-																		}}
-																	/>
-																	<button
-																		type="button"
-																		class="danger-button"
-																		onclick={() => removeWeaponAttackProfile(item, profile.id)}
-																		aria-label={$appLocale === 'en'
-																			? 'Remove attack'
-																			: 'Remover golpe'}>×</button
-																	>
-																</div>
-																<textarea
-																	value={profile.description}
-																	oninput={(event) => {
-																		profile.description = event.currentTarget.value;
-																		syncTokenSoon();
-																	}}
-																	placeholder={$appLocale === 'en'
-																		? 'Ability or attack description'
-																		: 'Descrição da habilidade ou do golpe'}></textarea>
-																<div class="weapon-combat-fields">
-																	<label
-																		>{$appLocale === 'en'
-																			? 'Attack ability'
-																			: 'Atributo do ataque'}<select
-																			value={profile.attackAbility}
-																			onchange={(event) => {
-																				profile.attackAbility = event.currentTarget
-																					.value as keyof Sheet['abilityScores'];
-																				syncTokenSoon();
-																			}}
-																			>{#each attributes as attribute}<option value={attribute.key}
-																					>{abilityLabel(attribute.key)}</option
-																				>{/each}</select
-																		></label
-																	>
-																	<label
-																		>{$appLocale === 'en'
-																			? 'Attack bonus'
-																			: 'Bônus de ataque'}<input
-																			type="number"
-																			min="-10"
-																			max="10"
-																			value={profile.attackBonus}
-																			oninput={(event) => {
-																				profile.attackBonus =
-																					Number(event.currentTarget.value) || 0;
-																				syncTokenSoon();
-																			}}
-																		/></label
-																	>
-																	<label
-																		>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
-																			value={profile.damage}
-																			oninput={(event) => {
-																				profile.damage = event.currentTarget.value;
-																				syncTokenSoon();
-																			}}
-																		/></label
-																	>
-																	<label
-																		>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
-																			type="number"
-																			min="-10"
-																			max="10"
-																			value={profile.damageBonus}
-																			oninput={(event) => {
-																				profile.damageBonus =
-																					Number(event.currentTarget.value) || 0;
-																				syncTokenSoon();
-																			}}
-																		/></label
-																	>
-																</div>
-																{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
-																		class="weapon-rule-toggle"
-																		><input
-																			type="checkbox"
-																			checked={profile.greatWeaponFighting}
-																			onchange={(event) => {
-																				profile.greatWeaponFighting = event.currentTarget.checked;
-																				syncTokenSoon();
-																			}}
-																		/>{$appLocale === 'en'
-																			? 'Great Weapon Fighting: damage dice 1–2 become 3'
-																			: 'Luta com Armas Grandes: dados de dano 1–2 viram 3'}</label
-																	>{/if}
-																<div class="weapon-combat-actions">
-																	<button
-																		class="roll-weapon"
-																		onclick={() => void rollWeapon(item, 'attack', profile)}
-																		disabled={rollingWeaponAction !== null}
-																		>{rollingWeaponAction ===
-																		`${weaponKey(item)}:${profile.id}:attack`
-																			? '…'
-																			: `🎲 ${$appLocale === 'en' ? 'Attack' : 'Ataque'}`}</button
-																	>
-																	<button
-																		onclick={() => void rollWeapon(item, 'damage', profile)}
-																		disabled={rollingWeaponAction !== null ||
-																			!/^\d+d\d+/i.test(profile.damage)}
-																		>{rollingWeaponAction ===
-																		`${weaponKey(item)}:${profile.id}:damage`
-																			? '…'
-																			: `🎲 ${$appLocale === 'en' ? 'Damage' : 'Dano'}`}</button
-																	>
-																</div>
-															</div>{/each}
-													</section>
-								-->
 										</article>{/each}{:else}<p>
 										{$appLocale === 'en'
 											? `No ${circle === 0 ? 'cantrips' : `level ${circle} spells`} added.`
@@ -3618,7 +3220,7 @@
 										>{/each}</datalist
 								>
 								<div class="feat-list">
-									{#each featList() as feat}<div class="feat-row">
+									{#each featList() as feat, index (`${feat}-${index}`)}<div class="feat-row">
 											<button
 												class:active={selectedFeat === feat}
 												onclick={() => (selectedFeat = feat)}>{feat}</button
@@ -3799,69 +3401,6 @@
 		opacity: 0.6;
 		cursor: wait;
 	}
-	.skills-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.45rem;
-	}
-	.skill-row {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto auto;
-		align-items: center;
-		gap: 0.55rem;
-		border: 1px solid #493c39;
-		border-radius: 7px;
-		padding: 0.55rem;
-		color: #cbbbab;
-	}
-	.skill-row label,
-	.saving-throws label {
-		display: grid;
-		place-items: center;
-	}
-	.skill-row input,
-	.saving-throws input {
-		appearance: none;
-		width: 1rem;
-		height: 1rem;
-		margin: 0;
-		border: 1px solid #806444;
-		border-radius: 50%;
-		padding: 0;
-		background: #171216;
-	}
-	.skill-row input:checked,
-	.saving-throws input:checked {
-		border-color: #e0b86f;
-		background: #e0b86f;
-		box-shadow: inset 0 0 0 3px #211914;
-	}
-	.skill-row > span {
-		overflow: hidden;
-		color: #eee4d6;
-		font-size: 0.75rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.skill-row > span small {
-		display: block;
-		color: #d8ad67;
-		font-size: 0.58rem;
-	}
-	.skill-row strong {
-		min-width: 2.1rem;
-		color: #f0d29d;
-		font-size: 1rem;
-		text-align: center;
-	}
-	.skill-roll {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.32rem 0.4rem;
-		color: #f0d29d;
-		background: #2b211c;
-		cursor: pointer;
-	}
 	.derived-value {
 		display: block;
 		color: #f0d29d;
@@ -3897,44 +3436,6 @@
 		border: 1px solid #765d3d;
 		border-radius: 7px;
 		padding: 0.6rem;
-		color: #f0d29d;
-		background: #2b211c;
-		cursor: pointer;
-	}
-	.saving-throws > div {
-		display: grid;
-		grid-template-columns: repeat(6, 1fr);
-		gap: 0.45rem;
-	}
-	.saving-throws article {
-		display: grid;
-		grid-template-rows: auto 1fr auto;
-		place-items: center;
-		gap: 0.3rem;
-		border: 1px solid #493c39;
-		border-radius: 7px;
-		padding: 0.5rem;
-		color: #cbbbab;
-	}
-	.saving-throws label {
-		display: flex;
-		align-items: center;
-		gap: 0.28rem;
-		color: #d8c5aa;
-		font-size: 0.68rem;
-		font-weight: 800;
-	}
-	.saving-throws strong {
-		display: grid;
-		place-items: center;
-		min-height: 1.8rem;
-		color: #f0d29d;
-		font-size: 1.05rem;
-	}
-	.saving-throws button {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.28rem 0.4rem;
 		color: #f0d29d;
 		background: #2b211c;
 		cursor: pointer;
@@ -4657,12 +4158,6 @@
 		font-size: 0.68rem;
 		line-height: 1.5;
 	}
-	.saving-throws .section-title h3 {
-		white-space: nowrap;
-	}
-	.skills-grid {
-		margin-top: 0.85rem;
-	}
 	h3 {
 		margin-bottom: 0.55rem;
 		color: #e7c98c;
@@ -4794,7 +4289,6 @@
 		grid-column: 1 / -1;
 	}
 	.weapon-description-field textarea,
-	.weapon-variant textarea,
 	.inventory-item-description textarea {
 		width: 100%;
 		min-width: 0;
@@ -4806,41 +4300,6 @@
 		color: #f5ede3;
 		background: #121012;
 		font: inherit;
-	}
-	.weapon-variants {
-		display: grid;
-		gap: 0.55rem;
-		margin-top: 0.65rem;
-	}
-	.weapon-variants > header,
-	.weapon-variant-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-	.weapon-variants > header strong {
-		color: #d6b879;
-		font-size: 0.78rem;
-	}
-	.weapon-variant {
-		display: grid;
-		gap: 0.55rem;
-		border: 1px solid #493e39;
-		border-radius: 7px;
-		padding: 0.65rem;
-		background: #1b1719;
-	}
-	.weapon-variant-heading input {
-		flex: 1;
-		min-width: 0;
-	}
-	.weapon-rule-toggle {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		color: #d7c7af;
-		font-size: 0.72rem;
 	}
 	.weapon-combat-actions {
 		display: flex;
@@ -5356,12 +4815,6 @@
 		}
 		.abilities {
 			grid-template-columns: repeat(3, 1fr);
-		}
-		.saving-throws > div {
-			grid-template-columns: repeat(3, 1fr);
-		}
-		.saving-throws .section-title h3 {
-			font-size: clamp(0.72rem, 3vw, 0.9rem);
 		}
 		.expertise-choices > div {
 			grid-template-columns: 1fr;

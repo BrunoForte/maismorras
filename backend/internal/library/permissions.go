@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"vtt-backend/internal/apperror"
+	"vtt-backend/internal/audience"
 	"vtt-backend/internal/auth"
 )
 
@@ -18,6 +19,16 @@ func normalizePermissionSelection(restricted *bool, userIDs []string) (bool, []s
 		return false, nil
 	}
 	return true, userIDs
+}
+
+func permissionPolicy(restricted bool, userIDs []string) audience.Policy {
+	if !restricted {
+		return audience.Policy{Mode: audience.ModeAll}
+	}
+	if len(userIDs) == 0 {
+		return audience.Policy{Mode: audience.ModeNone}
+	}
+	return audience.Policy{Mode: audience.ModeSelected, UserIDs: userIDs}
 }
 
 func permissionResponse(gmID string, userIDs []string, restricted bool) map[string]any {
@@ -105,7 +116,8 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 			return apperror.Internal(err)
 		}
 	}
-	seen := map[string]struct{}{}
+	seen := make(map[string]struct{}, len(in.UserIDs))
+	selected := make([]string, 0, len(in.UserIDs))
 	for _, userID := range in.UserIDs {
 		userID = strings.TrimSpace(userID)
 		if userID == "" {
@@ -115,14 +127,20 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 			continue
 		}
 		seen[userID] = struct{}{}
-		var valid bool
-		if err = tx.QueryRow(r.Context(), "select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2 and role='player'::public.campaign_role)", campaignID, userID).Scan(&valid); err != nil {
+		selected = append(selected, userID)
+	}
+	if len(selected) > 0 {
+		var validCount int
+		if err = tx.QueryRow(r.Context(), `select count(distinct selected.id) from unnest($2::uuid[]) selected(id) join campaign_members m on m.campaign_id=$1 and m.user_id=selected.id and m.role='player'::public.campaign_role`, campaignID, selected).Scan(&validCount); err != nil {
 			return apperror.Internal(err)
 		}
-		if !valid {
+		if validCount != len(selected) {
 			return apperror.BadRequest("INVALID_PERMISSION_MEMBER", "A lista contém alguém que não é jogador desta mesa.")
 		}
-		if _, err = tx.Exec(r.Context(), "insert into library_item_permissions(campaign_id,item_type,item_key,user_id) values($1,$2::public.library_item_type,$3,$4)", campaignID, in.ItemType, in.ItemKey, userID); err != nil {
+	}
+	policy := permissionPolicy(restricted, selected)
+	if policy.Mode == audience.ModeSelected {
+		if _, err = tx.Exec(r.Context(), `insert into library_item_permissions(campaign_id,item_type,item_key,user_id) select $1,$2::public.library_item_type,$3,selected.id from unnest($4::uuid[]) selected(id)`, campaignID, in.ItemType, in.ItemKey, policy.UserIDs); err != nil {
 			return apperror.Internal(err)
 		}
 	}
@@ -141,5 +159,5 @@ func (h *Handler) SavePermissions(w http.ResponseWriter, r *http.Request) error 
 	// Do not call ListPermissions here: PUT requests do not carry its required
 	// itemType/itemKey query parameters. That used to commit successfully and
 	// then incorrectly return INVALID_ITEM (400) to the client.
-	return write(w, http.StatusOK, permissionResponse(p.UserID, in.UserIDs, restricted))
+	return write(w, http.StatusOK, permissionResponse(p.UserID, selected, restricted))
 }

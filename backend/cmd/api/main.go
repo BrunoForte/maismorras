@@ -29,7 +29,30 @@ import (
 
 func main() {
 	cfg := config.Load()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("cloud_run_revision", os.Getenv("K_REVISION"), "service", os.Getenv("K_SERVICE"))
+	logLevel := slog.LevelInfo
+	switch os.Getenv("LOG_LEVEL") {
+	case "debug", "DEBUG":
+		logLevel = slog.LevelDebug
+	case "warn", "WARN":
+		logLevel = slog.LevelWarn
+	case "error", "ERROR":
+		logLevel = slog.LevelError
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})).With("cloud_run_revision", os.Getenv("K_REVISION"), "service", os.Getenv("K_SERVICE"))
+	slog.SetDefault(logger)
+	brokerMode := cfg.RealtimeBroker
+	production := os.Getenv("K_SERVICE") != ""
+	if brokerMode == "" {
+		if production {
+			logger.Error("REALTIME_BROKER must be explicitly set in Cloud Run", "broker_mode", "unset")
+			os.Exit(1)
+		}
+		brokerMode = "local"
+	}
+	if brokerMode != "local" && brokerMode != "postgres" {
+		logger.Error("invalid realtime broker mode", "broker_mode", brokerMode)
+		os.Exit(1)
+	}
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("database connection failed", "error", err)
@@ -59,6 +82,28 @@ func main() {
 		logger.Info("compendium translation provider selected", "provider", "pollinations", "reason", "DeepL API key is not configured")
 	}
 	hub := realtime.NewHub()
+	hub.ConfigureBroker(nil)
+	instanceID := hub.OriginInstanceID()
+	runCtx, cancelRun := context.WithCancel(context.Background())
+	defer cancelRun()
+	if brokerMode == "postgres" {
+		brokerURL := cfg.RealtimeBrokerDatabaseURL
+		if brokerURL == "" {
+			brokerURL = cfg.DatabaseURL
+		}
+		if pool == nil || !realtime.ListenCompatibleDatabaseURL(brokerURL) {
+			logger.Error("postgres realtime broker requires a direct or session-mode PostgreSQL connection on port 5432", "broker_mode", brokerMode, "origin_instance_id", instanceID)
+			os.Exit(1)
+		}
+		broker := realtime.NewPostgresBroker(pool, brokerURL, instanceID, logger)
+		hub.ConfigureBroker(broker)
+		go func() {
+			if err := broker.Listen(runCtx, hub.HandleRemote, hub.RefreshLocalRooms); err != nil && runCtx.Err() == nil {
+				logger.Error("realtime broker listener stopped unexpectedly", "broker_mode", brokerMode, "origin_instance_id", instanceID, "error", err)
+			}
+		}()
+	}
+	logger.Info("realtime broker initialized", "broker_mode", brokerMode, "origin_instance_id", instanceID)
 	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub), overlayaccess.NewHandler(pool, cfg))
 
 	server := &http.Server{
@@ -78,6 +123,7 @@ func main() {
 	shutdownSignal := make(chan os.Signal, 1)
 	signal.Notify(shutdownSignal, os.Interrupt, syscall.SIGTERM)
 	<-shutdownSignal
+	cancelRun()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

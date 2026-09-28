@@ -1,6 +1,4 @@
-<!-- eslint-disable svelte/require-each-key -- editor arrays are intentionally positional and may not have stable IDs. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key */
 	import { onMount, tick } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { createNPC, listNPCs, updateNPC, type NPC } from '$lib/services/npcApi';
@@ -455,13 +453,13 @@
 							</div>{/if}{#if rules.traits?.length}<h4>
 								{$appLocale === 'en' ? 'Traits' : 'Traços'}
 							</h4>
-							{#each rules.traits as trait}<p>
+							{#each rules.traits as trait, index (`${trait.name}-${index}`)}<p>
 									<b>{trait.name}</b>{#if trait.description}
 										— {trait.description}{/if}
 								</p>{/each}{/if}{#if rules.actions?.length}<h4>
 								{$appLocale === 'en' ? 'Actions' : 'Ações'}
 							</h4>
-							{#each rules.actions as action}<p>
+							{#each rules.actions as action, index (`${action.name}-${index}`)}<p>
 									<b>{action.name}</b>{#if action.toHit !== undefined}
 										· +{action.toHit} para acertar{/if}{#if action.damage}
 										· {action.damage}{/if}{#if action.range}
@@ -627,7 +625,7 @@
 							<h4>{$appLocale === 'en' ? 'Traits' : 'Traços'}</h4>
 							<button type="button" onclick={addTrait}>+ Traço</button>
 						</div>
-						{#each sheet.traits as trait, index}<article>
+						{#each sheet.traits as trait, index (index)}<article>
 								<input
 									bind:value={trait.name}
 									placeholder={$appLocale === 'en' ? 'Trait name' : 'Nome do traço'}
@@ -640,7 +638,7 @@
 							<h4>{$appLocale === 'en' ? 'Actions' : 'Ações'}</h4>
 							<button type="button" onclick={addAction}>+ Ação</button>
 						</div>
-						{#each sheet.actions as action, index}<article class="action">
+						{#each sheet.actions as action, index (index)}<article class="action">
 								<input
 									bind:value={action.name}
 									placeholder={$appLocale === 'en' ? 'Name' : 'Nome'}

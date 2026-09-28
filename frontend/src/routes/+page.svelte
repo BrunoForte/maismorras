@@ -10,7 +10,15 @@
 	import { personagens } from '$lib/stores/gameStore';
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
 	import { diceRendererMode } from '$lib/stores/diceOverlayStore';
-	import { apiBase } from '$lib/services/apiBase';
+	import {
+		acceptCampaignInvite,
+		createCampaign as createCampaignRequest,
+		createCampaignInvite,
+		deleteCampaign as deleteCampaignRequest,
+		listCampaigns,
+		renameCampaign as renameCampaignRequest,
+		type CampaignSummary
+	} from '$lib/services/campaignApi';
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { createOverlayPairing, revokeOverlayAccess } from '$lib/services/overlayPairingApi';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
@@ -96,13 +104,7 @@
 		if (sheetOpen) void ensureSheetComponent();
 		if (participantsOpen || npcsOpen || sceneSettingsOpen) void ensureDrawerComponents();
 	});
-	type Campaign = {
-		id: string;
-		name: string;
-		role: 'gm' | 'player';
-		systemId: 'dnd2024';
-		isAdmin?: boolean;
-	};
+	type Campaign = CampaignSummary;
 	let campaigns = $state<Campaign[]>([]);
 	let activeCampaign = $state<Campaign | null>(null);
 	let activeScene = $state<Scene | null>(null);
@@ -138,7 +140,6 @@
 	let sceneCreatorOpen = $state(false);
 	let sceneDraft = $state('');
 	let sceneSettingsOpen = $state(false);
-	const apiTimeoutMs = 15000;
 	const sessionTimeoutMs = 10000;
 	let restoringSession = false;
 	let restoredSessionId = '';
@@ -250,64 +251,12 @@
 	async function logout() {
 		await supabase?.auth.signOut();
 	}
-	async function api(path: string, init: RequestInit = {}, currentSession = session) {
-		if (!currentSession)
-			throw new Error($appLocale === 'en' ? 'Session unavailable.' : 'Sessão indisponível.');
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), apiTimeoutMs);
-		let response: Response;
-		try {
-			response = await fetch(`${apiBase}${path}`, {
-				...init,
-				signal: controller.signal,
-				headers: {
-					...init.headers,
-					Authorization: `Bearer ${currentSession.access_token}`,
-					'Content-Type': 'application/json'
-				}
-			});
-		} catch (cause) {
-			if (cause instanceof DOMException && cause.name === 'AbortError')
-				throw new Error('O servidor demorou demais para responder. Tente novamente.', { cause });
-			throw cause;
-		} finally {
-			clearTimeout(timeout);
-		}
-		if (!response.ok) {
-			const body = await response.json().catch(() => null);
-			throw new Error(
-				body?.error?.message ??
-					($appLocale === 'en'
-						? 'Could not communicate with the server.'
-						: 'Erro ao comunicar com o servidor.')
-			);
-		}
-		if (response.status === 204) return null;
-		const text = await response.text();
-		return text ? JSON.parse(text) : null;
-	}
 	async function loadCampaigns(currentSession = session) {
+		if (!currentSession) return;
 		loadingCampaigns = true;
 		error = '';
 		try {
-			const response = await api('/api/v1/campaigns', {}, currentSession);
-			campaigns = response.campaigns.map(
-				(
-					campaign: Campaign & {
-						ID?: string;
-						Name?: string;
-						Role?: 'gm' | 'player';
-						is_admin?: boolean;
-					}
-				) => ({
-					id: campaign.id ?? campaign.ID ?? '',
-					name: campaign.name ?? campaign.Name ?? '',
-					role: campaign.role ?? campaign.Role ?? 'player',
-					systemId:
-						campaign.systemId ?? (campaign as { system_id?: 'dnd2024' }).system_id ?? 'dnd2024',
-					isAdmin: campaign.isAdmin ?? campaign.is_admin ?? false
-				})
-			);
+			campaigns = await listCampaigns(currentSession);
 		} catch (err) {
 			error =
 				err instanceof Error
@@ -324,11 +273,7 @@
 		if (!code || inviteProcessed) return;
 		inviteProcessed = true;
 		try {
-			const campaign: Campaign = await api(
-				`/api/v1/invites/${code}/accept`,
-				{ method: 'POST' },
-				currentSession
-			);
+			const campaign = await acceptCampaignInvite(currentSession, code);
 			inviteStatus = `Você entrou em “${campaign.name}”.`;
 			window.history.replaceState({}, '', window.location.pathname);
 			return campaign;
@@ -369,10 +314,8 @@
 	async function createInvite() {
 		if (!activeCampaign || !session) return;
 		try {
-			const invite = await api(`/api/v1/campaigns/${activeCampaign.id}/invites`, {
-				method: 'POST'
-			});
-			const link = `${window.location.origin}/?invite=${invite.code}`;
+			const code = await createCampaignInvite(session, activeCampaign.id);
+			const link = `${window.location.origin}/?invite=${code}`;
 			await navigator.clipboard.writeText(link);
 			showInviteStatus(
 				$appLocale === 'en'
@@ -389,18 +332,12 @@
 		}
 	}
 	async function createCampaign() {
-		if (!campaignName.trim()) return;
+		if (!campaignName.trim() || !session) return;
 		try {
-			const response = await api('/api/v1/campaigns', {
-				method: 'POST',
-				body: JSON.stringify({ name: campaignName.trim(), systemId: campaignSystem })
+			const campaign = await createCampaignRequest(session, {
+				name: campaignName.trim(),
+				systemId: campaignSystem
 			});
-			const campaign: Campaign = {
-				id: response.id ?? response.ID,
-				name: response.name ?? response.Name,
-				role: response.role ?? response.Role,
-				systemId: response.systemId ?? response.SystemID ?? campaignSystem
-			};
 			campaigns = [campaign, ...campaigns];
 			campaignName = '';
 			campaignCreateOpen = false;
@@ -417,13 +354,9 @@
 	async function renameCampaign(campaign: Campaign) {
 		if (campaign.role !== 'gm') return;
 		const nextName = window.prompt('Novo nome da campanha', campaign.name)?.trim();
-		if (!nextName || nextName === campaign.name) return;
+		if (!nextName || nextName === campaign.name || !session) return;
 		try {
-			const updated = await api(`/api/v1/campaigns/${campaign.id}`, {
-				method: 'PATCH',
-				body: JSON.stringify({ name: nextName })
-			});
-			const normalized = { ...campaign, name: updated.name ?? updated.Name ?? nextName };
+			const normalized = await renameCampaignRequest(session, campaign, nextName);
 			campaigns = campaigns.map((item) => (item.id === campaign.id ? normalized : item));
 			if (activeCampaign?.id === campaign.id) activeCampaign = normalized;
 		} catch (err) {
@@ -434,8 +367,9 @@
 		if (campaign.role !== 'gm') return;
 		if (!window.confirm(`Excluir a campanha “${campaign.name}”? Esta ação não pode ser desfeita.`))
 			return;
+		if (!session) return;
 		try {
-			await api(`/api/v1/campaigns/${campaign.id}`, { method: 'DELETE' });
+			await deleteCampaignRequest(session, campaign.id);
 			campaigns = campaigns.filter((item) => item.id !== campaign.id);
 			if (activeCampaign?.id === campaign.id) {
 				activeCampaign = null;
@@ -1016,7 +950,9 @@
 										onopensheet={(actorId) =>
 											activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
 										onopennewwindow={openCharacterWindow}
-									/>{:else}<p class="status-message">Carregando mapa…</p>{/if}
+									/>{:else}<p class="status-message" role="status" aria-live="polite">
+										Carregando mapa…
+									</p>{/if}
 								{#if DiceOverlayComponent && session}<DiceOverlayComponent />{/if}
 								{#if TableToolsComponent}<TableToolsComponent
 										campaignId={activeCampaign.id}
@@ -1170,6 +1106,13 @@
 					</section>
 				</main>{/if}
 			{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
+			{#if sheetOpen && !CharacterSheetComponent}<p
+					class="status-message"
+					role="status"
+					aria-live="polite"
+				>
+					{$appLocale === 'en' ? 'Loading character sheet…' : 'Carregando ficha…'}
+				</p>{/if}
 			{#if sheetOpen && CharacterSheetComponent && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheetComponent
 					campaignId={activeCampaign.id}
 					sceneId={activeScene?.id ?? ''}

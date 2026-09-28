@@ -37,7 +37,7 @@ export type SceneSocket = {
 	close: () => void;
 };
 type Subscriber = {
-	onRefresh: () => void;
+	onRefresh?: () => void;
 	onPing?: (ping: Omit<MapPing, 'type'>) => void;
 	onAudio?: (state: AudioPlaybackState) => void;
 	onAudioEffects?: (state: AudioPlaybackState) => void;
@@ -49,11 +49,32 @@ type Subscriber = {
 	onChat?: () => void;
 	onStatus?: (status: RealtimeStatus) => void;
 };
+
+/** Runs one scene invalidation for a shared socket instead of triggering one
+ * full REST sync for every mounted component subscribed to that socket. */
+export function notifySingleSceneRefresh(callbacks: Iterable<(() => void) | undefined>): boolean {
+	const callback = Array.from(callbacks).find((candidate) => candidate !== undefined);
+	if (!callback) return false;
+	callback();
+	return true;
+}
+
+export function isValidSceneDelta(value: unknown): value is SceneDelta {
+	if (!value || typeof value !== 'object') return false;
+	const delta = value as Record<string, unknown>;
+	if (!['area', 'wall', 'effect'].includes(String(delta.kind))) return false;
+	if (delta.action === 'delete') return typeof delta.id === 'string' && delta.id.length === 36;
+	if (delta.action !== 'upsert' || !delta.item || typeof delta.item !== 'object') return false;
+	const item = delta.item as Record<string, unknown>;
+	return typeof item.id === 'string' && item.id.length === 36;
+}
+
 const sharedConnections = new Map<string, SharedSceneConnection>();
 class SharedSceneConnection {
 	private socket: WebSocket | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectAttempt = 0;
+	private hasConnected = false;
 	private closed = false;
 	private token: string;
 	private readonly subscribers = new Set<Subscriber>();
@@ -111,6 +132,9 @@ class SharedSceneConnection {
 	private notify(status: RealtimeStatus) {
 		for (const subscriber of this.subscribers) subscriber.onStatus?.(status);
 	}
+	private invalidateSceneOnce() {
+		notifySingleSceneRefresh(Array.from(this.subscribers, (subscriber) => subscriber.onRefresh));
+	}
 	private scheduleReconnect() {
 		if (this.closed || this.reconnectTimer || this.subscribers.size === 0) return;
 		const delay = Math.min(30_000, 500 * 2 ** this.reconnectAttempt++);
@@ -126,9 +150,12 @@ class SharedSceneConnection {
 		const socket = new WebSocket(this.url, ['maismorras-auth', this.token]);
 		this.socket = socket;
 		socket.onopen = () => {
+			const reconnected = this.hasConnected;
+			this.hasConnected = true;
 			this.reconnectAttempt = 0;
 			this.notify('connected');
 			for (const payload of this.pendingPayloads.splice(0)) socket.send(JSON.stringify(payload));
+			if (reconnected) this.invalidateSceneOnce();
 		};
 		socket.onmessage = (event) => {
 			try {
@@ -143,8 +170,7 @@ class SharedSceneConnection {
 					| SceneDeltaEvent
 					| ChatUpdated
 					| MapPing;
-				if (payload.type === 'scene.refresh')
-					for (const subscriber of this.subscribers) subscriber.onRefresh();
+				if (payload.type === 'scene.refresh') this.invalidateSceneOnce();
 				if (payload.type === 'presentation.updated')
 					for (const subscriber of this.subscribers) subscriber.onPresentation?.(payload.data);
 				if (payload.type === 'audio.state')
@@ -157,8 +183,13 @@ class SharedSceneConnection {
 					for (const subscriber of this.subscribers) subscriber.onTokens?.(payload.data);
 				if (payload.type === 'combat.updated')
 					for (const subscriber of this.subscribers) subscriber.onCombat?.(payload.data);
-				if (payload.type === 'scene.delta')
+				if (payload.type === 'scene.delta') {
+					if (!isValidSceneDelta(payload.data)) {
+						this.invalidateSceneOnce();
+						return;
+					}
 					for (const subscriber of this.subscribers) subscriber.onSceneDelta?.(payload.data);
+				}
 				if (payload.type === 'chat.updated')
 					for (const subscriber of this.subscribers) subscriber.onChat?.();
 				if (payload.type === 'map.ping')
@@ -216,7 +247,7 @@ class SharedSceneConnection {
 export function connectSceneSocket(
 	session: Session,
 	sceneId: string,
-	onRefresh: () => void,
+	onRefresh: (() => void) | undefined,
 	onPing?: (ping: Omit<MapPing, 'type'>) => void,
 	onStatus?: (status: RealtimeStatus) => void,
 	onAudio?: (state: AudioPlaybackState) => void,

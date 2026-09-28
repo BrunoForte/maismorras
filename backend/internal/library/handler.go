@@ -25,7 +25,7 @@ type Handler struct {
 }
 
 type audioStateBroadcaster interface {
-	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool)
+	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool, requestID string)
 }
 
 func NewHandler(pool *pgxpool.Pool, cfg config.Config, audio ...audioStateBroadcaster) *Handler {

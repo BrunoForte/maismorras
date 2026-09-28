@@ -115,6 +115,14 @@ func TestValidateAcceptsMinimalDND2024Sheet(t *testing.T) {
 	}
 }
 
+func TestValidateDoesNotTrustClientArmorClass(t *testing.T) {
+	sheet := validSheet()
+	sheet.ArmorClass = 999
+	if err := validate(sheet); err != nil {
+		t.Fatalf("derived client CA should be ignored and recomputed by repository, got %v", err)
+	}
+}
+
 func TestValidateRejectsInvalidHitPoints(t *testing.T) {
 	sheet := validSheet()
 	sheet.HitPointsCurrent = 11
@@ -162,5 +170,29 @@ func TestInventoryWeaponAbilitySurvivesSheetJSONRoundTrip(t *testing.T) {
 	}
 	if got := rules["attackAbility"]; got != "dexterity" {
 		t.Fatalf("attack ability = %v, want dexterity", got)
+	}
+}
+
+func TestSheetOptionalFieldsSurviveBackendRoundTrip(t *testing.T) {
+	sheet := validSheet()
+	sheet.Attacks = []Attack{{Name: "Arco", AttackType: "ranged", Ability: "dexterity"}}
+	sheet.Spells = []Spell{{Name: "Luz", Level: 0, Origin: "species"}}
+	sheet.Resistances = []string{"fogo"}
+	sheet.AutomaticTraits = []string{"Visão no escuro"}
+	sheet.SpeciesHPBonusApplied = 3
+
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored Sheet
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if restored.Attacks[0].Ability != "dexterity" || restored.Attacks[0].AttackType != "ranged" || restored.Spells[0].Origin != "species" {
+		t.Fatalf("attack/spell metadata was lost: attacks=%+v spells=%+v", restored.Attacks, restored.Spells)
+	}
+	if len(restored.Resistances) != 1 || len(restored.AutomaticTraits) != 1 || restored.SpeciesHPBonusApplied != 3 {
+		t.Fatalf("sheet extension fields were lost: %+v", restored)
 	}
 }

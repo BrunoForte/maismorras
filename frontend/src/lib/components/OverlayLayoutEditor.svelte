@@ -206,7 +206,7 @@
 				layoutSocket = connectSceneSocket(
 					session,
 					sceneId,
-					() => {},
+					undefined,
 					undefined,
 					undefined,
 					undefined,

@@ -1,6 +1,6 @@
-<!-- eslint-disable svelte/require-each-key, svelte/no-navigation-without-resolve -- media URLs are external storage URLs. -->
+<!-- eslint-disable svelte/no-navigation-without-resolve -- media URLs are external storage URLs. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key, svelte/no-navigation-without-resolve */
+	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { supabase } from '$lib/services/supabase';
@@ -660,7 +660,7 @@
 			class="asset-filters"
 			aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}
 		>
-			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Audio' : 'Áudios'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label]}<button
+			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Audio' : 'Áudios'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label] (value)}<button
 					class:active={assetFilter === value}
 					onclick={() => (assetFilter = value as typeof assetFilter)}>{label}</button
 				>{/each}

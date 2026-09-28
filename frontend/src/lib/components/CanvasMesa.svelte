@@ -1,6 +1,4 @@
-<!-- eslint-disable svelte/require-each-key -- transient map controls use positional collections. -->
 <script lang="ts">
-	/* eslint-disable svelte/require-each-key */
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
@@ -14,24 +12,19 @@
 	} from '$lib/stores/gameStore';
 	import {
 		addSceneEffect,
-		createToken,
 		getSceneToken,
 		createSceneArea,
 		createSceneWall,
 		deleteSceneArea,
-		deleteSceneToken,
 		deleteSceneWall,
 		interactWithNearbyDoor,
 		setSceneDoorOpen,
 		listEffectDefinitions,
 		listSceneEffects,
 		loadScene,
-		moveToken,
 		removeSceneEffect,
 		rollTokenInitiative,
 		updateFog,
-		updateToken,
-		updateTokenAppearance,
 		type EffectDefinition,
 		type PersistedToken,
 		type SceneEffect,
@@ -39,7 +32,9 @@
 		type SceneWall,
 		type Scene
 	} from '$lib/services/sceneApi';
+	import { SceneTokenController } from '$lib/services/sceneTokenController';
 	import { ApiError } from '$lib/services/httpClient';
+	import { applySceneDelta, fogBrushCells } from '$lib/utils/sceneDeltaState';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -157,12 +152,13 @@
 			: undefined
 	);
 	let persistenceError = $state('');
-	// These collections are mutation-only persistence guards, not UI state.
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	const pendingCreates = new Set<number>();
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	const savedSnapshots = new Map<string, string>();
 	let sceneSocket: SceneSocket | null = null;
+	const tokenController = new SceneTokenController({
+		session: () => session,
+		sceneId: () => scene.id,
+		isGM: () => isGM,
+		publish: (signal) => sceneSocket?.publishTokenUpdated(signal)
+	});
 	let motor = $state<GameEngine | null>(null);
 	$effect(() => {
 		if (motor) motor.setMapSize(scene.mapWidthCells, scene.mapHeightCells, scene.gridSize);
@@ -240,50 +236,12 @@
 		};
 	}
 
-	function asPersisted(personagem: Personagem): Omit<PersistedToken, 'id' | 'actorId' | 'isOwner'> {
-		return {
-			name: personagem.nome,
-			imageUrl: personagem.fotoUrl ?? null,
-			color: personagem.cor,
-			x: personagem.x,
-			y: personagem.y,
-			size: personagem.tamanho,
-			hpCurrent: personagem.hpAtual,
-			hpMax: personagem.hpMax,
-			armorClass: personagem.ca,
-			initiative: personagem.iniciativa,
-			visionRange: personagem.visionRange,
-			lightRange: personagem.lightRange,
-			statuses: personagem.status ?? [],
-			hidden: false,
-			visibility: {
-				...personagem.visibility,
-				imageScale: personagem.fotoEscala,
-				imageOffsetX: personagem.fotoOffsetX,
-				imageOffsetY: personagem.fotoOffsetY
-			}
-		};
-	}
-
 	async function persistir(personagem: Personagem): Promise<boolean> {
 		if (!personagem.persistedId) return false;
 		if (!isGM) {
 			if (!personagem.isOwned) return false;
 			try {
-				await updateTokenAppearance(
-					session,
-					scene.id,
-					personagem.persistedId,
-					personagem.fotoUrl ?? null,
-					personagem.cor,
-					{
-						...personagem.visibility,
-						imageScale: personagem.fotoEscala,
-						imageOffsetX: personagem.fotoOffsetX,
-						imageOffsetY: personagem.fotoOffsetY
-					}
-				);
-				sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
+				await tokenController.save(personagem);
 				persistenceError = '';
 				return true;
 			} catch (error) {
@@ -293,12 +251,7 @@
 			}
 		}
 		try {
-			await updateToken(session, scene.id, {
-				id: personagem.persistedId,
-				...asPersisted(personagem)
-			});
-			savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
-			sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
+			await tokenController.save(personagem);
 			persistenceError = '';
 			return true;
 		} catch (error) {
@@ -314,8 +267,7 @@
 	async function persistirMovimentoDoJogador(personagem: Personagem, x: number, y: number) {
 		if (!personagem.persistedId) return;
 		try {
-			await moveToken(session, scene.id, personagem.persistedId, x, y);
-			sceneSocket?.publishTokenUpdated({ tokenId: personagem.persistedId });
+			await tokenController.move(personagem, x, y);
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -370,13 +322,11 @@
 		if (!confirm(`Remover ${token.nome} desta cena? A ficha ou NPC continuará na campanha.`))
 			return;
 		try {
-			await deleteSceneToken(session, scene.id, persistedId);
+			await tokenController.remove(persistedId);
 			personagens.update((lista) => lista.filter((item) => item.persistedId !== persistedId));
 			personagemIdByToken.delete(persistedId);
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
-			savedSnapshots.delete(persistedId);
 			tokenSelecionadoId = null;
-			sceneSocket?.publishTokenUpdated({ tokenId: persistedId, deleted: true });
 			persistenceError = '';
 		} catch (error) {
 			persistenceError =
@@ -424,10 +374,9 @@
 					return asPersonagem(token, personagemIdFor(token.id, index + 1), imageUrl);
 				})
 			);
-			savedSnapshots.clear();
+			tokenController.clearSnapshots();
 			carregados.forEach((personagem) => {
-				if (personagem.persistedId)
-					savedSnapshots.set(personagem.persistedId, JSON.stringify(asPersisted(personagem)));
+				tokenController.remember(personagem);
 			});
 			personagens.set(carregados);
 		} catch (error) {
@@ -462,7 +411,7 @@
 				const next = existing
 					? lista.map((item) => (item.persistedId === token.id ? updated : item))
 					: [...lista, updated];
-				savedSnapshots.set(token.id, JSON.stringify(asPersisted(updated)));
+				tokenController.remember(updated);
 				return next;
 			});
 		} catch (error) {
@@ -470,7 +419,7 @@
 				personagens.update((lista) => lista.filter((item) => item.persistedId !== signal.tokenId));
 				personagemIdByToken.delete(signal.tokenId);
 				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
-				savedSnapshots.delete(signal.tokenId);
+				tokenController.forget(signal.tokenId);
 				return;
 			}
 			console.warn('Não foi possível sincronizar o token recebido.', error);
@@ -600,35 +549,16 @@
 		);
 	}
 	function aplicarDeltaCena(delta: SceneDelta) {
-		if (delta.kind === 'area') {
-			areas =
-				delta.action === 'delete'
-					? areas.filter((item) => item.id !== delta.id)
-					: [...areas.filter((item) => item.id !== delta.item.id), delta.item];
-			motor?.setAreas(areas);
-			return;
-		}
-		if (delta.kind === 'wall') {
-			walls =
-				delta.action === 'delete'
-					? walls.filter((item) => item.id !== delta.id)
-					: [...walls.filter((item) => item.id !== delta.item.id), delta.item];
-			motor?.setWalls(walls);
-			return;
-		}
-		efeitosAtivos =
-			delta.action === 'delete'
-				? efeitosAtivos.filter((item) => item.id !== delta.id)
-				: [...efeitosAtivos.filter((item) => item.id !== delta.item.id), delta.item];
+		const next = applySceneDelta({ areas, paredes: walls, efeitos: efeitosAtivos }, delta);
+		areas = next.areas;
+		walls = next.paredes;
+		efeitosAtivos = next.efeitos;
+		if (delta.kind === 'area') motor?.setAreas(areas);
+		if (delta.kind === 'wall') motor?.setWalls(walls);
 	}
 	async function paintFog(worldX: number, worldY: number) {
 		if (!isGM || !fogMode || !scene.fogEnabled) return;
-		const centerX = Math.floor(worldX / scene.gridSize),
-			centerY = Math.floor(worldY / scene.gridSize);
-		const radius = Math.floor(fogBrush / 2);
-		const cells: [number, number][] = [];
-		for (let x = centerX - radius; x <= centerX + radius; x++)
-			for (let y = centerY - radius; y <= centerY + radius; y++) cells.push([x, y]);
+		const cells = fogBrushCells(worldX, worldY, scene.gridSize, fogBrush);
 		try {
 			await updateFog(session, scene.id, fogMode, cells);
 			sceneSocket?.publishRefresh();
@@ -879,16 +809,15 @@
 			if (!isGM) return;
 			for (const personagem of lista) {
 				if (personagem.persistedId) {
-					const snapshot = JSON.stringify(asPersisted(personagem));
-					if (savedSnapshots.get(personagem.persistedId) !== snapshot) void persistir(personagem);
+					if (tokenController.shouldPersist(personagem)) void persistir(personagem);
 					continue;
 				}
-				if (pendingCreates.has(personagem.id)) continue;
-				pendingCreates.add(personagem.id);
-				void createToken(session, scene.id, asPersisted(personagem))
+				if (!tokenController.beginCreate(personagem.id)) continue;
+				void tokenController
+					.create(personagem)
 					.then((token) => {
 						const salvo = { ...personagem, persistedId: token.id };
-						savedSnapshots.set(token.id, JSON.stringify(asPersisted(salvo)));
+						tokenController.remember(salvo);
 						personagens.update((atual) =>
 							atual.map((p) => (p.id === personagem.id ? { ...p, persistedId: token.id } : p))
 						);
@@ -898,7 +827,7 @@
 						persistenceError =
 							error instanceof Error ? error.message : 'Não foi possível criar o token.';
 					})
-					.finally(() => pendingCreates.delete(personagem.id));
+					.finally(() => tokenController.finishCreate(personagem.id));
 			}
 		});
 
@@ -1203,7 +1132,7 @@
 										? 'Save next ruler'
 										: 'Salvar próxima régua'}</button
 							>{#if areas.length}<div class="area-list">
-									{#each areas as area}<span
+									{#each areas as area (area.id)}<span
 											>{area.label}<button onclick={() => void removeArea(area)}>×</button></span
 										>{/each}
 								</div>{/if}
@@ -1235,7 +1164,7 @@
 									? 'Closed barriers block vision and movement.'
 									: 'Fechadas bloqueiam visão e movimento.'}</small
 							>{#if walls.length}<div class="wall-list">
-									{#each walls as wall}<span
+									{#each walls as wall (wall.id)}<span
 											>{wall.kind === 'door'
 												? wall.open
 													? $appLocale === 'en'
@@ -1486,8 +1415,8 @@
 					</div>
 					{#if definicoesDeEfeito.length}
 						<select bind:value={definicaoSelecionada} aria-label="Condição oficial">
-							{#each definicoesDeEfeito as definition}<option value={definition.slug}
-									>{definition.name}</option
+							{#each definicoesDeEfeito as definition (definition.slug)}<option
+									value={definition.slug}>{definition.name}</option
 								>{/each}
 						</select>
 						{#if efeitoSelecionado}<p>{efeitoSelecionado.summary}</p>{/if}
@@ -1511,7 +1440,7 @@
 						</p>{/if}
 					{#if efeitosDoToken.length}
 						<div class="official-effect-list">
-							{#each efeitosDoToken as effect}<span title={effect.source}
+							{#each efeitosDoToken as effect (effect.id)}<span title={effect.source}
 									>{effect.name}{effect.remainingTurns
 										? ` · ${effect.remainingTurns} turnos`
 										: ''}{#if isGM}<button

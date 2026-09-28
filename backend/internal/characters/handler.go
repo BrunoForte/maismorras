@@ -63,6 +63,33 @@ func (h *Handler) RollMine(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusCreated, result)
 }
 
+func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_REST", "Descanso inválido.")
+	}
+	result, err := h.repo.RestCharacter(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("characterID"), strings.TrimSpace(in.Kind))
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Você não pode aplicar descanso nesta ficha.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada.")
+	}
+	if errors.Is(err, ErrNoHitDice) {
+		return apperror.BadRequest("NO_HIT_DICE", "Não há dados de vida disponíveis para este descanso curto.")
+	}
+	if errors.Is(err, ErrInvalidRest) {
+		return apperror.BadRequest("INVALID_REST", "Tipo de descanso ou dado de vida inválido.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	return write(w, http.StatusOK, result)
+}
+
 func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {
@@ -171,8 +198,10 @@ func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
 }
 
 func validate(sheet Sheet) error {
-	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.ArmorClass < 0 || sheet.ArmorClass > 99 || sheet.Speed < 0 || sheet.Speed > 300 {
-		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV, CA e deslocamento da ficha.")
+	// ArmorClass, proficiencyBonus and passivePerception are server-derived;
+	// ignore client values and recompute them before persistence.
+	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.Speed < 0 || sheet.Speed > 300 {
+		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV e deslocamento da ficha.")
 	}
 	if len([]rune(strings.TrimSpace(sheet.SpeciesLineage))) > 80 {
 		return apperror.BadRequest("INVALID_SHEET", "A linhagem da espécie é longa demais.")

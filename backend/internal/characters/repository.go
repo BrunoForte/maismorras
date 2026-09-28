@@ -13,52 +13,58 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"vtt-backend/internal/systems"
 )
 
 var (
-	ErrForbidden = errors.New("forbidden")
-	ErrNotFound  = errors.New("character not found")
+	ErrForbidden   = errors.New("forbidden")
+	ErrNotFound    = errors.New("character not found")
+	ErrNoHitDice   = errors.New("no hit dice available")
+	ErrInvalidRest = errors.New("invalid rest")
 )
 
 // Sheet deliberately stores the D&D 2024 MVP without rules text from the books.
 // Features, attacks and spells are user-authored notes, allowing the sheet to stay
 // compact while still retaining the practical information used at the table.
 type Sheet struct {
-	Name                 string          `json:"name"`
-	PortraitPath         string          `json:"portraitPath"`
-	TokenPortraitPath    string          `json:"tokenPortraitPath"`
-	Class                string          `json:"class"`
-	Subclass             string          `json:"subclass"`
-	Level                int             `json:"level"`
-	Species              string          `json:"species"`
-	SpeciesLineage       string          `json:"speciesLineage"`
-	Background           string          `json:"background"`
-	Alignment            string          `json:"alignment"`
-	AbilityScores        AbilityScores   `json:"abilityScores"`
-	ProficiencyBonus     int             `json:"proficiencyBonus"`
-	SavingThrows         []string        `json:"savingThrows"`
-	SkillProficiencies   []string        `json:"skillProficiencies"`
-	SkillExpertise       []string        `json:"skillExpertise"`
-	ArmorClass           int             `json:"armorClass"`
-	Initiative           int             `json:"initiative"`
-	InitiativeAdvantage  bool            `json:"initiativeAdvantage"`
-	Speed                int             `json:"speed"`
-	HitPointsCurrent     int             `json:"hitPointsCurrent"`
-	HitPointsMax         int             `json:"hitPointsMax"`
-	TemporaryHP          int             `json:"temporaryHP"`
-	HitDice              string          `json:"hitDice"`
-	HitDiceSpent         int             `json:"hitDiceSpent"`
-	PassivePerception    int             `json:"passivePerception"`
-	Attacks              []Attack        `json:"attacks"`
-	Spells               []Spell         `json:"spells"`
-	SpellcastingOverride bool            `json:"spellcastingOverride"`
-	Features             string          `json:"features"`
-	Feats                string          `json:"feats"`
-	Equipment            string          `json:"equipment"`
-	Inventory            []InventoryItem `json:"inventory"`
-	Resources            []Resource      `json:"resources"`
-	SpellSlots           []SpellSlot     `json:"spellSlots"`
-	VisibleRolls         []string        `json:"visibleRolls"`
+	Name                  string          `json:"name"`
+	PortraitPath          string          `json:"portraitPath"`
+	TokenPortraitPath     string          `json:"tokenPortraitPath"`
+	Class                 string          `json:"class"`
+	Subclass              string          `json:"subclass"`
+	Level                 int             `json:"level"`
+	Species               string          `json:"species"`
+	SpeciesLineage        string          `json:"speciesLineage"`
+	Background            string          `json:"background"`
+	Alignment             string          `json:"alignment"`
+	AbilityScores         AbilityScores   `json:"abilityScores"`
+	ProficiencyBonus      int             `json:"proficiencyBonus"`
+	SavingThrows          []string        `json:"savingThrows"`
+	SkillProficiencies    []string        `json:"skillProficiencies"`
+	SkillExpertise        []string        `json:"skillExpertise"`
+	ArmorClass            int             `json:"armorClass"`
+	Initiative            int             `json:"initiative"`
+	InitiativeAdvantage   bool            `json:"initiativeAdvantage"`
+	Speed                 int             `json:"speed"`
+	HitPointsCurrent      int             `json:"hitPointsCurrent"`
+	HitPointsMax          int             `json:"hitPointsMax"`
+	TemporaryHP           int             `json:"temporaryHP"`
+	HitDice               string          `json:"hitDice"`
+	HitDiceSpent          int             `json:"hitDiceSpent"`
+	PassivePerception     int             `json:"passivePerception"`
+	Attacks               []Attack        `json:"attacks"`
+	Spells                []Spell         `json:"spells"`
+	SpellcastingOverride  bool            `json:"spellcastingOverride"`
+	Features              string          `json:"features"`
+	Feats                 string          `json:"feats"`
+	Equipment             string          `json:"equipment"`
+	Inventory             []InventoryItem `json:"inventory"`
+	Resources             []Resource      `json:"resources"`
+	SpellSlots            []SpellSlot     `json:"spellSlots"`
+	VisibleRolls          []string        `json:"visibleRolls"`
+	Resistances           []string        `json:"resistances,omitempty"`
+	AutomaticTraits       []string        `json:"automaticTraits,omitempty"`
+	SpeciesHPBonusApplied int             `json:"speciesHPBonusApplied,omitempty"`
 }
 
 type AbilityScores struct {
@@ -74,6 +80,8 @@ type Attack struct {
 	AttackBonus int    `json:"attackBonus"`
 	Damage      string `json:"damage"`
 	Notes       string `json:"notes"`
+	AttackType  string `json:"attackType,omitempty"`
+	Ability     string `json:"ability,omitempty"`
 }
 type Spell struct {
 	EntryID             string `json:"entryId"`
@@ -84,13 +92,16 @@ type Spell struct {
 	DiceFormula         string `json:"diceFormula"`
 	HigherLevels        string `json:"higherLevels"`
 	ScalingDicePerLevel int    `json:"scalingDicePerLevel"`
+	Origin              string `json:"origin,omitempty"`
 }
 type Resource struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Current   int    `json:"current"`
-	Max       int    `json:"max"`
-	RestoreOn string `json:"restoreOn"`
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	Current           int    `json:"current"`
+	Max               int    `json:"max"`
+	MaxOverride       *int   `json:"maxOverride,omitempty"`
+	ShortRestRecovery int    `json:"shortRestRecovery,omitempty"`
+	RestoreOn         string `json:"restoreOn"`
 }
 type SpellSlot struct {
 	Level   int `json:"level"`
@@ -156,10 +167,7 @@ var spellAbility = map[string]string{"bard": "charisma", "cleric": "wisdom", "dr
 var diceInEffect = regexp.MustCompile(`(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?`)
 
 func abilityModifier(score int) int {
-	if score >= 10 {
-		return (score - 10) / 2
-	}
-	return -((11 - score) / 2)
+	return systems.DefaultCharacterRules().AbilityModifier(score)
 }
 func canonicalClass(value string) string {
 	key := strings.ToLower(strings.TrimSpace(value))
@@ -220,25 +228,18 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 	default:
 		return result, fmt.Errorf("invalid sheet roll")
 	}
-	rolls := 1
-	if mode != "normal" {
-		rolls = 2
-	}
-	result.Dice = make([]int, rolls)
-	for i := range rolls {
-		n, rollErr := rand.Int(rand.Reader, big.NewInt(20))
-		if rollErr != nil {
-			return result, rollErr
+	d20, rollErr := systems.DefaultCharacterRules().RollD20(systems.D20Mode(mode), result.Modifier, func(sides int) (int, error) {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
+		if err != nil {
+			return 0, err
 		}
-		result.Dice[i] = int(n.Int64()) + 1
+		return int(n.Int64()) + 1, nil
+	})
+	if rollErr != nil {
+		return result, rollErr
 	}
-	kept := result.Dice[0]
-	for _, die := range result.Dice[1:] {
-		if (mode == "advantage" && die > kept) || (mode == "disadvantage" && die < kept) {
-			kept = die
-		}
-	}
-	result.Total = kept + result.Modifier
+	result.Dice = d20.Rolls
+	result.Total = d20.Total
 	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
 	err = r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
 	return result, err
@@ -287,6 +288,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if err = json.Unmarshal(raw, &sheet); err != nil {
 		return SpellCastResult{}, err
 	}
+	sheet = normalizeDerivedFields(sheet)
 	if spellIndex >= len(sheet.Spells) {
 		return SpellCastResult{}, fmt.Errorf("spell not found")
 	}
@@ -525,6 +527,7 @@ func (r *Repository) GetMine(ctx context.Context, campaignID, userID string) (Ch
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
+	item.Sheet = normalizeDerivedFields(item.Sheet)
 	return item, nil
 }
 
@@ -536,6 +539,7 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if !ok {
 		return Character{}, ErrForbidden
 	}
+	sheet = normalizeDerivedFields(sheet)
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -553,6 +557,7 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
+	item.Sheet = normalizeDerivedFields(item.Sheet)
 	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
 		return Character{}, err
 	}
@@ -581,6 +586,7 @@ func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, user
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
+	item.Sheet = normalizeDerivedFields(item.Sheet)
 	return item, nil
 }
 
@@ -598,6 +604,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := r.authorizeCharacterWrite(ctx, campaignID, currentOwnerID, userID); err != nil {
 		return Character{}, err
 	}
+	sheet = normalizeDerivedFields(sheet)
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -613,6 +620,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
+	item.Sheet = normalizeDerivedFields(item.Sheet)
 	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
 		return Character{}, err
 	}
@@ -698,7 +706,7 @@ func (r *Repository) CreateForGM(ctx context.Context, campaignID, ownerID, userI
 	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, ownerID).Scan(&member); err != nil || !member {
 		return Character{}, ErrForbidden
 	}
-	sheet := Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}}
+	sheet := normalizeDerivedFields(Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}})
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -746,6 +754,7 @@ func (r *Repository) ListForGM(ctx context.Context, campaignID, userID string) (
 			if err := json.Unmarshal(raw, &character.Sheet); err != nil {
 				return nil, fmt.Errorf("decode participant sheet: %w", err)
 			}
+			character.Sheet = normalizeDerivedFields(character.Sheet)
 			item.Character = &character
 		}
 		items = append(items, item)

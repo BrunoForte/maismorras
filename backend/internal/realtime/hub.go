@@ -29,6 +29,12 @@ type Hub struct {
 	peersByUser map[string]int
 	peersByIP   map[string]int
 	totalPeers  int
+	brokerMu    sync.RWMutex
+	broker      Broker
+	brokerMode  string
+	originID    string
+	seenEvents  map[string]struct{}
+	seenOrder   []string
 }
 type peer struct {
 	conn        *websocket.Conn
@@ -61,12 +67,103 @@ const maxPeersPerIP = 20
 const maxMessagesPerMinute = 120
 
 func NewHub() *Hub {
-	return &Hub{rooms: map[string]map[*peer]struct{}{}, peersByUser: map[string]int{}, peersByIP: map[string]int{}}
+	return &Hub{rooms: map[string]map[*peer]struct{}{}, peersByUser: map[string]int{}, peersByIP: map[string]int{}, brokerMode: "local", originID: newRealtimeID(), seenEvents: map[string]struct{}{}}
+}
+
+func (h *Hub) ConfigureBroker(broker Broker) {
+	h.brokerMu.Lock()
+	defer h.brokerMu.Unlock()
+	h.broker = broker
+	if broker == nil {
+		h.brokerMode = "local"
+		return
+	}
+	h.brokerMode = broker.Mode()
+}
+
+func (h *Hub) OriginInstanceID() string { return h.originID }
+
+// HandleRemote delivers a broker event to this instance's peers only. This
+// path deliberately does not invoke the broker, preventing notification loops.
+func (h *Hub) HandleRemote(envelope Envelope) {
+	if envelope.ProtocolVersion != realtimeProtocolVersion || envelope.EventID == "" || envelope.SceneID == "" || envelope.OriginInstance == "" || envelope.OriginInstance == h.originID {
+		return
+	}
+	if !h.rememberRemoteEvent(envelope.EventID) {
+		return
+	}
+	payload := boundedRealtimePayload(envelope.Payload)
+	if !validRemoteEventType(eventType(payload)) {
+		payload = []byte(`{"type":"scene.refresh"}`)
+	}
+	h.broadcast(envelope.SceneID, payload)
+}
+
+// RefreshLocalRooms reconciles peers after a broker listener reconnect, when
+// notifications may have been missed during the disconnection. It is local
+// only and deliberately does not publish another broker event.
+func (h *Hub) RefreshLocalRooms() {
+	h.mu.RLock()
+	rooms := make([]string, 0, len(h.rooms))
+	for sceneID := range h.rooms {
+		rooms = append(rooms, sceneID)
+	}
+	h.mu.RUnlock()
+	for _, sceneID := range rooms {
+		h.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+	}
+}
+
+func (h *Hub) rememberRemoteEvent(eventID string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, exists := h.seenEvents[eventID]; exists {
+		return false
+	}
+	h.seenEvents[eventID] = struct{}{}
+	h.seenOrder = append(h.seenOrder, eventID)
+	if len(h.seenOrder) > 2048 {
+		delete(h.seenEvents, h.seenOrder[0])
+		h.seenOrder = h.seenOrder[1:]
+	}
+	return true
+}
+
+func validRemoteEventType(kind string) bool {
+	switch kind {
+	case "scene.refresh", "presentation.updated", "overlay.layout.updated", "token.updated", "combat.updated", "scene.delta", "chat.updated", "audio.state", "audio.effects", "map.ping":
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Hub) publishRoomEvent(ctx context.Context, sceneID string, payload []byte) {
+	if strings.TrimSpace(sceneID) == "" {
+		return
+	}
+	payload = boundedRealtimePayload(payload)
+	h.broadcast(sceneID, payload)
+	h.brokerMu.RLock()
+	broker, mode, origin := h.broker, h.brokerMode, h.originID
+	h.brokerMu.RUnlock()
+	if broker == nil {
+		return
+	}
+	envelope := Envelope{ProtocolVersion: realtimeProtocolVersion, EventID: newRealtimeID(), OriginInstance: origin, SceneID: sceneID, Payload: payload}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	publishCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if err := broker.Publish(publishCtx, envelope); err != nil {
+		slog.Warn("realtime broker publication failed", "request_id", requestIDFromContext(ctx), "broker_mode", mode, "origin_instance_id", origin, "scene_id", sceneID, "event_id", envelope.EventID, "outcome", "failed", "error", err)
+	}
 }
 
 // BroadcastAudioState relays a server-persisted path change to every client in
 // the scene. The handler only supplies state read back from the database.
-func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool) {
+func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool, requestID string) {
 	eventType := "audio.state"
 	if effects {
 		eventType = "audio.effects"
@@ -76,7 +173,7 @@ func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume flo
 		State audioRealtimeState `json:"state"`
 	}{Type: eventType, State: audioRealtimeState{Path: path, Playing: playing, Volume: volume, Position: positionMs, StartedAt: startedAt, Revision: revision}})
 	if err == nil {
-		h.broadcast(sceneID, payload)
+		h.publishRoomEvent(withRequestID(context.Background(), requestID), sceneID, payload)
 	}
 }
 
@@ -110,6 +207,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	auth.Authenticate(h.cfg.SupabaseURL, h.cfg.SupabaseJWTSecret, h.connect).ServeHTTP(w, r)
 }
 func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
+	requestCtx := withRequestID(r.Context(), r.Header.Get("X-Request-ID"))
 	sceneID := strings.TrimSpace(r.URL.Query().Get("sceneId"))
 	if sceneID == "" {
 		http.Error(w, "sceneId required", http.StatusBadRequest)
@@ -150,7 +248,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
 		return nil
 	}
-	defer h.hub.leave(sceneID, peer)
+	h.hub.logRoomPeerCount(sceneID, "joined")
+	defer func() {
+		h.hub.leave(sceneID, peer)
+		h.hub.logRoomPeerCount(sceneID, "left")
+	}()
 	defer conn.Close(websocket.StatusNormalClosure, "bye")
 	for {
 		readCtx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
@@ -185,17 +287,17 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		}
 		switch event.Type {
 		case "scene.refresh":
-			h.hub.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+			h.hub.publishRoomEvent(requestCtx, sceneID, []byte(`{"type":"scene.refresh"}`))
 		case "presentation.updated":
 			// Presentation content is fetched through the caller's permission-filtered
 			// REST endpoint. Realtime only invalidates the view, so item paths and
 			// titles are never disclosed to unauthorized campaign members.
 			if canPublishPresentationUpdate(peer.canControl, event.Data) {
-				h.hub.broadcast(sceneID, []byte(`{"type":"presentation.updated"}`))
+				h.hub.publishRoomEvent(requestCtx, sceneID, []byte(`{"type":"presentation.updated"}`))
 			}
 		case "overlay.layout.updated":
 			if peer.canControl {
-				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
+				h.hub.publishRoomEvent(requestCtx, sceneID, eventBroadcast(event.Type, event.Data))
 			}
 
 		case "token.updated":
@@ -211,36 +313,22 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 			if signal.Deleted && !peer.canControl {
 				continue
 			}
-			h.hub.broadcast(sceneID, tokenUpdateBroadcast(signal.TokenID, signal.Deleted))
+			h.hub.publishRoomEvent(requestCtx, sceneID, tokenUpdateBroadcast(signal.TokenID, signal.Deleted))
 		case "combat.updated":
 			if peer.canControl {
-				h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
+				h.hub.publishRoomEvent(requestCtx, sceneID, eventBroadcast(event.Type, event.Data))
 			}
 		case "scene.delta":
 			if !peer.canControl {
 				continue
 			}
-			var delta struct {
-				Kind   string          `json:"kind"`
-				Action string          `json:"action"`
-				ID     string          `json:"id"`
-				Item   json.RawMessage `json:"item"`
+			payload, valid := sceneDeltaBroadcast(event.Data)
+			if !valid {
+				payload = []byte(`{"type":"scene.refresh"}`)
 			}
-			if json.Unmarshal(event.Data, &delta) != nil || (delta.Kind != "area" && delta.Kind != "wall" && delta.Kind != "effect") {
-				continue
-			}
-			if delta.Action == "upsert" && (len(delta.Item) == 0 || len(delta.Item) > 16<<10) {
-				continue
-			}
-			if delta.Action == "delete" && (len(delta.ID) != 36 || len(delta.Item) != 0) {
-				continue
-			}
-			if delta.Action != "upsert" && delta.Action != "delete" {
-				continue
-			}
-			h.hub.broadcast(sceneID, eventBroadcast(event.Type, event.Data))
+			h.hub.publishRoomEvent(requestCtx, sceneID, payload)
 		case "chat.updated":
-			h.hub.broadcast(sceneID, []byte(`{"type":"chat.updated"}`))
+			h.hub.publishRoomEvent(requestCtx, sceneID, []byte(`{"type":"chat.updated"}`))
 		case "audio.state":
 			if !peer.canControl || !validAudioRealtimeState(event.State) {
 				continue
@@ -249,7 +337,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 				Type  string `json:"type"`
 				State any    `json:"state"`
 			}{Type: "audio.state", State: event.State})
-			h.hub.broadcast(sceneID, payload)
+			h.hub.publishRoomEvent(requestCtx, sceneID, payload)
 		case "audio.effects":
 			if !peer.canControl || !validAudioRealtimeState(event.State) {
 				continue
@@ -258,7 +346,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 				Type  string `json:"type"`
 				State any    `json:"state"`
 			}{Type: "audio.effects", State: event.State})
-			h.hub.broadcast(sceneID, payload)
+			h.hub.publishRoomEvent(requestCtx, sceneID, payload)
 		case "map.ping":
 			// Pings are transient UI hints, never database commands. Keep their
 			// payload strictly numeric and bounded before relaying to the room.
@@ -272,9 +360,47 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 				Color int             `json:"color"`
 				Data  json.RawMessage `json:"data"`
 			}{Type: "map.ping", X: event.X, Y: event.Y, Color: event.Color})
-			h.hub.broadcast(sceneID, payload)
+			h.hub.publishRoomEvent(requestCtx, sceneID, payload)
 		}
 	}
+}
+
+func (h *Hub) logRoomPeerCount(sceneID, action string) {
+	h.mu.RLock()
+	count := len(h.rooms[sceneID])
+	h.mu.RUnlock()
+	h.brokerMu.RLock()
+	mode, origin := h.brokerMode, h.originID
+	h.brokerMu.RUnlock()
+	slog.Debug("realtime local room peers", "broker_mode", mode, "origin_instance_id", origin, "scene_id", sceneID, "local_peer_count", count, "action", action)
+}
+
+func sceneDeltaBroadcast(data json.RawMessage) ([]byte, bool) {
+	var delta struct {
+		Kind   string          `json:"kind"`
+		Action string          `json:"action"`
+		ID     string          `json:"id"`
+		Item   json.RawMessage `json:"item"`
+	}
+	if len(data) == 0 || len(data) > 16<<10 || json.Unmarshal(data, &delta) != nil || (delta.Kind != "area" && delta.Kind != "wall" && delta.Kind != "effect") {
+		return nil, false
+	}
+	if delta.Action == "delete" {
+		if len(delta.ID) != 36 || len(delta.Item) != 0 {
+			return nil, false
+		}
+		return eventBroadcast("scene.delta", data), true
+	}
+	if delta.Action != "upsert" || len(delta.Item) == 0 || len(delta.Item) > 12<<10 {
+		return nil, false
+	}
+	var item struct {
+		ID string `json:"id"`
+	}
+	if json.Unmarshal(delta.Item, &item) != nil || len(item.ID) != 36 {
+		return nil, false
+	}
+	return eventBroadcast("scene.delta", data), true
 }
 
 func canPublishPresentationUpdate(canControl bool, data json.RawMessage) bool {

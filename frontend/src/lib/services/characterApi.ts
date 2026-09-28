@@ -189,6 +189,37 @@ export const rollMyCharacter = (
 		method: 'POST',
 		body: JSON.stringify({ kind, key, mode })
 	});
+export type CharacterRest = {
+	eventId?: number;
+	sheet: CharacterSheet;
+	kind: 'short' | 'long';
+	dados?: number[];
+	modificador?: number;
+	total?: number;
+	label?: string;
+};
+export const restCharacter = (
+	session: Session,
+	campaignId: string,
+	kind: CharacterRest['kind'],
+	characterId?: string | null
+) => {
+	const path = characterId
+		? `/api/v1/campaigns/${campaignId}/characters/${characterId}/rest`
+		: `/api/v1/campaigns/${campaignId}/character/rest`;
+	return request<CharacterRest>(session, path, {
+		method: 'POST',
+		body: JSON.stringify({ kind })
+	}).then((result) => ({
+		...result,
+		sheet: normalizeCharacter({
+			id: characterId ?? '',
+			campaignId,
+			ownerId: '',
+			sheet: result.sheet
+		}).sheet
+	}));
+};
 export type SpellCast = {
 	eventId: number;
 	sheet: CharacterSheet;

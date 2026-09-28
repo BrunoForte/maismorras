@@ -1,6 +1,7 @@
 package scenes
 
 import "testing"
+import "vtt-backend/internal/systems"
 
 func TestOverlayCameraCharacterIDs(t *testing.T) {
 	validID := "34c52f5e-b8cb-4f16-b881-c93c3bf5cc74"
@@ -17,32 +18,44 @@ func TestOverlayCameraCharacterIDs(t *testing.T) {
 }
 
 func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {
-	rolls := []int{4, 17}
-	if got := highestRoll(rolls); got != 17 {
-		t.Fatalf("highestRoll(%v) = %d, want 17", rolls, got)
+	rolled, err := systems.DefaultCharacterRules().RollD20(systems.RollAdvantage, 3, fixedRoller(4, 17))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolled.Kept != 17 || rolled.Total != 20 {
+		t.Fatalf("advantage result = %+v, want kept 17 and total 20", rolled)
 	}
 }
 
 func TestRollD20CountAndBounds(t *testing.T) {
 	for _, test := range []struct {
 		name      string
-		advantage bool
+		mode      systems.D20Mode
 		wantCount int
-	}{{"normal", false, 1}, {"advantage", true, 2}} {
+	}{{"normal", systems.RollNormal, 1}, {"advantage", systems.RollAdvantage, 2}, {"disadvantage", systems.RollDisadvantage, 2}} {
 		t.Run(test.name, func(t *testing.T) {
-			rolls, err := rollD20(test.advantage)
+			rolled, err := rollD20(test.mode)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(rolls) != test.wantCount {
-				t.Fatalf("got %d d20 results, want %d", len(rolls), test.wantCount)
+			if len(rolled.Rolls) != test.wantCount {
+				t.Fatalf("got %d d20 results, want %d", len(rolled.Rolls), test.wantCount)
 			}
-			for _, roll := range rolls {
+			for _, roll := range rolled.Rolls {
 				if roll < 1 || roll > 20 {
 					t.Fatalf("d20 result out of range: %d", roll)
 				}
 			}
 		})
+	}
+}
+
+func fixedRoller(values ...int) systems.DiceRoller {
+	index := 0
+	return func(int) (int, error) {
+		value := values[index]
+		index++
+		return value, nil
 	}
 }
 

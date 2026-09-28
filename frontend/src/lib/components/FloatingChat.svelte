@@ -134,7 +134,7 @@
 		sceneSocket = connectSceneSocket(
 			session,
 			sceneId,
-			() => {},
+			undefined,
 			undefined,
 			updateFallback,
 			undefined,

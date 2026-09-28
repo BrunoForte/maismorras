@@ -134,7 +134,7 @@ func (h *Handler) SetAudioKind(w http.ResponseWriter, r *http.Request) error {
 	}
 	if h.audio != nil {
 		for _, state := range changed {
-			h.audio.BroadcastAudioState(state.id, state.path, state.playing, state.volume, state.positionMs, state.startedAt, state.revision, state.effects)
+			h.audio.BroadcastAudioState(state.id, state.path, state.playing, state.volume, state.positionMs, state.startedAt, state.revision, state.effects, r.Header.Get("X-Request-ID"))
 		}
 	}
 	return write(w, http.StatusOK, map[string]any{"path": destination, "kind": in.Kind, "looping": looping})

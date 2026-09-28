@@ -55,6 +55,24 @@ go vet ./cmd/... ./internal/...
 
 Os testes unitários do módulo `tokens` simulam o servidor de imagens: validam o prompt e seus parâmetros, o `User-Agent`, a codificação Base64, falhas `5xx` do upstream e o limite de bytes em memória.
 
+## Realtime entre instâncias
+
+O `Hub` mantém somente os WebSockets locais à instância. Em produção, configure `REALTIME_BROKER=postgres`; em desenvolvimento/testes, `local` mantém o fan-out no processo. O serviço recusa iniciar no Cloud Run sem um modo explicitamente configurado.
+
+`REALTIME_BROKER_DATABASE_URL` deve apontar para uma conexão PostgreSQL persistente compatível com `LISTEN`: Supabase Direct ou Session Pooler na porta `5432`. Não use o Transaction Pooler (`6543`). Se a variável dedicada estiver vazia, o backend reutiliza `DATABASE_URL` somente quando a URL passa essa validação. Recomendamos manter a URL do listener separada quando `DATABASE_URL` for destinada ao tráfego normal. A conexão `pgx.Conn` do listener é exclusiva para `LISTEN`; publicação usa `pg_notify` pelo pool de requisições. O listener reconecta com backoff e sua falha transitória não interrompe a API.
+
+Cada instância da API mantém uma conexão persistente extra para `LISTEN`. Antes de ativar o modo distribuído, confira o limite de conexões do Supabase junto do máximo de instâncias configurado no Cloud Run; não compartilhe a URL de conexão no frontend.
+
+O broker só recebe eventos minimizados depois da validação de autorização. Atualizações de token permanecem invalidações sem ficha/imagem/atributos; conteúdo de apresentação continua protegido pelo endpoint REST com permissões. Eventos remotos nunca são republicados e eventos grandes viram `scene.refresh`.
+
+### Operação
+
+- No Cloud Logging, filtre `resource.type="cloud_run_revision"` e procure `realtime broker listener connected`, `realtime broker listener interrupted`, `realtime broker listener connection failed` e `realtime broker publication failed`.
+- Investigue se o listener alterna repetidamente entre conexão/falha ou se `retry_ms` chega ao teto de 30 s; confira disponibilidade do Supabase, senha/host/porta da URL dedicada e se a conexão usa modo sessão/direct.
+- `broker_mode`, `origin_instance_id`, `scene_id`, `event_id` e `outcome` permitem seguir a publicação sem expor tokens. `local_peer_count` aparece somente em logs `DEBUG` e não inclui dados pessoais; para habilitá-lo temporariamente, configure `LOG_LEVEL=debug` no serviço e retorne a `info` após o diagnóstico.
+- Uma indisponibilidade do broker não derruba o Cloud Run, mas clientes conectados a instâncias diferentes podem ficar temporariamente divergentes; após reconexão, o frontend invalida uma vez a cena compartilhada e carrega novamente a fonte de verdade REST.
+- O teste opcional de integração PostgreSQL usa `REALTIME_TEST_DATABASE_URL` (conexão 5432 compatível) para validar `pg_notify` entre conexões independentes. Ele não altera tabelas e pode ser omitido no fluxo unitário.
+
 ## Docker
 
 ```bash

@@ -17,16 +17,12 @@
 		setDice3dPreference,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
-	import LiveKitPreview from '$lib/components/LiveKitPreview.svelte';
+	import OverlayCameraCard from '$lib/components/overlay/OverlayCameraCard.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { request } from '$lib/services/httpClient';
 	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
-	import {
-		cameraCharacterLabel,
-		cameraHPPercent,
-		findCameraCharacterToken
-	} from '$lib/utils/overlayCamera';
+	import { cameraCharacterLabel, findCameraCharacterToken } from '$lib/utils/overlayCamera';
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
 	import { getCharacterForGM, type CharacterSheet } from '$lib/services/characterApi';
 	import { getOverlayInitiativeOrder, getOverlayNextCombatant } from '$lib/utils/overlayCombat';
@@ -95,6 +91,10 @@
 	let overlayPresentationClosed = $state(false);
 	let activeCharacterSheet = $state<CharacterSheet | null>(null);
 	let requestedSheetTokenId = '';
+	type LiveKitPreviewComponentType = typeof import('$lib/components/LiveKitPreview.svelte').default;
+	let LiveKitPreviewComponent = $state<LiveKitPreviewComponentType | null>(null);
+	let liveKitLoadFailed = $state(false);
+	let liveKitImport: Promise<void> | null = null;
 	const initiativeOrder = () => getOverlayInitiativeOrder(visibleTokens(), combat.initiatives);
 	const activeCombatant = () =>
 		initiativeOrder().find((token) => token.id === combat.activeTokenId) ?? null;
@@ -120,6 +120,24 @@
 			.map((camera, index) => ({ camera, index }))
 			.filter(({ camera, index }) => index !== 5 && isCameraUrl(camera.url));
 	const hasLiveKitCamera = () => Boolean(overlayLayout.livekitUrl && overlayLayout.livekitToken);
+	async function loadLiveKitPreview() {
+		if (LiveKitPreviewComponent || liveKitImport) return liveKitImport;
+		liveKitLoadFailed = false;
+		liveKitImport = import('$lib/components/LiveKitPreview.svelte')
+			.then((module) => {
+				LiveKitPreviewComponent = module.default;
+			})
+			.catch(() => {
+				liveKitLoadFailed = true;
+			})
+			.finally(() => {
+				liveKitImport = null;
+			});
+		return liveKitImport;
+	}
+	$effect(() => {
+		if (hasLiveKitCamera()) void loadLiveKitPreview();
+	});
 	async function loadOverlayPresentation(currentSession: Session | null = session) {
 		if (!currentSession || !sceneId()) return;
 		try {
@@ -656,38 +674,16 @@
 
 		{#if hostCamera()?.url && block('host-camera')?.visible !== false}{@const hostCameraHP =
 				cameraShowsHP(hostCamera() as CameraSlot)}
-			<article
-				class="camera-card host-camera"
-				class:layout-positioned={Boolean(block('host-camera'))}
+			<OverlayCameraCard
+				kind="host"
+				src={hostCamera()?.url ?? ''}
+				title="Câmera do narrador"
+				label={cameraLabel(hostCamera() as CameraSlot, 'Narrador')}
+				secondaryLabel={hostCamera()?.playerName ?? ''}
+				hp={hostCameraHP ? { current: hostCameraHP.hpCurrent, max: hostCameraHP.hpMax } : null}
+				positioned={Boolean(block('host-camera'))}
 				style={layoutBlockStyle('host-camera')}
-			>
-				<div class="camera-frame">
-					<iframe
-						src={hostCamera()?.url ?? ''}
-						title="Câmera do narrador"
-						allow="camera; microphone; autoplay; fullscreen"
-					></iframe>
-				</div>
-				<strong>{cameraLabel(hostCamera() as CameraSlot, 'Narrador')}</strong>
-				{#if hostCamera()?.playerName && hostCamera()?.playerName !== cameraLabel(hostCamera() as CameraSlot, 'Narrador')}<small
-						>{hostCamera()?.playerName}</small
-					>{/if}
-				{#if hostCameraHP}<div
-						class="camera-hp"
-						class:critical={hostCameraHP.hpCurrent > 0 && cameraHPPercent(hostCameraHP) <= 25}
-						class:unconscious={hostCameraHP.hpCurrent <= 0}
-						aria-label={`Pontos de vida de ${cameraLabel(hostCamera() as CameraSlot, 'Narrador')}: ${hostCameraHP.hpCurrent} de ${hostCameraHP.hpMax}`}
-					>
-						<div class="camera-hp-track">
-							<span style={`width:${cameraHPPercent(hostCameraHP)}%`}></span>
-						</div>
-						<small
-							>{hostCameraHP.hpCurrent <= 0
-								? 'INCONSCIENTE'
-								: `PV ${hostCameraHP.hpCurrent}/${hostCameraHP.hpMax}`}</small
-						>
-					</div>{/if}
-			</article>{/if}
+			/>{/if}
 
 		{#if activeCombatant() && block('active-character')?.visible !== false}<aside
 				class="active-character-card"
@@ -730,46 +726,29 @@
 
 		{#each playerCameras() as { camera, index }, playerIndex (index)}{#if block(`camera-${playerIndex + 1}`)?.visible !== false}{@const linkedHP =
 					cameraShowsHP(camera)}
-				<article
-					class="camera-card player-camera"
-					class:layout-positioned={Boolean(block(`camera-${playerIndex + 1}`))}
+				<OverlayCameraCard
+					kind="player"
+					src={camera.url}
+					title={`Câmera de ${camera.playerName || camera.characterName || `jogador ${playerIndex + 1}`}`}
+					label={cameraLabel(camera, `Jogador ${playerIndex + 1}`)}
+					secondaryLabel={camera.playerName}
+					hp={linkedHP ? { current: linkedHP.hpCurrent, max: linkedHP.hpMax } : null}
+					positioned={Boolean(block(`camera-${playerIndex + 1}`))}
 					style={playerCameraStyle(playerIndex)}
-				>
-					<div class="camera-frame">
-						<iframe
-							src={camera.url}
-							title={`Câmera de ${camera.playerName || camera.characterName || `jogador ${playerIndex + 1}`}`}
-							allow="camera; microphone; autoplay; fullscreen"
-						></iframe>
-					</div>
-					<strong>{cameraLabel(camera, `Jogador ${playerIndex + 1}`)}</strong>
-					{#if camera.playerName && camera.playerName !== cameraLabel(camera, `Jogador ${playerIndex + 1}`)}<small
-							>{camera.playerName}</small
-						>{/if}
-					{#if linkedHP}<div
-							class="camera-hp"
-							class:critical={linkedHP.hpCurrent > 0 && cameraHPPercent(linkedHP) <= 25}
-							class:unconscious={linkedHP.hpCurrent <= 0}
-							aria-label={`Pontos de vida de ${cameraLabel(camera, `Jogador ${playerIndex + 1}`)}: ${linkedHP.hpCurrent} de ${linkedHP.hpMax}`}
-						>
-							<div class="camera-hp-track">
-								<span style={`width:${cameraHPPercent(linkedHP)}%`}></span>
-							</div>
-							<small
-								>{linkedHP.hpCurrent <= 0
-									? 'INCONSCIENTE'
-									: `PV ${linkedHP.hpCurrent}/${linkedHP.hpMax}`}</small
-							>
-						</div>{/if}
-				</article>{/if}{/each}
+				/>{/if}{/each}
 		{#if hasLiveKitCamera()}<article
 				class="camera-card livekit-camera"
 				style={playerCameraStyle(playerCameras().length)}
 			>
-				<LiveKitPreview
-					serverUrl={overlayLayout.livekitUrl ?? ''}
-					token={overlayLayout.livekitToken ?? ''}
-				/>
+				{#if LiveKitPreviewComponent}<LiveKitPreviewComponent
+						serverUrl={overlayLayout.livekitUrl ?? ''}
+						token={overlayLayout.livekitToken ?? ''}
+					/>
+				{:else if liveKitLoadFailed}<p role="status" aria-live="polite">
+						Não foi possível carregar a câmera LiveKit. <button
+							onclick={() => void loadLiveKitPreview()}>Tentar novamente</button
+						>
+					</p>{:else}<p role="status" aria-live="polite">Carregando câmera LiveKit…</p>{/if}
 				<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
 			</article>{/if}
 
@@ -941,8 +920,6 @@
 		color: #e3d7f9;
 		background: #504464;
 	}
-	.host-camera,
-	.player-camera,
 	.livekit-camera {
 		position: absolute;
 		box-sizing: border-box;
@@ -954,72 +931,6 @@
 		font-size: clamp(0.45rem, 0.75vw, 0.76rem);
 		text-align: center;
 		text-shadow: 0 1px 3px #000;
-	}
-	.host-camera {
-		z-index: 50;
-	}
-	.camera-frame {
-		width: 100%;
-		aspect-ratio: 16 / 9;
-		overflow: hidden;
-		border: 1px solid #d8ad67a8;
-		border-radius: clamp(4px, 0.6vw, 10px);
-		background: #0b090de8;
-		box-shadow: 0 5px 18px #0008;
-	}
-	.camera-frame iframe {
-		display: block;
-		width: 100%;
-		height: 100%;
-		border: 0;
-		pointer-events: auto;
-	}
-	.camera-card strong {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.camera-card small {
-		color: #d6c7b4;
-	}
-	.camera-hp {
-		display: grid;
-		grid-template-columns: minmax(2.5rem, 1fr) auto;
-		align-items: center;
-		gap: 0.35rem;
-		width: 100%;
-		min-width: 0;
-		padding: 0.12rem 0.25rem;
-		box-sizing: border-box;
-		border: 1px solid #ffffff26;
-		border-radius: 999px;
-		background: #09080bd9;
-	}
-	.camera-hp-track {
-		height: clamp(3px, 0.45vw, 6px);
-		overflow: hidden;
-		border-radius: 999px;
-		background: #54464a;
-	}
-	.camera-hp-track span {
-		display: block;
-		height: 100%;
-		border-radius: inherit;
-		background: linear-gradient(90deg, #b6d477, #60bd77);
-		transition:
-			width 240ms ease,
-			background-color 240ms ease;
-	}
-	.camera-hp.critical .camera-hp-track span {
-		background: linear-gradient(90deg, #f0bd58, #dd803d);
-	}
-	.camera-hp.unconscious .camera-hp-track span {
-		background: #bd4c55;
-	}
-	.camera-hp small {
-		font-size: clamp(0.38rem, 0.55vw, 0.58rem);
-		font-weight: 800;
-		white-space: nowrap;
 	}
 	.active-character-card {
 		position: absolute;

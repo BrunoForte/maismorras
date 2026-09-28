@@ -145,6 +145,21 @@ export const canonicalClass = (value: string) =>
 			.trim()
 	] ?? value.toLowerCase().trim();
 
+export const classSavingThrows: Record<string, string[]> = {
+	barbarian: ['strength', 'constitution'],
+	bard: ['dexterity', 'charisma'],
+	cleric: ['wisdom', 'charisma'],
+	druid: ['intelligence', 'wisdom'],
+	fighter: ['strength', 'constitution'],
+	monk: ['strength', 'dexterity'],
+	paladin: ['wisdom', 'charisma'],
+	ranger: ['strength', 'dexterity'],
+	rogue: ['dexterity', 'intelligence'],
+	sorcerer: ['constitution', 'charisma'],
+	warlock: ['wisdom', 'charisma'],
+	wizard: ['intelligence', 'wisdom']
+};
+
 export function isClassProgressionFeature(entryType: string, rules: Record<string, unknown>) {
 	return entryType === 'feature' && rules.catalog !== 'skills';
 }
@@ -253,21 +268,6 @@ export function syncResourceMaxima(
 			max,
 			current: Math.max(0, Math.min(max, old?.current ?? max))
 		};
-	});
-}
-export function recoverResourcesOnRest(
-	resources: CharacterResource[],
-	kind: 'short' | 'long'
-): CharacterResource[] {
-	return resources.map((resource) => {
-		if (kind === 'long' || resource.restoreOn === 'short')
-			return { ...resource, current: resource.max };
-		if (kind === 'short' && resource.shortRestRecovery)
-			return {
-				...resource,
-				current: Math.min(resource.max, resource.current + resource.shortRestRecovery)
-			};
-		return resource;
 	});
 }
 export function spellSlots(className: string, level: number): SpellSlot[] {
