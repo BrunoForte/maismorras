@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -17,10 +18,12 @@ import (
 const postgresRealtimeChannel = "maismorras_realtime_v1"
 
 type PostgresBroker struct {
-	pool      *pgxpool.Pool
-	listenURL string
-	originID  string
-	logger    *slog.Logger
+	pool          *pgxpool.Pool
+	listenURL     string
+	originID      string
+	logger        *slog.Logger
+	connected     atomic.Bool
+	everConnected atomic.Bool
 }
 
 func NewPostgresBroker(pool *pgxpool.Pool, listenURL, originID string, logger *slog.Logger) *PostgresBroker {
@@ -31,6 +34,33 @@ func NewPostgresBroker(pool *pgxpool.Pool, listenURL, originID string, logger *s
 }
 
 func (*PostgresBroker) Mode() string { return "postgres" }
+
+func (b *PostgresBroker) Readiness() (bool, string) {
+	if b.connected.Load() {
+		return true, "connected"
+	}
+	if b.everConnected.Load() {
+		return true, "degraded"
+	}
+	return false, "starting"
+}
+
+func (b *PostgresBroker) markConnected() {
+	wasConnected := b.everConnected.Swap(true)
+	b.connected.Store(true)
+	if wasConnected {
+		b.logger.Info("realtime broker readiness recovered", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
+		return
+	}
+	b.logger.Info("realtime broker readiness established", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
+}
+
+func (b *PostgresBroker) markDisconnected() {
+	wasConnected := b.connected.Swap(false)
+	if wasConnected && b.everConnected.Load() {
+		b.logger.Warn("realtime broker readiness degraded", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "degraded")
+	}
+}
 
 // ListenCompatibleDatabaseURL accepts a direct PostgreSQL connection or a
 // session-mode pooler connection (5432). Transaction poolers cannot preserve
@@ -78,6 +108,10 @@ func (b *PostgresBroker) Publish(ctx context.Context, envelope Envelope) error {
 }
 
 func (b *PostgresBroker) Listen(ctx context.Context, receive func(Envelope), onConnected func()) error {
+	return b.listen(ctx, receive, onConnected, nil)
+}
+
+func (b *PostgresBroker) listen(ctx context.Context, receive func(Envelope), onConnected func(), onListenerEstablished func(uint32)) error {
 	delay := 500 * time.Millisecond
 	for ctx.Err() == nil {
 		conn, err := pgx.Connect(ctx, b.listenURL)
@@ -99,13 +133,18 @@ func (b *PostgresBroker) Listen(ctx context.Context, receive func(Envelope), onC
 			continue
 		}
 		b.logger.Info("realtime broker listener connected", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "connected")
+		b.markConnected()
 		if onConnected != nil {
 			onConnected()
+		}
+		if onListenerEstablished != nil {
+			onListenerEstablished(conn.PgConn().PID())
 		}
 		delay = 500 * time.Millisecond
 		for ctx.Err() == nil {
 			notification, waitErr := conn.WaitForNotification(ctx)
 			if waitErr != nil {
+				b.markDisconnected()
 				_ = conn.Close(context.Background())
 				if ctx.Err() != nil {
 					return nil

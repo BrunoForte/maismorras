@@ -9,6 +9,10 @@ O workflow `.github/workflows/ci.yml` publica automaticamente depois que os jobs
 
 As migrations do Supabase são publicadas pela integração GitHub do próprio Supabase. Não mantenha simultaneamente um segundo deploy de migrations pelo GitHub Actions, pois isso pode gerar concorrência entre os dois processos.
 
+## Probes de saúde do Cloud Run
+
+`/health` é liveness: verifica que a API responde. `/health/ready` informa o estado inicial/operacional do realtime. Para configurar na revisão existente, abra **Cloud Run → serviço → Editar e implantar nova revisão → Container → Verificações de integridade** e defina a startup HTTP probe em `/health` e, se optar pela readiness probe (atualmente em Preview), a probe HTTP em `/health/ready`, ambas na porta do container. A liveness/startup não verifica o listener PostgreSQL: uma oscilação não deve reiniciar a instância. Antes do primeiro `LISTEN`, readiness responde `503`; depois da primeira conexão, interrupções ficam `200` em estado `degraded`, até a recuperação. Cloud Run pode encaminhar tráfego antes da primeira verificação de readiness; a API continua atendendo REST durante esse curto estado inicial e o realtime entre instâncias só fica pronto após o `LISTEN`. Salve e implante essa revisão manualmente se quiser ativar as probes; cada mudança cria uma revisão e este workflow não altera configurações de probes. Consulte a [documentação oficial de verificações de integridade do Cloud Run](https://docs.cloud.google.com/run/docs/configuring/healthchecks).
+
 ## Secrets necessários no GitHub
 
 Em **Settings → Secrets and variables → Actions**, cadastre:

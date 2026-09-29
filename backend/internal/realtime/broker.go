@@ -54,6 +54,13 @@ type Broker interface {
 	Listen(context.Context, func(Envelope), func()) error
 }
 
+// ReadinessProvider describes whether the broker has ever connected. Once a
+// PostgreSQL listener has connected, a later outage is degraded but remains
+// ready so Cloud Run does not replace every instance in a reconnect cascade.
+type ReadinessProvider interface {
+	Readiness() (ready bool, state string)
+}
+
 func newRealtimeID() string {
 	var id [16]byte
 	if _, err := rand.Read(id[:]); err == nil {

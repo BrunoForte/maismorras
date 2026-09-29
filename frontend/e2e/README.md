@@ -1,5 +1,11 @@
 # Testes E2E autenticados
 
+O CI tem um job separado e obrigatório de **E2E autenticado local**: inicia uma instância Supabase efêmera, aplica as migrations locais, gera narrador/jogador temporários via Auth Admin, faz login de ambos pela tela de desenvolvimento e verifica a criação de campanha, entrada por convite e bloqueio de uma ação exclusiva do narrador. O teste apaga a campanha e as duas contas ao terminar; se o job for interrompido, toda a instância Supabase é descartada. Não lê nem usa as seis variáveis de login/URL/key de produção.
+
+O formulário de e-mail/senha desse fluxo existe somente em `vite dev` quando `PUBLIC_E2E_AUTH=true`. `import.meta.env.DEV` também é exigido, então a opção não é incluída em builds de produção; o login publicado continua exclusivamente Google OAuth. O job anexa logs de backend/frontend e artefatos Playwright em caso de falha, sem salvar estado autenticado, token ou senha.
+
+O teste autenticado local é executado uma vez em Chromium desktop. Os testes remotos existentes continuam opcionais e separados; eles podem continuar usando as sessões remotas configuradas abaixo.
+
 O GitHub Actions gera sessões novas automaticamente antes dos testes autenticados. Crie duas contas de teste dedicadas no Supabase Auth (uma narradora e uma jogadora), habilite login por e-mail/senha para essas contas e salve no GitHub:
 
 - Variables: `E2E_SUPABASE_URL` e `E2E_SUPABASE_PUBLISHABLE_KEY` (ou a chave anon pública do projeto).

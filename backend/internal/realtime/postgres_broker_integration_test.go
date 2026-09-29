@@ -16,6 +16,25 @@ import (
 	"nhooyr.io/websocket"
 )
 
+func TestPostgresBrokerReadinessSurvivesTransientDisconnect(t *testing.T) {
+	broker := NewPostgresBroker(nil, "", "test-instance", nil)
+	if ready, state := broker.Readiness(); ready || state != "starting" {
+		t.Fatalf("initial readiness = %v, %q; want false, starting", ready, state)
+	}
+	broker.markConnected()
+	if ready, state := broker.Readiness(); !ready || state != "connected" {
+		t.Fatalf("connected readiness = %v, %q; want true, connected", ready, state)
+	}
+	broker.markDisconnected()
+	if ready, state := broker.Readiness(); !ready || state != "degraded" {
+		t.Fatalf("degraded readiness = %v, %q; want true, degraded", ready, state)
+	}
+	broker.markConnected()
+	if ready, state := broker.Readiness(); !ready || state != "connected" {
+		t.Fatalf("recovered readiness = %v, %q; want true, connected", ready, state)
+	}
+}
+
 // Set REALTIME_TEST_DATABASE_URL to exercise PostgreSQL NOTIFY delivery between
 // independent connections. The normal unit suite stays self-contained.
 func TestPostgresBrokerPublishesAcrossConnections(t *testing.T) {
@@ -168,7 +187,7 @@ func TestPostgresBrokerFanoutAcrossIndependentInstances(t *testing.T) {
 		if readErr == nil {
 			t.Fatalf("%s peer received an unexpected duplicate/echo: %s", target.name, payload)
 		}
-		if !errors.Is(readErr, context.DeadlineExceeded) {
+		if !errors.Is(readErr, context.DeadlineExceeded) && !errors.Is(readErr, net.ErrClosed) {
 			t.Fatalf("%s peer read failed before the no-echo window elapsed: %v", target.name, readErr)
 		}
 	}

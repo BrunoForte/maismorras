@@ -83,6 +83,16 @@ func (h *Hub) ConfigureBroker(broker Broker) {
 
 func (h *Hub) OriginInstanceID() string { return h.originID }
 
+func (h *Hub) Readiness() (bool, string) {
+	h.brokerMu.RLock()
+	broker := h.broker
+	h.brokerMu.RUnlock()
+	if provider, ok := broker.(ReadinessProvider); ok {
+		return provider.Readiness()
+	}
+	return true, "local"
+}
+
 // HandleRemote delivers a broker event to this instance's peers only. This
 // path deliberately does not invoke the broker, preventing notification loops.
 func (h *Hub) HandleRemote(envelope Envelope) {

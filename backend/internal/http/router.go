@@ -23,14 +23,19 @@ import (
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
 	"vtt-backend/internal/overlayaccess"
+	"vtt-backend/internal/realtime"
 	"vtt-backend/internal/scenes"
 	"vtt-backend/internal/tokens"
 )
 
 type errorHandler func(http.ResponseWriter, *http.Request) error
 
-func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, libraryHandler *library.Handler, realtimeHandler http.Handler, overlayHandler *overlayaccess.Handler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Handler, campaignHandler *campaigns.Handler, sceneHandler *scenes.Handler, characterHandler *characters.Handler, compendiumHandler *compendium.Handler, noteHandler *notes.Handler, npcHandler *npcs.Handler, eventHandler *events.Handler, libraryHandler *library.Handler, realtimeHandler http.Handler, overlayHandler *overlayaccess.Handler, readiness ...realtime.ReadinessProvider) http.Handler {
 	mux := http.NewServeMux()
+	var readinessProvider realtime.ReadinessProvider
+	if len(readiness) > 0 {
+		readinessProvider = readiness[0]
+	}
 	mux.Handle("GET /api/v1/tokens/gerar", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.Generate))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/scenes/generate-background", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, tokenHandler.GenerateMap))
 	mux.Handle("GET /api/v1/ws", realtimeHandler)
@@ -115,6 +120,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	// its own 404 before the request reaches the container. Use /health for
 	// the externally reachable liveness endpoint instead.
 	mux.HandleFunc("GET /health", health)
+	mux.Handle("GET /health/ready", readinessHandler(readinessProvider))
 
 	return recoverer(logger)(requestLogger(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux))))
 }
@@ -122,6 +128,23 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 func health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
+}
+
+func readinessHandler(provider realtime.ReadinessProvider) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		ready, state := true, "local"
+		if provider != nil {
+			ready, state = provider.Readiness()
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		if !ready {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprintf(w, `{"status":"not_ready","realtime":%q}`, state)
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"ok","realtime":%q}`, state)
+	})
 }
 
 func withError(next errorHandler) http.Handler {
