@@ -244,13 +244,14 @@ jobs:
           $backend = $null
           $frontend = $null
           try {
+            $apiBinary = Join-Path (Get-Location).Path 'artifacts/maismorras-api'
             Push-Location backend
             try {
-              go build -o ..\artifacts\maismorras-api ./cmd/api
+              go build -o $apiBinary ./cmd/api
               if ($LASTEXITCODE -ne 0) { throw 'Local API build failed.' }
             } finally { Pop-Location }
 
-            $backend = Start-Process -FilePath (Join-Path (Get-Location).Path 'artifacts/maismorras-api') -WorkingDirectory (Join-Path (Get-Location).Path 'backend') -RedirectStandardOutput (Join-Path (Get-Location).Path 'artifacts/backend.log') -RedirectStandardError (Join-Path (Get-Location).Path 'artifacts/backend-error.log') -PassThru
+            $backend = Start-Process -FilePath $apiBinary -WorkingDirectory (Join-Path (Get-Location).Path 'backend') -RedirectStandardOutput (Join-Path (Get-Location).Path 'artifacts/backend.log') -RedirectStandardError (Join-Path (Get-Location).Path 'artifacts/backend-error.log') -PassThru
             $frontend = Start-Process -FilePath 'node' -ArgumentList @('node_modules/vite/bin/vite.js', 'dev', '--host', '127.0.0.1', '--port', '4173') -WorkingDirectory (Join-Path (Get-Location).Path 'frontend') -RedirectStandardOutput (Join-Path (Get-Location).Path 'artifacts/frontend.log') -RedirectStandardError (Join-Path (Get-Location).Path 'artifacts/frontend-error.log') -PassThru
 
             $deadline = (Get-Date).AddMinutes(3)
