@@ -53,13 +53,22 @@ async function measure(entries) {
 	const files = [...seen].map((key) => manifest[key].file).filter((file) => file?.endsWith('.js'));
 	let bytes = 0;
 	let gzipBytes = 0;
+	const chunks = [];
 	for (const file of files) {
 		const path = resolve(outputRoot, file);
 		const contents = await readFile(path);
+		const chunkGzipBytes = gzipSync(contents).byteLength;
 		bytes += contents.byteLength;
-		gzipBytes += gzipSync(contents).byteLength;
+		gzipBytes += chunkGzipBytes;
+		chunks.push({ file, bytes: contents.byteLength, gzipBytes: chunkGzipBytes });
 	}
-	return { bytes, gzipBytes, files: files.length, entries: seen };
+	return {
+		bytes,
+		gzipBytes,
+		files: files.length,
+		entries: seen,
+		chunks: chunks.sort((a, b) => b.bytes - a.bytes)
+	};
 }
 
 async function collectOptionalLazy(initialEntries) {
@@ -76,14 +85,22 @@ async function collectOptionalLazy(initialEntries) {
 	}
 	let bytes = 0;
 	let gzipBytes = 0;
+	const files = [];
 	for (const key of optional) {
 		const file = manifest[key]?.file;
 		if (!file?.endsWith('.js')) continue;
 		const contents = await readFile(resolve(outputRoot, file));
+		const chunkGzipBytes = gzipSync(contents).byteLength;
 		bytes += contents.byteLength;
-		gzipBytes += gzipSync(contents).byteLength;
+		gzipBytes += chunkGzipBytes;
+		files.push({ file, bytes: contents.byteLength, gzipBytes: chunkGzipBytes });
 	}
-	return { bytes, gzipBytes, chunks: optional.size };
+	return {
+		bytes,
+		gzipBytes,
+		chunks: optional.size,
+		largestChunks: files.sort((a, b) => b.bytes - a.bytes).slice(0, 8)
+	};
 }
 
 const rootRoute = routeNode('/');
@@ -93,26 +110,44 @@ const rootInitial = await measure([...sharedEntries, rootRoute]);
 const overlayInitial = await measure([...sharedEntries, overlayRoute]);
 const rootOptionalLazy = await collectOptionalLazy([...sharedEntries, rootRoute]);
 const overlayOptionalLazy = await collectOptionalLazy([...sharedEntries, overlayRoute]);
+const sharedInitialChunks = rootInitial.chunks
+	.filter((chunk) => overlayInitial.chunks.some((other) => other.file === chunk.file))
+	.sort((a, b) => b.bytes - a.bytes);
+const sharedOptionalChunks = rootOptionalLazy.largestChunks.filter((chunk) =>
+	overlayOptionalLazy.largestChunks.some((other) => other.file === chunk.file)
+);
 const report = {
 	budgetsBytes: budgets,
 	initialStatic: {
-		'/': { bytes: rootInitial.bytes, gzipBytes: rootInitial.gzipBytes, files: rootInitial.files },
+		'/': {
+			bytes: rootInitial.bytes,
+			gzipBytes: rootInitial.gzipBytes,
+			files: rootInitial.files,
+			largestChunks: rootInitial.chunks.slice(0, 8)
+		},
 		'/overlay': {
 			bytes: overlayInitial.bytes,
 			gzipBytes: overlayInitial.gzipBytes,
-			files: overlayInitial.files
+			files: overlayInitial.files,
+			largestChunks: overlayInitial.chunks.slice(0, 8)
 		}
+	},
+	shared: {
+		initialChunks: sharedInitialChunks.slice(0, 8),
+		optionalLargestChunksPresentInBothRouteGraphs: sharedOptionalChunks
 	},
 	optionalLazy: {
 		'/': {
 			bytes: rootOptionalLazy.bytes,
 			gzipBytes: rootOptionalLazy.gzipBytes,
-			chunks: rootOptionalLazy.chunks
+			chunks: rootOptionalLazy.chunks,
+			largestChunks: rootOptionalLazy.largestChunks
 		},
 		'/overlay': {
 			bytes: overlayOptionalLazy.bytes,
 			gzipBytes: overlayOptionalLazy.gzipBytes,
-			chunks: overlayOptionalLazy.chunks
+			chunks: overlayOptionalLazy.chunks,
+			largestChunks: overlayOptionalLazy.largestChunks
 		}
 	}
 };

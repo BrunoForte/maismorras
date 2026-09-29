@@ -36,7 +36,7 @@
 	} from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
@@ -610,7 +610,7 @@
 		}
 	}
 	async function refreshPortraitPreview() {
-		if (!sheet.portraitPath || !supabase) {
+		if (!sheet.portraitPath) {
 			portraitPreview = null;
 			return;
 		}
@@ -621,6 +621,7 @@
 	}
 	async function savePortrait(blob: Blob, filename: string) {
 		blob = await optimizePortrait(blob);
+		const supabase = await getSupabaseClient();
 		if (!supabase) throw new Error('Supabase não está configurado.');
 		if (blob.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
 		const { data: userData, error: userError } = await supabase.auth.getUser();

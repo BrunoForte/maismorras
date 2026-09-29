@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
 import type { AudioPlaybackState } from './audioPlayback';
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 import type { SceneArea, SceneEffect, SceneWall } from './sceneApi';
 
 type SceneRefresh = { type: 'scene.refresh' };
@@ -91,7 +91,7 @@ class SharedSceneConnection {
 		| MapPing
 	)[] = [];
 	private readonly url: URL;
-	private readonly authSubscription?: { unsubscribe: () => void };
+	private authSubscription?: { unsubscribe: () => void };
 	constructor(
 		private readonly key: string,
 		sceneId: string,
@@ -101,15 +101,21 @@ class SharedSceneConnection {
 		this.url = new URL('/api/v1/ws', apiBase);
 		this.url.protocol = this.url.protocol === 'https:' ? 'wss:' : 'ws:';
 		this.url.searchParams.set('sceneId', sceneId);
-		this.authSubscription = session.access_token.startsWith('obs_access_')
-			? undefined
-			: supabase?.auth.onAuthStateChange((_event, nextSession) => {
-					const nextToken = nextSession?.access_token;
-					if (!nextToken || nextToken === this.token) return;
-					this.token = nextToken;
-					this.socket?.close(1000, 'session refreshed');
-					this.socket = null;
-				}).data.subscription;
+		if (!session.access_token.startsWith('obs_access_'))
+			void getSupabaseClient()
+				.then((supabase) => {
+					if (!supabase || this.closed) return;
+					this.authSubscription = supabase.auth.onAuthStateChange((_event, nextSession) => {
+						const nextToken = nextSession?.access_token;
+						if (!nextToken || nextToken === this.token) return;
+						this.token = nextToken;
+						this.socket?.close(1000, 'session refreshed');
+						this.socket = null;
+					}).data.subscription;
+				})
+				.catch(() => {
+					// The socket still uses the supplied session token; auth refresh is best-effort.
+				});
 	}
 	add(session: Session, subscriber: Subscriber): SceneSocket {
 		this.token = session.access_token;

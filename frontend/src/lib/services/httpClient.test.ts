@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
 
-vi.mock('./supabase', () => ({ supabase: { auth: { refreshSession: vi.fn() } } }));
+const { mockRefreshSession } = vi.hoisted(() => ({ mockRefreshSession: vi.fn() }));
+vi.mock('./supabase', () => ({
+	getSupabaseClient: vi.fn(async () => ({ auth: { refreshSession: mockRefreshSession } }))
+}));
 
 import { fetchAuthenticated, request } from './httpClient';
-import { supabase } from './supabase';
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -18,7 +20,7 @@ describe('fetchAuthenticated', () => {
 			access_token: 'fresh-token',
 			user: { id: 'user-1' }
 		} as Session;
-		vi.mocked(supabase!.auth.refreshSession).mockResolvedValue({
+		mockRefreshSession.mockResolvedValue({
 			data: { session: refreshed },
 			error: null
 		} as never);
@@ -45,7 +47,7 @@ describe('fetchAuthenticated', () => {
 	});
 
 	it('does not retry with a refreshed session belonging to another user', async () => {
-		vi.mocked(supabase!.auth.refreshSession).mockResolvedValue({
+		mockRefreshSession.mockResolvedValue({
 			data: {
 				session: { access_token: 'other-token', user: { id: 'user-2' } } as Session
 			},

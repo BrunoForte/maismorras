@@ -11,7 +11,7 @@
 		CrossfadeAudio,
 		withListenerVolume
 	} from '$lib/services/audioPlayback';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { notifyUserRequestError } from '$lib/services/httpClient';
@@ -124,6 +124,7 @@
 	}
 
 	async function loadTracks() {
+		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const { data } = await supabase.storage
 			.from('campaign-assets')

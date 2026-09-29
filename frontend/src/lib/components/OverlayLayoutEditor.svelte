@@ -3,7 +3,7 @@
 
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { request } from '$lib/services/httpClient';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
@@ -409,6 +409,7 @@
 			status = 'O fundo deve ter no máximo 8 MB.';
 			return;
 		}
+		const supabase = await getSupabaseClient();
 		if (supabase && session?.user.id) {
 			status = 'Enviando fundo…';
 			const optimized = await optimizeImage(file);

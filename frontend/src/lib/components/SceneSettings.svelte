@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { updateScene, type Scene } from '$lib/services/sceneApi';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { optimizeImage } from '$lib/services/imageProcessing';
 	import { notifyUserRequestError, request } from '$lib/services/httpClient';
@@ -26,6 +26,7 @@
 		draft = { ...scene };
 	});
 	onMount(async () => {
+		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const folder = `campaigns/${scene.campaignId}/media`;
 		const { data, error } = await supabase.storage
@@ -70,8 +71,13 @@
 		}
 	}
 	async function generateMap() {
-		if (!mapPrompt.trim() || !supabase || generating) return;
+		if (!mapPrompt.trim() || generating) return;
 		generating = true;
+		const supabase = await getSupabaseClient();
+		if (!supabase) {
+			generating = false;
+			return;
+		}
 		message = '';
 		try {
 			const data = await request<{ fotoUrl: string }>(

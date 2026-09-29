@@ -6,7 +6,7 @@
 	import ImagePresentation from '$lib/components/ImagePresentation.svelte';
 	import CampaignHub from '$lib/components/CampaignHub.svelte';
 	import { savePresentation } from '$lib/services/presentationApi';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient, supabaseConfigured } from '$lib/services/supabase';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
 	import { appLocale, restoreAppLocale, setAppLocale } from '$lib/stores/locale';
@@ -174,6 +174,8 @@
 	});
 
 	onMount(() => {
+		let disposed = false;
+		let unsubscribeAuth: (() => void) | undefined;
 		restoreAppLocale();
 		const rememberInstallPrompt = (event: Event) => {
 			event.preventDefault();
@@ -182,52 +184,60 @@
 		const clearInstallPrompt = () => (installPrompt = null);
 		window.addEventListener('beforeinstallprompt', rememberInstallPrompt);
 		window.addEventListener('appinstalled', clearInstallPrompt);
-		if (!supabase) {
-			error =
-				$appLocale === 'en'
-					? 'Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY in the .env file.'
-					: 'Configure PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_PUBLISHABLE_KEY no arquivo .env.';
-			loading = false;
-			return;
-		}
-		Promise.race([
-			supabase.auth.getSession(),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new Error('A autenticação demorou demais para responder.')),
-					sessionTimeoutMs
-				)
-			)
-		])
-			.then(async ({ data }) => {
+		const initializeAuth = async () => {
+			if (!supabaseConfigured) {
+				error =
+					$appLocale === 'en'
+						? 'Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY in the .env file.'
+						: 'Configure PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_PUBLISHABLE_KEY no arquivo .env.';
+				loading = false;
+				return;
+			}
+			try {
+				const client = await getSupabaseClient();
+				if (!client || disposed) return;
+				const { data } = await Promise.race([
+					client.auth.getSession(),
+					new Promise<never>((_, reject) =>
+						setTimeout(
+							() => reject(new Error('A autenticação demorou demais para responder.')),
+							sessionTimeoutMs
+						)
+					)
+				]);
 				session = data.session;
 				if (data.session) {
 					restoredSessionId = data.session.user.id;
-					await restoreSession(data.session);
 				}
-			})
-			.catch((cause) => {
+				if (disposed) return;
+				const { data: authState } = client.auth.onAuthStateChange((_event, nextSession) => {
+					if (
+						nextSession?.user.id === restoredSessionId &&
+						session?.access_token === nextSession.access_token
+					)
+						return;
+					session = nextSession;
+					if (nextSession) {
+						restoredSessionId = nextSession.user.id;
+						void restoreSession(nextSession);
+					} else {
+						restoredSessionId = '';
+						campaigns = [];
+						activeCampaign = null;
+					}
+				});
+				unsubscribeAuth = () => authState.subscription.unsubscribe();
+				if (data.session) await restoreSession(data.session);
+			} catch (cause) {
 				error = cause instanceof Error ? cause.message : 'Não foi possível restaurar sua sessão.';
-			})
-			.finally(() => (loading = false));
-		const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-			if (
-				nextSession?.user.id === restoredSessionId &&
-				session?.access_token === nextSession.access_token
-			)
-				return;
-			session = nextSession;
-			if (nextSession) {
-				restoredSessionId = nextSession.user.id;
-				void restoreSession(nextSession);
-			} else {
-				restoredSessionId = '';
-				campaigns = [];
-				activeCampaign = null;
+			} finally {
+				if (!disposed) loading = false;
 			}
-		});
+		};
+		void initializeAuth();
 		return () => {
-			data.subscription.unsubscribe();
+			disposed = true;
+			unsubscribeAuth?.();
 			window.removeEventListener('beforeinstallprompt', rememberInstallPrompt);
 			window.removeEventListener('appinstalled', clearInstallPrompt);
 		};
@@ -239,6 +249,7 @@
 	}
 
 	async function login() {
+		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
@@ -253,6 +264,7 @@
 		if (authError) error = authError.message;
 	}
 	async function loginLocalE2E() {
+		const supabase = await getSupabaseClient();
 		if (!supabase || !localE2EAuthEnabled) return;
 		error = '';
 		const { error: authError } = await supabase.auth.signInWithPassword({
@@ -262,7 +274,7 @@
 		if (authError) error = 'Não foi possível autenticar a conta local de teste.';
 	}
 	async function logout() {
-		await supabase?.auth.signOut();
+		await (await getSupabaseClient())?.auth.signOut();
 	}
 	async function loadCampaigns(currentSession = session) {
 		if (!currentSession) return;
@@ -736,7 +748,7 @@
 					: 'Use sua conta Google para acessar suas mesas e continuar de onde parou.'}
 			</p>
 			{#if error}<p class="error">{error}</p>{/if}
-			<button class="google-button" onclick={login} disabled={!supabase}>
+			<button class="google-button" onclick={login} disabled={!supabaseConfigured}>
 				<span class="google-g" aria-hidden="true">G</span>
 				{$appLocale === 'en' ? 'Continue with Google' : 'Continuar com Google'}
 			</button>
@@ -764,7 +776,7 @@
 						bind:value={localE2EPassword}
 						required
 					/>
-					<button type="submit" class="secondary-button" disabled={!supabase}
+					<button type="submit" class="secondary-button" disabled={!supabaseConfigured}
 						>Entrar no ambiente local</button
 					>
 				</form>

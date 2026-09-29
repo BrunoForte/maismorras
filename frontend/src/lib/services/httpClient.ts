@@ -1,10 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBase } from './apiBase';
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 let sessionRefresh: Promise<Session | null> | null = null;
 
 async function refreshSessionOnce(): Promise<Session | null> {
+	const supabase = await getSupabaseClient().catch(() => null);
 	if (!supabase) return null;
 	if (!sessionRefresh) {
 		sessionRefresh = supabase.auth

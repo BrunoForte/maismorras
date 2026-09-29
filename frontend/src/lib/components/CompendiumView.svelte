@@ -14,7 +14,7 @@
 	} from '$lib/services/compendiumApi';
 	import { createTokenFromCompendiumMonster } from '$lib/services/sceneApi';
 	import { optimizeImage } from '$lib/services/imageProcessing';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale, distanceText } from '$lib/stores/locale';
 	import { srdTranslationQueue, startSrdTranslationQueue } from '$lib/services/srdTranslationQueue';
@@ -435,13 +435,15 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
-		if (!file || !supabase || uploadingMonsterArt) return;
+		if (!file || uploadingMonsterArt) return;
 		if (!file.type.startsWith('image/') || file.size > 15 * 1024 * 1024) {
 			message = 'Escolha uma imagem de até 15 MB.';
 			return;
 		}
 		uploadingMonsterArt = true;
 		try {
+			const supabase = await getSupabaseClient();
+			if (!supabase) throw new Error('Supabase não está configurado.');
 			const optimized = await optimizeImage(file, 768, 0.8);
 			const path = `campaigns/${campaignId}/media/${crypto.randomUUID()}-criatura.webp`;
 			const { error } = await supabase.storage

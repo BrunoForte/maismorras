@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient, supabaseConfigured } from '$lib/services/supabase';
 	import { loadMessages } from '$lib/services/eventApi';
 	import type { Mensagem } from '$lib/stores/chatStore';
 	import {
@@ -321,7 +321,7 @@
 				revision: loadedScene.scene.ambientAudioRevision ?? 0
 			});
 			await applyEffectsState(sceneEffectsState(loadedScene.scene));
-			if (supabase) {
+			if (supabaseConfigured) {
 				const signedEntries = await Promise.all(
 					loadedScene.tokens.map(async (token) => {
 						if (
@@ -387,7 +387,7 @@
 		if (!diceMode && (dicePreference === '1' || dicePreference === '0'))
 			setDice3dPreference(dicePreference === '1');
 		void loadOverlayLayout();
-		if (!supabase) {
+		if (!supabaseConfigured) {
 			error = 'Supabase não está configurado.';
 			return;
 		}
@@ -444,7 +444,8 @@
 						else localStorage.removeItem(storageKey);
 					}
 					if (!overlaySession) {
-						const { data } = await supabase.auth.getSession();
+						const client = await getSupabaseClient();
+						const { data } = await client!.auth.getSession();
 						overlaySession = data.session;
 					}
 				}
@@ -570,6 +571,7 @@
 			});
 	});
 	async function login() {
+		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const { error: authError } = await supabase.auth.signInWithOAuth({
 			provider: 'google',

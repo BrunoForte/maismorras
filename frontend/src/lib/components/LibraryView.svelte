@@ -3,7 +3,7 @@
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { supabase } from '$lib/services/supabase';
+	import { getSupabaseClient } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 	import { notifyUserRequestError, request } from '$lib/services/httpClient';
@@ -285,7 +285,7 @@
 		}
 	}
 	async function deleteAsset(asset: Asset) {
-		if (!supabase || deletingAsset) return;
+		if (deletingAsset) return;
 		const confirmed = window.confirm(
 			$appLocale === 'en'
 				? `Delete “${asset.name}” from this campaign?`
@@ -295,6 +295,8 @@
 		deletingAsset = asset.path;
 		message = '';
 		try {
+			const supabase = await getSupabaseClient();
+			if (!supabase) return;
 			const { error } = await supabase.storage.from('campaign-assets').remove([asset.path]);
 			if (error) throw error;
 			clearSignedAssetCache(campaignId, asset.path);
@@ -341,6 +343,7 @@
 		}
 	}
 	async function loadAssets() {
+		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const client = supabase;
 		const { data, error } = await client.storage
@@ -401,7 +404,7 @@
 		return asset.audioLooping ?? asset.audioKind !== 'effect';
 	}
 	async function uploadFiles(files: FileList | File[]) {
-		if (!supabase || uploading) return;
+		if (uploading) return;
 		const selected = Array.from(files);
 		if (!selected.length) return;
 		const rejected = selected.filter((file) => !isSupportedFile(file));
@@ -421,6 +424,8 @@
 			: '';
 		let uploaded = 0;
 		try {
+			const supabase = await getSupabaseClient();
+			if (!supabase) throw new Error('Supabase não está configurado.');
 			for (const file of accepted) {
 				const optimized = await optimizeImage(file);
 				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
