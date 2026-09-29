@@ -7,7 +7,6 @@
 		personagens,
 		urlMapa,
 		type Personagem,
-		type StatusToken,
 		type TokenVisibility
 	} from '$lib/stores/gameStore';
 	import {
@@ -26,7 +25,6 @@
 		rollTokenInitiative,
 		updateFog,
 		type EffectDefinition,
-		type PersistedToken,
 		type SceneEffect,
 		type SceneArea,
 		type SceneWall,
@@ -35,6 +33,11 @@
 	import { SceneTokenController } from '$lib/services/sceneTokenController';
 	import { ApiError } from '$lib/services/httpClient';
 	import { applySceneDelta, fogBrushCells } from '$lib/utils/sceneDeltaState';
+	import {
+		removeSceneCharacter,
+		toSceneCharacter,
+		upsertSceneCharacter
+	} from '$lib/utils/sceneTokenState';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -203,39 +206,6 @@
 			: []
 	);
 
-	function asPersonagem(
-		token: PersistedToken,
-		index: number,
-		imageUrl = token.imageUrl
-	): Personagem {
-		return {
-			id: index + 1,
-			persistedId: token.id,
-			actorId: token.actorId ?? undefined,
-			isOwned: token.isOwner,
-			nome: token.name,
-			cor: token.color,
-			x: token.x,
-			y: token.y,
-			hpAtual: token.hpCurrent,
-			hpMax: token.hpMax,
-			ca: token.armorClass,
-			proficiencia: 2,
-			atributos: { for: 10, des: 10, con: 10, int: 10, sab: 10, car: 10 },
-			armas: [],
-			iniciativa: token.initiative,
-			visionRange: token.visionRange,
-			lightRange: token.lightRange,
-			fotoUrl: imageUrl ?? undefined,
-			tamanho: token.size,
-			fotoEscala: token.visibility.imageScale ?? 1,
-			fotoOffsetX: token.visibility.imageOffsetX ?? 0,
-			fotoOffsetY: token.visibility.imageOffsetY ?? 0,
-			status: token.statuses as StatusToken[],
-			visibility: token.visibility
-		};
-	}
-
 	async function persistir(personagem: Personagem): Promise<boolean> {
 		if (!personagem.persistedId) return false;
 		if (!isGM) {
@@ -323,7 +293,7 @@
 			return;
 		try {
 			await tokenController.remove(persistedId);
-			personagens.update((lista) => lista.filter((item) => item.persistedId !== persistedId));
+			personagens.update((lista) => removeSceneCharacter(lista, persistedId));
 			personagemIdByToken.delete(persistedId);
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			tokenSelecionadoId = null;
@@ -371,7 +341,7 @@
 						url: imageUrl ?? null,
 						expiresAt: Date.now() + 45 * 60 * 1000
 					});
-					return asPersonagem(token, personagemIdFor(token.id, index + 1), imageUrl);
+					return toSceneCharacter(token, personagemIdFor(token.id, index + 1), imageUrl);
 				})
 			);
 			tokenController.clearSnapshots();
@@ -401,22 +371,21 @@
 				url: imageUrl ?? null,
 				expiresAt: Date.now() + 45 * 60 * 1000
 			});
+			let updatedCharacter: Personagem | undefined;
 			personagens.update((lista) => {
 				const existing = lista.find((item) => item.persistedId === token.id);
-				const updated = asPersonagem(
+				const updated = toSceneCharacter(
 					token,
 					personagemIdFor(token.id, existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1),
 					imageUrl
 				);
-				const next = existing
-					? lista.map((item) => (item.persistedId === token.id ? updated : item))
-					: [...lista, updated];
-				tokenController.remember(updated);
-				return next;
+				updatedCharacter = updated;
+				return upsertSceneCharacter(lista, updated);
 			});
+			if (updatedCharacter) tokenController.remember(updatedCharacter);
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 404) {
-				personagens.update((lista) => lista.filter((item) => item.persistedId !== signal.tokenId));
+				personagens.update((lista) => removeSceneCharacter(lista, signal.tokenId));
 				personagemIdByToken.delete(signal.tokenId);
 				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
 				tokenController.forget(signal.tokenId);
