@@ -72,7 +72,9 @@ func Write(w http.ResponseWriter, err error) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(appErr.Status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"error": map[string]string{"code": appErr.Code, "message": appErr.Message},
-	})
+	details := map[string]string{"code": appErr.Code, "message": appErr.Message}
+	if requestID := w.Header().Get("X-Request-ID"); requestID != "" {
+		details["request_id"] = requestID
+	}
+	_ = json.NewEncoder(w).Encode(map[string]map[string]string{"error": details})
 }

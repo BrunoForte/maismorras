@@ -9,6 +9,7 @@ import (
 	"strings"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/observability"
 	"vtt-backend/internal/translation"
 )
 
@@ -129,7 +130,8 @@ func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error
 	}
 	translated, err := h.translator.Translate(r.Context(), fields)
 	if err != nil {
-		slog.Error("compendium translation provider failed", "campaign_id", r.PathValue("campaignID"), "entry_id", r.PathValue("entryID"), "error", err)
+		attrs := []any{"event", "compendium.translation_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(r.PathValue("campaignID")), "entry_id", observability.SafeUUID(r.PathValue("entryID"))}
+		slog.Error("compendium translation provider failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		if errors.Is(err, translation.ErrQuotaExceeded) {
 			return apperror.TranslationQuotaExceeded()
 		}

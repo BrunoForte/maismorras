@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"vtt-backend/internal/observability"
 )
 
 const postgresRealtimeChannel = "maismorras_realtime_v1"
@@ -49,16 +50,16 @@ func (b *PostgresBroker) markConnected() {
 	wasConnected := b.everConnected.Swap(true)
 	b.connected.Store(true)
 	if wasConnected {
-		b.logger.Info("realtime broker readiness recovered", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
+		b.logger.Info("realtime broker reconnected", "event", "realtime.broker.reconnected", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
 		return
 	}
-	b.logger.Info("realtime broker readiness established", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
+	b.logger.Info("realtime broker connected", "event", "realtime.broker.connected", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "connected")
 }
 
 func (b *PostgresBroker) markDisconnected() {
 	wasConnected := b.connected.Swap(false)
 	if wasConnected && b.everConnected.Load() {
-		b.logger.Warn("realtime broker readiness degraded", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "degraded")
+		b.logger.Warn("realtime broker entered degraded state", "event", "realtime.broker.degraded", "broker_mode", "postgres", "origin_instance_id", b.originID, "readiness", "degraded")
 	}
 }
 
@@ -100,10 +101,11 @@ func (b *PostgresBroker) Publish(ctx context.Context, envelope Envelope) error {
 		}
 	}
 	if _, err := b.pool.Exec(ctx, `select pg_notify($1, $2)`, postgresRealtimeChannel, string(encoded)); err != nil {
-		b.logger.Warn("realtime broker publish failed", "request_id", requestIDFromContext(ctx), "broker_mode", "postgres", "origin_instance_id", b.originID, "scene_id", envelope.SceneID, "event_id", envelope.EventID, "outcome", "failed", "error", err)
+		attrs := []any{"event", "realtime.broker.publish_failed", "request_id", requestIDFromContext(ctx), "broker_mode", "postgres", "origin_instance_id", b.originID, "scene_id", observability.SafeUUID(envelope.SceneID), "event_id", envelope.EventID, "outcome", "failed"}
+		b.logger.Warn("realtime broker publish failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return err
 	}
-	b.logger.Debug("realtime broker publish completed", "request_id", requestIDFromContext(ctx), "broker_mode", "postgres", "origin_instance_id", b.originID, "scene_id", envelope.SceneID, "event_id", envelope.EventID, "outcome", "success")
+	b.logger.Debug("realtime broker publish completed", "event", "realtime.broker.publish_succeeded", "request_id", requestIDFromContext(ctx), "broker_mode", "postgres", "origin_instance_id", b.originID, "scene_id", observability.SafeUUID(envelope.SceneID), "event_id", envelope.EventID, "outcome", "success")
 	return nil
 }
 
@@ -125,14 +127,15 @@ func (b *PostgresBroker) listen(ctx context.Context, receive func(Envelope), onC
 			if ctx.Err() != nil {
 				return nil
 			}
-			b.logger.Warn("realtime broker listener connection failed", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "reconnecting", "retry_ms", delay.Milliseconds(), "error", err)
+			attrs := []any{"event", "realtime.broker.connection_failed", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "reconnecting", "retry_ms", delay.Milliseconds()}
+			b.logger.Warn("realtime broker listener connection failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 			if !waitForRetry(ctx, delay) {
 				return nil
 			}
 			delay = nextRetry(delay)
 			continue
 		}
-		b.logger.Info("realtime broker listener connected", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "connected")
+		b.logger.Info("realtime broker listener connected", "event", "realtime.broker.listener_connected", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "connected")
 		b.markConnected()
 		if onConnected != nil {
 			onConnected()
@@ -149,14 +152,20 @@ func (b *PostgresBroker) listen(ctx context.Context, receive func(Envelope), onC
 				if ctx.Err() != nil {
 					return nil
 				}
-				b.logger.Warn("realtime broker listener interrupted", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "reconnecting", "retry_ms", delay.Milliseconds(), "error", waitErr)
+				attrs := []any{"event", "realtime.broker.disconnected", "broker_mode", "postgres", "origin_instance_id", b.originID, "outcome", "reconnecting", "retry_ms", delay.Milliseconds()}
+				b.logger.Warn("realtime broker listener interrupted", append(attrs, observability.SafeErrorAttrs(waitErr)...)...)
 				break
 			}
-			if notification == nil || notification.Channel != postgresRealtimeChannel || len(notification.Payload) > maxRealtimeEnvelopeBytes {
+			if notification == nil || notification.Channel != postgresRealtimeChannel {
+				continue
+			}
+			if len(notification.Payload) > maxRealtimeEnvelopeBytes {
+				b.logger.Warn("realtime broker notification rejected", "event", "realtime.broker.receive_failed", "broker_mode", "postgres", "origin_instance_id", b.originID, "reason", "payload_too_large", "payload_bytes", len(notification.Payload))
 				continue
 			}
 			var envelope Envelope
 			if json.Unmarshal([]byte(notification.Payload), &envelope) != nil {
+				b.logger.Warn("realtime broker notification rejected", "event", "realtime.broker.receive_failed", "broker_mode", "postgres", "origin_instance_id", b.originID, "reason", "invalid_envelope", "payload_bytes", len(notification.Payload))
 				continue
 			}
 			receive(envelope)

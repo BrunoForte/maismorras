@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/observability"
 )
 
 var audioUUIDPrefix = regexp.MustCompile(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-)(.*)$`)
@@ -181,7 +182,8 @@ func (h *Handler) compensateAudioMove(r *http.Request, source, destination strin
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	if err := h.moveStorageObject(ctx, source, destination); err != nil {
-		slog.Error("audio asset move compensation failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", r.PathValue("campaignID"), "error", err)
+		attrs := []any{"event", "library.audio_move_compensation_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(r.PathValue("campaignID"))}
+		slog.Error("audio asset move compensation failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 	}
 }
 

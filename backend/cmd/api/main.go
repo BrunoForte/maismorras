@@ -20,6 +20,7 @@ import (
 	"vtt-backend/internal/library"
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
+	"vtt-backend/internal/observability"
 	"vtt-backend/internal/overlayaccess"
 	"vtt-backend/internal/realtime"
 	"vtt-backend/internal/scenes"
@@ -38,7 +39,7 @@ func main() {
 	case "error", "ERROR":
 		logLevel = slog.LevelError
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})).With("cloud_run_revision", os.Getenv("K_REVISION"), "service", os.Getenv("K_SERVICE"))
+	logger := slog.New(observability.NewCloudLoggingHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})).With("cloud_run_revision", os.Getenv("K_REVISION"), "service", os.Getenv("K_SERVICE"))
 	slog.SetDefault(logger)
 	brokerMode := cfg.RealtimeBroker
 	production := os.Getenv("K_SERVICE") != ""
@@ -50,12 +51,12 @@ func main() {
 		brokerMode = "local"
 	}
 	if brokerMode != "local" && brokerMode != "postgres" {
-		logger.Error("invalid realtime broker mode", "broker_mode", brokerMode)
+		logger.Error("invalid realtime broker mode", "event", "realtime.broker.invalid_mode")
 		os.Exit(1)
 	}
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("database connection failed", "error", err)
+		logger.Error("database connection failed", append([]any{"event", "database.connection_failed"}, observability.SafeErrorAttrs(err)...)...)
 		os.Exit(1)
 	}
 	if pool != nil {
@@ -99,11 +100,11 @@ func main() {
 		hub.ConfigureBroker(broker)
 		go func() {
 			if err := broker.Listen(runCtx, hub.HandleRemote, hub.RefreshLocalRooms); err != nil && runCtx.Err() == nil {
-				logger.Error("realtime broker listener stopped unexpectedly", "broker_mode", brokerMode, "origin_instance_id", instanceID, "error", err)
+				logger.Error("realtime broker listener stopped unexpectedly", append([]any{"event", "realtime.broker.listener_stopped", "broker_mode", brokerMode, "origin_instance_id", instanceID}, observability.SafeErrorAttrs(err)...)...)
 			}
 		}()
 	}
-	logger.Info("realtime broker initialized", "broker_mode", brokerMode, "origin_instance_id", instanceID)
+	logger.Info("realtime broker initialized", "event", "realtime.broker.initialized", "broker_mode", brokerMode, "origin_instance_id", instanceID)
 	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool)), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub), overlayaccess.NewHandler(pool, cfg), hub)
 
 	server := &http.Server{
@@ -115,7 +116,7 @@ func main() {
 	go func() {
 		logger.Info("HTTP server started", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("HTTP server failed", "error", err)
+			logger.Error("HTTP server failed", append([]any{"event", "http.server_failed"}, observability.SafeErrorAttrs(err)...)...)
 			os.Exit(1)
 		}
 	}()
@@ -128,6 +129,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("graceful shutdown failed", "error", err)
+		logger.Error("graceful shutdown failed", append([]any{"event", "http.shutdown_failed"}, observability.SafeErrorAttrs(err)...)...)
 	}
 }

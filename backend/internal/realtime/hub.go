@@ -16,6 +16,7 @@ import (
 	"nhooyr.io/websocket"
 	"vtt-backend/internal/auth"
 	"vtt-backend/internal/config"
+	"vtt-backend/internal/observability"
 	"vtt-backend/internal/overlayaccess"
 )
 
@@ -167,7 +168,8 @@ func (h *Hub) publishRoomEvent(ctx context.Context, sceneID string, payload []by
 	publishCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	if err := broker.Publish(publishCtx, envelope); err != nil {
-		slog.Warn("realtime broker publication failed", "request_id", requestIDFromContext(ctx), "broker_mode", mode, "origin_instance_id", origin, "scene_id", sceneID, "event_id", envelope.EventID, "outcome", "failed", "error", err)
+		attrs := []any{"event", "realtime.broker.publish_failed", "request_id", requestIDFromContext(ctx), "broker_mode", mode, "origin_instance_id", origin, "scene_id", observability.SafeUUID(sceneID), "event_id", envelope.EventID, "outcome", "failed"}
+		slog.Warn("realtime broker publication failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 	}
 }
 
@@ -230,12 +232,13 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(pr.is_admin,false)))`, sceneID, p.UserID).Scan(&allowed, &canControl); err != nil {
 		// Do not turn a database outage into a misleading authorization failure.
 		// The client can retry a 503, while a genuine 403 remains actionable.
-		slog.Error("realtime authorization lookup failed", "scene_id", sceneID, "error", err)
+		attrs := []any{"event", "realtime.websocket.authorization_lookup_failed", "request_id", requestIDFromContext(requestCtx), "scene_id", observability.SafeUUID(sceneID)}
+		slog.Error("realtime authorization lookup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		http.Error(w, "realtime unavailable", http.StatusServiceUnavailable)
 		return nil
 	}
 	if !allowed {
-		slog.Warn("realtime authorization denied", "scene_id", sceneID)
+		slog.Warn("realtime authorization denied", "event", "realtime.websocket.authorization_denied", "request_id", requestIDFromContext(requestCtx), "scene_id", observability.SafeUUID(sceneID))
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return nil
 	}
@@ -245,7 +248,8 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		OriginPatterns:  originPatterns(h.cfg.CORSOrigin),
 	})
 	if err != nil {
-		slog.Error("websocket accept failed", "scene_id", sceneID, "error", err)
+		attrs := []any{"event", "realtime.websocket.handshake_failed", "request_id", requestIDFromContext(requestCtx), "scene_id", observability.SafeUUID(sceneID)}
+		slog.Error("websocket accept failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return nil
 	}
 	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl}
@@ -269,7 +273,13 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		_, raw, err := conn.Read(readCtx)
 		cancel()
 		if err != nil {
-			slog.Error("websocket accept failed", "scene_id", sceneID, "error", err)
+			closeStatus := websocket.CloseStatus(err)
+			attrs := []any{"event", "realtime.websocket.disconnected", "request_id", requestIDFromContext(requestCtx), "scene_id", observability.SafeUUID(sceneID), "close_code", closeStatus}
+			if r.Context().Err() != nil || closeStatus == websocket.StatusNormalClosure || closeStatus == websocket.StatusGoingAway {
+				slog.Info("websocket client disconnected", attrs...)
+			} else {
+				slog.Warn("websocket read failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+			}
 			return nil
 		}
 		if len(raw) > 32<<10 {
@@ -382,7 +392,7 @@ func (h *Hub) logRoomPeerCount(sceneID, action string) {
 	h.brokerMu.RLock()
 	mode, origin := h.brokerMode, h.originID
 	h.brokerMu.RUnlock()
-	slog.Debug("realtime local room peers", "broker_mode", mode, "origin_instance_id", origin, "scene_id", sceneID, "local_peer_count", count, "action", action)
+	slog.Debug("realtime local room peers", "event", "realtime.websocket.peer_count", "broker_mode", mode, "origin_instance_id", origin, "scene_id", observability.SafeUUID(sceneID), "local_peer_count", count, "action", action)
 }
 
 func sceneDeltaBroadcast(data json.RawMessage) ([]byte, bool) {
@@ -546,7 +556,7 @@ func (h *Hub) broadcast(room string, raw []byte) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			if err := p.conn.Write(ctx, websocket.MessageText, raw); err != nil {
-				slog.Warn("realtime write failed", "user_id", p.userID, "error", err)
+				slog.Warn("realtime websocket write failed", append([]any{"event", "realtime.websocket.write_failed"}, observability.SafeErrorAttrs(err)...)...)
 			}
 		}(p)
 	}

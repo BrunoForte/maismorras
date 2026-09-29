@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"vtt-backend/internal/library"
 	"vtt-backend/internal/notes"
 	"vtt-backend/internal/npcs"
+	"vtt-backend/internal/observability"
 	"vtt-backend/internal/overlayaccess"
 	"vtt-backend/internal/realtime"
 	"vtt-backend/internal/scenes"
@@ -122,7 +125,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.HandleFunc("GET /health", health)
 	mux.Handle("GET /health/ready", readinessHandler(readinessProvider))
 
-	return recoverer(logger)(requestLogger(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux))))
+	return requestLogger(logger)(recoverer(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux))))
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {
@@ -174,7 +177,8 @@ func cors(origin string) func(http.Handler) http.Handler {
 				w.Header().Set("Vary", "Origin")
 			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID")
+			w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -207,7 +211,7 @@ func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					logger.Error("panic recovered", "value", recovered)
+					logger.Error("panic recovered", "event", "http.panic_recovered", "request_id", requestIDFromHeader(r), "panic_type", fmt.Sprintf("%T", recovered))
 					apperror.Write(w, apperror.Internal(nil))
 				}
 			}()
@@ -220,18 +224,31 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			started := time.Now()
-			requestID := r.Header.Get("X-Request-ID")
-			if requestID == "" {
+			requestID := strings.TrimSpace(r.Header.Get("X-Request-ID"))
+			if !validRequestID(requestID) {
 				requestID = newRequestID()
 			}
 			r.Header.Set("X-Request-ID", requestID)
 			w.Header().Set("X-Request-ID", requestID)
 			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(recorder, r)
-			attrs := []any{"request_id", requestID, "method", r.Method, "path", r.URL.Path, "status", recorder.status, "bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds(), "user_agent", r.UserAgent(), "remote_addr", r.RemoteAddr}
-			if campaignID := campaignIDFromPath(r.URL.Path); campaignID != "" {
+			route := r.Pattern
+			if route == "" {
+				route = "unmatched"
+			}
+			attrs := []any{"event", "http.request.completed", "request_id", requestID, "method", r.Method, "route", route, "status", recorder.status, "response_bytes", recorder.bytes, "duration_ms", time.Since(started).Milliseconds()}
+			if campaignID := r.PathValue("campaignID"); validUUID(campaignID) {
 				attrs = append(attrs, "campaign_id", campaignID)
 			}
+			if sceneID := r.PathValue("sceneID"); !validUUID(sceneID) && route == "GET /api/v1/ws" {
+				sceneID = r.URL.Query().Get("sceneId")
+				if validUUID(sceneID) {
+					attrs = append(attrs, "scene_id", sceneID)
+				}
+			} else if validUUID(sceneID) {
+				attrs = append(attrs, "scene_id", sceneID)
+			}
+			attrs = append(attrs, cloudTraceAttrs(r)...)
 			switch {
 			case recorder.status >= http.StatusInternalServerError:
 				logger.Error("request completed", attrs...)
@@ -244,11 +261,29 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func campaignIDFromPath(value string) string {
-	parts := strings.Split(strings.Trim(value, "/"), "/")
-	for i := 0; i+1 < len(parts); i++ {
-		if parts[i] == "campaigns" && len(parts[i+1]) >= 8 {
-			return parts[i+1]
+func validRequestID(value string) bool { return observability.IsUUID(value) }
+func validUUID(value string) bool      { return observability.IsUUID(value) }
+
+func requestIDFromHeader(r *http.Request) string { return r.Header.Get("X-Request-ID") }
+
+var cloudTracePattern = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
+
+func cloudTraceAttrs(r *http.Request) []any {
+	projectID := strings.TrimSpace(firstNonEmpty(os.Getenv("GOOGLE_CLOUD_PROJECT"), os.Getenv("GCP_PROJECT")))
+	if projectID == "" {
+		return nil
+	}
+	traceID, _, _ := strings.Cut(r.Header.Get("X-Cloud-Trace-Context"), "/")
+	if !cloudTracePattern.MatchString(traceID) {
+		return nil
+	}
+	return []any{"logging.googleapis.com/trace", "projects/" + projectID + "/traces/" + traceID}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
 		}
 	}
 	return ""
@@ -257,6 +292,7 @@ func campaignIDFromPath(value string) string {
 type statusRecorder struct {
 	http.ResponseWriter
 	status, bytes int
+	wroteHeader   bool
 }
 
 func (w *statusRecorder) Unwrap() http.ResponseWriter { return w.ResponseWriter }
@@ -267,7 +303,12 @@ func (w *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("underlying response writer does not support hijacking")
 	}
-	return hijacker.Hijack()
+	conn, rw, err := hijacker.Hijack()
+	if err == nil {
+		w.status = http.StatusSwitchingProtocols
+		w.wroteHeader = true
+	}
+	return conn, rw, err
 }
 
 func (w *statusRecorder) Flush() {
@@ -276,18 +317,29 @@ func (w *statusRecorder) Flush() {
 	}
 }
 func (w *statusRecorder) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
 }
 func (w *statusRecorder) Write(body []byte) (int, error) {
+	if !w.wroteHeader {
+		w.wroteHeader = true
+		w.status = http.StatusOK
+	}
 	n, err := w.ResponseWriter.Write(body)
 	w.bytes += n
 	return n, err
 }
 func newRequestID() string {
-	var b [12]byte
+	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		return hex.EncodeToString([]byte(time.Now().Format("150405.000000")))
+		return fmt.Sprintf("00000000-0000-4000-8000-%012x", uint64(time.Now().UnixNano())&0xffffffffffff)
 	}
-	return hex.EncodeToString(b[:])
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	encoded := hex.EncodeToString(b[:])
+	return encoded[:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:]
 }

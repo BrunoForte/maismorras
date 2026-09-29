@@ -15,6 +15,7 @@ import (
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
 	"vtt-backend/internal/config"
+	"vtt-backend/internal/observability"
 )
 
 type Handler struct {
@@ -166,7 +167,8 @@ func (h *Handler) removeStaleAssetReferences(r *http.Request, campaignID, assetP
 	}
 	for _, query := range queries {
 		if _, err := h.pool.Exec(r.Context(), query.sql, campaignID, assetPath); err != nil {
-			slog.Warn("removed asset reference cleanup failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", campaignID, "reference_type", query.name, "error", err)
+			attrs := []any{"event", "library.asset_reference_cleanup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID), "reference_type", query.name}
+			slog.Warn("removed asset reference cleanup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		}
 	}
 }

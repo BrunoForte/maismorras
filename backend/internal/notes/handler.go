@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/observability"
 )
 
 type Note struct {
@@ -29,13 +30,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	if err := h.pool.QueryRow(r.Context(), `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, cid, p.UserID).Scan(&role); errors.Is(err, pgx.ErrNoRows) {
 		return apperror.Forbidden("Você não participa desta campanha.")
 	} else if err != nil {
-		slog.Error("notes campaign membership lookup failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+		attrs := []any{"event", "notes.membership_lookup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+		slog.Error("notes campaign membership lookup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	q, args := listQuery(role, cid, p.UserID)
 	rows, err := h.pool.Query(r.Context(), q, args...)
 	if err != nil {
-		slog.Error("notes list query failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+		attrs := []any{"event", "notes.list_query_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+		slog.Error("notes list query failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	defer rows.Close()
@@ -43,13 +46,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	for rows.Next() {
 		var n Note
 		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &n.Visibility); err != nil {
-			slog.Error("notes list row scan failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+			attrs := []any{"event", "notes.list_row_scan_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+			slog.Error("notes list row scan failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 			return apperror.Internal(err)
 		}
 		items = append(items, n)
 	}
 	if err := rows.Err(); err != nil {
-		slog.Error("notes list iteration failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+		attrs := []any{"event", "notes.list_iteration_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+		slog.Error("notes list iteration failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	return write(w, http.StatusOK, map[string]any{"notes": items})
@@ -72,7 +77,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	if err := h.pool.QueryRow(r.Context(), `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, cid, p.UserID).Scan(&role); errors.Is(err, pgx.ErrNoRows) || (err == nil && role != "gm") {
 		return apperror.Forbidden("Somente o narrador pode criar notas.")
 	} else if err != nil {
-		slog.Error("notes create membership lookup failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+		attrs := []any{"event", "notes.create_membership_lookup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+		slog.Error("notes create membership lookup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	var in struct {
@@ -93,7 +99,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	var n Note
 	err := h.pool.QueryRow(r.Context(), `insert into notes(campaign_id,author_id,title,body,visibility) values($1,$2,$3,$4,$5::note_visibility) returning id::text,title,body,visibility::text`, cid, p.UserID, in.Title, in.Body, in.Visibility).Scan(&n.ID, &n.Title, &n.Body, &n.Visibility)
 	if err != nil {
-		slog.Error("notes create failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", cid, "error", err)
+		attrs := []any{"event", "notes.create_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(cid)}
+		slog.Error("notes create failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	return write(w, http.StatusCreated, n)
@@ -120,7 +127,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return apperror.NotFound("NOTE_NOT_FOUND", "Nota não encontrada ou sem permissão.")
 	} else if err != nil {
-		slog.Error("notes update failed", "request_id", r.Header.Get("X-Request-ID"), "note_id", r.PathValue("noteID"), "error", err)
+		attrs := []any{"event", "notes.update_failed", "request_id", r.Header.Get("X-Request-ID"), "note_id", observability.SafeUUID(r.PathValue("noteID"))}
+		slog.Error("notes update failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	return write(w, http.StatusOK, n)
@@ -129,7 +137,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	result, err := h.pool.Exec(r.Context(), `delete from notes where id=$1 and author_id=$2`, r.PathValue("noteID"), p.UserID)
 	if err != nil {
-		slog.Error("notes delete failed", "request_id", r.Header.Get("X-Request-ID"), "note_id", r.PathValue("noteID"), "error", err)
+		attrs := []any{"event", "notes.delete_failed", "request_id", r.Header.Get("X-Request-ID"), "note_id", observability.SafeUUID(r.PathValue("noteID"))}
+		slog.Error("notes delete failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	if result.RowsAffected() != 1 {

@@ -12,6 +12,7 @@ import (
 
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/observability"
 )
 
 type GenerationPolicy interface {
@@ -66,7 +67,8 @@ func (h *Handler) consume(r *http.Request, userID, operation string, limit int) 
 	if h.policy != nil {
 		allowed, err := h.policy.Consume(r.Context(), userID, operation, limit)
 		if err != nil {
-			slog.Error("image generation quota lookup failed", "request_id", r.Header.Get("X-Request-ID"), "operation", operation, "error", err)
+			attrs := []any{"event", "tokens.generation_quota_lookup_failed", "request_id", r.Header.Get("X-Request-ID"), "operation", operation}
+			slog.Error("image generation quota lookup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 			return false, apperror.Internal(err)
 		}
 		return allowed, nil
@@ -106,7 +108,8 @@ func (h *Handler) GenerateMap(w http.ResponseWriter, r *http.Request) error {
 	}
 	allowed, err := h.policy.CanGenerateMap(r.Context(), campaignID, p.UserID, p.IsAdmin)
 	if err != nil {
-		slog.Error("map generation authorization failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", campaignID, "error", err)
+		attrs := []any{"event", "tokens.map_generation_authorization_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID)}
+		slog.Error("map generation authorization failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return apperror.Internal(err)
 	}
 	if !allowed {

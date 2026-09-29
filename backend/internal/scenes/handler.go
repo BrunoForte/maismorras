@@ -10,6 +10,7 @@ import (
 
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/observability"
 )
 
 type Handler struct{ repo *Repository }
@@ -399,7 +400,8 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 	token, err := h.repo.UpdateToken(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, t)
 	if err != nil {
 		if !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrTokenNotFound) && !errors.Is(err, ErrBlockedMovement) && !errors.Is(err, ErrTokenColorInUse) {
-			slog.Error("token update failed", "request_id", r.Header.Get("X-Request-ID"), "scene_id", r.PathValue("sceneID"), "token_id", r.PathValue("tokenID"), "error", err)
+			attrs := []any{"event", "scene.token_update_failed", "request_id", r.Header.Get("X-Request-ID"), "scene_id", observability.SafeUUID(r.PathValue("sceneID")), "token_id", observability.SafeUUID(r.PathValue("tokenID"))}
+			slog.Error("token update failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		}
 		return mapError(err)
 	}

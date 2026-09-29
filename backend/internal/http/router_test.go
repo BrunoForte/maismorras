@@ -85,4 +85,7 @@ func TestStatusRecorderForwardsHijack(t *testing.T) {
 	if _, _, err := recorder.Hijack(); err != nil {
 		t.Fatalf("Hijack() returned error: %v", err)
 	}
+	if recorder.status != http.StatusSwitchingProtocols {
+		t.Fatalf("Hijack status = %d, want %d", recorder.status, http.StatusSwitchingProtocols)
+	}
 }

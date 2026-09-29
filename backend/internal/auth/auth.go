@@ -76,12 +76,11 @@ func Authenticate(baseURL, secret string, next func(http.ResponseWriter, *http.R
 			return nil, jwt.ErrTokenSignatureInvalid
 		}, jwt.WithValidMethods([]string{"HS256", "ES256", "RS256", "EdDSA"}), jwt.WithIssuer(issuer), jwt.WithAudience("authenticated"))
 		if err != nil || !token.Valid {
-			alg, kid := "", ""
+			alg := ""
 			if token != nil {
 				alg = token.Method.Alg()
-				kid, _ = token.Header["kid"].(string)
 			}
-			slog.Warn("JWT validation failed", "error", err, "alg", alg, "kid", kid, "supabase_url_configured", baseURL != "")
+			slog.Warn("JWT validation failed", "event", "auth.jwt_rejected", "request_id", r.Header.Get("X-Request-ID"), "error_type", fmt.Sprintf("%T", err), "alg", alg, "supabase_jwks_configured", baseURL != "")
 			apperror.Write(w, apperror.Unauthorized("Token de acesso inválido ou expirado."))
 			return
 		}
