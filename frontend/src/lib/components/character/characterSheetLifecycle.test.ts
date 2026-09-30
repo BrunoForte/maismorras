@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	createCharacterSheetLifecycle,
+	type CharacterSheetLifecycleContext,
 	type CharacterSheetLifecycleDependencies
 } from './characterSheetLifecycle.svelte';
 
-function setup(overrides: Partial<CharacterSheetLifecycleDependencies> = {}) {
+function setup(
+	overrides: Partial<CharacterSheetLifecycleDependencies> = {},
+	contextOverrides: Partial<CharacterSheetLifecycleContext> = {}
+) {
 	const sheet = {
 		armorClass: 10,
 		name: 'Antes'
@@ -15,29 +19,38 @@ function setup(overrides: Partial<CharacterSheetLifecycleDependencies> = {}) {
 	}));
 	const savedMine = vi.fn(async (_session, _campaignId, value) => ({ id: 'char-1', sheet: value }));
 	const setSheet = vi.fn();
-	const deps = {
+	const socketClose = vi.fn();
+	const connectPresentationSocket = vi.fn(() => ({ close: socketClose }));
+	const getCharacterForGM = vi.fn(async () => ({ id: 'char-1', sheet: {} }));
+	const loadScene = vi.fn(async () => ({ tokens: [] }));
+	const session = { user: { id: 'user-1' }, access_token: 'session-token' } as never;
+	let context: CharacterSheetLifecycleContext = {
 		campaignId: 'campaign-1',
 		sceneId: '',
 		characterId: 'char-1',
 		isGM: true,
-		session: {} as CharacterSheetLifecycleDependencies['session'],
+		session,
+		onTokenCreated: vi.fn(),
+		...contextOverrides
+	};
+	const deps = {
+		getContext: () => context,
+		onContextChanged: vi.fn(),
 		getSheet: () => sheet,
 		setSheet,
 		calculateArmorClass: () => 15,
 		getCompendium: vi.fn(async () => ({ sources: [], entries: [] })),
 		onCompendiumLoaded: vi.fn(),
-		getCharacterForGM: vi.fn(),
-		getMyCharacter: vi.fn(),
+		getCharacterForGM,
+		getMyCharacter: vi.fn(async () => ({ id: 'char-1', sheet: {} })),
 		onCharacterLoaded: vi.fn(),
-		loadScene: vi.fn(),
-		listSceneEffects: vi.fn(),
+		loadScene,
+		listSceneEffects: vi.fn(async () => ({ effects: [] })),
 		setDiceColor: vi.fn(),
-		connectPresentationSocket: vi.fn(() => ({ close: vi.fn() })),
+		connectPresentationSocket,
 		saveCharacterForGM: saved,
 		saveMyCharacter: savedMine,
-		createTokenFromCharacter: vi.fn(),
-		onTokenCreated: vi.fn(),
-		refreshPortraitPreview: vi.fn(),
+		createTokenFromCharacter: vi.fn(async () => undefined),
 		onInitiativeAdvantageUpdated: vi.fn(),
 		...overrides
 	} as unknown as CharacterSheetLifecycleDependencies;
@@ -47,6 +60,13 @@ function setup(overrides: Partial<CharacterSheetLifecycleDependencies> = {}) {
 		saved,
 		savedMine,
 		deps,
+		socketClose,
+		connectPresentationSocket,
+		getCharacterForGM,
+		loadScene,
+		setContext: (next: Partial<CharacterSheetLifecycleContext>) => {
+			context = { ...context, ...next };
+		},
 		lifecycle: createCharacterSheetLifecycle(deps)
 	};
 }
@@ -66,7 +86,7 @@ describe('character sheet lifecycle', () => {
 	});
 
 	it('uses the player endpoint for the current user character', async () => {
-		const { lifecycle, savedMine, saved } = setup({ characterId: null });
+		const { lifecycle, savedMine, saved } = setup({}, { characterId: null });
 		await lifecycle.save();
 
 		expect(savedMine).toHaveBeenCalledOnce();
@@ -130,19 +150,83 @@ describe('character sheet lifecycle', () => {
 
 	it('only creates a board token for a GM with a scene', async () => {
 		const token = vi.fn();
-		const player = setup({ isGM: false, createTokenFromCharacter: token });
+		const player = setup({ createTokenFromCharacter: token }, { isGM: false });
 		await player.lifecycle.createBoardToken();
 		expect(token).not.toHaveBeenCalled();
 		player.lifecycle.cleanup();
 
-		const noScene = setup({ sceneId: '' });
+		const noScene = setup();
 		await noScene.lifecycle.createBoardToken();
 		expect(noScene.lifecycle.state.message).toContain('cena');
 		noScene.lifecycle.cleanup();
 
-		const gm = setup({ sceneId: 'scene-1', createTokenFromCharacter: token });
+		const gm = setup({ createTokenFromCharacter: token }, { sceneId: 'scene-1' });
 		await gm.lifecycle.createBoardToken();
 		expect(token).toHaveBeenCalledOnce();
 		gm.lifecycle.cleanup();
+	});
+
+	it('closes the socket and cancels a pending token-save timer on cleanup', async () => {
+		vi.useFakeTimers();
+		const { lifecycle, socketClose, saved } = setup({}, { sceneId: 'scene-1' });
+		lifecycle.start();
+		lifecycle.syncTokenSoon();
+		await Promise.resolve();
+		lifecycle.cleanup();
+		vi.advanceTimersByTime(500);
+
+		expect(socketClose).toHaveBeenCalledOnce();
+		expect(saved).not.toHaveBeenCalled();
+	});
+
+	it('restarts socket and data loading when the sheet context changes', async () => {
+		const {
+			lifecycle,
+			connectPresentationSocket,
+			getCharacterForGM,
+			setContext,
+			deps,
+			socketClose
+		} = setup({}, { sceneId: 'scene-1' });
+		lifecycle.start();
+		const nextSession = { user: { id: 'user-2' }, access_token: 'new-token' } as never;
+		setContext({
+			campaignId: 'campaign-2',
+			sceneId: 'scene-2',
+			characterId: 'character-2',
+			session: nextSession
+		});
+		lifecycle.updateContext();
+		await Promise.resolve();
+
+		expect(socketClose).toHaveBeenCalledOnce();
+		expect(connectPresentationSocket).toHaveBeenLastCalledWith(
+			nextSession,
+			'scene-2',
+			expect.any(Function)
+		);
+		expect(getCharacterForGM).toHaveBeenLastCalledWith(nextSession, 'campaign-2', 'character-2');
+		expect(deps.onContextChanged).toHaveBeenCalledOnce();
+		lifecycle.cleanup();
+	});
+
+	it('changes scene without resetting the character sheet context', async () => {
+		const { lifecycle, setContext, deps, loadScene, socketClose } = setup(
+			{},
+			{ sceneId: 'scene-1' }
+		);
+		lifecycle.start();
+		await Promise.resolve();
+		setContext({ sceneId: 'scene-2' });
+		lifecycle.updateContext();
+		await Promise.resolve();
+
+		expect(socketClose).toHaveBeenCalledOnce();
+		expect(loadScene).toHaveBeenLastCalledWith(
+			{ user: { id: 'user-1' }, access_token: 'session-token' },
+			'scene-2'
+		);
+		expect(deps.onContextChanged).not.toHaveBeenCalled();
+		lifecycle.cleanup();
 	});
 });

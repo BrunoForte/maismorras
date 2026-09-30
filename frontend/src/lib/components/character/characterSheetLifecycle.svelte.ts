@@ -14,12 +14,20 @@ export type CharacterSheetLifecycleState = {
 	resolvedCharacterId: string | null;
 };
 
-export type CharacterSheetLifecycleDependencies = {
+export type CharacterSheetLifecycleContext = {
 	campaignId: string;
 	sceneId: string;
 	characterId: string | null;
 	isGM: boolean;
 	session: Session;
+	onTokenCreated: () => void;
+};
+
+export type CharacterSheetSaveOperation = { revision: number; generation: number };
+
+export type CharacterSheetLifecycleDependencies = {
+	getContext: () => CharacterSheetLifecycleContext;
+	onContextChanged: () => void;
 	getSheet: () => CharacterSheet;
 	setSheet: (sheet: CharacterSheet) => void;
 	calculateArmorClass: () => number;
@@ -38,7 +46,11 @@ export type CharacterSheetLifecycleDependencies = {
 	loadScene: (session: Session, sceneId: string) => Promise<{ tokens: PersistedToken[] }>;
 	listSceneEffects: (session: Session, sceneId: string) => Promise<{ effects: SceneEffect[] }>;
 	setDiceColor: (color: number) => void;
-	connectPresentationSocket: (onAdvantageUpdated: () => void) => SceneSocket;
+	connectPresentationSocket: (
+		session: Session,
+		sceneId: string,
+		onAdvantageUpdated: () => void
+	) => SceneSocket;
 	saveCharacterForGM: (
 		session: Session,
 		campaignId: string,
@@ -55,8 +67,6 @@ export type CharacterSheetLifecycleDependencies = {
 		sceneId: string,
 		characterId: string
 	) => Promise<unknown>;
-	onTokenCreated: () => void;
-	refreshPortraitPreview: () => Promise<void>;
 	onInitiativeAdvantageUpdated: (enabled: boolean) => void;
 };
 
@@ -76,27 +86,53 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
 	let presentationSocket: SceneSocket | null = null;
 	let disposed = false;
+	let started = false;
+	let contextGeneration = 0;
+	let sceneGeneration = 0;
+	let socketGeneration = 0;
+	let activeContext: CharacterSheetLifecycleContext | null = null;
+
+	function readContext() {
+		return deps.getContext();
+	}
+
+	function sameSheetContext(
+		left: CharacterSheetLifecycleContext,
+		right: CharacterSheetLifecycleContext
+	) {
+		return (
+			left.campaignId === right.campaignId &&
+			left.characterId === right.characterId &&
+			left.isGM === right.isGM &&
+			left.session.user.id === right.session.user.id
+		);
+	}
+
+	function isCurrent(generation: number) {
+		return !disposed && contextGeneration === generation;
+	}
 
 	function clearTokenSyncTimer() {
 		if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
 		tokenSyncTimer = undefined;
 	}
 
-	function finishSavingOperation(savedRevision: number) {
+	function finishSavingOperation(savedRevision: number, generation: number) {
+		if (!isCurrent(generation)) return;
 		state.saving = false;
 		if (disposed || (!saveQueued && editRevision === savedRevision)) return;
 		saveQueued = false;
 		clearTokenSyncTimer();
 		tokenSyncTimer = setTimeout(() => {
 			tokenSyncTimer = undefined;
-			void save();
+			if (isCurrent(generation)) void save();
 		}, 0);
 	}
 
-	async function persist(sheet: CharacterSheet) {
-		return deps.characterId
-			? deps.saveCharacterForGM(deps.session, deps.campaignId, deps.characterId, sheet)
-			: deps.saveMyCharacter(deps.session, deps.campaignId, sheet);
+	async function persist(sheet: CharacterSheet, context = readContext()) {
+		return context.characterId
+			? deps.saveCharacterForGM(context.session, context.campaignId, context.characterId, sheet)
+			: deps.saveMyCharacter(context.session, context.campaignId, sheet);
 	}
 
 	async function save() {
@@ -108,24 +144,25 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		state.saving = true;
 		state.message = '';
 		const savedRevision = editRevision;
+		const generation = contextGeneration;
 		try {
 			// Armor class is derived from authoritative sheet data, never a manual override.
 			const sheet = deps.getSheet();
 			sheet.armorClass = deps.calculateArmorClass();
 			const snapshot = JSON.parse(JSON.stringify(sheet)) as CharacterSheet;
 			const savedCharacter = await persist(snapshot);
-			if (disposed) return;
+			if (!isCurrent(generation)) return;
 			state.resolvedCharacterId = savedCharacter.id;
 			// A stale response must not discard edits performed while the save was in flight.
 			if (editRevision === savedRevision) deps.setSheet(savedCharacter.sheet);
 			state.isNewCharacter = false;
 			state.message = 'Ficha salva.';
-			deps.onTokenCreated();
+			readContext().onTokenCreated();
 		} catch (error) {
-			if (!disposed)
+			if (isCurrent(generation))
 				state.message = error instanceof Error ? error.message : 'Não foi possível salvar a ficha.';
 		} finally {
-			if (!disposed) finishSavingOperation(savedRevision);
+			finishSavingOperation(savedRevision, generation);
 		}
 	}
 
@@ -140,23 +177,25 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		}, 450);
 	}
 
-	function beginExternalSaving(): number | null {
+	function beginExternalSaving(): CharacterSheetSaveOperation | null {
 		if (disposed || state.saving) return null;
 		state.saving = true;
-		return editRevision;
+		return { revision: editRevision, generation: contextGeneration };
 	}
 
-	function finishExternalSaving(savedRevision: number) {
-		if (!disposed) finishSavingOperation(savedRevision);
+	function finishExternalSaving(operation: CharacterSheetSaveOperation) {
+		finishSavingOperation(operation.revision, operation.generation);
 	}
 
-	function isRevisionCurrent(revision: number) {
-		return editRevision === revision;
+	function isRevisionCurrent(operation: CharacterSheetSaveOperation) {
+		return operation.generation === contextGeneration && editRevision === operation.revision;
 	}
 
 	async function createBoardToken() {
-		if (!deps.isGM) return;
-		if (!deps.sceneId) {
+		const context = readContext();
+		const generation = contextGeneration;
+		if (!context.isGM) return;
+		if (!context.sceneId) {
 			state.message = 'O narrador ainda não criou uma cena para vincular o personagem.';
 			return;
 		}
@@ -165,87 +204,170 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		try {
 			const sheet = deps.getSheet();
 			sheet.armorClass = deps.calculateArmorClass();
-			const character = await persist(sheet);
-			if (disposed) return;
+			const character = await persist(sheet, context);
+			if (!isCurrent(generation)) return;
 			deps.setSheet(character.sheet);
-			await deps.createTokenFromCharacter(deps.session, deps.sceneId, character.id);
-			if (disposed) return;
+			await deps.createTokenFromCharacter(context.session, context.sceneId, character.id);
+			if (!isCurrent(generation)) return;
 			state.message = 'Token criado e vinculado à ficha.';
-			deps.onTokenCreated();
+			readContext().onTokenCreated();
 		} catch (error) {
-			if (!disposed)
+			if (isCurrent(generation))
 				state.message = error instanceof Error ? error.message : 'Não foi possível criar o token.';
 		} finally {
-			if (!disposed) state.saving = false;
+			if (isCurrent(generation)) state.saving = false;
 		}
 	}
 
-	async function load() {
-		if (disposed) return;
+	async function load(generation: number) {
+		if (!isCurrent(generation)) return;
+		const context = readContext();
+		const sceneVersion = sceneGeneration;
 		// Compendium options load in parallel with the character, as before.
 		void deps
-			.getCompendium(deps.session, deps.campaignId)
+			.getCompendium(context.session, context.campaignId)
 			.then((data) => {
-				if (!disposed) deps.onCompendiumLoaded(data.sources, data.entries);
+				if (isCurrent(generation)) deps.onCompendiumLoaded(data.sources, data.entries);
 			})
 			.catch(() => undefined);
 		try {
-			const loadedCharacter = deps.characterId
-				? await deps.getCharacterForGM(deps.session, deps.campaignId, deps.characterId)
-				: await deps.getMyCharacter(deps.session, deps.campaignId);
-			if (disposed) return;
+			const loadedCharacter = context.characterId
+				? await deps.getCharacterForGM(context.session, context.campaignId, context.characterId)
+				: await deps.getMyCharacter(context.session, context.campaignId);
+			if (!isCurrent(generation)) return;
 			state.resolvedCharacterId = loadedCharacter.id;
 			deps.onCharacterLoaded(loadedCharacter);
 			state.activeConditions = [];
-			if (deps.sceneId) {
-				const scene = await deps.loadScene(deps.session, deps.sceneId);
-				if (disposed) return;
-				const token = deps.characterId
-					? scene.tokens.find((item) => item.actorId === deps.characterId)
+			if (context.sceneId && sceneVersion === sceneGeneration) {
+				const scene = await deps.loadScene(context.session, context.sceneId);
+				if (!isCurrent(generation) || sceneVersion !== sceneGeneration) return;
+				const token = context.characterId
+					? scene.tokens.find((item) => item.actorId === context.characterId)
 					: scene.tokens.find((item) => item.isOwner);
 				if (token) {
 					state.initiativeTokenId = token.id;
 					deps.setDiceColor(token.color);
-					const effects = await deps.listSceneEffects(deps.session, deps.sceneId);
-					if (!disposed)
+					const effects = await deps.listSceneEffects(context.session, context.sceneId);
+					if (isCurrent(generation) && sceneVersion === sceneGeneration)
 						state.activeConditions = effects.effects
 							.filter((effect) => effect.tokenId === token.id)
 							.map((effect) => effect.name);
 				}
 			}
 		} catch (error) {
-			if (disposed) return;
-			if (!deps.characterId && (error as Error & { status?: number }).status === 404)
+			if (!isCurrent(generation)) return;
+			if (!context.characterId && (error as Error & { status?: number }).status === 404)
 				state.isNewCharacter = true;
 			else
 				state.message =
 					error instanceof Error ? error.message : 'Não foi possível carregar a ficha.';
 		} finally {
-			if (!disposed) state.loading = false;
+			if (isCurrent(generation)) state.loading = false;
 		}
 	}
 
-	function connect() {
-		if (!deps.sceneId || disposed) return;
-		presentationSocket = deps.connectPresentationSocket(() => {
-			if (!state.resolvedCharacterId || disposed) return;
+	function connect(context: CharacterSheetLifecycleContext, generation: number) {
+		if (!context.sceneId || !isCurrent(generation)) return;
+		const socketVersion = ++socketGeneration;
+		presentationSocket = deps.connectPresentationSocket(context.session, context.sceneId, () => {
+			if (
+				!state.resolvedCharacterId ||
+				!isCurrent(generation) ||
+				socketVersion !== socketGeneration
+			)
+				return;
+			const current = readContext();
 			void deps
-				.getCharacterForGM(deps.session, deps.campaignId, state.resolvedCharacterId)
+				.getCharacterForGM(current.session, current.campaignId, state.resolvedCharacterId)
 				.then((character) => {
-					if (!disposed)
+					if (isCurrent(generation))
 						deps.onInitiativeAdvantageUpdated(character.sheet.initiativeAdvantage ?? false);
 				})
 				.catch(() => undefined);
 		});
 	}
 
+	function restart(context: CharacterSheetLifecycleContext, notifyParent: boolean) {
+		contextGeneration += 1;
+		sceneGeneration += 1;
+		const generation = contextGeneration;
+		clearTokenSyncTimer();
+		saveQueued = false;
+		state.loading = true;
+		state.saving = false;
+		state.message = '';
+		state.isNewCharacter = false;
+		state.activeConditions = [];
+		state.initiativeTokenId = null;
+		state.resolvedCharacterId = null;
+		activeContext = context;
+		if (notifyParent) deps.onContextChanged();
+		presentationSocket?.close();
+		presentationSocket = null;
+		connect(context, generation);
+		void load(generation);
+	}
+
+	async function reloadScene(context: CharacterSheetLifecycleContext, generation: number) {
+		const sceneVersion = ++sceneGeneration;
+		state.initiativeTokenId = null;
+		state.activeConditions = [];
+		if (!context.sceneId) return;
+		try {
+			const scene = await deps.loadScene(context.session, context.sceneId);
+			if (!isCurrent(generation) || sceneVersion !== sceneGeneration) return;
+			const token = context.characterId
+				? scene.tokens.find((item) => item.actorId === context.characterId)
+				: scene.tokens.find((item) => item.isOwner);
+			if (!token) return;
+			state.initiativeTokenId = token.id;
+			deps.setDiceColor(token.color);
+			const effects = await deps.listSceneEffects(context.session, context.sceneId);
+			if (isCurrent(generation) && sceneVersion === sceneGeneration)
+				state.activeConditions = effects.effects
+					.filter((effect) => effect.tokenId === token.id)
+					.map((effect) => effect.name);
+		} catch (error) {
+			if (isCurrent(generation) && sceneVersion === sceneGeneration)
+				state.message =
+					error instanceof Error ? error.message : 'Não foi possível carregar a cena.';
+		}
+	}
+
 	function start() {
-		connect();
-		void load();
+		if (disposed) return;
+		started = true;
+		restart(readContext(), false);
+	}
+
+	function updateContext() {
+		if (disposed || !started) return;
+		const context = readContext();
+		const previous = activeContext;
+		if (!previous || !sameSheetContext(previous, context)) {
+			restart(context, true);
+			return;
+		}
+		activeContext = context;
+		if (previous.sceneId !== context.sceneId) {
+			presentationSocket?.close();
+			presentationSocket = null;
+			connect(context, contextGeneration);
+			void reloadScene(context, contextGeneration);
+			return;
+		}
+		if (previous.session.access_token !== context.session.access_token) {
+			presentationSocket?.close();
+			presentationSocket = null;
+			connect(context, contextGeneration);
+		}
 	}
 
 	function cleanup() {
 		disposed = true;
+		contextGeneration += 1;
+		sceneGeneration += 1;
+		socketGeneration += 1;
 		clearTokenSyncTimer();
 		presentationSocket?.close();
 		presentationSocket = null;
@@ -254,6 +376,7 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 	return {
 		state,
 		start,
+		updateContext,
 		cleanup,
 		save,
 		syncTokenSoon,

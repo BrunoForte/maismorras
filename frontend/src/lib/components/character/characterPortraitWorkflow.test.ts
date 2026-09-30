@@ -3,9 +3,12 @@ import { createCharacterPortraitWorkflow } from './characterPortraitWorkflow.sve
 
 function setup(overrides: Partial<Parameters<typeof createCharacterPortraitWorkflow>[0]> = {}) {
 	const setMessage = vi.fn();
-	const workflow = createCharacterPortraitWorkflow({
+	let context = {
 		campaignId: 'campaign-1',
-		session: { user: { id: 'user-1' } } as never,
+		session: { user: { id: 'user-1' }, access_token: 'session-token' } as never
+	};
+	const workflow = createCharacterPortraitWorkflow({
+		getContext: () => context,
 		getPortraitPath: () => '',
 		setPortraitPaths: vi.fn(),
 		setMessage,
@@ -18,7 +21,13 @@ function setup(overrides: Partial<Parameters<typeof createCharacterPortraitWorkf
 		createId: () => 'asset-1',
 		...overrides
 	});
-	return { workflow, setMessage };
+	return {
+		workflow,
+		setMessage,
+		setContext: (next: typeof context) => {
+			context = next;
+		}
+	};
 }
 
 describe('character portrait workflow', () => {
@@ -45,5 +54,27 @@ describe('character portrait workflow', () => {
 		expect(workflow.state.busy).toBe(false);
 		expect(input.value).toBe('');
 		expect(setMessage).toHaveBeenCalledWith('Falha ao otimizar imagem');
+	});
+
+	it('ignores an image operation that completes after its campaign changes', async () => {
+		let rejectGeneration!: (error: Error) => void;
+		const generateImage = vi.fn(
+			() =>
+				new Promise<string>((_resolve, reject) => {
+					rejectGeneration = reject;
+				})
+		);
+		const { workflow, setMessage, setContext } = setup({ generateImage });
+		const pending = workflow.generatePortrait('retrato teste');
+		setContext({
+			campaignId: 'campaign-2',
+			session: { user: { id: 'user-1' }, access_token: 'session-token' } as never
+		});
+		workflow.updateContext();
+		rejectGeneration(new Error('erro do contexto anterior'));
+		await pending;
+
+		expect(workflow.state.busy).toBe(false);
+		expect(setMessage).not.toHaveBeenCalled();
 	});
 });

@@ -298,11 +298,16 @@
 
 	let refreshPortraitPreview = () => Promise.resolve();
 	const lifecycle = createCharacterSheetLifecycle({
-		campaignId,
-		sceneId,
-		characterId,
-		isGM,
-		session,
+		getContext: () => ({ campaignId, sceneId, characterId, isGM, session, onTokenCreated }),
+		onContextChanged: () => {
+			sheet = createEmptySheet();
+			compendiumEntries = [];
+			compendiumSources = [];
+			activeTab = 'profile';
+			previousLevel = 1;
+			levelChoiceOpen = false;
+			spellSlotChoice = {};
+		},
 		getSheet: () => sheet,
 		setSheet: (next) => (sheet = next),
 		calculateArmorClass: () => calculatedArmorClass(),
@@ -346,10 +351,10 @@
 		loadScene,
 		listSceneEffects,
 		setDiceColor,
-		connectPresentationSocket: (onAdvantageUpdated) =>
+		connectPresentationSocket: (socketSession, socketSceneId, onAdvantageUpdated) =>
 			connectSceneSocket(
-				session,
-				sceneId,
+				socketSession,
+				socketSceneId,
 				undefined,
 				undefined,
 				undefined,
@@ -362,13 +367,10 @@
 		saveCharacterForGM,
 		saveMyCharacter,
 		createTokenFromCharacter,
-		onTokenCreated,
-		refreshPortraitPreview: () => refreshPortraitPreview(),
 		onInitiativeAdvantageUpdated: (enabled) => (sheet.initiativeAdvantage = enabled)
 	});
 	const portraitWorkflow = createCharacterPortraitWorkflow({
-		campaignId,
-		session,
+		getContext: () => ({ campaignId, session }),
 		getPortraitPath: () => sheet.portraitPath,
 		setPortraitPaths: (portraitPath, tokenPortraitPath) => {
 			sheet.portraitPath = portraitPath;
@@ -396,6 +398,10 @@
 	const isNewCharacter = $derived(lifecycle.state.isNewCharacter);
 	const activeConditions = $derived(lifecycle.state.activeConditions);
 	const initiativeTokenId = $derived(lifecycle.state.initiativeTokenId);
+	$effect(() => {
+		lifecycle.updateContext();
+		portraitWorkflow.updateContext();
+	});
 	onMount(() => {
 		lifecycle.start();
 		return lifecycle.cleanup;
