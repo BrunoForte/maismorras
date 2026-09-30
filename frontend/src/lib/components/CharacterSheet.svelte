@@ -40,19 +40,40 @@
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
-	import {
-		classData,
-		classFeatures,
-		classSavingThrows,
-		canonicalClass as progressionClass,
-		defaultResources,
-		syncResourceMaxima,
-		isClassProgressionFeature,
-		spellSlots
-	} from '$lib/data/classProgression';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
-	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
+	import {
+		availableSpellCircles as projectAvailableSpellCircles,
+		addSpellToSheet,
+		addableSpellCircles as projectAddableSpellCircles,
+		compatibleSpellSlots,
+		defaultSpellSlot,
+		deriveGrantedSpells,
+		eligibleSpellEntries,
+		groupSpellsByCircle,
+		hasAISpellTranslation,
+		localizedSpellField,
+		normalizeSpellName,
+		removeSpellFromSheet,
+		resolveSpellOrigin,
+		updateSpellOnSheet
+	} from '$lib/utils/character/characterSpellRules';
+	import {
+		deriveCharacterFeatures,
+		defaultResourceMaximumFor,
+		expertiseChoicesForLevel,
+		hitDieForClass,
+		hitDieSidesFromNotation,
+		levelHitPointGain,
+		proficiencyBonusForLevel,
+		resolveCharacterClass as canonicalClass,
+		savingThrowsForClass,
+		spellcastingEnabled,
+		spellSlotsForProgression,
+		subclassesForClass,
+		synchronizeProgressionResources,
+		synchronizeSpellSlots
+	} from '$lib/utils/character/characterProgressionRules';
 	import {
 		cloneInventoryRules,
 		filterItemEntries,
@@ -170,7 +191,7 @@
 		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
 	});
 	$effect(() => {
-		const circles = unlockedSpellCircles(sheet.spellSlots);
+		const circles = projectAddableSpellCircles(sheet.spellSlots);
 		if (!circles.includes(newSpellLevel)) newSpellLevel = circles.at(-1) ?? 0;
 	});
 	const skills = [
@@ -614,31 +635,6 @@
 		const updated = updateWeaponProfileRule(item, profileId, changes);
 		updateWeaponRules(item, { attackProfiles: updated.rules.attackProfiles }, true);
 	}
-	function canonicalClass(value: string) {
-		const normalized = value
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.toLowerCase()
-			.trim();
-		return (
-			(
-				{
-					barbaro: 'barbarian',
-					bardo: 'bard',
-					clerigo: 'cleric',
-					druida: 'druid',
-					guerreiro: 'fighter',
-					monge: 'monk',
-					paladino: 'paladin',
-					patrulheiro: 'ranger',
-					ladino: 'rogue',
-					feiticeiro: 'sorcerer',
-					bruxo: 'warlock',
-					mago: 'wizard'
-				} as Record<string, string>
-			)[normalized] ?? normalized
-		);
-	}
 	const normalizedClassName = (value: string) =>
 		value
 			.normalize('NFD')
@@ -646,8 +642,7 @@
 			.toLowerCase()
 			.trim();
 	function onClassChanged() {
-		const hitDice = classData[canonicalClass(sheet.class)]?.hitDice;
-		if (hitDice) sheet.hitDice = hitDice;
+		sheet.hitDice = hitDieForClass(sheet.class, sheet.hitDice);
 		if (!subclassOptions().includes(sheet.subclass)) sheet.subclass = '';
 		syncProgression();
 	}
@@ -655,15 +650,16 @@
 		compendiumEntries.find(
 			(entry) =>
 				entry.entryType === 'class' &&
-				(String(entry.rules.id ?? '') === progressionClass(sheet.class) ||
+				(String(entry.rules.id ?? '') === canonicalClass(sheet.class) ||
 					entry.name.toLowerCase() === sheet.class.toLowerCase())
 		);
 	const shouldShowSpellcasting = () => {
-		const rules = compendiumClass()?.rules ?? {};
-		const mapped =
-			(Boolean(rules.spellcasting) && typeof rules.spellcasting === 'object') ||
-			spellSlots(sheet.class, sheet.level).length > 0;
-		return mapped || sheet.spellcastingOverride === true;
+		return spellcastingEnabled(
+			sheet.class,
+			sheet.level,
+			compendiumClass()?.rules.spellcasting,
+			sheet.spellcastingOverride
+		);
 	};
 	const compendiumSubclassOptions = () =>
 		compendiumEntries
@@ -675,7 +671,7 @@
 							.filter(Boolean)
 							.some(
 								(value) =>
-									canonicalClass(String(value)) === progressionClass(sheet.class) ||
+									canonicalClass(String(value)) === canonicalClass(sheet.class) ||
 									normalizedClassName(String(value)) === normalizedClassName(sheet.class)
 							))
 			)
@@ -683,66 +679,21 @@
 	const subclassOptions = () =>
 		compendiumSubclassOptions().length
 			? compendiumSubclassOptions()
-			: (classData[progressionClass(sheet.class)]?.subclasses ?? []);
+			: subclassesForClass(sheet.class);
 	const derivedFeatures = () => {
-		const classFeaturesData = compendiumClass()?.rules.features;
-		const classFeaturesList = Array.isArray(classFeaturesData) ? classFeaturesData : [];
-		const classResult = classFeaturesList
-			.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level)
-			.map((feature, index) => {
-				const item = feature as Record<string, unknown>;
-				return {
-					id: `class-${String(item.id ?? index)}`,
-					level: Number(item.level ?? 0),
-					name: String(item.name ?? ''),
-					description: String(item.description ?? '')
-				};
-			})
-			.filter((feature) => feature.name);
 		const subclassEntry = compendiumEntries.find(
 			(entry) =>
 				entry.entryType === 'subclass' &&
 				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
-		const customFeatures = compendiumEntries
-			.filter((entry) => isClassProgressionFeature(entry.entryType, entry.rules))
-			.flatMap((entry) =>
-				Array.isArray(entry.rules.features)
-					? entry.rules.features
-					: [{ name: entry.name, description: entry.summary, level: entry.rules.level ?? 1 }]
-			)
-			.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level)
-			.map((feature, index) => ({
-				id: `custom-${index}`,
-				level: Number((feature as Record<string, unknown>).level ?? 1),
-				name: String((feature as Record<string, unknown>).name ?? ''),
-				description: String((feature as Record<string, unknown>).description ?? '')
-			}))
-			.filter((feature) => feature.name);
-		const subclassFeatures = Array.isArray(subclassEntry?.rules.features)
-			? subclassEntry.rules.features
-			: [];
-		const subclassResult = subclassFeatures
-			.filter((feature) => Number((feature as Record<string, unknown>).level ?? 0) <= sheet.level)
-			.map((feature, index) => {
-				const item = feature as Record<string, unknown>;
-				return {
-					id: `subclass-${String(item.id ?? index)}`,
-					level: Number(item.level ?? 0),
-					name: String(item.name ?? ''),
-					description: String(item.description ?? '')
-				};
-			})
-			.filter((feature) => feature.name);
-		return classResult.length || subclassResult.length || customFeatures.length
-			? [...classResult, ...subclassResult, ...customFeatures].sort(
-					(a, b) => a.level - b.level || a.name.localeCompare(b.name)
-				)
-			: classFeatures(sheet.class, sheet.level, sheet.subclass).map((feature, index) => ({
-					...feature,
-					id: `fallback-${index}`,
-					description: ''
-				}));
+		return deriveCharacterFeatures(
+			compendiumClass(),
+			subclassEntry,
+			compendiumEntries,
+			sheet.class,
+			sheet.level,
+			sheet.subclass
+		);
 	};
 	const spellCompendiumEntry = (spell: Sheet['spells'][number]) =>
 		spell.entryId ? compendiumEntries.find((entry) => entry.id === spell.entryId) : undefined;
@@ -751,13 +702,7 @@
 		return entry ? optionLabel(entry) : spell.name;
 	};
 	const localizedSpellText = (spell: Sheet['spells'][number], field: string, fallback: string) => {
-		const entry = spellCompendiumEntry(spell);
-		const translation = entry?.translations?.[`pt-BR.rules.${field}`]?.trim();
-		return $appLocale === 'pt-BR' &&
-			translation &&
-			translation.toLocaleLowerCase() !== fallback.trim().toLocaleLowerCase()
-			? translation
-			: fallback;
+		return localizedSpellField(spell, spellCompendiumEntry(spell), field, fallback, $appLocale);
 	};
 	const spellDescription = (spell: Sheet['spells'][number]) => {
 		const entry = spellCompendiumEntry(spell);
@@ -774,18 +719,14 @@
 		return localizedSpellText(spell, 'higherLevels', original);
 	};
 	const spellHasAITranslation = (spell: Sheet['spells'][number]) => {
-		const entry = spellCompendiumEntry(spell);
-		return Object.entries(entry?.translations ?? {}).some(
-			([key, value]) => key.startsWith('pt-BR.rules.') && key.endsWith('.source') && value === 'ai'
-		);
+		return hasAISpellTranslation(spellCompendiumEntry(spell));
 	};
 	function syncProgression() {
 		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
 		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
-		sheet.proficiencyBonus = Math.ceil(Math.max(1, sheet.level) / 4) + 1;
+		sheet.proficiencyBonus = proficiencyBonusForLevel(sheet.level);
 		sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
-		if (!sheet.savingThrows.length)
-			sheet.savingThrows = [...(classSavingThrows[progressionClass(sheet.class)] ?? [])];
+		if (!sheet.savingThrows.length) sheet.savingThrows = savingThrowsForClass(sheet.class);
 		const desiredHPBonus = getSpeciesHPBonus(sheet.species, sheet.level);
 		const previousHPBonus = sheet.speciesHPBonusApplied ?? 0;
 		if (desiredHPBonus !== previousHPBonus) {
@@ -799,8 +740,7 @@
 		}
 		sheet.resistances = getSpeciesResistances(sheet.species, sheet.speciesLineage);
 		sheet.automaticTraits = getActiveSpeciesTraits(sheet.species, sheet.speciesLineage);
-		const hitDie = classData[canonicalClass(sheet.class)]?.hitDice;
-		if (hitDie) sheet.hitDice = hitDie;
+		sheet.hitDice = hitDieForClass(sheet.class, sheet.hitDice);
 		if (!Number.isFinite(sheet.initiative))
 			sheet.initiative = modifier(sheet.abilityScores.dexterity);
 		if (sheet.level === 1 && sheet.hitPointsMax === 10) {
@@ -809,13 +749,16 @@
 			sheet.hitPointsMax = hp;
 			sheet.hitPointsCurrent = hp;
 		}
-		const defaults = defaultResources(sheet.class, sheet.level, sheet.abilityScores);
-		sheet.resources = syncResourceMaxima(defaults, sheet.resources);
-		const slots = spellSlots(sheet.class, sheet.level);
-		sheet.spellSlots = slots.map((slot) => ({
-			...slot,
-			current: sheet.spellSlots.find((old) => old.level === slot.level)?.current ?? slot.max
-		}));
+		sheet.resources = synchronizeProgressionResources(
+			sheet.class,
+			sheet.level,
+			sheet.abilityScores,
+			sheet.resources
+		);
+		sheet.spellSlots = synchronizeSpellSlots(
+			spellSlotsForProgression(sheet.class, sheet.level),
+			sheet.spellSlots
+		);
 		sheet.passivePerception = passivePerception();
 	}
 	const skillBonus = (name: string, ability: keyof Sheet['abilityScores']) =>
@@ -832,10 +775,7 @@
 		syncTokenSoon();
 	}
 	const expertiseChoices = () => {
-		const key = canonicalClass(sheet.class);
-		if (key === 'bard') return sheet.level >= 9 ? 4 : sheet.level >= 2 ? 2 : 0;
-		if (key === 'rogue') return sheet.level >= 6 ? 4 : sheet.level >= 1 ? 2 : 0;
-		return 0;
+		return expertiseChoicesForLevel(sheet.class, sheet.level);
 	};
 	function setExpertiseChoice(index: number, value: string) {
 		const next = [...sheet.skillExpertise];
@@ -907,10 +847,8 @@
 	}
 	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') {
 		const gained = Math.max(0, sheet.level - previousLevel);
-		const hitDie = Number(sheet.hitDice.match(/d(\d+)/i)?.[1] ?? 8);
-		let gainedHP = 0;
-		if (choice === 'max')
-			gainedHP = gained * Math.max(1, hitDie + modifier(sheet.abilityScores.constitution));
+		const hitDie = hitDieSidesFromNotation(sheet.hitDice);
+		const rolledTotals: number[] = [];
 		if (choice === 'roll') {
 			for (let i = 0; i < gained; i++) {
 				const event = await rollDice(
@@ -918,9 +856,16 @@
 					campaignId,
 					`1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`
 				);
-				gainedHP += (event.payload as { total: number }).total;
+				rolledTotals.push((event.payload as { total: number }).total);
 			}
 		}
+		const gainedHP = levelHitPointGain(
+			choice,
+			gained,
+			hitDie,
+			modifier(sheet.abilityScores.constitution),
+			rolledTotals
+		);
 		if (choice !== 'keep') {
 			sheet.hitPointsMax += gainedHP;
 			sheet.hitPointsCurrent += gainedHP;
@@ -939,9 +884,8 @@
 		const parsed = value.trim() === '' ? undefined : Number(value);
 		if (parsed !== undefined && (!Number.isFinite(parsed) || parsed < 0)) return;
 		const automatic =
-			defaultResources(sheet.class, sheet.level, sheet.abilityScores).find(
-				(candidate) => candidate.id === resource.id
-			)?.max ?? resource.max;
+			defaultResourceMaximumFor(sheet.class, sheet.level, sheet.abilityScores, resource.id) ??
+			resource.max;
 		const max = parsed === undefined ? automatic : Math.min(999, Math.floor(parsed));
 		sheet.resources[index] = {
 			...resource,
@@ -995,52 +939,16 @@
 		}
 	}
 	const spellEntries = (circle?: number) =>
-		compendiumEntries.filter((entry) => {
-			if (entry.entryType !== 'spell') return false;
-			if (spellIsOnSheet(entry.id, entry.name, optionLabel(entry), sheet.spells)) return false;
-			const rules = entryRules(entry);
-			const level = Number(rules.level ?? 0);
-			const classes = Array.isArray(rules.classes) ? rules.classes.map(String) : [];
-			return (
-				(circle === undefined || level === circle) &&
-				(!canonicalClass(sheet.class) ||
-					classes.length === 0 ||
-					classes.includes(canonicalClass(sheet.class)))
-			);
-		});
-	const availableSpellCircles = () =>
-		[
-			...new Set([
-				0,
-				...sheet.spellSlots.filter((slot) => slot.max > 0).map((slot) => slot.level),
-				...sheet.spells.map((spell) => spell.level)
-			])
-		].sort((a, b) => a - b);
-	const addableSpellCircles = () => unlockedSpellCircles(sheet.spellSlots);
+		eligibleSpellEntries(compendiumEntries, sheet.spells, optionLabel, sheet.class, circle);
+	const availableSpellCircles = () => projectAvailableSpellCircles(sheet.spellSlots, sheet.spells);
+	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
-	const spellsForCircle = (circle: number) =>
-		sheet.spells
-			.map((spell, index) => ({ spell, index }))
-			.filter((item) => item.spell.level === circle);
+	const spellsForCircle = (circle: number) => groupSpellsByCircle(sheet.spells, circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
-		if (spell.origin) return spell.origin;
-		const rules = spellCompendiumEntry(spell)?.rules ?? {};
-		const origin = String(
-			rules.origin ?? rules.originType ?? rules.sourceType ?? rules.featureSource ?? ''
-		).toLowerCase();
-		if (/species|race|racial|ancestr|ra[cç]a/.test(origin)) return 'species';
-		if (/feat|talent|talento/.test(origin)) return 'feat';
-		return 'class';
+		return resolveSpellOrigin(spell, spellCompendiumEntry(spell)?.rules);
 	};
-	const normalizeSpellSource = (value: string) =>
-		value
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.toLocaleLowerCase()
-			.trim();
 	const grantedSpells = () => {
-		const granted: Sheet['spells'] = sheet.spells.filter((spell) => spellOrigin(spell) !== 'class');
 		const sourceTexts = [
 			{
 				origin: 'species' as const,
@@ -1055,25 +963,7 @@
 				return entry ? [{ origin: 'feat' as const, text: JSON.stringify(entry.rules) }] : [];
 			})
 		];
-		for (const entry of compendiumEntries.filter((item) => item.entryType === 'spell')) {
-			const names = [entry.name, optionLabel(entry)].map(normalizeSpellSource);
-			const source = sourceTexts.find(({ text }) => {
-				const normalized = normalizeSpellSource(text);
-				return names.some((name) => name.length > 2 && normalized.includes(name));
-			});
-			if (!source) continue;
-			const name = optionLabel(entry);
-			if (granted.some((spell) => normalizeSpellSource(spell.name) === normalizeSpellSource(name)))
-				continue;
-			granted.push({
-				entryId: entry.id,
-				name,
-				level: Number(entry.rules.level ?? 0),
-				notes: '',
-				origin: source.origin
-			});
-		}
-		return granted;
+		return deriveGrantedSpells(sheet.spells, compendiumEntries, sourceTexts, optionLabel);
 	};
 	const circleLabel = (circle: number) =>
 		circle === 0
@@ -1509,10 +1399,9 @@
 		}
 	}
 	const compatibleSlots = (spell: Sheet['spells'][number]) =>
-		sheet.spellSlots.filter((slot) => slot.level >= spell.level && slot.current > 0);
-	function selectedSlot(spell: Sheet['spells'][number], index: number) {
-		return spellSlotChoice[index] ?? compatibleSlots(spell)[0]?.level ?? spell.level;
-	}
+		compatibleSpellSlots(spell, sheet.spellSlots);
+	const selectedSlot = (spell: Sheet['spells'][number], index: number) =>
+		defaultSpellSlot(spell, index, spellSlotChoice, sheet.spellSlots);
 	async function castSpell(spell: Sheet['spells'][number], index: number) {
 		if (castingSpell !== null || (spell.level > 0 && !compatibleSlots(spell).length)) return;
 		castingSpell = index;
@@ -1579,49 +1468,19 @@
 	function addSpell() {
 		const name = newSpellName.trim();
 		if (!name || !addableSpellCircles().includes(newSpellLevel)) return;
-		const normalizedName = (value: string) =>
-			value
-				.trim()
-				.toLocaleLowerCase('pt-BR')
-				.normalize('NFD')
-				.replace(/\p{Diacritic}/gu, '');
-		if (sheet.spells.some((spell) => normalizedName(spell.name) === normalizedName(name))) return;
 		const existingSpell = spellEntries(newSpellLevel).find(
-			(entry) => normalizedName(optionLabel(entry)) === normalizedName(name)
+			(entry) => normalizeSpellName(optionLabel(entry)) === normalizeSpellName(name)
 		);
-		if (existingSpell) {
-			const rules = entryRules(existingSpell);
-			const damage =
-				rules.damage && typeof rules.damage === 'object'
-					? (rules.damage as Record<string, unknown>)
-					: {};
-			sheet.spells = [
-				...sheet.spells,
-				{
-					entryId: existingSpell.id,
-					name: optionLabel(existingSpell),
-					level: Number(rules.level ?? newSpellLevel),
-					notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`,
-					description: String(rules.description ?? existingSpell.summary ?? ''),
-					diceFormula: String(damage.dice ?? ''),
-					higherLevels: String(rules.higherLevels ?? rules.atHigherLevels ?? '')
-				}
-			];
-		} else {
-			// Names not selected from the suggestions remain custom sheet spells.
-			sheet.spells = [
-				...sheet.spells,
-				{
-					name,
-					level: newSpellLevel,
-					notes: '',
-					description: '',
-					diceFormula: '',
-					higherLevels: '',
-					scalingDicePerLevel: 0
-				}
-			];
-		}
+		const updated = addSpellToSheet(
+			sheet.spells,
+			name,
+			newSpellLevel,
+			addableSpellCircles(),
+			existingSpell,
+			existingSpell ? optionLabel(existingSpell) : ''
+		);
+		if (updated.length === sheet.spells.length) return;
+		sheet.spells = updated;
 		expandedSpell = sheet.spells.length - 1;
 		newSpellName = '';
 	}
@@ -1629,14 +1488,11 @@
 		sheet.attacks = sheet.attacks.filter((_, i) => i !== index);
 	}
 	function removeSpell(index: number) {
-		sheet.spells = sheet.spells.filter((_, i) => i !== index);
+		sheet.spells = removeSpellFromSheet(sheet.spells, index);
 	}
 	function updateSpell(index: number, changes: Partial<Sheet['spells'][number]>) {
-		const spell = sheet.spells[index];
-		if (!spell) return;
-		sheet.spells = sheet.spells.map((item, itemIndex) =>
-			itemIndex === index ? { ...item, ...changes } : item
-		);
+		if (!sheet.spells[index]) return;
+		sheet.spells = updateSpellOnSheet(sheet.spells, index, changes);
 	}
 	async function save() {
 		if (saving) {
@@ -1892,29 +1748,35 @@
 						{expandedSpell}
 						{isGM}
 						{castingSpell}
-						{addableSpellCircles}
-						{availableSpellCircles}
-						{spellSlotForCircle}
-						{spellsForCircle}
-						{spellEntries}
-						{optionLabel}
-						{circleLabel}
-						{spellDisplayName}
-						{spellDescription}
-						{spellHigherLevels}
-						{spellHasAITranslation}
-						{compatibleSlots}
-						{selectedSlot}
-						onNewSpellNameChange={(value) => (newSpellName = value)}
-						onNewSpellLevelChange={(value) => (newSpellLevel = value)}
-						onExpandedSpellChange={(value) => (expandedSpell = value)}
-						onSpellSlotChoiceChange={(index, value) => (spellSlotChoice[index] = value)}
-						onAddSpell={addSpell}
-						onRemoveSpell={removeSpell}
-						onSpellChange={updateSpell}
-						onPresentSpell={(spell) => void presentSpell(spell)}
-						onRollSpellDamage={(spell) => void rollSpellDamage(spell)}
-						onCastSpell={(spell, index) => void castSpell(spell, index)}
+						spellbook={{
+							addableCircles: addableSpellCircles,
+							availableCircles: availableSpellCircles,
+							slotForCircle: spellSlotForCircle,
+							spellsForCircle,
+							entriesForCircle: spellEntries,
+							compatibleSlots,
+							selectedSlot
+						}}
+						presentation={{
+							optionLabel,
+							circleLabel,
+							displayName: spellDisplayName,
+							description: spellDescription,
+							higherLevels: spellHigherLevels,
+							hasAITranslation: spellHasAITranslation
+						}}
+						actions={{
+							setNewSpellName: (value) => (newSpellName = value),
+							setNewSpellLevel: (value) => (newSpellLevel = value),
+							setExpandedSpell: (value) => (expandedSpell = value),
+							chooseSlot: (index, value) => (spellSlotChoice[index] = value),
+							add: addSpell,
+							remove: removeSpell,
+							change: updateSpell,
+							present: (spell) => void presentSpell(spell),
+							rollEffect: (spell) => void rollSpellDamage(spell),
+							cast: (spell, index) => void castSpell(spell, index)
+						}}
 					/>
 				{/if}
 				{#if activeTab === 'details'}

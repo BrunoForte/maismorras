@@ -1,6 +1,10 @@
 <script lang="ts">
-	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { Spell } from '$lib/services/characterApi';
+	import type {
+		SpellbookProjection,
+		SpellPresentation,
+		SpellTabActions
+	} from '$lib/utils/character/characterSpellRules';
 	import { appLocale } from '$lib/stores/locale';
 
 	let {
@@ -9,60 +13,18 @@
 		expandedSpell,
 		isGM,
 		castingSpell,
-		addableSpellCircles,
-		availableSpellCircles,
-		spellSlotForCircle,
-		spellsForCircle,
-		spellEntries,
-		optionLabel,
-		circleLabel,
-		spellDisplayName,
-		spellDescription,
-		spellHigherLevels,
-		spellHasAITranslation,
-		compatibleSlots,
-		selectedSlot,
-		onNewSpellNameChange,
-		onNewSpellLevelChange,
-		onExpandedSpellChange,
-		onSpellSlotChoiceChange,
-		onAddSpell,
-		onRemoveSpell,
-		onSpellChange,
-		onPresentSpell,
-		onRollSpellDamage,
-		onCastSpell
+		spellbook,
+		presentation,
+		actions
 	}: {
 		newSpellName: string;
 		newSpellLevel: number;
 		expandedSpell: number | null;
 		isGM: boolean;
 		castingSpell: number | null;
-		addableSpellCircles: () => number[];
-		availableSpellCircles: () => number[];
-		spellSlotForCircle: (
-			circle: number
-		) => { level: number; current: number; max: number } | undefined;
-		spellsForCircle: (circle: number) => { spell: Spell; index: number }[];
-		spellEntries: (circle?: number) => CompendiumEntry[];
-		optionLabel: (entry: CompendiumEntry) => string;
-		circleLabel: (circle: number) => string;
-		spellDisplayName: (spell: Spell) => string;
-		spellDescription: (spell: Spell) => string;
-		spellHigherLevels: (spell: Spell) => string;
-		spellHasAITranslation: (spell: Spell) => boolean;
-		compatibleSlots: (spell: Spell) => { level: number; current: number; max: number }[];
-		selectedSlot: (spell: Spell, index: number) => number;
-		onNewSpellNameChange: (value: string) => void;
-		onNewSpellLevelChange: (value: number) => void;
-		onExpandedSpellChange: (value: number | null) => void;
-		onSpellSlotChoiceChange: (index: number, value: number) => void;
-		onAddSpell: () => void;
-		onRemoveSpell: (index: number) => void;
-		onSpellChange: (index: number, changes: Partial<Spell>) => void;
-		onPresentSpell: (spell: Spell) => void;
-		onRollSpellDamage: (spell: Spell) => void;
-		onCastSpell: (spell: Spell, index: number) => void;
+		spellbook: SpellbookProjection;
+		presentation: SpellPresentation;
+		actions: SpellTabActions;
 	} = $props();
 </script>
 
@@ -74,10 +36,10 @@
 		<select
 			value={newSpellLevel}
 			aria-label={$appLocale === 'en' ? 'Manual spell circle' : 'Círculo da magia manual'}
-			onchange={(event) => onNewSpellLevelChange(Number(event.currentTarget.value))}
+			onchange={(event) => actions.setNewSpellLevel(Number(event.currentTarget.value))}
 		>
-			{#each addableSpellCircles() as level (level)}<option value={level}
-					>{circleLabel(level)}</option
+			{#each spellbook.addableCircles() as level (level)}<option value={level}
+					>{presentation.circleLabel(level)}</option
 				>{/each}
 		</select>
 		<input
@@ -87,24 +49,25 @@
 				? 'Search or type a spell name'
 				: 'Busque ou digite o nome da magia'}
 			aria-label={$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}
-			oninput={(event) => onNewSpellNameChange(event.currentTarget.value)}
+			oninput={(event) => actions.setNewSpellName(event.currentTarget.value)}
 		/>
 		<datalist id="spell-suggestions">
-			{#each spellEntries(newSpellLevel) as entry (entry.id)}<option value={optionLabel(entry)}
+			{#each spellbook.entriesForCircle(newSpellLevel) as entry (entry.id)}<option
+					value={presentation.optionLabel(entry)}
 				></option>{/each}
 		</datalist>
-		<button type="button" onclick={onAddSpell} disabled={!newSpellName.trim()}>
+		<button type="button" onclick={actions.add} disabled={!newSpellName.trim()}>
 			+ {$appLocale === 'en' ? 'Add' : 'Adicionar'}
 		</button>
 	</div>
-	{#each availableSpellCircles() as circle (circle)}
+	{#each spellbook.availableCircles() as circle (circle)}
 		<section class="spell-circle">
 			<header>
 				<div>
-					<h4>{circleLabel(circle)}</h4>
+					<h4>{presentation.circleLabel(circle)}</h4>
 					<small>
 						{#if circle > 0}
-							<strong>{spellSlotForCircle(circle)?.current ?? 0}</strong> / {spellSlotForCircle(
+							<strong>{spellbook.slotForCircle(circle)?.current ?? 0}</strong> / {spellbook.slotForCircle(
 								circle
 							)?.max ?? 0}
 							{$appLocale === 'en' ? 'slots' : 'espaços'}
@@ -112,20 +75,24 @@
 					</small>
 				</div>
 			</header>
-			{#if spellsForCircle(circle).length}
-				{#each spellsForCircle(circle) as { spell, index } (index)}
+			{#if spellbook.spellsForCircle(circle).length}
+				{#each spellbook.spellsForCircle(circle) as { spell, index } (index)}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
 							type="button"
 							aria-expanded={expandedSpell === index}
-							onclick={() => onExpandedSpellChange(expandedSpell === index ? null : index)}
+							onclick={() => actions.setExpandedSpell(expandedSpell === index ? null : index)}
 						>
 							<strong
-								>{spellDisplayName(spell) ||
+								>{presentation.displayName(spell) ||
 									($appLocale === 'en' ? 'Unnamed spell' : 'Magia sem nome')}</strong
 							>
-							<span>{circleLabel(spell.level)} · {expandedSpell === index ? '⌃' : '⌄'}</span>
+							<span
+								>{presentation.circleLabel(spell.level)} · {expandedSpell === index
+									? '⌃'
+									: '⌄'}</span
+							>
 						</button>
 						{#if expandedSpell === index}
 							<div class="spell-details">
@@ -134,7 +101,7 @@
 									<select
 										value={spell.origin ?? 'class'}
 										onchange={(event) =>
-											onSpellChange(index, {
+											actions.change(index, {
 												origin: event.currentTarget.value as Spell['origin']
 											})}
 									>
@@ -149,7 +116,7 @@
 									>{$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}
 									<input
 										value={spell.name}
-										oninput={(event) => onSpellChange(index, { name: event.currentTarget.value })}
+										oninput={(event) => actions.change(index, { name: event.currentTarget.value })}
 									/>
 								</label>
 								<label
@@ -158,7 +125,7 @@
 										value={spell.diceFormula ?? ''}
 										placeholder="Ex.: 6d6"
 										oninput={(event) =>
-											onSpellChange(index, { diceFormula: event.currentTarget.value })}
+											actions.change(index, { diceFormula: event.currentTarget.value })}
 									/>
 								</label>
 								{#if !spell.entryId}
@@ -168,7 +135,7 @@
 												type="checkbox"
 												checked={(spell.scalingDicePerLevel ?? 0) > 0}
 												onchange={(event) =>
-													onSpellChange(index, {
+													actions.change(index, {
 														scalingDicePerLevel: event.currentTarget.checked
 															? Math.max(1, spell.scalingDicePerLevel ?? 0)
 															: 0
@@ -190,7 +157,7 @@
 													max="10"
 													value={spell.scalingDicePerLevel}
 													oninput={(event) =>
-														onSpellChange(index, {
+														actions.change(index, {
 															scalingDicePerLevel: Number(event.currentTarget.value)
 														})}
 												/>
@@ -205,12 +172,15 @@
 								{/if}
 								{#if spell.entryId}
 									<section class="spell-lore" aria-label="Descrição da magia">
-										{#if spellHasAITranslation(spell)}<small>Tradução livre (IA)</small>{/if}
-										<p>{spellDescription(spell) || 'Descrição não cadastrada no compêndio.'}</p>
-										{#if spellHigherLevels(spell)}<h5>
+										{#if presentation.hasAITranslation(spell)}<small>Tradução livre (IA)</small
+											>{/if}
+										<p>
+											{presentation.description(spell) || 'Descrição não cadastrada no compêndio.'}
+										</p>
+										{#if presentation.higherLevels(spell)}<h5>
 												{$appLocale === 'en' ? 'At higher levels' : 'Em níveis mais altos'}
 											</h5>
-											<p>{spellHigherLevels(spell)}</p>{/if}
+											<p>{presentation.higherLevels(spell)}</p>{/if}
 									</section>
 								{:else}
 									<label class="spell-description-field"
@@ -219,7 +189,7 @@
 											value={spell.description ?? ''}
 											rows="4"
 											oninput={(event) =>
-												onSpellChange(index, { description: event.currentTarget.value })}
+												actions.change(index, { description: event.currentTarget.value })}
 										></textarea>
 									</label>
 									<label class="spell-description-field"
@@ -228,7 +198,7 @@
 											value={spell.higherLevels ?? ''}
 											rows="2"
 											oninput={(event) =>
-												onSpellChange(index, { higherLevels: event.currentTarget.value })}
+												actions.change(index, { higherLevels: event.currentTarget.value })}
 										></textarea>
 									</label>
 								{/if}
@@ -237,34 +207,35 @@
 									<textarea
 										value={spell.notes}
 										rows="2"
-										oninput={(event) => onSpellChange(index, { notes: event.currentTarget.value })}
+										oninput={(event) => actions.change(index, { notes: event.currentTarget.value })}
 									></textarea>
 								</label>
 								<div class="spell-actions">
-									{#if isGM}<button type="button" onclick={() => onPresentSpell(spell)}
+									{#if isGM}<button type="button" onclick={() => actions.present(spell)}
 											>{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}</button
 										>{/if}
 									{#if spell.diceFormula?.trim() && spell.level === 0}<button
 											type="button"
-											onclick={() => onRollSpellDamage(spell)}
+											onclick={() => actions.rollEffect(spell)}
 											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
 									{#if spell.level > 0}
 										<select
-											value={selectedSlot(spell, index)}
+											value={spellbook.selectedSlot(spell, index)}
 											onchange={(event) =>
-												onSpellSlotChoiceChange(index, Number(event.currentTarget.value))}
+												actions.chooseSlot(index, Number(event.currentTarget.value))}
 											aria-label="Espaço de magia"
 										>
-											{#each compatibleSlots(spell) as slot (slot.level)}<option value={slot.level}
-													>{circleLabel(slot.level)} · {slot.current}/{slot.max}</option
+											{#each spellbook.compatibleSlots(spell) as slot (slot.level)}<option
+													value={slot.level}
+													>{presentation.circleLabel(slot.level)} · {slot.current}/{slot.max}</option
 												>{/each}
 										</select>
 										<button
 											class="cast-spell"
 											type="button"
-											disabled={castingSpell === index || !compatibleSlots(spell).length}
-											onclick={() => onCastSpell(spell, index)}
+											disabled={castingSpell === index || !spellbook.compatibleSlots(spell).length}
+											onclick={() => actions.cast(spell, index)}
 											>{castingSpell === index
 												? '…'
 												: $appLocale === 'en'
@@ -272,7 +243,7 @@
 													: 'Lançar'}</button
 										>
 									{/if}
-									<button type="button" onclick={() => onRemoveSpell(index)}
+									<button type="button" onclick={() => actions.remove(index)}
 										>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button
 									>
 								</div>
