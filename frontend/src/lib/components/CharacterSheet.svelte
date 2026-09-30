@@ -53,8 +53,30 @@
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
-	import { hasWeaponProficiency, hasWeaponProficiencyInText } from '$lib/utils/weaponProficiency';
-	import { cloneInventoryRules } from '$lib/utils/inventoryRules';
+	import {
+		cloneInventoryRules,
+		filterItemEntries,
+		projectInventory,
+		totalInventoryWeight
+	} from '$lib/utils/inventoryRules';
+	import {
+		addWeaponProfile,
+		deriveWeaponEffects,
+		removeWeaponProfile,
+		selectedWeaponEffects,
+		toggleWeaponEffect as toggleWeaponEffectRule,
+		updateWeaponProfile as updateWeaponProfileRule,
+		weaponAttackBonusTotal as calculateWeaponAttackBonus,
+		weaponAttackProfiles,
+		weaponDamageBonusTotal as calculateWeaponDamageBonus,
+		weaponProficiencyStatus as resolveWeaponProficiency,
+		weaponSupportsGreatWeaponFighting,
+		weaponBonusTotals as sumWeaponBonusTotals,
+		updateInventoryItemRules,
+		type WeaponAttackProfile,
+		type WeaponEffect,
+		type WeaponFeat
+	} from '$lib/utils/weaponRules';
 	import {
 		getActiveSpeciesTraits,
 		getSpeciesHPBonus,
@@ -72,12 +94,9 @@
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
 	import {
 		equipmentCategory,
-		itemWeight,
 		modifierText,
 		weaponAbility,
 		weaponItemBonus,
-		weaponRange,
-		weaponRangeFromText,
 		type InventoryCategory
 	} from '$lib/utils/characterEquipment';
 
@@ -488,27 +507,14 @@
 			? entry.translations['pt-BR']
 			: entry.name;
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
-	const itemEntries = () =>
-		compendiumEntries.filter(
-			(entry) =>
-				entry.entryType === 'item' &&
-				(inventoryFilter === 'all' ||
-					equipmentCategory({ name: entry.name, rules: entryRules(entry) }) === inventoryFilter)
-		);
+	const itemEntries = () => filterItemEntries(compendiumEntries, inventoryFilter);
 	const weaponKey = (item: InventoryItem) => `${item.entryId}:${sheet.inventory.indexOf(item)}`;
-	const visibleInventory = () =>
-		sheet.inventory
-			.map((item, index) => ({ item, index }))
-			.filter(
-				({ item }) => inventoryFilter === 'all' || equipmentCategory(item) === inventoryFilter
-			);
-	const totalInventoryWeight = () =>
-		sheet.inventory.reduce((total, item) => total + itemWeight(item), 0);
+	const visibleInventory = () => projectInventory(sheet.inventory, inventoryFilter);
+	const inventoryWeight = () => totalInventoryWeight(sheet.inventory);
 	const weaponProficiencyStatus = (item: InventoryItem) => {
-		if (typeof item.rules.proficient === 'boolean') return item.rules.proficient;
 		const rules = compendiumClass()?.rules ?? {};
 		const baseProficiencies = Array.isArray(rules.weaponProficiencies)
-			? rules.weaponProficiencies.map((value) => String(value).toLowerCase())
+			? rules.weaponProficiencies.map(String)
 			: [];
 		const subclass = compendiumEntries.find(
 			(entry) =>
@@ -516,13 +522,13 @@
 				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
 		const subclassProficiencies = Array.isArray(subclass?.rules.weaponProficiencies)
-			? subclass.rules.weaponProficiencies.map((value) => String(value).toLowerCase())
+			? subclass.rules.weaponProficiencies.map(String)
 			: [];
-		const category = String(item.rules.category ?? '');
-		const proficiencies = [...baseProficiencies, ...subclassProficiencies];
-		return (
-			hasWeaponProficiency(proficiencies, item.name, category) ||
-			hasWeaponProficiencyInText(JSON.stringify(subclass?.rules ?? {}), item.name, category)
+		return resolveWeaponProficiency(
+			item,
+			baseProficiencies,
+			subclassProficiencies,
+			subclass?.rules
 		);
 	};
 	const weaponProficiencyBonus = (item: InventoryItem) =>
@@ -532,100 +538,28 @@
 			.split(/\n|,/)
 			.map((feat) => feat.trim())
 			.filter(Boolean);
-	type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
-	const parseWeaponEffect = (
-		key: string,
-		name: string,
-		text: string,
-		itemRange: 'melee' | 'ranged'
-	): WeaponEffect | null => {
-		const range = weaponRangeFromText(text);
-		if (range && range !== itemRange) return null;
-		const attack = text.match(/\+(\d+)\s+bonus to attack rolls?/i);
-		const damage = text.match(/\+(\d+)\s+bonus to damage rolls?/i);
-		const attackBonus = attack ? Number(attack[1]) : 0;
-		const damageBonus = damage ? Number(damage[1]) : 0;
-		return attackBonus || damageBonus ? { key, name, attackBonus, damageBonus } : null;
-	};
 	const weaponEffects = (item: InventoryItem): WeaponEffect[] => {
-		const range = weaponRange(item);
 		const features = derivedFeatures().map((feature) => ({
-			key: feature.id,
+			id: feature.id,
 			name: feature.name,
-			text: feature.description
+			description: feature.description
 		}));
-		const feats = featList().flatMap((feat, index) => {
+		const feats: WeaponFeat[] = featList().flatMap((feat) => {
 			const entry = optionsFor('feat').find(
 				(candidate) =>
 					candidate.name.toLowerCase() === feat.toLowerCase() ||
 					optionLabel(candidate).toLowerCase() === feat.toLowerCase()
 			);
-			if (!entry) return [];
-			const rules = entry.rules ?? {};
-			const benefits = Array.isArray(rules.benefits) ? rules.benefits.map(String).join(' ') : '';
-			return [
-				{
-					key: `feat-${entry.id || index}`,
-					name: optionLabel(entry),
-					text: `${String(rules.description ?? '')} ${benefits}`
-				}
-			];
+			return entry ? [{ id: entry.id, name: optionLabel(entry), rules: entry.rules ?? {} }] : [];
 		});
-		return [...features, ...feats].flatMap((effect) => {
-			const normalizedName = effect.name
-				.normalize('NFD')
-				.replace(/[\u0300-\u036f]/g, '')
-				.toLowerCase();
-			if (/archery|arquearia|estilo de luta.*arco/.test(normalizedName) && range === 'ranged')
-				return [{ key: effect.key, name: effect.name, attackBonus: 2, damageBonus: 0 }];
-			if (/dueling|duelo/.test(normalizedName) && range === 'melee') {
-				const itemRules = JSON.stringify(item.rules);
-				const twoHanded = /two.?handed|duas m[aã]os/.test(itemRules);
-				const anotherEquippedWeapon = sheet.inventory.some(
-					(other) =>
-						other !== item &&
-						other.equipped &&
-						String(other.rules.category ?? '').toLowerCase() === 'weapon'
-				);
-				if (!twoHanded && !anotherEquippedWeapon)
-					return [{ key: effect.key, name: effect.name, attackBonus: 0, damageBonus: 2 }];
-				return [];
-			}
-			const parsed = parseWeaponEffect(effect.key, effect.name, effect.text, range);
-			return parsed ? [parsed] : [];
-		});
+		return deriveWeaponEffects(item, features, feats, sheet.inventory);
 	};
-	const selectedWeaponEffects = (item: InventoryItem) => {
-		const enabled = Array.isArray(item.rules.enabledCombatModifiers)
-			? item.rules.enabledCombatModifiers.map(String)
-			: [];
-		return weaponEffects(item).filter((effect) => enabled.includes(effect.key));
-	};
+	const selectedEffectsForWeapon = (item: InventoryItem) =>
+		selectedWeaponEffects(item, weaponEffects(item));
 	function toggleWeaponEffect(item: InventoryItem, key: string) {
-		const enabled = Array.isArray(item.rules.enabledCombatModifiers)
-			? item.rules.enabledCombatModifiers.map(String)
-			: [];
-		item.rules.enabledCombatModifiers = enabled.includes(key)
-			? enabled.filter((itemKey) => itemKey !== key)
-			: [...enabled, key];
+		const updated = toggleWeaponEffectRule(item, key);
+		updateWeaponRules(item, { enabledCombatModifiers: updated.rules.enabledCombatModifiers });
 	}
-	type WeaponAttackProfile = {
-		id: string;
-		name: string;
-		description: string;
-		attackAbility: keyof Sheet['abilityScores'];
-		damage: string;
-		attackBonus: number;
-		damageBonus: number;
-		greatWeaponFighting: boolean;
-	};
-	const weaponAttackProfiles = (item: InventoryItem): WeaponAttackProfile[] =>
-		(Array.isArray(item.rules.attackProfiles) ? item.rules.attackProfiles : []).filter(
-			(profile): profile is WeaponAttackProfile =>
-				typeof profile === 'object' &&
-				profile !== null &&
-				typeof (profile as WeaponAttackProfile).id === 'string'
-		);
 	function addWeaponAttackProfile(item: InventoryItem) {
 		const profiles = weaponAttackProfiles(item);
 		const profile: WeaponAttackProfile = {
@@ -638,41 +572,30 @@
 			damageBonus: 0,
 			greatWeaponFighting: false
 		};
-		item.rules = { ...item.rules, attackProfiles: [...profiles, profile] };
+		updateWeaponRules(item, {
+			attackProfiles: addWeaponProfile(item, profile).rules.attackProfiles
+		});
 		syncTokenSoon();
 	}
 	function removeWeaponAttackProfile(item: InventoryItem, profileId: string) {
-		item.rules = {
-			...item.rules,
-			attackProfiles: weaponAttackProfiles(item).filter((profile) => profile.id !== profileId)
-		};
+		const updated = removeWeaponProfile(item, profileId);
+		updateWeaponRules(item, { attackProfiles: updated.rules.attackProfiles });
 		syncTokenSoon();
 	}
 	const hasGreatWeaponFighting = () =>
 		/Great Weapon Fighting|Luta com Armas Grandes/i.test(`${sheet.feats}\n${sheet.features}`);
-	const weaponSupportsGreatWeaponFighting = (item: InventoryItem) => {
-		const rules = JSON.stringify(item.rules);
-		return (
-			/two.?handed|versatile|duas m[aã]os|vers[aá]til/i.test(rules) &&
-			!/ammunition|ranged|range/i.test(rules)
-		);
-	};
 	const weaponBonusTotals = (item: InventoryItem) => {
-		const effects = selectedWeaponEffects(item);
-		return {
-			attack: effects.reduce((total, effect) => total + effect.attackBonus, 0),
-			damage: effects.reduce((total, effect) => total + effect.damageBonus, 0)
-		};
+		return sumWeaponBonusTotals(selectedEffectsForWeapon(item));
 	};
 	const weaponAttackBonusTotal = (item: InventoryItem) =>
-		modifier(sheet.abilityScores[weaponAbility(item)]) +
-		weaponProficiencyBonus(item) +
-		weaponItemBonus(item) +
-		weaponBonusTotals(item).attack;
+		calculateWeaponAttackBonus(
+			item,
+			sheet.abilityScores,
+			weaponProficiencyBonus(item),
+			selectedEffectsForWeapon(item)
+		);
 	const weaponDamageBonusTotal = (item: InventoryItem) =>
-		modifier(sheet.abilityScores[weaponAbility(item)]) +
-		weaponItemBonus(item) +
-		weaponBonusTotals(item).damage;
+		calculateWeaponDamageBonus(item, sheet.abilityScores, selectedEffectsForWeapon(item));
 	function updateWeaponRules(
 		item: InventoryItem,
 		changes: Record<string, unknown>,
@@ -680,9 +603,7 @@
 	) {
 		const index = sheet.inventory.indexOf(item);
 		if (index < 0) return;
-		sheet.inventory = sheet.inventory.map((current, currentIndex) =>
-			currentIndex === index ? { ...current, rules: { ...current.rules, ...changes } } : current
-		);
+		sheet.inventory = updateInventoryItemRules(sheet.inventory, item, changes);
 		if (autosave) syncTokenSoon();
 	}
 	function updateWeaponProfile(
@@ -690,10 +611,8 @@
 		profileId: string,
 		changes: Partial<WeaponAttackProfile>
 	) {
-		const profiles = weaponAttackProfiles(item).map((profile) =>
-			profile.id === profileId ? { ...profile, ...changes } : profile
-		);
-		updateWeaponRules(item, { attackProfiles: profiles }, true);
+		const updated = updateWeaponProfileRule(item, profileId, changes);
+		updateWeaponRules(item, { attackProfiles: updated.rules.attackProfiles }, true);
 	}
 	function canonicalClass(value: string) {
 		const normalized = value
@@ -1902,24 +1821,27 @@
 							circleLabel,
 							spellOrigin,
 							equipmentCategory,
-							weaponKey,
-							weaponAbility,
-							abilityLabel,
-							modifierText,
-							proficiencyStatus: weaponProficiencyStatus,
-							proficiencyBonus: weaponProficiencyBonus,
-							attackBonusTotal: weaponAttackBonusTotal,
-							damageBonusTotal: weaponDamageBonusTotal,
-							weaponEffects,
-							weaponProfiles: weaponAttackProfiles,
-							hasGreatWeaponFighting,
-							weaponSupportsGreatWeaponFighting,
-							updateWeaponRules,
-							toggleWeaponEffect,
-							addWeaponAttackProfile,
-							removeWeaponAttackProfile: removeWeaponAttackProfile,
-							updateWeaponProfile,
-							rollWeapon: (item, action, profile) => void rollWeapon(item, action, profile),
+							weapons: {
+								weaponKey,
+								weaponAbility,
+								abilityLabel,
+								abilityModifier: (key) => Math.floor((sheet.abilityScores[key] - 10) / 2),
+								modifierText,
+								proficiencyStatus: weaponProficiencyStatus,
+								proficiencyBonus: weaponProficiencyBonus,
+								attackBonusTotal: weaponAttackBonusTotal,
+								damageBonusTotal: weaponDamageBonusTotal,
+								weaponEffects,
+								weaponProfiles: weaponAttackProfiles,
+								hasGreatWeaponFighting,
+								weaponSupportsGreatWeaponFighting,
+								updateWeaponRules,
+								toggleWeaponEffect,
+								addWeaponAttackProfile,
+								removeWeaponAttackProfile,
+								updateWeaponProfile,
+								rollWeapon: (item, action, profile) => void rollWeapon(item, action, profile)
+							},
 							addAttack,
 							toggleVisibleRoll,
 							setAttackType,
@@ -1946,7 +1868,7 @@
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
 						visibleItems={visibleInventory()}
-						totalWeight={totalInventoryWeight()}
+						totalWeight={inventoryWeight()}
 						bind:inventoryFilter
 						{optionLabel}
 						onAddCompendiumItem={addInventoryItem}

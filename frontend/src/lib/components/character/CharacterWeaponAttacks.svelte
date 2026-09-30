@@ -1,76 +1,17 @@
 <script lang="ts">
 	import type { AbilityScores, InventoryItem } from '$lib/services/characterApi';
+	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
-
-	type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
-	type WeaponAttackProfile = {
-		id: string;
-		name: string;
-		description: string;
-		attackAbility: keyof AbilityScores;
-		damage: string;
-		attackBonus: number;
-		damageBonus: number;
-		greatWeaponFighting: boolean;
-	};
 	let {
 		items,
 		attributes,
 		rollingWeaponAction,
-		weaponKey,
-		weaponAbility,
-		abilityLabel,
-		abilityModifier,
-		modifierText,
-		proficiencyStatus,
-		proficiencyBonus,
-		attackBonusTotal,
-		damageBonusTotal,
-		weaponEffects,
-		weaponProfiles,
-		hasGreatWeaponFighting,
-		weaponSupportsGreatWeaponFighting,
-		onWeaponChange,
-		onToggleEffect,
-		onAddProfile,
-		onRemoveProfile,
-		onProfileChange,
-		onRoll
+		actions
 	}: {
 		items: InventoryItem[];
 		attributes: { key: keyof AbilityScores; label: string }[];
 		rollingWeaponAction: string | null;
-		weaponKey: (item: InventoryItem) => string;
-		weaponAbility: (item: InventoryItem) => keyof AbilityScores;
-		abilityLabel: (key: keyof AbilityScores) => string;
-		abilityModifier: (key: keyof AbilityScores) => number;
-		modifierText: (value: number) => string;
-		proficiencyStatus: (item: InventoryItem) => boolean;
-		proficiencyBonus: (item: InventoryItem) => number;
-		attackBonusTotal: (item: InventoryItem) => number;
-		damageBonusTotal: (item: InventoryItem) => number;
-		weaponEffects: (item: InventoryItem) => WeaponEffect[];
-		weaponProfiles: (item: InventoryItem) => WeaponAttackProfile[];
-		hasGreatWeaponFighting: () => boolean;
-		weaponSupportsGreatWeaponFighting: (item: InventoryItem) => boolean;
-		onWeaponChange: (
-			item: InventoryItem,
-			changes: Record<string, unknown>,
-			autosave?: boolean
-		) => void;
-		onToggleEffect: (item: InventoryItem, key: string) => void;
-		onAddProfile: (item: InventoryItem) => void;
-		onRemoveProfile: (item: InventoryItem, id: string) => void;
-		onProfileChange: (
-			item: InventoryItem,
-			id: string,
-			changes: Partial<WeaponAttackProfile>
-		) => void;
-		onRoll: (
-			item: InventoryItem,
-			action: 'attack' | 'damage',
-			profile?: WeaponAttackProfile
-		) => void;
+		actions: WeaponCombatActions;
 	} = $props();
 	let expandedWeapon = $state<string | null>(null);
 </script>
@@ -81,19 +22,21 @@
 	</div>
 	{#if items.length}
 		<div class="weapon-combat-list">
-			{#each items as item (weaponKey(item))}
+			{#each items as item (actions.weaponKey(item))}
 				<article class="weapon-combat-card">
 					<button
 						class="weapon-toggle"
 						type="button"
-						aria-expanded={expandedWeapon === weaponKey(item)}
+						aria-expanded={expandedWeapon === actions.weaponKey(item)}
 						onclick={() =>
-							(expandedWeapon = expandedWeapon === weaponKey(item) ? null : weaponKey(item))}
+							(expandedWeapon =
+								expandedWeapon === actions.weaponKey(item) ? null : actions.weaponKey(item))}
 					>
-						<strong>{item.name}</strong><span>{expandedWeapon === weaponKey(item) ? '⌃' : '⌄'}</span
+						<strong>{item.name}</strong><span
+							>{expandedWeapon === actions.weaponKey(item) ? '⌃' : '⌄'}</span
 						>
 					</button>
-					{#if expandedWeapon === weaponKey(item)}
+					{#if expandedWeapon === actions.weaponKey(item)}
 						<div class="weapon-modifications">
 							<label
 								>{$appLocale === 'en' ? 'Enchantment bonus' : 'Bônus de encantamento'}
@@ -103,7 +46,7 @@
 									max="10"
 									value={Number(item.rules.enchantmentBonus) || 0}
 									oninput={(event) =>
-										onWeaponChange(item, {
+										actions.updateWeaponRules(item, {
 											enchantmentBonus: Number(event.currentTarget.value) || 0
 										})}
 								/>
@@ -113,7 +56,7 @@
 								<input
 									value={String(item.rules.modifications ?? '')}
 									oninput={(event) =>
-										onWeaponChange(item, { modifications: event.currentTarget.value })}
+										actions.updateWeaponRules(item, { modifications: event.currentTarget.value })}
 									placeholder={$appLocale === 'en'
 										? 'Notes on this weapon'
 										: 'Ex.: runas, ajustes…'}
@@ -124,7 +67,11 @@
 								<textarea
 									value={String(item.rules.playerDescription ?? '')}
 									oninput={(event) =>
-										onWeaponChange(item, { playerDescription: event.currentTarget.value }, true)}
+										actions.updateWeaponRules(
+											item,
+											{ playerDescription: event.currentTarget.value },
+											true
+										)}
 									placeholder={$appLocale === 'en'
 										? 'Item function or special ability'
 										: 'Função do item ou habilidade especial'}></textarea>
@@ -134,13 +81,17 @@
 							<label
 								>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
 								<select
-									value={weaponAbility(item)}
+									value={actions.weaponAbility(item)}
 									onchange={(event) =>
-										onWeaponChange(item, { attackAbility: event.currentTarget.value }, true)}
+										actions.updateWeaponRules(
+											item,
+											{ attackAbility: event.currentTarget.value },
+											true
+										)}
 								>
 									{#each attributes as attribute (attribute.key)}<option value={attribute.key}
-											>{abilityLabel(attribute.key)} ({modifierText(
-												abilityModifier(attribute.key)
+											>{actions.abilityLabel(attribute.key)} ({actions.modifierText(
+												actions.abilityModifier(attribute.key)
 											)})</option
 										>{/each}
 								</select>
@@ -153,15 +104,20 @@
 									max="10"
 									value={Number(item.rules.bonus) || 0}
 									oninput={(event) =>
-										onWeaponChange(item, { bonus: Number(event.currentTarget.value) || 0 })}
+										actions.updateWeaponRules(item, {
+											bonus: Number(event.currentTarget.value) || 0
+										})}
 									aria-label={$appLocale === 'en'
 										? `Bonus for ${item.name}`
 										: `Bônus de ${item.name}`}
 								/>
 							</label>
-							<span class:unproficient={!proficiencyStatus(item)} class="weapon-proficiency">
-								{proficiencyStatus(item)
-									? `${$appLocale === 'en' ? 'Proficient' : 'Proficiente'} · ${modifierText(proficiencyBonus(item))}`
+							<span
+								class:unproficient={!actions.proficiencyStatus(item)}
+								class="weapon-proficiency"
+							>
+								{actions.proficiencyStatus(item)
+									? `${$appLocale === 'en' ? 'Proficient' : 'Proficiente'} · ${actions.modifierText(actions.proficiencyBonus(item))}`
 									: $appLocale === 'en'
 										? 'Not proficient'
 										: 'Não proficiente'}
@@ -169,27 +125,32 @@
 							<label class="weapon-proficiency-override"
 								><input
 									type="checkbox"
-									checked={proficiencyStatus(item)}
+									checked={actions.proficiencyStatus(item)}
 									onchange={(event) =>
-										onWeaponChange(item, { proficient: event.currentTarget.checked }, true)}
+										actions.updateWeaponRules(
+											item,
+											{ proficient: event.currentTarget.checked },
+											true
+										)}
 								/>{$appLocale === 'en' ? 'Manual proficiency' : 'Proficiência manual'}</label
 							>
 							<label
 								>{$appLocale === 'en' ? 'Damage' : 'Dano'}
 								<input
 									value={String(item.rules.damage ?? '')}
-									oninput={(event) => onWeaponChange(item, { damage: event.currentTarget.value })}
+									oninput={(event) =>
+										actions.updateWeaponRules(item, { damage: event.currentTarget.value })}
 								/>
 							</label>
 						</div>
-						{#if weaponEffects(item).length}
+						{#if actions.weaponEffects(item).length}
 							<fieldset class="weapon-effects">
 								<legend
 									>{$appLocale === 'en'
 										? 'Applicable class/feat bonuses'
 										: 'Bônus de classe/talentos aplicáveis'}</legend
 								>
-								{#each weaponEffects(item) as effect (effect.key)}
+								{#each actions.weaponEffects(item) as effect (effect.key)}
 									<label
 										><input
 											type="checkbox"
@@ -197,7 +158,7 @@
 												? item.rules.enabledCombatModifiers.map(String)
 												: []
 											).includes(effect.key)}
-											onchange={() => onToggleEffect(item, effect.key)}
+											onchange={() => actions.toggleWeaponEffect(item, effect.key)}
 										/>{effect.name}<small
 											>{#if effect.attackBonus}{$appLocale === 'en'
 													? `Attack +${effect.attackBonus}`
@@ -216,28 +177,27 @@
 									: 'Nenhum bônus numérico de habilidade ou talento foi mapeado para esta arma.'}</small
 							>{/if}
 						<div class="weapon-combat-summary">
-							{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {modifierText(attackBonusTotal(item))} · {$appLocale ===
-							'en'
-								? 'Damage'
-								: 'Dano'}: {String(item.rules.damage ?? '—')}
-							{modifierText(damageBonusTotal(item))}
+							{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {actions.modifierText(
+								actions.attackBonusTotal(item)
+							)} · {$appLocale === 'en' ? 'Damage' : 'Dano'}: {String(item.rules.damage ?? '—')}
+							{actions.modifierText(actions.damageBonusTotal(item))}
 						</div>
 						<div class="weapon-combat-actions">
 							<button
 								class="roll-weapon"
-								onclick={() => onRoll(item, 'attack')}
+								onclick={() => actions.rollWeapon(item, 'attack')}
 								disabled={rollingWeaponAction !== null}
-								>{rollingWeaponAction === `${weaponKey(item)}:default:attack`
+								>{rollingWeaponAction === `${actions.weaponKey(item)}:default:attack`
 									? '…'
 									: $appLocale === 'en'
 										? '🎲 Attack'
 										: '🎲 Ataque'}</button
 							>
 							<button
-								onclick={() => onRoll(item, 'damage')}
+								onclick={() => actions.rollWeapon(item, 'damage')}
 								disabled={rollingWeaponAction !== null ||
 									!String(item.rules.damage ?? '').match(/^\d+d\d+/i)}
-								>{rollingWeaponAction === `${weaponKey(item)}:default:damage`
+								>{rollingWeaponAction === `${actions.weaponKey(item)}:default:damage`
 									? '…'
 									: $appLocale === 'en'
 										? '🎲 Damage'
@@ -245,10 +205,13 @@
 							>
 						</div>
 						<div class="weapon-profile-list">
-							<button type="button" class="secondary-button" onclick={() => onAddProfile(item)}
+							<button
+								type="button"
+								class="secondary-button"
+								onclick={() => actions.addWeaponAttackProfile(item)}
 								>+ {$appLocale === 'en' ? 'Alternate attack' : 'Golpe'}</button
 							>
-							{#each weaponProfiles(item) as profile (profile.id)}
+							{#each actions.weaponProfiles(item) as profile (profile.id)}
 								<details class="weapon-profile">
 									<summary>{profile.name}</summary>
 									<div class="weapon-profile-fields">
@@ -256,24 +219,26 @@
 											aria-label="Nome do golpe"
 											value={profile.name}
 											oninput={(event) =>
-												onProfileChange(item, profile.id, { name: event.currentTarget.value })}
+												actions.updateWeaponProfile(item, profile.id, {
+													name: event.currentTarget.value
+												})}
 										/>
 										<textarea
 											aria-label="Descrição do golpe"
 											value={profile.description}
 											oninput={(event) =>
-												onProfileChange(item, profile.id, {
+												actions.updateWeaponProfile(item, profile.id, {
 													description: event.currentTarget.value
 												})}></textarea>
 										<label
 											>{$appLocale === 'en' ? 'Ability' : 'Atributo'}<select
 												value={profile.attackAbility}
 												onchange={(event) =>
-													onProfileChange(item, profile.id, {
+													actions.updateWeaponProfile(item, profile.id, {
 														attackAbility: event.currentTarget.value as keyof AbilityScores
 													})}
 												>{#each attributes as attribute (attribute.key)}<option
-														value={attribute.key}>{abilityLabel(attribute.key)}</option
+														value={attribute.key}>{actions.abilityLabel(attribute.key)}</option
 													>{/each}</select
 											></label
 										>
@@ -282,7 +247,7 @@
 												type="number"
 												value={profile.attackBonus}
 												oninput={(event) =>
-													onProfileChange(item, profile.id, {
+													actions.updateWeaponProfile(item, profile.id, {
 														attackBonus: Number(event.currentTarget.value)
 													})}
 											/></label
@@ -291,7 +256,9 @@
 											>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
 												value={profile.damage}
 												oninput={(event) =>
-													onProfileChange(item, profile.id, { damage: event.currentTarget.value })}
+													actions.updateWeaponProfile(item, profile.id, {
+														damage: event.currentTarget.value
+													})}
 											/></label
 										>
 										<label
@@ -299,17 +266,17 @@
 												type="number"
 												value={profile.damageBonus}
 												oninput={(event) =>
-													onProfileChange(item, profile.id, {
+													actions.updateWeaponProfile(item, profile.id, {
 														damageBonus: Number(event.currentTarget.value)
 													})}
 											/></label
 										>
-										{#if hasGreatWeaponFighting() && weaponSupportsGreatWeaponFighting(item)}<label
+										{#if actions.hasGreatWeaponFighting() && actions.weaponSupportsGreatWeaponFighting(item)}<label
 												><input
 													type="checkbox"
 													checked={profile.greatWeaponFighting}
 													onchange={(event) =>
-														onProfileChange(item, profile.id, {
+														actions.updateWeaponProfile(item, profile.id, {
 															greatWeaponFighting: event.currentTarget.checked
 														})}
 												/>{$appLocale === 'en'
@@ -319,18 +286,19 @@
 										<div class="weapon-combat-actions">
 											<button
 												class="roll-weapon"
-												onclick={() => onRoll(item, 'attack', profile)}
+												onclick={() => actions.rollWeapon(item, 'attack', profile)}
 												disabled={rollingWeaponAction !== null}
 												>🎲 {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
 											>
 											<button
-												onclick={() => onRoll(item, 'damage', profile)}
+												onclick={() => actions.rollWeapon(item, 'damage', profile)}
 												disabled={rollingWeaponAction !== null || !/^\d+d\d+/i.test(profile.damage)}
 												>🎲 {$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button
 												class="danger-button"
-												onclick={() => onRemoveProfile(item, profile.id)}>×</button
+												onclick={() => actions.removeWeaponAttackProfile(item, profile.id)}
+												>×</button
 											>
 										</div>
 									</div>

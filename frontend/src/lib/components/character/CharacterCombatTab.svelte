@@ -4,20 +4,10 @@
 		CharacterSheet as Sheet,
 		InventoryItem
 	} from '$lib/services/characterApi';
+	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
 	import CharacterWeaponAttacks from './CharacterWeaponAttacks.svelte';
 
-	type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
-	type WeaponAttackProfile = {
-		id: string;
-		name: string;
-		description: string;
-		attackAbility: keyof AbilityScores;
-		damage: string;
-		attackBonus: number;
-		damageBonus: number;
-		greatWeaponFighting: boolean;
-	};
 	type GrantedSpell = Sheet['spells'][number];
 	type Attack = Sheet['attacks'][number];
 	type Actions = {
@@ -29,36 +19,7 @@
 		circleLabel: (level: number) => string;
 		spellOrigin: (spell: GrantedSpell) => string;
 		equipmentCategory: (item: Pick<InventoryItem, 'name' | 'rules'>) => string;
-		weaponKey: (item: InventoryItem) => string;
-		weaponAbility: (item: InventoryItem) => keyof AbilityScores;
-		abilityLabel: (key: keyof AbilityScores) => string;
-		modifierText: (value: number) => string;
-		proficiencyStatus: (item: InventoryItem) => boolean;
-		proficiencyBonus: (item: InventoryItem) => number;
-		attackBonusTotal: (item: InventoryItem) => number;
-		damageBonusTotal: (item: InventoryItem) => number;
-		weaponEffects: (item: InventoryItem) => WeaponEffect[];
-		weaponProfiles: (item: InventoryItem) => WeaponAttackProfile[];
-		hasGreatWeaponFighting: () => boolean;
-		weaponSupportsGreatWeaponFighting: (item: InventoryItem) => boolean;
-		updateWeaponRules: (
-			item: InventoryItem,
-			changes: Record<string, unknown>,
-			autosave?: boolean
-		) => void;
-		toggleWeaponEffect: (item: InventoryItem, key: string) => void;
-		addWeaponAttackProfile: (item: InventoryItem) => void;
-		removeWeaponAttackProfile: (item: InventoryItem, id: string) => void;
-		updateWeaponProfile: (
-			item: InventoryItem,
-			id: string,
-			changes: Partial<WeaponAttackProfile>
-		) => void;
-		rollWeapon: (
-			item: InventoryItem,
-			action: 'attack' | 'damage',
-			profile?: WeaponAttackProfile
-		) => void;
+		weapons: WeaponCombatActions;
 		addAttack: () => void;
 		toggleVisibleRoll: (key: string) => void;
 		setAttackType: (attack: Attack, value: string) => void;
@@ -204,25 +165,7 @@
 		items={weaponItems()}
 		{attributes}
 		{rollingWeaponAction}
-		weaponKey={actions.weaponKey}
-		weaponAbility={actions.weaponAbility}
-		abilityLabel={actions.abilityLabel}
-		abilityModifier={(key) => modifier(sheet.abilityScores[key])}
-		modifierText={actions.modifierText}
-		proficiencyStatus={actions.proficiencyStatus}
-		proficiencyBonus={actions.proficiencyBonus}
-		attackBonusTotal={actions.attackBonusTotal}
-		damageBonusTotal={actions.damageBonusTotal}
-		weaponEffects={actions.weaponEffects}
-		weaponProfiles={actions.weaponProfiles}
-		hasGreatWeaponFighting={actions.hasGreatWeaponFighting}
-		weaponSupportsGreatWeaponFighting={actions.weaponSupportsGreatWeaponFighting}
-		onWeaponChange={actions.updateWeaponRules}
-		onToggleEffect={actions.toggleWeaponEffect}
-		onAddProfile={actions.addWeaponAttackProfile}
-		onRemoveProfile={actions.removeWeaponAttackProfile}
-		onProfileChange={actions.updateWeaponProfile}
-		onRoll={(item, action, profile) => actions.rollWeapon(item, action, profile)}
+		actions={actions.weapons}
 	/>
 
 	{#if armorItems().length}
