@@ -27,7 +27,6 @@
 		type CompendiumEntry,
 		type CompendiumSource
 	} from '$lib/services/compendiumApi';
-	import { rollDice } from '$lib/services/eventApi';
 	import {
 		beginDiceBatch,
 		diceOverlay,
@@ -39,14 +38,13 @@
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket } from '$lib/services/sceneRealtime';
+	import { rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
 		addSpellToSheet,
 		addableSpellCircles as projectAddableSpellCircles,
-		compatibleSpellSlots,
-		defaultSpellSlot,
 		deriveGrantedSpells,
 		eligibleSpellEntries,
 		groupSpellsByCircle,
@@ -59,11 +57,8 @@
 	} from '$lib/utils/character/characterSpellRules';
 	import {
 		deriveCharacterFeatures,
-		defaultResourceMaximumFor,
 		expertiseChoicesForLevel,
 		hitDieForClass,
-		hitDieSidesFromNotation,
-		levelHitPointGain,
 		proficiencyBonusForLevel,
 		resolveCharacterClass as canonicalClass,
 		savingThrowsForClass,
@@ -91,7 +86,6 @@
 		weaponDamageBonusTotal as calculateWeaponDamageBonus,
 		weaponProficiencyStatus as resolveWeaponProficiency,
 		weaponSupportsGreatWeaponFighting,
-		weaponBonusTotals as sumWeaponBonusTotals,
 		updateInventoryItemRules,
 		type WeaponAttackProfile,
 		type WeaponEffect,
@@ -115,13 +109,12 @@
 	import CharacterLevelUpModal from '$lib/components/character/CharacterLevelUpModal.svelte';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
-	import type { LevelUpHPChoice } from '$lib/components/character/levelUpChoiceActions';
+	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import {
 		equipmentCategory,
 		modifierText,
 		weaponAbility,
-		weaponItemBonus,
 		type InventoryCategory
 	} from '$lib/utils/characterEquipment';
 
@@ -155,15 +148,8 @@
 		'profile'
 	);
 	let inventoryFilter = $state<InventoryCategory>('all');
-	let rollingWeaponAction = $state<string | null>(null);
-	let lastCriticalWeapon = $state<string | null>(null);
-	let rollingAttack = $state<number | null>(null);
-	let rollingAttackAction = $state<'attack' | 'damage' | null>(null);
-	let lastCriticalAttack = $state<number | null>(null);
 	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
-	let castingSpell = $state<number | null>(null);
 	let expandedSpell = $state<number | null>(null);
-	let spellSlotChoice = $state<Record<number, number>>({});
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
 	let minimized = $state(false);
@@ -306,7 +292,6 @@
 			activeTab = 'profile';
 			previousLevel = 1;
 			levelChoiceOpen = false;
-			spellSlotChoice = {};
 		},
 		getSheet: () => sheet,
 		setSheet: (next) => (sheet = next),
@@ -396,64 +381,84 @@
 	const saving = $derived(lifecycle.state.saving);
 	const message = $derived(lifecycle.state.message);
 	const isNewCharacter = $derived(lifecycle.state.isNewCharacter);
-	const activeConditions = $derived(lifecycle.state.activeConditions);
 	const initiativeTokenId = $derived(lifecycle.state.initiativeTokenId);
+	const combatActions = createCharacterCombatActions({
+		getContext: () => ({
+			campaignId,
+			sceneId,
+			characterId,
+			isGM,
+			session,
+			locale: $appLocale === 'en' ? 'en' : 'pt-BR',
+			onTokenCreated
+		}),
+		getSheet: () => sheet,
+		setSheet: (next) => (sheet = next),
+		getResolvedCharacterId: () => lifecycle.state.resolvedCharacterId,
+		getInitiativeTokenId: () => lifecycle.state.initiativeTokenId,
+		getActiveConditions: () => lifecycle.state.activeConditions,
+		getAttackMode: selectedAttackMode,
+		isWeapon: (item) => equipmentCategory(item) === 'weapon',
+		getWeaponRollDetails: (item, profile) => {
+			const defaultAbility = weaponAbility(item);
+			const attackAbility = profile?.attackAbility ?? defaultAbility;
+			const abilityAdjustment =
+				modifier(sheet.abilityScores[attackAbility]) -
+				modifier(sheet.abilityScores[defaultAbility]);
+			return {
+				attackBonus: weaponAttackBonusTotal(item) + abilityAdjustment + (profile?.attackBonus ?? 0),
+				damageBonus: weaponDamageBonusTotal(item) + abilityAdjustment + (profile?.damageBonus ?? 0),
+				damageFormula: profile?.damage || String(item.rules.damage ?? ''),
+				stableWeaponKey: weaponKey(item),
+				profileKey: profile?.id ?? 'default',
+				damageType: String(item.rules.damageType ?? ''),
+				minimumDamageDie: profile?.greatWeaponFighting ? 3 : undefined
+			};
+		},
+		getAbilityModifier: (ability) => modifier(sheet.abilityScores[ability]),
+		getPreviousLevel: () => previousLevel,
+		setPreviousLevel: (level) => (previousLevel = level),
+		setLevelChoiceOpen: (open) => (levelChoiceOpen = open),
+		getSpellPresentation: (spell) => ({
+			title: spellDisplayName(spell),
+			description: spellDescription(spell)
+		}),
+		setMessage: (next) => (lifecycle.state.message = next),
+		getSaving: () => lifecycle.state.saving,
+		syncTokenSoon,
+		syncProgression,
+		save,
+		beginExternalSaving: () => lifecycle.beginExternalSaving(),
+		isRevisionCurrent: (operation) => lifecycle.isRevisionCurrent(operation),
+		finishExternalSaving: (operation) => lifecycle.finishExternalSaving(operation),
+		rollMyCharacter,
+		rollDice,
+		rollTokenInitiative,
+		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
+		restCharacter,
+		castMySpell,
+		savePresentation: (activeSession, activeSceneId, presentation) =>
+			savePresentation(activeSession, activeSceneId, presentation),
+		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),
+		setDiceOverlay: (result) => diceOverlay.set(result),
+		beginDiceBatch,
+		finishDiceBatch,
+		publishChatUpdated: sceneSocketPublishChat,
+		publishCombatUpdated: () => lifecycle.publishCombatUpdated(),
+		publishPresentationUpdated: (data) => lifecycle.publishPresentationUpdated(data)
+	});
 	$effect(() => {
 		lifecycle.updateContext();
 		portraitWorkflow.updateContext();
+		combatActions.updateContext();
 	});
 	onMount(() => {
 		lifecycle.start();
-		return lifecycle.cleanup;
+		return () => {
+			combatActions.cleanup();
+			lifecycle.cleanup();
+		};
 	});
-	async function setInitiativeAdvantage(enabled: boolean) {
-		const characterId = lifecycle.state.resolvedCharacterId;
-		if (!characterId) {
-			lifecycle.state.message = 'Salve a ficha antes de configurar a vantagem de iniciativa.';
-			return;
-		}
-		try {
-			const result = await setCharacterInitiativeAdvantage(
-				session,
-				campaignId,
-				characterId,
-				enabled
-			);
-			sheet.initiativeAdvantage = result.enabled;
-			lifecycle.state.message = enabled
-				? 'Vantagem preparada para a próxima iniciativa.'
-				: 'Vantagem desativada.';
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error
-					? error.message
-					: 'Não foi possível alterar a vantagem da iniciativa.';
-		}
-	}
-	async function rollSheetInitiative() {
-		const initiativeTokenId = lifecycle.state.initiativeTokenId;
-		if (!initiativeTokenId || !sceneId) {
-			lifecycle.state.message = 'Esta ficha ainda não está vinculada a um token na cena.';
-			return;
-		}
-		try {
-			const result = await rollTokenInitiative(session, sceneId, initiativeTokenId);
-			sheet.initiativeAdvantage = false;
-			const dice = result.rolls ?? [result.roll];
-			const label = result.advantage ? `Iniciativa · vantagem (${dice.join(' e ')})` : 'Iniciativa';
-			diceOverlay.set({
-				expression: `${sheet.name} · ${label}`,
-				notation: `${dice.length}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
-				total: result.initiative,
-				dice
-			});
-			lifecycle.publishCombatUpdated();
-			lifecycle.state.message = `${label}: ${result.roll} ${result.bonus >= 0 ? '+' : '−'} ${Math.abs(result.bonus)} = ${result.initiative}`;
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
-		}
-	}
 	const optionsFor = (entryType: string) =>
 		compendiumEntries.filter((entry) => entry.entryType === entryType);
 	const optionLabel = (entry: CompendiumEntry) =>
@@ -540,9 +545,6 @@
 	}
 	const hasGreatWeaponFighting = () =>
 		/Great Weapon Fighting|Luta com Armas Grandes/i.test(`${sheet.feats}\n${sheet.features}`);
-	const weaponBonusTotals = (item: InventoryItem) => {
-		return sumWeaponBonusTotals(selectedEffectsForWeapon(item));
-	};
 	const weaponAttackBonusTotal = (item: InventoryItem) =>
 		calculateWeaponAttackBonus(
 			item,
@@ -721,48 +723,8 @@
 			sheet.skillProficiencies = [...sheet.skillProficiencies, value];
 		syncTokenSoon();
 	}
-	async function rollAuthorized(
-		kind: 'skill' | 'save' | 'spell',
-		key: string,
-		fallbackLabel: string
-	) {
-		try {
-			const mode = selectedAttackMode();
-			const result = await rollMyCharacter(session, campaignId, kind, key, mode);
-			const rollCount = Math.max(1, result.dados.length);
-			$diceOverlay = {
-				expression: `${sheet.name || 'Personagem'} · ${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'}`,
-				notation: `${rollCount}d20${result.modificador ? `${result.modificador >= 0 ? '+' : ''}${result.modificador}` : ''}`,
-				total: result.total,
-				dice: result.dados,
-				nonce: String(result.eventId)
-			};
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: String(result.eventId),
-					autor: sheet.name || ($appLocale === 'en' ? 'Character' : 'Personagem'),
-					texto: `${fallbackLabel} · ${mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal'} · dados [${result.dados.join(', ')}] · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						expressao: '1d20',
-						dados: result.dados,
-						modificador: result.modificador,
-						total: result.total,
-						mode: result.modo,
-						label: fallbackLabel
-					}
-				}
-			];
-			sceneSocketPublishChat();
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
-		}
-	}
 	const rollSkill = (name: string) =>
-		rollAuthorized(
+		combatActions.rollAuthorized(
 			'skill',
 			name,
 			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`
@@ -779,95 +741,6 @@
 		else {
 			previousLevel = sheet.level;
 			syncProgression();
-		}
-	}
-	async function resolveLevelHP(choice: LevelUpHPChoice) {
-		const gained = Math.max(0, sheet.level - previousLevel);
-		const hitDie = hitDieSidesFromNotation(sheet.hitDice);
-		const rolledTotals: number[] = [];
-		if (choice === 'roll') {
-			for (let i = 0; i < gained; i++) {
-				const event = await rollDice(
-					session,
-					campaignId,
-					`1d${hitDie}${modifier(sheet.abilityScores.constitution) >= 0 ? '+' : ''}${modifier(sheet.abilityScores.constitution)}`
-				);
-				rolledTotals.push((event.payload as { total: number }).total);
-			}
-		}
-		const gainedHP = levelHitPointGain(
-			choice,
-			gained,
-			hitDie,
-			modifier(sheet.abilityScores.constitution),
-			rolledTotals
-		);
-		if (choice !== 'keep') {
-			sheet.hitPointsMax += gainedHP;
-			sheet.hitPointsCurrent += gainedHP;
-		}
-		previousLevel = sheet.level;
-		levelChoiceOpen = false;
-		syncProgression();
-		await save();
-	}
-	function spendResource(index: number) {
-		sheet.resources[index].current = Math.max(0, sheet.resources[index].current - 1);
-		syncTokenSoon();
-	}
-	function setResourceMax(index: number, value: string) {
-		const resource = sheet.resources[index];
-		const parsed = value.trim() === '' ? undefined : Number(value);
-		if (parsed !== undefined && (!Number.isFinite(parsed) || parsed < 0)) return;
-		const automatic =
-			defaultResourceMaximumFor(sheet.class, sheet.level, sheet.abilityScores, resource.id) ??
-			resource.max;
-		const max = parsed === undefined ? automatic : Math.min(999, Math.floor(parsed));
-		sheet.resources[index] = {
-			...resource,
-			max,
-			...(parsed === undefined ? { maxOverride: undefined } : { maxOverride: max }),
-			current: Math.min(resource.current, max)
-		};
-		syncTokenSoon();
-	}
-	async function rest(kind: 'short' | 'long') {
-		if (saving) return;
-		const savedRevision = lifecycle.beginExternalSaving();
-		if (savedRevision === null) return;
-		try {
-			const result = await restCharacter(session, campaignId, kind, characterId);
-			if (lifecycle.isRevisionCurrent(savedRevision)) {
-				sheet = result.sheet;
-			} else {
-				sheet.hitPointsCurrent = result.sheet.hitPointsCurrent;
-				sheet.temporaryHP = result.sheet.temporaryHP;
-				sheet.hitDiceSpent = result.sheet.hitDiceSpent;
-				sheet.resources = result.sheet.resources;
-				sheet.spellSlots = result.sheet.spellSlots;
-				sheet.armorClass = result.sheet.armorClass;
-				sheet.proficiencyBonus = result.sheet.proficiencyBonus;
-				sheet.passivePerception = result.sheet.passivePerception;
-			}
-			if (kind === 'short') {
-				$diceOverlay = {
-					expression: result.label ?? `${sheet.name || 'Personagem'} · Dado de vida`,
-					notation: `${sheet.hitDice}${result.modificador ? `${result.modificador > 0 ? '+' : ''}${result.modificador}` : ''}`,
-					total: result.total ?? 0,
-					dice: result.dados ?? []
-				};
-				sceneSocketPublishChat();
-			}
-			lifecycle.state.message =
-				kind === 'long'
-					? 'Descanso longo aplicado: PV, recursos e espaços restaurados.'
-					: 'Descanso curto aplicado: dado de vida e recursos recuperados.';
-			onTokenCreated();
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : 'Não foi possível aplicar o descanso.';
-		} finally {
-			lifecycle.finishExternalSaving(savedRevision);
 		}
 	}
 	const spellEntries = (circle?: number) =>
@@ -989,157 +862,6 @@
 	function removeInventoryItem(index: number) {
 		sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index);
 	}
-	async function rollWeapon(
-		item: InventoryItem,
-		action: 'attack' | 'damage',
-		profile?: WeaponAttackProfile
-	) {
-		const rules = item.rules;
-		const damageFormula = profile?.damage || String(rules.damage ?? '');
-		const damageMatch = damageFormula.match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
-		const profileKey = profile?.id ?? 'default';
-		const stableWeaponKey = weaponKey(item);
-		const actionKey = `${stableWeaponKey}:${profileKey}:${action}`;
-		if (equipmentCategory(item) !== 'weapon' || rollingWeaponAction) return;
-		if (action === 'damage' && !damageMatch) {
-			lifecycle.state.message =
-				$appLocale === 'en'
-					? 'This weapon has no damage formula.'
-					: 'Esta arma não tem uma fórmula de dano.';
-			return;
-		}
-		if (
-			action === 'attack' &&
-			activeConditions.some((condition) =>
-				['Incapacitado', 'Paralisado', 'Atordoado', 'Petrificado', 'Inconsciente'].includes(
-					condition
-				)
-			)
-		) {
-			lifecycle.state.message =
-				'Esta condição impede ações e reações; o ataque não pode ser rolado.';
-			return;
-		}
-		const abilityKey = profile?.attackAbility ?? weaponAbility(item);
-		const abilityModifier = modifier(sheet.abilityScores[abilityKey]);
-		const itemBonus = weaponItemBonus(item);
-		const proficiencyBonus = weaponProficiencyBonus(item);
-		const effects = weaponBonusTotals(item);
-		rollingWeaponAction = actionKey;
-		lifecycle.state.message = '';
-		beginDiceBatch();
-		try {
-			if (action === 'attack') {
-				const attackBonus =
-					abilityModifier +
-					proficiencyBonus +
-					itemBonus +
-					effects.attack +
-					(profile?.attackBonus ?? 0);
-				const attackMode = selectedAttackMode();
-				const event = await rollDice(
-					session,
-					campaignId,
-					`1d20${attackBonus >= 0 ? '+' : ''}${attackBonus}`,
-					attackMode === 'normal' ? undefined : attackMode,
-					'combat'
-				);
-				const result = event.payload as { expressao: string; dados: number[]; total: number };
-				const critical = result.dados.includes(20);
-				lastCriticalWeapon = critical ? `${stableWeaponKey}:${profileKey}` : null;
-				$chatMensagens = [
-					...$chatMensagens,
-					{
-						id: String(event.id),
-						autor: event.author,
-						texto: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque${critical ? ' · CRÍTICO!' : ''}`,
-						tipo: 'rolagem',
-						canal: 'combat',
-						detalhesRolagem: {
-							...result,
-							modificador: attackBonus,
-							label: `${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`
-						}
-					}
-				];
-				sceneSocketPublishChat();
-				$diceOverlay = {
-					expression: `${sheet.name || 'Personagem'} · ${item.name}${profile ? ` · ${profile.name}` : ''} · ataque`,
-					notation: result.expressao,
-					total: result.total,
-					dice: result.dados,
-					nonce: String(event.id)
-				};
-			} else {
-				const baseModifier =
-					damageMatch?.[3] === '-' ? -Number(damageMatch[4] ?? 0) : Number(damageMatch?.[4] ?? 0);
-				const damageModifier =
-					baseModifier + abilityModifier + itemBonus + effects.damage + (profile?.damageBonus ?? 0);
-				const isCritical = lastCriticalWeapon === `${stableWeaponKey}:${profileKey}`;
-				const diceCount = Number(damageMatch![1]) * (isCritical ? 2 : 1);
-				const event = await rollDice(
-					session,
-					campaignId,
-					`${diceCount}d${damageMatch![2]}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
-					undefined,
-					'combat',
-					profile?.greatWeaponFighting ? 3 : undefined
-				);
-				const damage = event.payload as {
-					expressao: string;
-					dados: number[];
-					total: number;
-					regraAplicada?: string;
-					dadosOriginais?: number[];
-				};
-				const attackName = `${item.name}${profile ? ` · ${profile.name}` : ''}`;
-				$chatMensagens = [
-					...$chatMensagens,
-					{
-						id: String(event.id),
-						autor: event.author,
-						texto: `${attackName} · dano${isCritical ? ' crítico' : ''}${damage.regraAplicada ? ` · ${damage.regraAplicada}` : ''} (${String(rules.damageType ?? '')})`,
-						tipo: 'rolagem',
-						canal: 'combat',
-						detalhesRolagem: {
-							...damage,
-							modificador: damageModifier,
-							label: `${attackName} · dano${isCritical ? ' crítico' : ''}`,
-							regraAplicada: damage.regraAplicada,
-							dadosOriginais: damage.dadosOriginais
-						}
-					}
-				];
-				sceneSocketPublishChat();
-				$diceOverlay = {
-					expression: `${sheet.name || 'Personagem'} · ${attackName} · dano${isCritical ? ' crítico' : ''}`,
-					notation: damage.expressao,
-					total: damage.total,
-					dice: damage.dados,
-					nonce: String(event.id)
-				};
-				if (isCritical) lastCriticalWeapon = null;
-			}
-			lifecycle.state.message =
-				action === 'attack'
-					? $appLocale === 'en'
-						? 'Attack registered in chat.'
-						: 'Ataque registrado no chat.'
-					: $appLocale === 'en'
-						? 'Damage registered in chat.'
-						: 'Dano registrado no chat.';
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not roll the weapon.'
-						: 'Não foi possível rolar a arma.';
-		} finally {
-			finishDiceBatch();
-			rollingWeaponAction = null;
-		}
-	}
 	const calculatedArmorClass = () =>
 		calculateArmorClass(sheet.abilityScores, sheet.class, sheet.inventory);
 	$effect(() => {
@@ -1156,232 +878,6 @@
 		sheet.savingThrows = sheet.savingThrows.includes(key)
 			? sheet.savingThrows.filter((item) => item !== key)
 			: [...sheet.savingThrows, key];
-	}
-	async function rollSheet(label: string, bonus: number, attackIndex: number) {
-		const attackMode = selectedAttackMode();
-		const attackEvent = await rollDice(
-			session,
-			campaignId,
-			`1d20${bonus >= 0 ? '+' : ''}${bonus}`,
-			attackMode === 'normal' ? undefined : attackMode,
-			'combat'
-		);
-		const attack = attackEvent.payload as { dados: number[]; total: number; expressao: string };
-		const critical = attack.dados[0] === 20;
-		lastCriticalAttack = critical ? attackIndex : null;
-		$chatMensagens = [
-			...$chatMensagens,
-			{
-				id: String(attackEvent.id),
-				autor: sheet.name || 'Personagem',
-				texto: `${label}${critical ? ' · CRÍTICO!' : ''}`,
-				tipo: 'rolagem',
-				canal: 'combat',
-				detalhesRolagem: { ...attack, modificador: bonus, label }
-			}
-		];
-		sceneSocketPublishChat();
-		$diceOverlay = {
-			expression: `${sheet.name || 'Personagem'} · ${label}`,
-			notation: attack.expressao,
-			total: attack.total,
-			dice: attack.dados,
-			nonce: String(attackEvent.id)
-		};
-	}
-	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
-		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
-		if (!match) return;
-		const critical = lastCriticalAttack === attackIndex;
-		const count = Number(match[1]) * (critical ? 2 : 1),
-			mod = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
-		const damageEvent = await rollDice(
-			session,
-			campaignId,
-			`${count}d${match[2]}${mod ? `${mod >= 0 ? '+' : ''}${mod}` : ''}`,
-			undefined,
-			'combat'
-		);
-		const result = damageEvent.payload as { dados: number[]; total: number; expressao: string };
-		$chatMensagens = [
-			...$chatMensagens,
-			{
-				id: String(damageEvent.id),
-				autor: sheet.name || 'Personagem',
-				texto: `${label} · dano${critical ? ' crítico' : ''}`,
-				tipo: 'rolagem',
-				canal: 'combat',
-				detalhesRolagem: {
-					...result,
-					modificador: mod,
-					label: `${label} · dano${critical ? ' crítico' : ''}`
-				}
-			}
-		];
-		sceneSocketPublishChat();
-		$diceOverlay = {
-			expression: `${sheet.name || 'Personagem'} · ${label} · dano${critical ? ' crítico' : ''}`,
-			notation: result.expressao,
-			total: result.total,
-			dice: result.dados,
-			nonce: String(damageEvent.id)
-		};
-		if (critical) lastCriticalAttack = null;
-	}
-	async function rollCustomAttack(attack: Sheet['attacks'][number], index: number) {
-		if (rollingAttack !== null) return;
-		rollingAttack = index;
-		rollingAttackAction = 'attack';
-		beginDiceBatch();
-		try {
-			const ability = attack.ability ?? 'strength';
-			await rollSheet(
-				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
-				modifier(sheet.abilityScores[ability]) + attack.attackBonus,
-				index
-			);
-		} catch {
-			lifecycle.state.message =
-				$appLocale === 'en' ? 'Could not roll the attack.' : 'Não foi possível rolar o ataque.';
-		} finally {
-			finishDiceBatch();
-			rollingAttack = null;
-			rollingAttackAction = null;
-		}
-	}
-	async function rollCustomDamage(attack: Sheet['attacks'][number], index: number) {
-		if (rollingAttack !== null || !attack.damage.trim()) return;
-		rollingAttack = index;
-		rollingAttackAction = 'damage';
-		beginDiceBatch();
-		try {
-			await rollSheetDamage(
-				attack.name || ($appLocale === 'en' ? 'Attack' : 'Ataque'),
-				attack.damage,
-				index
-			);
-		} catch {
-			lifecycle.state.message =
-				$appLocale === 'en' ? 'Could not roll the damage.' : 'Não foi possível rolar o dano.';
-		} finally {
-			finishDiceBatch();
-			rollingAttack = null;
-			rollingAttackAction = null;
-		}
-	}
-	async function rollSpellDamage(spell: Sheet['spells'][number]) {
-		const expression = spell.diceFormula?.trim();
-		if (!expression) return;
-		beginDiceBatch();
-		try {
-			const event = await rollDice(session, campaignId, expression, undefined, 'combat');
-			const result = event.payload as {
-				expressao: string;
-				dados: number[];
-				modificador?: number;
-				total: number;
-			};
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: String(event.id),
-					autor: event.author,
-					texto: `${spell.name} · ${result.expressao} = ${result.total}`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						expressao: result.expressao,
-						dados: result.dados,
-						modificador: result.modificador ?? 0,
-						total: result.total,
-						label: `${spell.name} · efeito`
-					}
-				}
-			];
-			sceneSocketPublishChat();
-			$diceOverlay = {
-				expression: `${sheet.name || 'Personagem'} · ${spell.name}`,
-				notation: result.expressao,
-				total: result.total,
-				dice: result.dados,
-				nonce: String(event.id)
-			};
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : 'Não foi possível rolar a magia.';
-		} finally {
-			finishDiceBatch();
-		}
-	}
-	async function presentSpell(spell: Sheet['spells'][number]) {
-		if (!isGM || !sceneId) return;
-		try {
-			const presentation = {
-				assetPath: '',
-				title: spellDisplayName(spell),
-				description: spellDescription(spell) || spell.notes,
-				visible: true,
-				visibleUserIds: [],
-				audienceRestricted: false,
-				overlayVisible: false
-			};
-			await savePresentation(session, sceneId, presentation);
-			lifecycle.publishPresentationUpdated({ presentation });
-			lifecycle.state.message = 'Magia destacada para a mesa.';
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : 'Não foi possível destacar a magia.';
-		}
-	}
-	const compatibleSlots = (spell: Sheet['spells'][number]) =>
-		compatibleSpellSlots(spell, sheet.spellSlots);
-	const selectedSlot = (spell: Sheet['spells'][number], index: number) =>
-		defaultSpellSlot(spell, index, spellSlotChoice, sheet.spellSlots);
-	async function castSpell(spell: Sheet['spells'][number], index: number) {
-		if (castingSpell !== null || (spell.level > 0 && !compatibleSlots(spell).length)) return;
-		castingSpell = index;
-		try {
-			const result = await castMySpell(
-				session,
-				campaignId,
-				index,
-				spell.level === 0 ? 0 : selectedSlot(spell, index)
-			);
-			sheet = result.sheet;
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: String(result.eventId),
-					autor: sheet.name || 'Personagem',
-					texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						expressao: result.expression || 'magia',
-						dados: result.dados ?? [],
-						modificador: result.modificador ?? 0,
-						total: result.total ?? 0,
-						label: result.spellName
-					}
-				}
-			];
-			sceneSocketPublishChat();
-			if (result.dados?.length) {
-				$diceOverlay = {
-					expression: `${sheet.name || 'Personagem'} · ${result.spellName} · ${result.expression ?? 'rolagem'}`,
-					notation: result.expression,
-					total: result.total ?? 0,
-					dice: result.dados,
-					nonce: String(result.eventId)
-				};
-			}
-			lifecycle.state.message = 'Magia lançada e espaço consumido.';
-		} catch (error) {
-			lifecycle.state.message =
-				error instanceof Error ? error.message : 'Não foi possível lançar a magia.';
-		} finally {
-			castingSpell = null;
-		}
 	}
 	function addAttack() {
 		sheet.attacks = [
@@ -1513,8 +1009,8 @@
 						{onSpeciesChanged}
 						{onLineageChanged}
 						{initiativeTokenId}
-						onRollInitiative={rollSheetInitiative}
-						onSetInitiativeAdvantage={setInitiativeAdvantage}
+						onRollInitiative={() => combatActions.rollInitiative()}
+						onSetInitiativeAdvantage={(enabled) => combatActions.setInitiativeAdvantage(enabled)}
 						onSyncToken={syncTokenSoon}
 						{attributes}
 						{abilityLabel}
@@ -1522,7 +1018,7 @@
 						onScoreChange={updateScore}
 						{saveBonus}
 						onToggleSavingThrow={toggleSavingThrow}
-						onRollSave={(key, label) => rollAuthorized('save', key, label)}
+						onRollSave={(key, label) => combatActions.rollAuthorized('save', key, label)}
 						{hasAttackDisadvantage}
 						passivePerception={passivePerception()}
 						derivedFeatures={derivedFeatures()}
@@ -1537,15 +1033,15 @@
 						{saving}
 						armorClass={calculatedArmorClass()}
 						{attributes}
-						{rollingWeaponAction}
-						{rollingAttack}
-						{rollingAttackAction}
+						rollingWeaponAction={combatActions.state.rollingWeaponAction}
+						rollingAttack={combatActions.state.rollingAttack}
+						rollingAttackAction={combatActions.state.rollingAttackAction}
 						spells={grantedSpells()}
 						actions={{
-							rest,
+							rest: (kind) => void combatActions.rest(kind),
 							syncTokenSoon,
-							spendResource,
-							setResourceMax,
+							spendResource: (index) => combatActions.spendResource(index),
+							setResourceMax: (index, value) => combatActions.setResourceMax(index, value),
 							spellDisplayName,
 							circleLabel,
 							spellOrigin,
@@ -1569,13 +1065,16 @@
 								addWeaponAttackProfile,
 								removeWeaponAttackProfile,
 								updateWeaponProfile,
-								rollWeapon: (item, action, profile) => void rollWeapon(item, action, profile)
+								rollWeapon: (item, action, profile) =>
+									void combatActions.rollWeapon(item, action, profile)
 							},
 							addAttack,
 							toggleVisibleRoll,
 							setAttackType,
-							rollCustomAttack: (attack, index) => void rollCustomAttack(attack, index),
-							rollCustomDamage: (attack, index) => void rollCustomDamage(attack, index),
+							rollCustomAttack: (attack, index) =>
+								void combatActions.rollCustomAttack(attack, index),
+							rollCustomDamage: (attack, index) =>
+								void combatActions.rollCustomDamage(attack, index),
 							removeAttack
 						}}
 					/>
@@ -1620,15 +1119,15 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
-						{castingSpell}
+						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
 							addableCircles: addableSpellCircles,
 							availableCircles: availableSpellCircles,
 							slotForCircle: spellSlotForCircle,
 							spellsForCircle,
 							entriesForCircle: spellEntries,
-							compatibleSlots,
-							selectedSlot
+							compatibleSlots: combatActions.compatibleSlots,
+							selectedSlot: combatActions.selectedSlot
 						}}
 						presentation={{
 							optionLabel,
@@ -1642,13 +1141,13 @@
 							setNewSpellName: (value) => (newSpellName = value),
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
-							chooseSlot: (index, value) => (spellSlotChoice[index] = value),
+							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,
-							present: (spell) => void presentSpell(spell),
-							rollEffect: (spell) => void rollSpellDamage(spell),
-							cast: (spell, index) => void castSpell(spell, index)
+							present: (spell) => void combatActions.presentSpell(spell),
+							rollEffect: (spell) => void combatActions.rollSpellDamage(spell),
+							cast: (spell, index) => void combatActions.castSpell(spell, index)
 						}}
 					/>
 				{/if}
@@ -1695,7 +1194,7 @@
 	<CharacterLevelUpModal
 		locale={$appLocale}
 		level={sheet.level}
-		onChoose={(choice) => void resolveLevelHP(choice)}
+		onChoose={(choice) => void combatActions.resolveLevelHP(choice)}
 	/>
 {/if}
 
