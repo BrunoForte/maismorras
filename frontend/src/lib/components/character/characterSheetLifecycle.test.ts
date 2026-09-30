@@ -20,7 +20,11 @@ function setup(
 	const savedMine = vi.fn(async (_session, _campaignId, value) => ({ id: 'char-1', sheet: value }));
 	const setSheet = vi.fn();
 	const socketClose = vi.fn();
-	const connectPresentationSocket = vi.fn(() => ({ close: socketClose }));
+	const socketCallbacks: Array<() => void> = [];
+	const connectPresentationSocket = vi.fn((_session, _sceneId, onAdvantageUpdated: () => void) => {
+		socketCallbacks.push(onAdvantageUpdated);
+		return { close: socketClose };
+	});
 	const getCharacterForGM = vi.fn(async () => ({ id: 'char-1', sheet: {} }));
 	const loadScene = vi.fn(async () => ({ tokens: [] }));
 	const session = { user: { id: 'user-1' }, access_token: 'session-token' } as never;
@@ -48,6 +52,7 @@ function setup(
 		listSceneEffects: vi.fn(async () => ({ effects: [] })),
 		setDiceColor: vi.fn(),
 		connectPresentationSocket,
+		socketCallbacks,
 		saveCharacterForGM: saved,
 		saveMyCharacter: savedMine,
 		createTokenFromCharacter: vi.fn(async () => undefined),
@@ -61,6 +66,7 @@ function setup(
 		savedMine,
 		deps,
 		socketClose,
+		socketCallbacks,
 		connectPresentationSocket,
 		getCharacterForGM,
 		loadScene,
@@ -227,6 +233,38 @@ describe('character sheet lifecycle', () => {
 			'scene-2'
 		);
 		expect(deps.onContextChanged).not.toHaveBeenCalled();
+		lifecycle.cleanup();
+	});
+
+	it('ignores an initiative response from a socket superseded by scene reconnection', async () => {
+		let resolveOldQuery!: (character: {
+			id: string;
+			sheet: { initiativeAdvantage: boolean };
+		}) => void;
+		const getCharacterForGM = vi
+			.fn()
+			.mockResolvedValueOnce({ id: 'char-1', sheet: { initiativeAdvantage: false } })
+			.mockImplementationOnce(
+				() =>
+					new Promise<{ id: string; sheet: { initiativeAdvantage: boolean } }>((resolve) => {
+						resolveOldQuery = resolve;
+					})
+			);
+		const { lifecycle, setContext, socketCallbacks, deps } = setup(
+			{ getCharacterForGM },
+			{ sceneId: 'scene-1' }
+		);
+		lifecycle.start();
+		await vi.waitFor(() => expect(lifecycle.state.resolvedCharacterId).toBe('char-1'));
+		const obsoleteSocketCallback = socketCallbacks[0];
+		obsoleteSocketCallback();
+		setContext({ sceneId: 'scene-2' });
+		lifecycle.updateContext();
+		resolveOldQuery({ id: 'char-1', sheet: { initiativeAdvantage: true } });
+		await Promise.resolve();
+
+		expect(socketCallbacks).toHaveLength(2);
+		expect(deps.onInitiativeAdvantageUpdated).not.toHaveBeenCalled();
 		lifecycle.cleanup();
 	});
 });

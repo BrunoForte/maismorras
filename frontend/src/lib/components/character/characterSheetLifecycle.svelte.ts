@@ -280,7 +280,7 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 			void deps
 				.getCharacterForGM(current.session, current.campaignId, state.resolvedCharacterId)
 				.then((character) => {
-					if (isCurrent(generation))
+					if (isCurrent(generation) && socketVersion === socketGeneration)
 						deps.onInitiativeAdvantageUpdated(character.sheet.initiativeAdvantage ?? false);
 				})
 				.catch(() => undefined);
