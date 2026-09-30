@@ -1,0 +1,90 @@
+import { render } from 'svelte/server';
+import { describe, expect, it, vi } from 'vitest';
+import CompendiumEntryDetails from './CompendiumEntryDetails.svelte';
+import CompendiumEntryEditor from './CompendiumEntryEditor.svelte';
+import { emptyCompendiumEditorModel } from '$lib/utils/compendium/compendiumRules';
+import type { CompendiumEntry } from '$lib/services/compendiumApi';
+
+const monster: CompendiumEntry = {
+	id: 'ogre',
+	sourceId: 'source',
+	entryType: 'other',
+	name: 'Ogre',
+	summary: 'A large creature.',
+	rules: { kind: 'monster', hpMax: 59, armorClass: 11, challenge: 2 },
+	translations: {},
+	isPublished: true
+};
+
+describe('compendium panels', () => {
+	it('shows monster management and token actions to the GM, but not to a player', () => {
+		const view = {
+			entry: monster,
+			artUrl: '',
+			displayName: 'Ogre',
+			displaySummary: monster.summary,
+			typeLabel: 'Monstro / outro',
+			isMonster: true,
+			hasMonsterSheet: true,
+			sourceReadOnly: false,
+			hasPrivateSource: true,
+			isGM: true,
+			canTranslate: true,
+			canPlace: true,
+			translating: false,
+			placing: false
+		};
+		const actions = {
+			close: vi.fn(),
+			edit: vi.fn(),
+			remove: vi.fn(),
+			translate: vi.fn(),
+			copyToCampaign: vi.fn(),
+			place: vi.fn()
+		};
+		const gmHtml = render(CompendiumEntryDetails, { props: { view, actions } }).body;
+		const playerHtml = render(CompendiumEntryDetails, {
+			props: { view: { ...view, isGM: false }, actions }
+		}).body;
+		expect(gmHtml).toContain('Editar entrada privada');
+		expect(gmHtml).toContain('Excluir');
+		expect(gmHtml).toContain('Traduzir com IA');
+		expect(gmHtml).toContain('Adicionar à cena');
+		expect(playerHtml).not.toContain('Editar entrada privada');
+		expect(playerHtml).not.toContain('Excluir');
+		expect(playerHtml).not.toContain('Traduzir com IA');
+		expect(playerHtml).not.toContain('Adicionar à cena');
+		const readonlyHtml = render(CompendiumEntryDetails, {
+			props: { view: { ...view, sourceReadOnly: true }, actions }
+		}).body;
+		expect(readonlyHtml).not.toContain('Editar entrada privada');
+		expect(readonlyHtml).not.toContain('Excluir');
+		expect(readonlyHtml).toContain('Copiar para a mesa e vincular imagem');
+	});
+
+	it('does not render the editor for a player', () => {
+		const props = {
+			model: emptyCompendiumEditorModel(),
+			sources: [],
+			typeName: (value: string) => value,
+			isGM: true,
+			editing: false,
+			busy: { saving: false, importing: false, uploadingArt: false },
+			actions: {
+				save: vi.fn(),
+				cancel: vi.fn(),
+				downloadTemplate: vi.fn(),
+				importFile: vi.fn(),
+				uploadArt: vi.fn(),
+				addFeature: vi.fn(),
+				removeFeature: vi.fn()
+			}
+		};
+		const gmHtml = render(CompendiumEntryEditor, { props }).body;
+		const playerHtml = render(CompendiumEntryEditor, { props: { ...props, isGM: false } }).body;
+		expect(gmHtml).toContain('Cadastro privado estruturado');
+		expect(gmHtml).toContain('Importar');
+		expect(playerHtml).not.toContain('Cadastro privado estruturado');
+		expect(playerHtml).not.toContain('Importar');
+	});
+});
