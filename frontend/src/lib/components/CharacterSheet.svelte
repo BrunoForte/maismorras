@@ -35,11 +35,10 @@
 		setDiceColor
 	} from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
-	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
-	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
+	import { connectSceneSocket } from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import {
@@ -113,6 +112,11 @@
 	import CharacterSpellsTab from '$lib/components/character/CharacterSpellsTab.svelte';
 	import type { CustomInventoryItemDraft } from '$lib/components/character/inventoryTypes';
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
+	import CharacterLevelUpModal from '$lib/components/character/CharacterLevelUpModal.svelte';
+	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
+	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
+	import type { LevelUpHPChoice } from '$lib/components/character/levelUpChoiceActions';
+	import { gerarImagemToken } from '$lib/services/tokenImageApi';
 	import {
 		equipmentCategory,
 		modifierText,
@@ -145,10 +149,6 @@
 		onTokenCreated: () => void;
 	} = $props();
 	let sheet = $state<Sheet>(createEmptySheet());
-	let loading = $state(true);
-	let saving = $state(false);
-	let message = $state('');
-	let isNewCharacter = $state(false);
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let compendiumSources = $state<CompendiumSource[]>([]);
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
@@ -166,23 +166,15 @@
 	let spellSlotChoice = $state<Record<number, number>>({});
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
-	let tokenSyncTimer: ReturnType<typeof setTimeout> | undefined;
-	let sheetEditRevision = 0;
-	let saveQueued = false;
 	let minimized = $state(false);
-	let activeConditions = $state<string[]>([]);
 	let previousLevel = $state(1);
 	let levelChoiceOpen = $state(false);
 	let portraitPrompt = $state('');
-	let portraitPreview = $state<string | null>(null);
-	let portraitBusy = $state(false);
 	let expandedFeature = $state<string | null>(null);
-	let presentationSocket: SceneSocket | null = null;
-	const sceneSocketPublishChat = () => presentationSocket?.publishChatUpdated();
-	let initiativeTokenId = $state<string | null>(null);
-	let resolvedCharacterId = $state<string | null>(null);
 	const hasAttackDisadvantage = () =>
-		activeConditions.some((condition) => ['Cego', 'Envenenado', 'Impedido'].includes(condition));
+		lifecycle.state.activeConditions.some((condition) =>
+			['Cego', 'Envenenado', 'Impedido'].includes(condition)
+		);
 	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
 	$effect(() => {
 		if (hasAttackDisadvantage() && rollMode === 'advantage') rollMode = 'normal';
@@ -304,21 +296,25 @@
 		syncTokenSoon();
 	}
 
-	onMount(async () => {
-		// Lists come from the campaign compendium, so a GM can mix SRD choices,
-		// private references and homebrew without exposing unpublished entries.
-		void getCompendium(session, campaignId)
-			.then((data) => {
-				compendiumSources = data.sources;
-				compendiumEntries = data.entries;
-				syncProgression();
-			})
-			.catch(() => undefined);
-		try {
-			const loadedCharacter = characterId
-				? await getCharacterForGM(session, campaignId, characterId)
-				: await getMyCharacter(session, campaignId);
-			resolvedCharacterId = loadedCharacter.id;
+	let refreshPortraitPreview = () => Promise.resolve();
+	const lifecycle = createCharacterSheetLifecycle({
+		campaignId,
+		sceneId,
+		characterId,
+		isGM,
+		session,
+		getSheet: () => sheet,
+		setSheet: (next) => (sheet = next),
+		calculateArmorClass: () => calculatedArmorClass(),
+		getCompendium,
+		onCompendiumLoaded: (sources, entries) => {
+			compendiumSources = sources;
+			compendiumEntries = entries;
+			syncProgression();
+		},
+		getCharacterForGM,
+		getMyCharacter,
+		onCharacterLoaded: (loadedCharacter) => {
 			sheet = loadedCharacter.sheet;
 			sheet.attacks ??= [];
 			sheet.attacks = sheet.attacks.map((attack) => {
@@ -346,80 +342,92 @@
 			previousLevel = sheet.level;
 			syncProgression();
 			if (sheet.portraitPath) void refreshPortraitPreview();
-			activeConditions = [];
-			if (sceneId) {
-				const scene = await loadScene(session, sceneId);
-				const token = characterId
-					? scene.tokens.find((item) => item.actorId === characterId)
-					: scene.tokens.find((item) => item.isOwner);
-				if (token) {
-					initiativeTokenId = token.id;
-					setDiceColor(token.color);
-					const effects = await listSceneEffects(session, sceneId);
-					activeConditions = effects.effects
-						.filter((effect) => effect.tokenId === token.id)
-						.map((effect) => effect.name);
-				}
-			}
-		} catch (error) {
-			if (!characterId && (error as Error & { status?: number }).status === 404)
-				isNewCharacter = true;
-			else message = error instanceof Error ? error.message : 'Não foi possível carregar a ficha.';
-		} finally {
-			loading = false;
-		}
+		},
+		loadScene,
+		listSceneEffects,
+		setDiceColor,
+		connectPresentationSocket: (onAdvantageUpdated) =>
+			connectSceneSocket(
+				session,
+				sceneId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				onAdvantageUpdated
+			),
+		saveCharacterForGM,
+		saveMyCharacter,
+		createTokenFromCharacter,
+		onTokenCreated,
+		refreshPortraitPreview: () => refreshPortraitPreview(),
+		onInitiativeAdvantageUpdated: (enabled) => (sheet.initiativeAdvantage = enabled)
 	});
+	const portraitWorkflow = createCharacterPortraitWorkflow({
+		campaignId,
+		session,
+		getPortraitPath: () => sheet.portraitPath,
+		setPortraitPaths: (portraitPath, tokenPortraitPath) => {
+			sheet.portraitPath = portraitPath;
+			sheet.tokenPortraitPath = tokenPortraitPath;
+		},
+		setMessage: (next) => (lifecycle.state.message = next),
+		getSupabaseClient,
+		optimizeImage,
+		createThumbnail,
+		getSignedAssetUrl,
+		generateImage: gerarImagemToken,
+		fetchGeneratedBlob: async (dataUrl) => (await fetch(dataUrl)).blob(),
+		createId: () => crypto.randomUUID()
+	});
+	refreshPortraitPreview = () => portraitWorkflow.refreshPreview();
+	const sceneSocketPublishChat = () => lifecycle.publishChatUpdated();
+	const syncTokenSoon = () => lifecycle.syncTokenSoon();
+	const save = () => lifecycle.save();
+	const createBoardToken = () => lifecycle.createBoardToken();
+	const uploadPortrait = (event: Event) => portraitWorkflow.uploadPortrait(event);
+	const generatePortrait = () => portraitWorkflow.generatePortrait(portraitPrompt);
+	const loading = $derived(lifecycle.state.loading);
+	const saving = $derived(lifecycle.state.saving);
+	const message = $derived(lifecycle.state.message);
+	const isNewCharacter = $derived(lifecycle.state.isNewCharacter);
+	const activeConditions = $derived(lifecycle.state.activeConditions);
+	const initiativeTokenId = $derived(lifecycle.state.initiativeTokenId);
 	onMount(() => {
-		if (!sceneId) return;
-		presentationSocket = connectSceneSocket(
-			session,
-			sceneId,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			() => {
-				if (!resolvedCharacterId) return;
-				void getCharacterForGM(session, campaignId, resolvedCharacterId)
-					.then(
-						(character) =>
-							(sheet.initiativeAdvantage = character.sheet.initiativeAdvantage ?? false)
-					)
-					.catch(() => undefined);
-			}
-		);
-		return () => {
-			presentationSocket?.close();
-			presentationSocket = null;
-		};
+		lifecycle.start();
+		return lifecycle.cleanup;
 	});
 	async function setInitiativeAdvantage(enabled: boolean) {
-		if (!resolvedCharacterId) {
-			message = 'Salve a ficha antes de configurar a vantagem de iniciativa.';
+		const characterId = lifecycle.state.resolvedCharacterId;
+		if (!characterId) {
+			lifecycle.state.message = 'Salve a ficha antes de configurar a vantagem de iniciativa.';
 			return;
 		}
 		try {
 			const result = await setCharacterInitiativeAdvantage(
 				session,
 				campaignId,
-				resolvedCharacterId,
+				characterId,
 				enabled
 			);
 			sheet.initiativeAdvantage = result.enabled;
-			message = enabled ? 'Vantagem preparada para a próxima iniciativa.' : 'Vantagem desativada.';
+			lifecycle.state.message = enabled
+				? 'Vantagem preparada para a próxima iniciativa.'
+				: 'Vantagem desativada.';
 		} catch (error) {
-			message =
+			lifecycle.state.message =
 				error instanceof Error
 					? error.message
 					: 'Não foi possível alterar a vantagem da iniciativa.';
 		}
 	}
 	async function rollSheetInitiative() {
+		const initiativeTokenId = lifecycle.state.initiativeTokenId;
 		if (!initiativeTokenId || !sceneId) {
-			message = 'Esta ficha ainda não está vinculada a um token na cena.';
+			lifecycle.state.message = 'Esta ficha ainda não está vinculada a um token na cena.';
 			return;
 		}
 		try {
@@ -433,90 +441,11 @@
 				total: result.initiative,
 				dice
 			});
-			presentationSocket?.publishCombatUpdated();
-			message = `${label}: ${result.roll} ${result.bonus >= 0 ? '+' : '−'} ${Math.abs(result.bonus)} = ${result.initiative}`;
+			lifecycle.publishCombatUpdated();
+			lifecycle.state.message = `${label}: ${result.roll} ${result.bonus >= 0 ? '+' : '−'} ${Math.abs(result.bonus)} = ${result.initiative}`;
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
-		}
-	}
-	async function refreshPortraitPreview() {
-		if (!sheet.portraitPath) {
-			portraitPreview = null;
-			return;
-		}
-		portraitPreview = (await getSignedAssetUrl(session, campaignId, sheet.portraitPath)) ?? null;
-	}
-	async function optimizePortrait(blob: Blob): Promise<Blob> {
-		return (await optimizeImage(new File([blob], 'portrait', { type: blob.type }), 1536)).file;
-	}
-	async function savePortrait(blob: Blob, filename: string) {
-		blob = await optimizePortrait(blob);
-		const supabase = await getSupabaseClient();
-		if (!supabase) throw new Error('Supabase não está configurado.');
-		if (blob.size > 5 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 5 MB.');
-		const { data: userData, error: userError } = await supabase.auth.getUser();
-		if (userError || !userData.user) throw new Error('Sua sessão expirou. Faça login novamente.');
-		if (userData.user.id !== session.user.id)
-			throw new Error(
-				'A sessão atual não corresponde ao usuário autenticado. Faça login novamente.'
-			);
-		const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
-		const basePath = `campaigns/${campaignId}/portraits/${userData.user.id}/${crypto.randomUUID()}`;
-		const path = `${basePath}-${safeName}`;
-		const thumbnail = await createThumbnail(blob, 320);
-		const tokenExtension = thumbnail.file.type === 'image/webp' ? 'webp' : 'png';
-		const tokenPath = `${basePath}-token.${tokenExtension}`;
-		const storage = supabase.storage.from('campaign-assets');
-		const { error: thumbnailError } = await storage.upload(tokenPath, thumbnail.file, {
-			contentType: thumbnail.file.type || 'image/png',
-			cacheControl: '31536000',
-			upsert: false
-		});
-		if (thumbnailError) throw thumbnailError;
-		const { error } = await storage.upload(path, blob, {
-			contentType: blob.type || 'image/png',
-			cacheControl: '31536000',
-			upsert: false
-		});
-		if (error) {
-			await storage.remove([tokenPath]);
-			throw error;
-		}
-		sheet.portraitPath = path;
-		sheet.tokenPortraitPath = tokenPath;
-		await refreshPortraitPreview();
-		message = 'Retrato selecionado. Salve a ficha para atualizar o token.';
-	}
-	async function uploadPortrait(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-			message = 'Envie uma imagem JPG, PNG ou WebP.';
-			input.value = '';
-			return;
-		}
-		portraitBusy = true;
-		try {
-			await savePortrait(file, file.name);
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível enviar o retrato.';
-		} finally {
-			portraitBusy = false;
-			input.value = '';
-		}
-	}
-	async function generatePortrait() {
-		if (portraitBusy || portraitPrompt.trim().length < 3) return;
-		portraitBusy = true;
-		try {
-			const dataUrl = await gerarImagemToken(portraitPrompt.trim());
-			const blob = await (await fetch(dataUrl)).blob();
-			await savePortrait(blob, 'retrato-gerado.png');
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível gerar o retrato.';
-		} finally {
-			portraitBusy = false;
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
 		}
 	}
 	const optionsFor = (entryType: string) =>
@@ -822,7 +751,8 @@
 			];
 			sceneSocketPublishChat();
 		} catch (error) {
-			message = error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
+			lifecycle.state.message =
+				error instanceof Error ? error.message : `Não foi possível rolar ${fallbackLabel}.`;
 		}
 	}
 	const rollSkill = (name: string) =>
@@ -845,7 +775,7 @@
 			syncProgression();
 		}
 	}
-	async function resolveLevelHP(choice: 'keep' | 'max' | 'roll') {
+	async function resolveLevelHP(choice: LevelUpHPChoice) {
 		const gained = Math.max(0, sheet.level - previousLevel);
 		const hitDie = hitDieSidesFromNotation(sheet.hitDice);
 		const rolledTotals: number[] = [];
@@ -897,11 +827,11 @@
 	}
 	async function rest(kind: 'short' | 'long') {
 		if (saving) return;
-		saving = true;
-		const savedRevision = sheetEditRevision;
+		const savedRevision = lifecycle.beginExternalSaving();
+		if (savedRevision === null) return;
 		try {
 			const result = await restCharacter(session, campaignId, kind, characterId);
-			if (sheetEditRevision === savedRevision) {
+			if (lifecycle.isRevisionCurrent(savedRevision)) {
 				sheet = result.sheet;
 			} else {
 				sheet.hitPointsCurrent = result.sheet.hitPointsCurrent;
@@ -922,20 +852,16 @@
 				};
 				sceneSocketPublishChat();
 			}
-			message =
+			lifecycle.state.message =
 				kind === 'long'
 					? 'Descanso longo aplicado: PV, recursos e espaços restaurados.'
 					: 'Descanso curto aplicado: dado de vida e recursos recuperados.';
 			onTokenCreated();
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível aplicar o descanso.';
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível aplicar o descanso.';
 		} finally {
-			saving = false;
-			if (saveQueued || sheetEditRevision !== savedRevision) {
-				saveQueued = false;
-				if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
-				tokenSyncTimer = setTimeout(() => void save(), 0);
-			}
+			lifecycle.finishExternalSaving(savedRevision);
 		}
 	}
 	const spellEntries = (circle?: number) =>
@@ -995,7 +921,7 @@
 		if (draft.category === 'weapon') {
 			const damage = draft.damage.trim();
 			if (!/^\d+d\d+(?:\s*[+-]\s*\d+)?$/i.test(damage)) {
-				message =
+				lifecycle.state.message =
 					$appLocale === 'en'
 						? 'Enter weapon damage as NdN (e.g. 1d8).'
 						: 'Informe o dano da arma como NdN (ex.: 1d8).';
@@ -1035,7 +961,7 @@
 				});
 				compendiumEntries = [...compendiumEntries, entry];
 			} catch (error) {
-				message =
+				lifecycle.state.message =
 					error instanceof Error
 						? error.message
 						: 'Não foi possível adicionar o item ao compêndio.';
@@ -1070,7 +996,7 @@
 		const actionKey = `${stableWeaponKey}:${profileKey}:${action}`;
 		if (equipmentCategory(item) !== 'weapon' || rollingWeaponAction) return;
 		if (action === 'damage' && !damageMatch) {
-			message =
+			lifecycle.state.message =
 				$appLocale === 'en'
 					? 'This weapon has no damage formula.'
 					: 'Esta arma não tem uma fórmula de dano.';
@@ -1084,7 +1010,8 @@
 				)
 			)
 		) {
-			message = 'Esta condição impede ações e reações; o ataque não pode ser rolado.';
+			lifecycle.state.message =
+				'Esta condição impede ações e reações; o ataque não pode ser rolado.';
 			return;
 		}
 		const abilityKey = profile?.attackAbility ?? weaponAbility(item);
@@ -1093,7 +1020,7 @@
 		const proficiencyBonus = weaponProficiencyBonus(item);
 		const effects = weaponBonusTotals(item);
 		rollingWeaponAction = actionKey;
-		message = '';
+		lifecycle.state.message = '';
 		beginDiceBatch();
 		try {
 			if (action === 'attack') {
@@ -1187,7 +1114,7 @@
 				};
 				if (isCritical) lastCriticalWeapon = null;
 			}
-			message =
+			lifecycle.state.message =
 				action === 'attack'
 					? $appLocale === 'en'
 						? 'Attack registered in chat.'
@@ -1196,7 +1123,7 @@
 						? 'Damage registered in chat.'
 						: 'Dano registrado no chat.';
 		} catch (error) {
-			message =
+			lifecycle.state.message =
 				error instanceof Error
 					? error.message
 					: $appLocale === 'en'
@@ -1308,7 +1235,7 @@
 				index
 			);
 		} catch {
-			message =
+			lifecycle.state.message =
 				$appLocale === 'en' ? 'Could not roll the attack.' : 'Não foi possível rolar o ataque.';
 		} finally {
 			finishDiceBatch();
@@ -1328,7 +1255,7 @@
 				index
 			);
 		} catch {
-			message =
+			lifecycle.state.message =
 				$appLocale === 'en' ? 'Could not roll the damage.' : 'Não foi possível rolar o dano.';
 		} finally {
 			finishDiceBatch();
@@ -1374,7 +1301,8 @@
 				nonce: String(event.id)
 			};
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível rolar a magia.';
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível rolar a magia.';
 		} finally {
 			finishDiceBatch();
 		}
@@ -1392,10 +1320,11 @@
 				overlayVisible: false
 			};
 			await savePresentation(session, sceneId, presentation);
-			presentationSocket?.publishPresentationUpdated({ presentation });
-			message = 'Magia destacada para a mesa.';
+			lifecycle.publishPresentationUpdated({ presentation });
+			lifecycle.state.message = 'Magia destacada para a mesa.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível destacar a magia.';
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível destacar a magia.';
 		}
 	}
 	const compatibleSlots = (spell: Sheet['spells'][number]) =>
@@ -1440,9 +1369,10 @@
 					nonce: String(result.eventId)
 				};
 			}
-			message = 'Magia lançada e espaço consumido.';
+			lifecycle.state.message = 'Magia lançada e espaço consumido.';
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível lançar a magia.';
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível lançar a magia.';
 		} finally {
 			castingSpell = null;
 		}
@@ -1493,69 +1423,6 @@
 	function updateSpell(index: number, changes: Partial<Sheet['spells'][number]>) {
 		if (!sheet.spells[index]) return;
 		sheet.spells = updateSpellOnSheet(sheet.spells, index, changes);
-	}
-	async function save() {
-		if (saving) {
-			saveQueued = true;
-			return;
-		}
-		saving = true;
-		message = '';
-		const savedRevision = sheetEditRevision;
-		try {
-			// CA is derived from the authoritative sheet data; never persist a manual override.
-			sheet.armorClass = calculatedArmorClass();
-			const snapshot = JSON.parse(JSON.stringify(sheet)) as Sheet;
-			const savedCharacter = characterId
-				? await saveCharacterForGM(session, campaignId, characterId, snapshot)
-				: await saveMyCharacter(session, campaignId, snapshot);
-			resolvedCharacterId = savedCharacter.id;
-			// A slow response must not erase edits made while that request was in flight.
-			if (sheetEditRevision === savedRevision) sheet = savedCharacter.sheet;
-			isNewCharacter = false;
-			message = 'Ficha salva.';
-			onTokenCreated();
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível salvar a ficha.';
-		} finally {
-			saving = false;
-			if (saveQueued || sheetEditRevision !== savedRevision) {
-				saveQueued = false;
-				if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
-				tokenSyncTimer = setTimeout(() => void save(), 0);
-			}
-		}
-	}
-	function syncTokenSoon() {
-		sheetEditRevision += 1;
-		if (tokenSyncTimer) clearTimeout(tokenSyncTimer);
-		tokenSyncTimer = setTimeout(() => {
-			if (saving) saveQueued = true;
-			else void save();
-		}, 450);
-	}
-	async function createBoardToken() {
-		if (!isGM) return;
-		if (!sceneId) {
-			message = 'O narrador ainda não criou uma cena para vincular o personagem.';
-			return;
-		}
-		saving = true;
-		message = '';
-		try {
-			sheet.armorClass = calculatedArmorClass();
-			const character = characterId
-				? await saveCharacterForGM(session, campaignId, characterId, sheet)
-				: await saveMyCharacter(session, campaignId, sheet);
-			sheet = character.sheet;
-			await createTokenFromCharacter(session, sceneId, character.id);
-			message = 'Token criado e vinculado à ficha.';
-			onTokenCreated();
-		} catch (error) {
-			message = error instanceof Error ? error.message : 'Não foi possível criar o token.';
-		} finally {
-			saving = false;
-		}
 	}
 </script>
 
@@ -1627,8 +1494,8 @@
 						bind:portraitPrompt
 						bind:rollMode
 						bind:expandedFeature
-						{portraitPreview}
-						{portraitBusy}
+						portraitPreview={portraitWorkflow.state.preview}
+						portraitBusy={portraitWorkflow.state.busy}
 						{uploadPortrait}
 						{generatePortrait}
 						{optionsFor}
@@ -1818,61 +1685,15 @@
 		{/if}
 	</section>
 </div>
-{#if levelChoiceOpen}<div class="level-modal" role="presentation">
-		<section>
-			<h3>{$appLocale === 'en' ? `Level ${sheet.level}` : `Subida para o nível ${sheet.level}`}</h3>
-			<p>
-				{$appLocale === 'en'
-					? 'How should HP gained at these levels be adjusted?'
-					: 'Como deseja ajustar os PV dos níveis ganhos?'}
-			</p>
-			<div>
-				<button onclick={() => void resolveLevelHP('max')}
-					>{$appLocale === 'en' ? 'Use maximum value' : 'Usar valor máximo'}</button
-				><button onclick={() => void resolveLevelHP('roll')}
-					>{$appLocale === 'en' ? 'Roll hit dice' : 'Rolar dados de vida'}</button
-				><button onclick={() => void resolveLevelHP('keep')}
-					>{$appLocale === 'en' ? 'Keep current HP' : 'Manter PV atuais'}</button
-				>
-			</div>
-		</section>
-	</div>{/if}
+{#if levelChoiceOpen}
+	<CharacterLevelUpModal
+		locale={$appLocale}
+		level={sheet.level}
+		onChoose={(choice) => void resolveLevelHP(choice)}
+	/>
+{/if}
 
 <style>
-	.level-modal {
-		position: fixed;
-		z-index: 40;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		background: #080608c9;
-	}
-	.level-modal section {
-		width: min(92vw, 380px);
-		border: 1px solid #765d3d;
-		border-radius: 12px;
-		padding: 1.2rem;
-		color: #eee4d6;
-		background: #1b171a;
-	}
-	.level-modal h3 {
-		margin: 0;
-	}
-	.level-modal p {
-		color: #b9aa9d;
-	}
-	.level-modal div {
-		display: grid;
-		gap: 0.5rem;
-	}
-	.level-modal button {
-		border: 1px solid #765d3d;
-		border-radius: 7px;
-		padding: 0.6rem;
-		color: #f0d29d;
-		background: #2b211c;
-		cursor: pointer;
-	}
 	.sheet-backdrop {
 		position: fixed;
 		z-index: 20;
@@ -1991,8 +1812,7 @@
 		color: #a99c91;
 		font-size: 0.75rem;
 	}
-	h2,
-	h3 {
+	h2 {
 		margin: 0;
 		font-family: Georgia, serif;
 	}
@@ -2050,11 +1870,6 @@
 		border-color: #c89655;
 		color: #f2d49a;
 		background: #38281f;
-	}
-	h3 {
-		margin-bottom: 0.55rem;
-		color: #e7c98c;
-		font-size: 1rem;
 	}
 	footer {
 		border-top: 1px solid #403536;
