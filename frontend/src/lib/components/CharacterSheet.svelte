@@ -50,22 +50,25 @@
 		isClassProgressionFeature,
 		spellSlots
 	} from '$lib/data/classProgression';
-	import { appLocale, distance, distanceText } from '$lib/stores/locale';
+	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 	import { hasWeaponProficiency, hasWeaponProficiencyInText } from '$lib/utils/weaponProficiency';
 	import { cloneInventoryRules } from '$lib/utils/inventoryRules';
 	import {
-		displayedSpeed as formatDisplayedSpeed,
-		storedSpeedFromDisplay
+		getActiveSpeciesTraits,
+		getSpeciesHPBonus,
+		getSpeciesProfile,
+		getSpeciesResistances,
+		getSpeciesSpeed,
+		normalizeSpeciesLineage
 	} from '$lib/utils/speciesRules';
 	import CharacterSkillsTab from '$lib/components/character/CharacterSkillsTab.svelte';
 	import CharacterDetailsTab from '$lib/components/character/CharacterDetailsTab.svelte';
-	import CharacterAbilityScores from '$lib/components/character/CharacterAbilityScores.svelte';
+	import CharacterIdentityTab from '$lib/components/character/CharacterIdentityTab.svelte';
 	import CharacterInventoryTab from '$lib/components/character/CharacterInventoryTab.svelte';
 	import CharacterSpellsTab from '$lib/components/character/CharacterSpellsTab.svelte';
 	import type { CustomInventoryItemDraft } from '$lib/components/character/inventoryTypes';
-	import CharacterSavingThrows from '$lib/components/character/CharacterSavingThrows.svelte';
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
 	import {
 		equipmentCategory,
@@ -247,229 +250,16 @@
 				]
 		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
-	type SpeciesProfile = {
-		label: string;
-		speed: number;
-		traits: string[];
-		lineages?: Record<string, string[]>;
-	};
-	// These are the mechanical choices exposed by the CC-BY SRD 5.2.1. They are
-	// calculated from the chosen species rather than copied into the free-form
-	// notes field, so changing a lineage cannot leave stale traits on a sheet.
-	const speciesProfiles: Record<string, SpeciesProfile> = {
-		dragonborn: {
-			label: 'Draconato',
-			speed: 9,
-			traits: [
-				'Visão no escuro 18 m',
-				'Arma de sopro (CON; usos = bônus de proficiência)',
-				'Voo dracônico a partir do nível 5'
-			],
-			lineages: {
-				'Negro (ácido)': ['Resistência a ácido', 'Sopro: ácido'],
-				'Azul (elétrico)': ['Resistência a elétrico', 'Sopro: elétrico'],
-				'Latão (fogo)': ['Resistência a fogo', 'Sopro: fogo'],
-				'Bronze (elétrico)': ['Resistência a elétrico', 'Sopro: elétrico'],
-				'Cobre (ácido)': ['Resistência a ácido', 'Sopro: ácido'],
-				'Ouro (fogo)': ['Resistência a fogo', 'Sopro: fogo'],
-				'Verde (veneno)': ['Resistência a veneno', 'Sopro: veneno'],
-				'Vermelho (fogo)': ['Resistência a fogo', 'Sopro: fogo'],
-				'Prata (frio)': ['Resistência a frio', 'Sopro: frio'],
-				'Branco (frio)': ['Resistência a frio', 'Sopro: frio']
-			}
-		},
-		dwarf: {
-			label: 'Anão',
-			speed: 9,
-			traits: [
-				'Visão no escuro 36 m',
-				'Resistência a veneno e vantagem contra Envenenado',
-				'PV máximo +1 por nível (Robustez Anã)',
-				'Conhecimento da Pedra'
-			]
-		},
-		elf: {
-			label: 'Elfo',
-			speed: 9,
-			traits: [
-				'Visão no escuro 18 m',
-				'Ancestralidade feérica: vantagem contra Enfeitiçado',
-				'Sentidos aguçados; Transe (Descanso Longo em 4 h)'
-			],
-			lineages: {
-				Drow: [
-					'Visão no escuro 36 m',
-					'Luzes Dançantes; nível 3: Fogo das Fadas; nível 5: Escuridão'
-				],
-				'Alto Elfo': [
-					'Prestidigitação (pode trocar por truque de mago após Descanso Longo)',
-					'nível 3: Detectar Magia; nível 5: Passo Nebuloso'
-				],
-				'Elfo da Floresta': [
-					'Deslocamento 10,5 m',
-					'Arte Druídica; nível 3: Passo Longo; nível 5: Passos sem Pegadas'
-				]
-			}
-		},
-		gnome: {
-			label: 'Gnomo',
-			speed: 9,
-			traits: [
-				'Visão no escuro 18 m',
-				'Astúcia Gnômica: vantagem em testes de resistência de INT, SAB e CAR'
-			],
-			lineages: {
-				'Gnomo da Floresta': ['Ilusão Menor; Falar com Animais preparado'],
-				'Gnomo da Rocha': ['Consertar e Prestidigitação; engenhoca mecânica']
-			}
-		},
-		goliath: {
-			label: 'Golias',
-			speed: 10.5,
-			traits: [
-				'Forma Grande a partir do nível 5',
-				'Porte Poderoso',
-				'Escolha uma Ancestralidade Gigante (usos = bônus de proficiência)'
-			],
-			lineages: {
-				Nuvem: ['Passo da Nuvem: teleporte 9 m como ação bônus'],
-				Fogo: ['Queimadura do Fogo: +1d10 fogo ao acertar'],
-				Gelo: ['Frio do Gelo: +1d6 frio e -3 m de deslocamento'],
-				Colina: ['Tombamento da Colina: derruba alvo Grande ou menor'],
-				Pedra: ['Resistência da Pedra: reação reduz dano em 1d12 + CON'],
-				Tempestade: ['Trovão da Tempestade: reação, 1d8 trovão']
-			}
-		},
-		halfling: {
-			label: 'Halfling',
-			speed: 9,
-			traits: [
-				'Corajoso: vantagem contra Amedrontado',
-				'Sorte: rerrola 1 em d20',
-				'Nimbleza Halfling',
-				'Furtividade Natural'
-			]
-		},
-		human: {
-			label: 'Humano',
-			speed: 9,
-			traits: [
-				'Versátil: um talento de origem',
-				'Habilidoso: proficiência em uma perícia',
-				'Recursivo: Inspiração Heroica após Descanso Longo'
-			]
-		},
-		orc: {
-			label: 'Orc',
-			speed: 9,
-			traits: [
-				'Visão no escuro 36 m',
-				'Investida de Adrenalina',
-				'Resistência Incansável: fica com 1 PV em vez de 0 (1/Descanso Longo)'
-			]
-		},
-		tiefling: {
-			label: 'Tiefling',
-			speed: 9,
-			traits: ['Visão no escuro 18 m', 'Presença Sobrenatural: Taumaturgia'],
-			lineages: {
-				Abissal: [
-					'Resistência a veneno',
-					'Rajada Venenosa; nível 3: Raio de Enjoo; nível 5: Imobilizar Pessoa'
-				],
-				Ctônico: [
-					'Resistência a necrótico',
-					'Toque Gélido; nível 3: Vida Falsa; nível 5: Raio Enfraquecedor'
-				],
-				Infernal: [
-					'Resistência a fogo',
-					'Raio de Fogo; nível 3: Repreensão Infernal; nível 5: Escuridão'
-				]
-			}
-		}
-	};
-	function normalizedSpecies(value: string) {
-		const species = value
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.toLowerCase()
-			.trim();
-		return (
-			(
-				{
-					draconato: 'dragonborn',
-					anao: 'dwarf',
-					elfo: 'elf',
-					gnomo: 'gnome',
-					golias: 'goliath',
-					halfling: 'halfling',
-					humano: 'human',
-					orc: 'orc',
-					tiefling: 'tiefling'
-				} as Record<string, string>
-			)[species] ?? species
-		);
-	}
-	const speciesProfile = () => speciesProfiles[normalizedSpecies(sheet.species)];
-	const lineageOptions = () => Object.keys(speciesProfile()?.lineages ?? {});
-	const activeSpeciesTraits = () => {
-		const profile = speciesProfile();
-		if (!profile) return [];
-		return [...profile.traits, ...(profile.lineages?.[sheet.speciesLineage] ?? [])];
-	};
-	const speciesTraitDescription = (trait: string) => {
-		const english = $appLocale === 'en';
-		if (/vis[aã]o no escuro/i.test(trait))
-			return english
-				? 'You can see in dim light within the listed range as if it were bright light, and in darkness as if it were dim light. You cannot discern color in darkness, only shades of gray.'
-				: 'Você enxerga na penumbra dentro do alcance indicado como se fosse luz plena e, na escuridão, como se fosse penumbra. Na escuridão, não distingue cores, apenas tons de cinza.';
-		if (/investida de adrenalina|adrenaline rush/i.test(trait))
-			return english
-				? 'As a bonus action, you can take the Dash action to move. You also gain temporary hit points equal to your proficiency bonus. You can use this a number of times equal to your proficiency bonus, regaining all uses after a Long Rest.'
-				: 'Como uma ação bônus, você pode realizar a ação Disparada para se mover. Você também recebe pontos de vida temporários iguais ao seu bônus de proficiência. Pode usar este traço um número de vezes igual ao bônus de proficiência e recupera todos os usos após um Descanso Longo.';
-		if (/resist[eê]ncia incans[aá]vel|relentless endurance/i.test(trait))
-			return english
-				? 'When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. Once used, this trait returns after a Long Rest.'
-				: 'Quando você é reduzido a 0 pontos de vida, mas não morre instantaneamente, pode ficar com 1 ponto de vida em vez disso. Após usar este traço, você só pode usá-lo novamente depois de um Descanso Longo.';
-		if (/sorte|lucky/i.test(trait))
-			return english
-				? 'When you roll a 1 on a d20 test, you can reroll the die and must use the new roll.'
-				: 'Quando obtém 1 em um teste com d20, você pode rolar o dado novamente e deve usar o novo resultado.';
-		if (/arma de sopro|breath weapon/i.test(trait))
-			return english
-				? 'You exhale destructive energy in an area. The saving throw, damage, area, and uses are determined by your species rules and level.'
-				: 'Você expele energia destrutiva em uma área. A salvaguarda, o dano, a área e a quantidade de usos seguem as regras da espécie e do nível.';
-		if (/voo drac[oô]nico|draconic flight/i.test(trait))
-			return english
-				? 'Beginning at level 5, you can manifest spectral wings and gain a flying speed for a limited duration, according to the species feature.'
-				: 'A partir do nível 5, você manifesta asas espectrais e recebe deslocamento de voo por uma duração limitada, conforme o traço da espécie.';
-		if (/ancestralidade fe[eé]rica|fey ancestry/i.test(trait))
-			return english
-				? 'You have Advantage on saving throws you make to avoid or end the Charmed condition.'
-				: 'Você tem vantagem nas salvaguardas feitas para evitar ou encerrar a condição Enfeitiçado.';
-		return english
-			? 'This trait is applied from the selected species or lineage. Consult its compendium entry for the complete rules text.'
-			: 'Este traço é aplicado pela espécie ou linhagem selecionada. Consulte a entrada correspondente no compêndio para ver o texto completo das regras.';
-	};
-	const speciesSpeed = () =>
-		normalizedSpecies(sheet.species) === 'elf' && sheet.speciesLineage === 'Elfo da Floresta'
-			? 10.5
-			: (speciesProfile()?.speed ?? sheet.speed);
-	const speciesHPBonusPerLevel = () => (normalizedSpecies(sheet.species) === 'dwarf' ? 1 : 0);
-	const displayedSpeed = () => formatDisplayedSpeed(sheet.speed, $appLocale);
-	function updateDisplayedSpeed(value: string) {
-		const speed = storedSpeedFromDisplay(value, $appLocale);
-		if (speed !== null) sheet.speed = speed;
-	}
 	function onSpeciesChanged() {
-		const profile = speciesProfile();
-		if (!profile?.lineages?.[sheet.speciesLineage]) sheet.speciesLineage = '';
-		if (profile) sheet.speed = speciesSpeed();
+		const profile = getSpeciesProfile(sheet.species);
+		sheet.speciesLineage = normalizeSpeciesLineage(sheet.species, sheet.speciesLineage);
+		if (profile) sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		syncProgression();
 		syncTokenSoon();
 	}
 	function onLineageChanged() {
-		sheet.speed = speciesSpeed();
+		sheet.speciesLineage = normalizeSpeciesLineage(sheet.species, sheet.speciesLineage);
+		sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		syncProgression();
 		syncTokenSoon();
 	}
@@ -1074,10 +864,10 @@
 		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
 		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
 		sheet.proficiencyBonus = Math.ceil(Math.max(1, sheet.level) / 4) + 1;
-		sheet.speed = speciesSpeed();
+		sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		if (!sheet.savingThrows.length)
 			sheet.savingThrows = [...(classSavingThrows[progressionClass(sheet.class)] ?? [])];
-		const desiredHPBonus = speciesHPBonusPerLevel() * Math.max(1, sheet.level);
+		const desiredHPBonus = getSpeciesHPBonus(sheet.species, sheet.level);
 		const previousHPBonus = sheet.speciesHPBonusApplied ?? 0;
 		if (desiredHPBonus !== previousHPBonus) {
 			const delta = desiredHPBonus - previousHPBonus;
@@ -1088,10 +878,8 @@
 			);
 			sheet.speciesHPBonusApplied = desiredHPBonus;
 		}
-		sheet.resistances = activeSpeciesTraits()
-			.filter((trait) => /resistência a /i.test(trait))
-			.map((trait) => trait.replace(/^.*resistência a /i, '').split(' e ')[0]);
-		sheet.automaticTraits = activeSpeciesTraits();
+		sheet.resistances = getSpeciesResistances(sheet.species, sheet.speciesLineage);
+		sheet.automaticTraits = getActiveSpeciesTraits(sheet.species, sheet.speciesLineage);
 		const hitDie = classData[canonicalClass(sheet.class)]?.hitDice;
 		if (hitDie) sheet.hitDice = hitDie;
 		if (!Number.isFinite(sheet.initiative))
@@ -1335,7 +1123,10 @@
 	const grantedSpells = () => {
 		const granted: Sheet['spells'] = sheet.spells.filter((spell) => spellOrigin(spell) !== 'class');
 		const sourceTexts = [
-			{ origin: 'species' as const, text: activeSpeciesTraits().join(' ') },
+			{
+				origin: 'species' as const,
+				text: getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).join(' ')
+			},
 			...featList().flatMap((feat) => {
 				const entry = optionsFor('feat').find(
 					(candidate) =>
@@ -2056,310 +1847,41 @@
 					</aside>
 				{/if}
 				{#if activeTab === 'profile'}
-					<section
-						class="portrait-editor"
-						aria-label={$appLocale === 'en' ? 'Character portrait' : 'Retrato do personagem'}
-					>
-						<div class="portrait-preview">
-							{#if portraitPreview}<img
-									src={portraitPreview}
-									alt={`Retrato de ${sheet.name || 'personagem'}`}
-								/>{:else}<span>◈</span>{/if}
-						</div>
-						<div>
-							<h3>{$appLocale === 'en' ? 'Portrait and token' : 'Retrato e token'}</h3>
-							<p>
-								{$appLocale === 'en'
-									? 'Use your own image or create an AI portrait. Saving the sheet updates the linked token image.'
-									: 'Use uma imagem própria ou crie um retrato por IA. Ao salvar a ficha, o token vinculado recebe a nova imagem.'}
-							</p>
-							<label class="portrait-upload"
-								>{portraitBusy
-									? $appLocale === 'en'
-										? 'Processing…'
-										: 'Processando…'
-									: $appLocale === 'en'
-										? 'Upload image'
-										: 'Enviar imagem'}<input
-									type="file"
-									accept="image/jpeg,image/png,image/webp"
-									onchange={uploadPortrait}
-									disabled={portraitBusy}
-								/></label
-							>
-							<div class="portrait-ai">
-								<input
-									bind:value={portraitPrompt}
-									maxlength="600"
-									placeholder={$appLocale === 'en'
-										? 'E.g. drow sorceress, white hair, violet eyes'
-										: 'Ex.: elfa drow feiticeira, cabelos brancos, olhos violeta'}
-								/><button
-									onclick={() => void generatePortrait()}
-									disabled={portraitBusy || portraitPrompt.trim().length < 3}
-									>{portraitBusy
-										? $appLocale === 'en'
-											? 'Generating…'
-											: 'Gerando…'
-										: $appLocale === 'en'
-											? 'Generate with AI'
-											: 'Gerar com IA'}</button
-								>
-							</div>
-							<small
-								>{$appLocale === 'en'
-									? 'JPG, PNG, or WebP up to 5 MB. The portrait is private in storage and visible only to campaign members.'
-									: 'JPG, PNG ou WebP de até 5 MB. O retrato é privado no armazenamento e exibido somente para membros da campanha.'}</small
-							>
-						</div>
-					</section>
-					<section class="identity">
-						<label class="identity-name"
-							>{$appLocale === 'en' ? 'Name' : 'Nome'}<input
-								bind:value={sheet.name}
-								maxlength="120"
-								placeholder={$appLocale === 'en' ? 'Character name' : 'Nome do personagem'}
-							/></label
-						>
-						<label class="identity-class"
-							>{$appLocale === 'en' ? 'Class' : 'Classe'}<input
-								bind:value={sheet.class}
-								onchange={onClassChanged}
-								list="class-options"
-								placeholder={$appLocale === 'en' ? 'E.g. Fighter' : 'Ex.: Guerreiro'}
-							/></label
-						>
-						{#if subclassOptions().length}<label class="identity-subclass"
-								>{$appLocale === 'en' ? 'Subclass' : 'Subclasse'}<select
-									bind:value={sheet.subclass}
-									onchange={syncProgression}
-									><option value=""
-										>{$appLocale === 'en' ? 'Choose at level 3…' : 'Escolha no nível 3…'}</option
-									>{#each subclassOptions() as subclass (subclass)}<option value={subclass}
-											>{subclass}</option
-										>{/each}</select
-								></label
-							>{/if}
-						<label class="identity-level"
-							>{$appLocale === 'en' ? 'Level' : 'Nível'}<input
-								type="number"
-								min="1"
-								max="20"
-								bind:value={sheet.level}
-								onchange={onLevelChanged}
-							/></label
-						>
-						<label class="identity-species"
-							>{$appLocale === 'en' ? 'Species' : 'Espécie'}<input
-								bind:value={sheet.species}
-								onchange={onSpeciesChanged}
-								list="species-options"
-								placeholder={$appLocale === 'en' ? 'E.g. Human' : 'Ex.: Humano'}
-							/></label
-						>
-						<label class="identity-background"
-							>{$appLocale === 'en' ? 'Background' : 'Antecedente'}<input
-								bind:value={sheet.background}
-								list="background-options"
-							/></label
-						>
-						{#if lineageOptions().length}
-							<label class="identity-lineage"
-								>{$appLocale === 'en' ? 'Lineage / legacy' : 'Linhagem / legado'}<select
-									bind:value={sheet.speciesLineage}
-									onchange={onLineageChanged}
-									><option value=""
-										>{$appLocale === 'en' ? 'Choose an option…' : 'Escolha uma opção…'}</option
-									>{#each lineageOptions() as lineage (lineage)}<option value={lineage}
-											>{lineage}</option
-										>{/each}</select
-								></label
-							>
-						{/if}
-						<label class="identity-alignment"
-							>{$appLocale === 'en' ? 'Alignment' : 'Alinhamento'}<input
-								bind:value={sheet.alignment}
-							/></label
-						>
-						<label class="identity-proficiency"
-							>{$appLocale === 'en' ? 'Proficiency bonus' : 'Bônus de proficiência'}<input
-								type="number"
-								min="0"
-								max="20"
-								bind:value={sheet.proficiencyBonus}
-							/></label
-						>
-						<datalist id="class-options"
-							>{#each optionsFor('class') as entry (entry.id)}<option value={optionLabel(entry)}
-									>{entry.summary}</option
-								>{/each}</datalist
-						>
-						<datalist id="species-options"
-							>{#each optionsFor('species') as entry (entry.id)}<option value={optionLabel(entry)}
-									>{entry.summary}</option
-								>{/each}</datalist
-						>
-						<datalist id="background-options"
-							>{#each optionsFor('background') as entry (entry.id)}<option
-									value={optionLabel(entry)}>{entry.summary}</option
-								>{/each}</datalist
-						>
-					</section>
-					<section class="profile-combat-fields">
-						<h3>{$appLocale === 'en' ? 'Combat profile' : 'Perfil de combate'}</h3>
-						<label>
-							{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}<input
-								type="number"
-								min="0"
-								value={displayedSpeed()}
-								onchange={(event) => updateDisplayedSpeed(event.currentTarget.value)}
-							/></label
-						>
-						<label class="hit-dice-label">
-							<span
-								>{$appLocale === 'en' ? 'Hit dice' : 'Dados de vida'}
-								<small>{sheet.level - sheet.hitDiceSpent}/{sheet.level}</small></span
-							><input bind:value={sheet.hitDice} />
-						</label>
-						<label
-							>{$appLocale === 'en' ? 'Initiative bonus' : 'Bônus de iniciativa'}<input
-								type="number"
-								min="-20"
-								max="20"
-								bind:value={sheet.initiative}
-								oninput={syncTokenSoon}
-							/></label
-						>
-						<div class="initiative-actions">
-							<button
-								type="button"
-								class="secondary-button initiative-roll"
-								onclick={() => void rollSheetInitiative()}
-								disabled={!initiativeTokenId}
-							>
-								{$appLocale === 'en' ? 'Roll initiative' : 'Rolar iniciativa'}
-							</button>
-							<label
-								class="initiative-advantage-toggle"
-								title={$appLocale === 'en'
-									? 'Advantage on the next initiative roll'
-									: 'Aplica vantagem à próxima rolagem de iniciativa'}
-							>
-								<input
-									type="checkbox"
-									class="switch-input"
-									checked={sheet.initiativeAdvantage ?? false}
-									onchange={(event) => void setInitiativeAdvantage(event.currentTarget.checked)}
-								/>
-								<span class="switch-track" aria-hidden="true"></span>
-								{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}
-							</label>
-						</div>
-					</section>
-					{#if speciesProfile()}
-						<section
-							class="species-traits"
-							aria-label={$appLocale === 'en'
-								? 'Applied species traits'
-								: 'Traços de espécie aplicados'}
-						>
-							<div>
-								<h3>
-									{speciesProfile().label}{sheet.speciesLineage ? ` · ${sheet.speciesLineage}` : ''}
-								</h3>
-								<span
-									>{$appLocale === 'en' ? 'Applied base speed' : 'Deslocamento base aplicado'}: {distance(
-										speciesSpeed(),
-										$appLocale
-									)}</span
-								>
-							</div>
-							<div class="species-trait-list">
-								{#each activeSpeciesTraits() as trait (trait)}<details class="species-trait">
-										<summary>{distanceText(trait, $appLocale)}</summary>
-										<p>{speciesTraitDescription(trait)}</p>
-									</details>{/each}
-							</div>
-							<small
-								>{$appLocale === 'en'
-									? 'These traits are calculated from the selected species and lineage. HP, spells, and uses appear here for the table; complete current combat values and add the desired spells to the sheet.'
-									: 'Estes traços são calculados pela espécie e linhagem selecionadas. Ajustes de PV, magias e usos são exibidos aqui para a mesa; preencha os valores atuais de combate e inclua as magias desejadas na ficha.'}</small
-							>
-						</section>
-					{/if}
-					<CharacterAbilityScores
-						{sheet}
+					<CharacterIdentityTab
+						bind:sheet
+						bind:portraitPrompt
+						bind:rollMode
+						bind:expandedFeature
+						{portraitPreview}
+						{portraitBusy}
+						{uploadPortrait}
+						{generatePortrait}
+						{optionsFor}
+						{optionLabel}
+						subclassOptions={subclassOptions()}
+						{onClassChanged}
+						onSubclassChanged={syncProgression}
+						{onLevelChanged}
+						{onSpeciesChanged}
+						{onLineageChanged}
+						{initiativeTokenId}
+						onRollInitiative={rollSheetInitiative}
+						onSetInitiativeAdvantage={setInitiativeAdvantage}
+						onSyncToken={syncTokenSoon}
 						{attributes}
 						{abilityLabel}
 						{modifier}
 						onScoreChange={updateScore}
-					/>
-					<CharacterSavingThrows
-						{sheet}
-						{attributes}
-						{abilityLabel}
 						{saveBonus}
-						{toggleSavingThrow}
-						rollSave={(key, label) => rollAuthorized('save', key, label)}
+						onToggleSavingThrow={toggleSavingThrow}
+						onRollSave={(key, label) => rollAuthorized('save', key, label)}
 						{hasAttackDisadvantage}
-						bind:rollMode
+						passivePerception={passivePerception()}
+						derivedFeatures={derivedFeatures()}
+						expertiseChoices={expertiseChoices()}
+						{skills}
+						onExpertiseChoice={setExpertiseChoice}
 					/>
-					<div class="passive-perception">
-						<span>{$appLocale === 'en' ? 'Passive Perception' : 'Percepção passiva'}</span><strong
-							class="derived-value">{passivePerception()}</strong
-						><small
-							>{$appLocale === 'en'
-								? '10 + Wisdom + Perception proficiency'
-								: '10 + Sabedoria + proficiência em Percepção'}</small
-						>
-					</div>
-					{#if derivedFeatures().length}<section class="progression">
-							<h3>{$appLocale === 'en' ? 'Class progression' : 'Progressão de classe'}</h3>
-							<ul>
-								{#each derivedFeatures() as feature (feature.id)}<li>
-										<button
-											class="feature-toggle"
-											type="button"
-											aria-expanded={expandedFeature === feature.id}
-											onclick={() =>
-												(expandedFeature = expandedFeature === feature.id ? null : feature.id)}
-											><span>{$appLocale === 'en' ? 'Level' : 'Nível'} {feature.level}</span><strong
-												>{feature.name}</strong
-											><small>{expandedFeature === feature.id ? '⌃' : '⌄'}</small></button
-										>{#if expandedFeature === feature.id && feature.description}<p
-												class="feature-description"
-											>
-												{feature.description}
-											</p>{/if}
-									</li>{/each}
-							</ul>
-							{#if expertiseChoices() > 0}<div class="expertise-choices">
-									<strong
-										>{$appLocale === 'en' ? 'Class expertise' : 'Especialização de classe'}</strong
-									>
-									<p>
-										{$appLocale === 'en'
-											? `Choose ${expertiseChoices()} skill${expertiseChoices() > 1 ? 's' : ''}; they automatically gain double proficiency bonus.`
-											: `Escolha ${expertiseChoices()} perícia${expertiseChoices() > 1 ? 's' : ''}; elas recebem o dobro do bônus de proficiência automaticamente.`}
-									</p>
-									<div>
-										{#each [...Array(expertiseChoices()).keys()] as index (index)}<label
-												>{$appLocale === 'en'
-													? `Expertise ${index + 1}`
-													: `Especialização ${index + 1}`}<select
-													value={sheet.skillExpertise[index] ?? ''}
-													onchange={(event) => setExpertiseChoice(index, event.currentTarget.value)}
-													><option value=""
-														>{$appLocale === 'en'
-															? 'Choose a skill…'
-															: 'Escolha uma perícia…'}</option
-													>{#each skills as [name] (name)}<option value={name}>{name}</option
-														>{/each}</select
-												></label
-											>{/each}
-									</div>
-								</div>{/if}
-						</section>{/if}
 				{/if}
 				{#if activeTab === 'combat'}
 					<CharacterCombatTab
@@ -2533,98 +2055,6 @@
 	</div>{/if}
 
 <style>
-	.portrait-editor {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 0.85rem;
-		align-items: start;
-		border: 1px solid #493c39;
-		border-radius: 10px;
-		padding: 0.8rem;
-		background: #211b1e;
-	}
-	.portrait-preview {
-		display: grid;
-		place-items: center;
-		width: 92px;
-		height: 92px;
-		overflow: hidden;
-		border: 1px solid #765d3d;
-		border-radius: 50%;
-		color: #e0b86f;
-		background: #171216;
-		font-size: 2rem;
-	}
-	.portrait-preview img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.portrait-editor h3 {
-		margin: 0 0 0.3rem;
-		color: #f0d29d;
-		font:
-			600 1rem Georgia,
-			serif;
-	}
-	.portrait-editor p,
-	.portrait-editor small {
-		margin: 0;
-		color: #aa9d91;
-		font-size: 0.68rem;
-		line-height: 1.4;
-	}
-	.portrait-upload {
-		display: inline-flex;
-		margin: 0.55rem 0.4rem 0.55rem 0;
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.42rem 0.55rem;
-		color: #f0d29d;
-		background: #2b211c;
-		font-size: 0.68rem;
-		font-weight: 700;
-		cursor: pointer;
-	}
-	.portrait-upload input {
-		display: none;
-	}
-	.portrait-ai {
-		display: flex;
-		gap: 0.35rem;
-		margin-bottom: 0.45rem;
-	}
-	.portrait-ai input {
-		min-width: 0;
-		flex: 1;
-		border: 1px solid #5a493b;
-		border-radius: 6px;
-		padding: 0.42rem;
-		color: #eee4d6;
-		background: #161216;
-		font: inherit;
-		font-size: 0.68rem;
-	}
-	.portrait-ai button {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.42rem 0.55rem;
-		color: #291b10;
-		background: #e0b86f;
-		font-size: 0.68rem;
-		font-weight: 700;
-		cursor: pointer;
-	}
-	.portrait-ai button:disabled,
-	.portrait-upload:has(input:disabled) {
-		opacity: 0.6;
-		cursor: wait;
-	}
-	.derived-value {
-		display: block;
-		color: #f0d29d;
-		font-size: 1.1rem;
-	}
 	.level-modal {
 		position: fixed;
 		z-index: 40;
@@ -2658,47 +2088,6 @@
 		color: #f0d29d;
 		background: #2b211c;
 		cursor: pointer;
-	}
-	.passive-perception {
-		display: grid;
-		grid-template-columns: auto auto 1fr;
-		align-items: center;
-		gap: 0.55rem;
-		border: 1px solid rgba(116, 151, 179, 0.48);
-		border-radius: 8px;
-		padding: 0.6rem 0.75rem;
-		color: #c9dced;
-		background: rgba(33, 54, 74, 0.28);
-		font-size: 0.74rem;
-	}
-	.passive-perception small {
-		color: #9eb3c6;
-		font-size: 0.65rem;
-	}
-	.expertise-choices {
-		display: grid;
-		gap: 0.45rem;
-		margin-top: 0.65rem;
-		border-top: 1px solid #493c39;
-		padding-top: 0.65rem;
-	}
-	.expertise-choices > strong {
-		color: #f0cb85;
-		font-size: 0.8rem;
-	}
-	.expertise-choices p {
-		margin: 0;
-		color: #a99c91;
-		font-size: 0.7rem;
-		line-height: 1.4;
-	}
-	.expertise-choices > div {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.45rem;
-	}
-	.expertise-choices label {
-		font-size: 0.63rem;
 	}
 	.sheet-backdrop {
 		position: fixed;
@@ -2840,12 +2229,6 @@
 		padding: 1.25rem;
 		container-type: inline-size;
 	}
-	.sheet-body > section,
-	.sheet-body > aside {
-		min-width: 0;
-		width: 100%;
-		box-sizing: border-box;
-	}
 	.onboarding {
 		display: grid;
 		gap: 0.28rem;
@@ -2883,258 +2266,6 @@
 		border-color: #c89655;
 		color: #f2d49a;
 		background: #38281f;
-	}
-	.identity,
-	.profile-combat-fields {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.7rem;
-	}
-	.identity {
-		grid-template-areas:
-			'name class subclass level'
-			'species background alignment proficiency'
-			'lineage lineage lineage lineage';
-	}
-	.identity-name {
-		grid-area: name;
-	}
-	.identity-class {
-		grid-area: class;
-	}
-	.identity-subclass {
-		grid-area: subclass;
-	}
-	.identity-level {
-		grid-area: level;
-	}
-	.identity-species {
-		grid-area: species;
-	}
-	.identity-background {
-		grid-area: background;
-	}
-	.identity-alignment {
-		grid-area: alignment;
-	}
-	.identity-proficiency {
-		grid-area: proficiency;
-	}
-	.identity-lineage {
-		grid-area: lineage;
-	}
-	.profile-combat-fields h3 {
-		grid-column: 1 / -1;
-		margin: 0;
-	}
-	.initiative-actions {
-		display: flex;
-		align-items: end;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-	.hit-dice-label > span {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-	}
-	.hit-dice-label small {
-		color: #d8ad67;
-		font-size: 0.72rem;
-		font-weight: 700;
-	}
-	.initiative-roll {
-		border: 1px solid #8c6d43;
-		border-radius: 7px;
-		padding: 0.45rem 0.7rem;
-		color: #f5e4c0;
-		background: linear-gradient(180deg, #423126, #2b211c);
-		font-family: inherit;
-		font-size: 0.75rem;
-		font-weight: 650;
-		min-height: 2.35rem;
-		white-space: nowrap;
-		cursor: pointer;
-	}
-	.initiative-roll:hover:not(:disabled) {
-		border-color: #d8ad67;
-		background: #493020;
-	}
-	.initiative-roll:disabled {
-		opacity: 0.55;
-		cursor: not-allowed;
-	}
-	.initiative-advantage-toggle {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.78rem;
-		cursor: pointer;
-	}
-	.initiative-advantage-toggle .switch-input {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		clip-path: inset(50%);
-	}
-	.switch-track {
-		position: relative;
-		flex: 0 0 auto;
-		width: 2.25rem;
-		height: 1.25rem;
-		border: 1px solid #80603b;
-		border-radius: 999px;
-		background: #30282a;
-		transition:
-			background 140ms ease,
-			border-color 140ms ease;
-	}
-	.switch-track::after {
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 0.95rem;
-		height: 0.95rem;
-		border-radius: 50%;
-		background: #c6b8ac;
-		content: '';
-		transition:
-			transform 140ms ease,
-			background 140ms ease;
-	}
-	.switch-input:checked + .switch-track {
-		border-color: #c89655;
-		background: #684829;
-	}
-	.switch-input:checked + .switch-track::after {
-		transform: translateX(1rem);
-		background: #ffe0a5;
-	}
-	.switch-input:focus-visible + .switch-track {
-		outline: 2px solid #f2d49a;
-		outline-offset: 2px;
-	}
-	.progression {
-		display: grid;
-		gap: 0.45rem;
-		border: 1px solid #494045;
-		border-radius: 8px;
-		padding: 0.75rem;
-		background: #171417;
-	}
-	.progression ul {
-		display: grid;
-		gap: 0.35rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-	.progression li {
-		color: #d7c9ba;
-		font-size: 0.78rem;
-	}
-	.progression li span {
-		display: inline-block;
-		width: 4.1rem;
-		color: #d8ad67;
-		font-size: 0.68rem;
-	}
-	.feature-toggle {
-		display: grid;
-		grid-template-columns: 4.1rem 1fr auto;
-		align-items: center;
-		width: 100%;
-		gap: 0.35rem;
-		border: 0;
-		padding: 0.25rem 0;
-		color: inherit;
-		background: transparent;
-		text-align: left;
-		cursor: pointer;
-	}
-	.feature-toggle strong {
-		font-weight: 600;
-	}
-	.feature-toggle small {
-		color: #d8ad67;
-	}
-	.feature-description {
-		margin: 0.15rem 0 0.45rem 4.1rem;
-		color: #bcae9e;
-		font-size: 0.74rem;
-		line-height: 1.45;
-	}
-	label {
-		display: grid;
-		gap: 0.3rem;
-		color: #a99c91;
-		font-size: 0.7rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-	}
-	input,
-	select {
-		width: 100%;
-		border: 1px solid #554841;
-		border-radius: 6px;
-		padding: 0.5rem;
-		color: #f5ede3;
-		background: #121012;
-		font: inherit;
-	}
-	.species-traits {
-		display: grid;
-		gap: 0.55rem;
-		border: 1px solid rgba(101, 130, 158, 0.5);
-		border-radius: 8px;
-		padding: 0.8rem 0.9rem;
-		background: rgba(33, 54, 74, 0.32);
-	}
-	.species-traits > div {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.75rem;
-	}
-	.species-traits h3 {
-		margin: 0;
-		color: #b9d7ee;
-	}
-	.species-traits span,
-	.species-traits small {
-		color: #a7bac9;
-		font-size: 0.72rem;
-		line-height: 1.4;
-	}
-	.species-trait-list {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
-		gap: 0.45rem;
-	}
-	.species-trait {
-		border: 1px solid rgba(124, 161, 189, 0.35);
-		border-radius: 7px;
-		color: #d5e4ed;
-		font-size: 0.7rem;
-	}
-	.species-trait summary {
-		padding: 0.45rem 0.55rem;
-		cursor: pointer;
-	}
-	.species-trait[open] summary {
-		color: #f1d59e;
-	}
-	.species-trait p {
-		margin: 0;
-		padding: 0 0.55rem 0.55rem;
-		color: #b9c8d3;
-		font-size: 0.68rem;
-		line-height: 1.5;
 	}
 	h3 {
 		margin-bottom: 0.55rem;
@@ -3206,34 +2337,6 @@
 		footer span {
 			max-width: 36%;
 			font-size: 0.68rem;
-		}
-		.identity,
-		.profile-combat-fields {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.identity {
-			grid-template-areas:
-				'name name'
-				'class subclass'
-				'level level'
-				'species background'
-				'alignment proficiency'
-				'lineage lineage';
-		}
-		.expertise-choices > div {
-			grid-template-columns: 1fr;
-		}
-		.initiative-actions {
-			grid-column: 1 / -1;
-			align-items: center;
-		}
-		.initiative-roll {
-			width: auto;
-		}
-		.species-traits > div {
-			align-items: flex-start;
-			flex-direction: column;
-			gap: 0.2rem;
 		}
 	}
 	@media (max-width: 700px) {
