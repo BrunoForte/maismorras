@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { NPC } from '$lib/services/npcApi';
-	import type { CreatureSheet } from '$lib/utils/bestiary/bestiaryRules';
+	import { parseCreatureCsv, type CreatureSheet } from '$lib/utils/bestiary/bestiaryRules';
 	let {
 		name = $bindable(''),
 		sheet = $bindable<CreatureSheet>(),
@@ -112,22 +112,14 @@
 		<label
 			>Resistências<input
 				value={sheet.resistances.join(', ')}
-				onchange={(event) =>
-					(sheet.resistances = event.currentTarget.value
-						.split(',')
-						.map((item) => item.trim())
-						.filter(Boolean))}
+				onchange={(event) => (sheet.resistances = parseCreatureCsv(event.currentTarget.value))}
 				placeholder="fogo, veneno"
 			/></label
 		>
 		<label
 			>Imunidades<input
 				value={sheet.immunities.join(', ')}
-				onchange={(event) =>
-					(sheet.immunities = event.currentTarget.value
-						.split(',')
-						.map((item) => item.trim())
-						.filter(Boolean))}
+				onchange={(event) => (sheet.immunities = parseCreatureCsv(event.currentTarget.value))}
 				placeholder="amedrontado"
 			/></label
 		>
