@@ -15,6 +15,18 @@
 		loadLibraryPermissions,
 		saveLibraryPermissions
 	} from '$lib/services/libraryPermissionsApi';
+	import { libraryAccessMode } from '$lib/utils/libraryRules';
+	import LibraryAssetsPanel from '$lib/components/library/LibraryAssetsPanel.svelte';
+	import LibraryHandoutsPanel from '$lib/components/library/LibraryHandoutsPanel.svelte';
+	import LibraryAccessDialog from '$lib/components/library/LibraryAccessDialog.svelte';
+	import type {
+		LibraryAccessDialogActions,
+		LibraryAccessDialogModel,
+		LibraryAsset,
+		LibraryHandout,
+		LibraryHandoutActions
+	} from '$lib/components/library/libraryTypes';
+
 	let {
 		campaignId,
 		session,
@@ -33,18 +45,9 @@
 		) => void;
 		onhide: () => void;
 	} = $props();
-	type Asset = {
-		name: string;
-		path: string;
-		url: string;
-		thumbnailUrl?: string;
-		type: 'image' | 'audio' | 'document' | 'map';
-		audioKind?: 'music' | 'effect';
-		audioLooping?: boolean;
-	};
-	type Handout = { id: string; title: string; body: string; visibility: 'gm' | 'players' };
-	let assets = $state<Asset[]>([]);
-	let handouts = $state<Handout[]>([]);
+
+	let assets = $state<LibraryAsset[]>([]);
+	let handouts = $state<LibraryHandout[]>([]);
 	let uploading = $state(false);
 	let deletingAsset = $state<string | null>(null);
 	let changingAudioKind = $state<string | null>(null);
@@ -57,9 +60,7 @@
 	let handoutAudience = $state<'gm' | 'all' | 'selected'>('all');
 	let handoutUserIds = $state<string[]>([]);
 	let message = $state('');
-	let preview = $state<Asset | null>(null);
-	let draggingFiles = $state(false);
-	let presentationTarget = $state<Asset | null>(null);
+	let presentationTarget = $state<LibraryAsset | null>(null);
 	let presentationUserIds = $state<string[]>([]);
 	let presentationRestricted = $state(false);
 	let presentationOverlayVisible = $state(true);
@@ -73,36 +74,35 @@
 	let loadingPermissions = $state(false);
 	let savingPermissions = $state(false);
 	const folder = () => `campaigns/${campaignId}/media`;
+
 	onMount(() => {
 		void loadAssets();
 		void loadHandouts();
 	});
+
 	async function loadHandouts() {
 		try {
 			handouts = (
-				await request<{ notes: Handout[] }>(session, `/api/v1/campaigns/${campaignId}/notes`)
+				await request<{ notes: LibraryHandout[] }>(session, `/api/v1/campaigns/${campaignId}/notes`)
 			).notes;
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Não foi possível carregar os handouts.';
 		}
 	}
+
 	async function saveHandout() {
-		if (!handoutTitle.trim() || savingHandout) return;
+		if (!isGM || !handoutTitle.trim() || savingHandout) return;
 		savingHandout = true;
 		message = '';
 		try {
-			const handout = await request<Handout>(
+			const handout = await request<LibraryHandout>(
 				session,
 				editingHandoutId
 					? `/api/v1/campaigns/${campaignId}/notes/${editingHandoutId}`
 					: `/api/v1/campaigns/${campaignId}/notes`,
 				{
 					method: editingHandoutId ? 'PUT' : 'POST',
-					body: JSON.stringify({
-						title: handoutTitle.trim(),
-						body: handoutBody,
-						visibility: 'gm'
-					})
+					body: JSON.stringify({ title: handoutTitle.trim(), body: handoutBody, visibility: 'gm' })
 				}
 			);
 			if (handoutAudience !== 'gm') {
@@ -137,11 +137,12 @@
 			savingHandout = false;
 		}
 	}
-	async function editHandout(handout: Handout) {
+
+	async function editHandout(handout: LibraryHandout) {
+		if (!isGM) return;
 		editingHandoutId = handout.id;
 		handoutTitle = handout.title;
 		handoutBody = handout.body;
-		handoutAudience = handout.visibility === 'gm' ? 'gm' : 'all';
 		handoutUserIds = [];
 		try {
 			const [roster, access] = await Promise.all([
@@ -151,8 +152,9 @@
 					: Promise.resolve(null)
 			]);
 			participants = roster.participants.filter((participant) => participant.role === 'player');
+			const mode = libraryAccessMode(handout.visibility === 'players', access?.restricted ?? false);
+			handoutAudience = mode === 'private' ? 'gm' : mode === 'restricted' ? 'selected' : 'all';
 			if (access?.restricted) {
-				handoutAudience = 'selected';
 				handoutUserIds = currentPlayerIds(
 					access.userIds,
 					participants.map((participant) => participant.userId)
@@ -164,7 +166,9 @@
 				error instanceof Error ? error.message : 'Não foi possível carregar jogadores da mesa.';
 		}
 	}
+
 	async function openNewHandout() {
+		if (!isGM) return;
 		editingHandoutId = null;
 		handoutTitle = '';
 		handoutBody = '';
@@ -179,6 +183,7 @@
 				error instanceof Error ? error.message : 'Não foi possível carregar jogadores da mesa.';
 		}
 	}
+
 	async function editPermissions(itemType: 'asset' | 'note', itemKey: string, label: string) {
 		if (!isGM) return;
 		loadingPermissions = true;
@@ -202,6 +207,7 @@
 			loadingPermissions = false;
 		}
 	}
+
 	function togglePermissionUser(userId: string) {
 		permissionUsers = permissionUsers.includes(userId)
 			? permissionUsers.filter((id) => id !== userId)
@@ -212,7 +218,9 @@
 			? handoutUserIds.filter((id) => id !== userId)
 			: [...handoutUserIds, userId];
 	}
-	async function openPresentationOptions(asset: Asset) {
+
+	async function openPresentationOptions(asset: LibraryAsset) {
+		if (!isGM) return;
 		presentationTarget = asset;
 		presentationUserIds = [];
 		presentationRestricted = false;
@@ -228,13 +236,14 @@
 			loadingPresentationTargets = false;
 		}
 	}
+
 	function togglePresentationUser(userId: string) {
 		presentationUserIds = presentationUserIds.includes(userId)
 			? presentationUserIds.filter((id) => id !== userId)
 			: [...presentationUserIds, userId];
 	}
 	function confirmPresentation() {
-		if (!presentationTarget) return;
+		if (!isGM || !presentationTarget) return;
 		onpresent(
 			{ path: presentationTarget.path, name: presentationTarget.name },
 			currentPlayerIds(
@@ -246,8 +255,9 @@
 		);
 		presentationTarget = null;
 	}
+
 	async function savePermissionSelection() {
-		if (!permissionDialog || savingPermissions) return;
+		if (!isGM || !permissionDialog || savingPermissions) return;
 		savingPermissions = true;
 		try {
 			await saveLibraryPermissions(
@@ -261,10 +271,11 @@
 				),
 				permissionRestricted
 			);
-			if (permissionDialog.type === 'note')
+			if (permissionDialog.type === 'note') {
 				handouts = handouts.map((item) =>
 					item.id === permissionDialog?.key ? { ...item, visibility: 'players' } : item
 				);
+			}
 			permissionDialog = null;
 			message = 'Acesso atualizado.';
 		} catch (error) {
@@ -274,7 +285,9 @@
 			savingPermissions = false;
 		}
 	}
-	async function deleteHandout(handout: Handout) {
+
+	async function deleteHandout(handout: LibraryHandout) {
+		if (!isGM) return;
 		try {
 			await request<void>(session, `/api/v1/campaigns/${campaignId}/notes/${handout.id}`, {
 				method: 'DELETE'
@@ -284,8 +297,9 @@
 			message = '';
 		}
 	}
-	async function deleteAsset(asset: Asset) {
-		if (deletingAsset) return;
+
+	async function deleteAsset(asset: LibraryAsset) {
+		if (!isGM || deletingAsset) return;
 		const confirmed = window.confirm(
 			$appLocale === 'en'
 				? `Delete “${asset.name}” from this campaign?`
@@ -301,7 +315,6 @@
 			if (error) throw error;
 			clearSignedAssetCache(campaignId, asset.path);
 			assets = assets.filter((item) => item.path !== asset.path);
-			if (preview?.path === asset.path) preview = null;
 		} catch {
 			message = '';
 			notifyUserRequestError(
@@ -313,11 +326,12 @@
 			deletingAsset = null;
 		}
 	}
+
 	async function changeAudioSettings(
-		asset: Asset,
+		asset: LibraryAsset,
 		settings: { kind?: 'music' | 'effect'; looping?: boolean }
 	) {
-		if (changingAudioKind) return;
+		if (!isGM || changingAudioKind) return;
 		const kind = settings.kind ?? asset.audioKind ?? 'music';
 		const looping =
 			settings.looping ??
@@ -342,13 +356,14 @@
 			changingAudioKind = null;
 		}
 	}
+
 	async function loadAssets() {
 		const supabase = await getSupabaseClient();
 		if (!supabase) return;
-		const client = supabase;
-		const { data, error } = await client.storage
-			.from('campaign-assets')
-			.list(folder(), { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+		const { data, error } = await supabase.storage.from('campaign-assets').list(folder(), {
+			limit: 100,
+			sortBy: { column: 'created_at', order: 'desc' }
+		});
 		if (error) {
 			message = '';
 			notifyUserRequestError(
@@ -388,9 +403,10 @@
 			})
 		);
 		assets = listed.filter(
-			(asset): asset is Asset => asset !== null && (isGM || asset.type !== 'audio')
+			(asset): asset is LibraryAsset => asset !== null && (isGM || asset.type !== 'audio')
 		);
 	}
+
 	function isSupportedFile(file: File) {
 		return (
 			(file.type.startsWith('image/') ||
@@ -400,11 +416,9 @@
 			file.size <= 20 * 1024 * 1024
 		);
 	}
-	function audioLoops(asset: Asset) {
-		return asset.audioLooping ?? asset.audioKind !== 'effect';
-	}
+
 	async function uploadFiles(files: FileList | File[]) {
-		if (uploading) return;
+		if (!isGM || uploading) return;
 		const selected = Array.from(files);
 		if (!selected.length) return;
 		const rejected = selected.filter((file) => !isSupportedFile(file));
@@ -456,16 +470,59 @@
 			uploading = false;
 		}
 	}
-	async function upload(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		if (input.files) await uploadFiles(input.files);
-		input.value = '';
-	}
-	function dropFiles(event: DragEvent) {
-		event.preventDefault();
-		draggingFiles = false;
-		if (event.dataTransfer?.files) void uploadFiles(event.dataTransfer.files);
-	}
+
+	const accessDialogModel = $derived.by((): LibraryAccessDialogModel | null => {
+		if (presentationTarget) {
+			return {
+				kind: 'presentation',
+				assetName: presentationTarget.name,
+				loading: loadingPresentationTargets,
+				restricted: presentationRestricted,
+				selectedUserIds: presentationUserIds,
+				participants,
+				overlayVisible: presentationOverlayVisible
+			};
+		}
+		if (permissionDialog) {
+			return {
+				kind: 'access',
+				label: permissionDialog.label,
+				loading: loadingPermissions,
+				saving: savingPermissions,
+				restricted: permissionRestricted,
+				selectedUserIds: permissionUsers,
+				participants
+			};
+		}
+		return null;
+	});
+	const accessDialogActions: LibraryAccessDialogActions = {
+		close: () => {
+			if (presentationTarget) presentationTarget = null;
+			else if (!savingPermissions) permissionDialog = null;
+		},
+		setRestricted: (restricted) => {
+			if (presentationTarget) presentationRestricted = restricted;
+			else permissionRestricted = restricted;
+		},
+		toggleUser: (userId) => {
+			if (presentationTarget) togglePresentationUser(userId);
+			else togglePermissionUser(userId);
+		},
+		setOverlayVisible: (visible) => (presentationOverlayVisible = visible),
+		saveAccess: () => void savePermissionSelection(),
+		confirmPresentation
+	};
+	const handoutActions: LibraryHandoutActions = {
+		edit: (handout) => void editHandout(handout),
+		delete: (handout) => void deleteHandout(handout),
+		manageAccess: (handout) => void editPermissions('note', handout.id, handout.title),
+		save: () => void saveHandout(),
+		changeTitle: (value) => (handoutTitle = value),
+		changeBody: (value) => (handoutBody = value),
+		changeAudience: (value) => (handoutAudience = value),
+		toggleUser: toggleHandoutUser
+	};
 </script>
 
 <section
@@ -483,501 +540,53 @@
 			>
 			<a class="icon-catalog-link" href="/icons">Biblioteca de ícones do projeto</a>
 		</div>
-		{#if isGM}<div class="actions">
-				<label
-					>{uploading
-						? $appLocale === 'en'
-							? 'Uploading…'
-							: 'Enviando…'
-						: $appLocale === 'en'
-							? 'Add media'
-							: 'Adicionar mídia'}<input
-						id="campaign-media-upload"
-						type="file"
-						multiple
-						accept="image/jpeg,image/png,image/webp,audio/mpeg,audio/ogg,audio/wav,application/pdf,text/plain"
-						onchange={upload}
-						disabled={uploading}
-					/></label
-				><button onclick={() => void openNewHandout()}
+		{#if isGM}
+			<div class="actions">
+				<button onclick={() => void openNewHandout()}
 					>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
 				>
-				{#if isGM}<button onclick={onhide}
-						>{$appLocale === 'en' ? 'Hide presentation' : 'Ocultar imagem exibida'}</button
-					>{/if}
-			</div>{/if}
-	</header>
-	{#if message}<p class="message">{message}</p>{/if}
-	{#if isGM}<button
-			class="drop-zone"
-			class:dragging={draggingFiles}
-			onclick={() => document.getElementById('campaign-media-upload')?.click()}
-			onkeydown={(event) => {
-				if (event.key === 'Enter' || event.key === ' ')
-					document.getElementById('campaign-media-upload')?.click();
-			}}
-			ondragover={(event) => {
-				event.preventDefault();
-				draggingFiles = true;
-			}}
-			ondragleave={(event) => {
-				if (event.currentTarget === event.target) draggingFiles = false;
-			}}
-			ondrop={dropFiles}
-			disabled={uploading}
-			aria-label={$appLocale === 'en'
-				? 'Drop files to upload media'
-				: 'Solte arquivos para adicionar mídias'}
-		>
-			<span aria-hidden="true">{uploading ? '◌' : '↥'}</span>
-			<strong
-				>{uploading
-					? $appLocale === 'en'
-						? 'Uploading media…'
-						: 'Enviando mídias…'
-					: $appLocale === 'en'
-						? 'Drop media files here'
-						: 'Arraste mídias para cá'}</strong
-			>
-			<small
-				>{$appLocale === 'en'
-					? 'or click to choose · images, audio, PDF and text up to 20 MB each'
-					: 'ou clique para escolher · imagens, áudio, PDF e texto até 20 MB por arquivo'}</small
-			>
-		</button>{/if}
-	{#if handoutOpen && isGM}<form
-			class="handout-form"
-			onsubmit={(event) => {
-				event.preventDefault();
-				void saveHandout();
-			}}
-		>
-			<input
-				bind:value={handoutTitle}
-				maxlength="120"
-				placeholder={$appLocale === 'en' ? 'Handout title' : 'Título do handout'}
-			/>
-			<textarea
-				bind:value={handoutBody}
-				maxlength="32000"
-				placeholder={$appLocale === 'en'
-					? 'Text, links, and guidance for the table'
-					: 'Texto, links e orientações para a mesa'}></textarea>
-			<fieldset class="handout-audience">
-				<legend
-					>{$appLocale === 'en'
-						? 'Who can see this handout?'
-						: 'Quem pode ver este handout?'}</legend
-				>
-				<label
-					><input
-						type="radio"
-						name="handout-audience"
-						value="all"
-						bind:group={handoutAudience}
-					/>{$appLocale === 'en' ? 'All players' : 'Todos os jogadores'}</label
-				>
-				<label
-					><input
-						type="radio"
-						name="handout-audience"
-						value="selected"
-						bind:group={handoutAudience}
-					/>{$appLocale === 'en' ? 'Selected players' : 'Jogadores selecionados'}</label
-				>
-				<label
-					><input
-						type="radio"
-						name="handout-audience"
-						value="gm"
-						bind:group={handoutAudience}
-					/>{$appLocale === 'en' ? 'Game master only' : 'Somente narrador'}</label
-				>
-				{#if handoutAudience === 'selected'}<div class="handout-player-list">
-						{#each participants as participant (participant.userId)}<label>
-								<input
-									type="checkbox"
-									checked={handoutUserIds.includes(participant.userId)}
-									onchange={() => toggleHandoutUser(participant.userId)}
-								/>
-								<span
-									><strong
-										>{participant.displayName ||
-											($appLocale === 'en' ? 'Player' : 'Jogador')}</strong
-									>{#if participant.character?.sheet?.name}<small
-											>{participant.character.sheet.name}</small
-										>{/if}</span
-								>
-							</label>{:else}<small
-								>{$appLocale === 'en'
-									? 'No players have joined this campaign yet.'
-									: 'Nenhum jogador entrou nesta mesa ainda.'}</small
-							>{/each}
-					</div>{/if}
-			</fieldset>
-			<div>
-				<button disabled={savingHandout}
-					>{savingHandout
-						? $appLocale === 'en'
-							? 'Saving…'
-							: 'Salvando…'
-						: $appLocale === 'en'
-							? 'Save handout'
-							: 'Salvar handout'}</button
+				<button onclick={onhide}
+					>{$appLocale === 'en' ? 'Hide presentation' : 'Ocultar imagem exibida'}</button
 				>
 			</div>
-		</form>{/if}
-	<section
-		class="handouts"
-		aria-label={$appLocale === 'en' ? 'Campaign handouts' : 'Handouts da campanha'}
-	>
-		<h3>Handouts</h3>
-		{#if handouts.length}<div class="handout-grid">
-				{#each handouts as handout (handout.id)}<article>
-						<small
-							>{handout.visibility === 'players'
-								? $appLocale === 'en'
-									? 'Shared'
-									: 'Compartilhado'
-								: $appLocale === 'en'
-									? 'Private'
-									: 'Privado'}</small
-						>
-						<h4>{handout.title}</h4>
-						<p>{handout.body || ($appLocale === 'en' ? 'No text.' : 'Sem texto.')}</p>
-						{#if isGM}<div class="handout-actions">
-								<button onclick={() => editHandout(handout)}
-									>{$appLocale === 'en' ? 'Edit' : 'Editar'}</button
-								><button onclick={() => void editPermissions('note', handout.id, handout.title)}
-									>{$appLocale === 'en' ? 'Players' : 'Acesso'}</button
-								><button onclick={() => void deleteHandout(handout)}
-									>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
-								>
-							</div>{/if}
-					</article>{/each}
-			</div>{:else}<p class="empty-handouts">
-				{$appLocale === 'en'
-					? 'No handouts have been saved for this campaign.'
-					: 'Nenhum handout salvo nesta campanha.'}
-			</p>{/if}
-	</section>
-	{#if assets.length}<nav
-			class="asset-filters"
-			aria-label={$appLocale === 'en' ? 'Media filters' : 'Filtros de mídia'}
-		>
-			{#each [['all', $appLocale === 'en' ? 'All' : 'Todas'], ['image', $appLocale === 'en' ? 'Images' : 'Imagens'], ['map', $appLocale === 'en' ? 'Maps' : 'Mapas'], ['audio', $appLocale === 'en' ? 'Audio' : 'Áudios'], ['document', $appLocale === 'en' ? 'Documents' : 'Documentos']] as [value, label] (value)}<button
-					class:active={assetFilter === value}
-					onclick={() => (assetFilter = value as typeof assetFilter)}>{label}</button
-				>{/each}
-		</nav>{/if}
-	{#if assets.length}<section class="asset-grid" class:audio-list={assetFilter === 'audio'}>
-			{#each assets.filter((asset) => assetFilter === 'all' || asset.type === assetFilter) as asset (asset.path)}<article
-					class="asset-card"
-				>
-					{#if asset.type === 'image' || asset.type === 'map'}<button
-							class="asset-image"
-							onclick={() => (preview = asset)}
-							><img
-								src={asset.thumbnailUrl ?? asset.url}
-								alt={asset.name}
-								loading="lazy"
-								decoding="async"
-							/></button
-						>
-					{:else if asset.type === 'audio'}<span class="audio-mark">♫</span><audio
-							controls
-							loop={asset.audioLooping ?? asset.audioKind !== 'effect'}
-							src={asset.url}
-						></audio>
-					{:else}<span class="document-mark">▤</span><a
-							class="document-link"
-							href={asset.url}
-							target="_blank"
-							rel="noreferrer">{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}</a
-						>{/if}
-					<div class="asset-footer">
-						<small>
-							{asset.name}
-							{#if asset.audioKind}
-								<span class="audio-kind-badge">
-									· {asset.audioKind === 'music'
-										? $appLocale === 'en'
-											? 'Music'
-											: 'Música'
-										: $appLocale === 'en'
-											? 'Sound effect'
-											: 'Efeito sonoro'}
-								</span>
-								<span class="audio-loop-badge">
-									{audioLoops(asset)
-										? $appLocale === 'en'
-											? '· loops'
-											: '· em loop'
-										: $appLocale === 'en'
-											? '· plays once'
-											: '· sem loop'}
-								</span>
-							{/if}
-						</small>
-						{#if isGM}<div class="asset-actions">
-								{#if asset.type === 'audio'}<label class="asset-audio-kind">
-										<select
-											aria-label={($appLocale === 'en' ? 'Audio type for ' : 'Tipo do áudio: ') +
-												asset.name}
-											value={asset.audioKind ?? 'music'}
-											disabled={changingAudioKind === asset.path}
-											onchange={(event) =>
-												void changeAudioSettings(asset, {
-													kind: (event.currentTarget as HTMLSelectElement).value as
-														'music' | 'effect'
-												})}
-										>
-											<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
-											<option value="effect"
-												>{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option
-											>
-										</select>
-									</label><label class="asset-audio-loop">
-										<input
-											type="checkbox"
-											checked={asset.audioLooping ?? asset.audioKind !== 'effect'}
-											aria-label={($appLocale === 'en' ? 'Loop ' : 'Repetir em loop: ') +
-												asset.name}
-											disabled={changingAudioKind === asset.path}
-											onchange={(event) =>
-												void changeAudioSettings(asset, {
-													looping: (event.currentTarget as HTMLInputElement).checked
-												})}
-										/>{$appLocale === 'en' ? 'Loop' : 'Loop'}</label
-									>{/if}
-								<button
-									class="asset-delete"
-									aria-label={$appLocale === 'en'
-										? `Delete ${asset.name}`
-										: `Excluir ${asset.name}`}
-									title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
-									onclick={() => void deleteAsset(asset)}
-									disabled={deletingAsset === asset.path}>×</button
-								><button
-									class="asset-present"
-									aria-label={$appLocale === 'en'
-										? `Manage access to ${asset.name}`
-										: `Gerenciar acesso a ${asset.name}`}
-									onclick={() => void editPermissions('asset', asset.path, asset.name)}
-									>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
-								>{#if asset.type === 'image' || asset.type === 'map'}<button
-										class="asset-present"
-										aria-label={$appLocale === 'en'
-											? `Show ${asset.name} to the table`
-											: `Exibir ${asset.name} para a mesa`}
-										onclick={() => void openPresentationOptions(asset)}>👁</button
-									>{/if}
-							</div>{/if}
-					</div>
-				</article>{/each}
-		</section>{:else}<div class="empty">
-			<strong
-				>{isGM
-					? $appLocale === 'en'
-						? 'Add the first media item.'
-						: 'Adicione a primeira mídia.'
-					: $appLocale === 'en'
-						? 'The library is still empty.'
-						: 'A biblioteca ainda está vazia.'}</strong
-			><span
-				>{$appLocale === 'en'
-					? 'Handouts and music for this campaign will appear here.'
-					: 'Handouts e trilhas desta campanha aparecerão aqui.'}</span
-			>
-		</div>{/if}
+		{/if}
+	</header>
+	{#if message}<p class="message">{message}</p>{/if}
+	<LibraryHandoutsPanel
+		{handouts}
+		{isGM}
+		editor={{
+			open: handoutOpen,
+			title: handoutTitle,
+			body: handoutBody,
+			audience: handoutAudience,
+			userIds: handoutUserIds,
+			saving: savingHandout,
+			participants
+		}}
+		actions={handoutActions}
+	/>
+	<LibraryAssetsPanel
+		{assets}
+		{isGM}
+		filter={assetFilter}
+		{uploading}
+		{deletingAsset}
+		{changingAudioKind}
+		actions={{
+			changeFilter: (filter) => (assetFilter = filter),
+			upload: uploadFiles,
+			changeAudioSettings: (asset, settings) => void changeAudioSettings(asset, settings),
+			delete: (asset) => void deleteAsset(asset),
+			manageAccess: (asset) => void editPermissions('asset', asset.path, asset.name),
+			present: (asset) => void openPresentationOptions(asset)
+		}}
+	/>
 </section>
-{#if preview}<div
-		class="preview-backdrop"
-		role="presentation"
-		onclick={(event) => {
-			if (event.currentTarget === event.target) preview = null;
-		}}
-	>
-		<section>
-			<button
-				onclick={() => (preview = null)}
-				aria-label={$appLocale === 'en' ? 'Close image' : 'Fechar imagem'}>×</button
-			><img src={preview.url} alt={preview.name} />
-			<p>{preview.name}</p>
-		</section>
-	</div>{/if}
-{#if presentationTarget}<div
-		class="permission-backdrop"
-		role="presentation"
-		onclick={(event) => {
-			if (event.target === event.currentTarget) presentationTarget = null;
-		}}
-	>
-		<dialog open class="permission-dialog" aria-modal="true" aria-labelledby="presentation-title">
-			<header>
-				<div>
-					<p>{$appLocale === 'en' ? 'LIVE PRESENTATION' : 'EXIBIÇÃO NA MESA'}</p>
-					<h3 id="presentation-title">
-						{$appLocale === 'en' ? 'Where to show this image?' : 'Onde exibir esta imagem?'}
-					</h3>
-					<span>{presentationTarget.name}</span>
-				</div>
-				<button class="dialog-close" onclick={() => (presentationTarget = null)} aria-label="Fechar"
-					>×</button
-				>
-			</header>
-			{#if loadingPresentationTargets}<p class="permission-empty">Carregando jogadores…</p>{:else}
-				<div class="permission-modes">
-					<label
-						><input
-							type="radio"
-							name="presentation-audience"
-							checked={!presentationRestricted}
-							onchange={() => (presentationRestricted = false)}
-						/>Todos os jogadores</label
-					>
-					<label
-						><input
-							type="radio"
-							name="presentation-audience"
-							checked={presentationRestricted}
-							onchange={() => (presentationRestricted = true)}
-						/>Jogadores selecionados</label
-					>
-				</div>
-				{#if presentationRestricted}<div class="permission-roster">
-						{#each participants as participant (participant.userId)}<label class="player-option">
-								<input
-									type="checkbox"
-									checked={presentationUserIds.includes(participant.userId)}
-									onchange={() => togglePresentationUser(participant.userId)}
-								/>
-								<span class="player-color" aria-hidden="true"></span>
-								<span
-									><strong>{participant.displayName || 'Jogador'}</strong
-									>{#if participant.character?.sheet?.name}<small
-											>{participant.character.sheet.name}</small
-										>{/if}</span
-								>
-							</label>{:else}<p class="permission-empty">Nenhum jogador na mesa.</p>{/each}
-					</div>{/if}
-				<label class="presentation-overlay-option"
-					><input type="checkbox" bind:checked={presentationOverlayVisible} />Também exibir na
-					overlay do OBS</label
-				>
-			{/if}
-			<footer>
-				<button class="secondary-button" onclick={() => (presentationTarget = null)}
-					>Cancelar</button
-				>
-				<button
-					class="primary-button"
-					onclick={confirmPresentation}
-					disabled={loadingPresentationTargets}>Exibir</button
-				>
-			</footer>
-		</dialog>
-	</div>{/if}
-{#if permissionDialog}<div
-		class="permission-backdrop"
-		role="presentation"
-		onclick={(event) => {
-			if (event.target === event.currentTarget && !savingPermissions) permissionDialog = null;
-		}}
-	>
-		<dialog open class="permission-dialog" aria-modal="true" aria-labelledby="permission-title">
-			<header>
-				<div>
-					<p>{$appLocale === 'en' ? 'CAMPAIGN ACCESS' : 'ACESSO DA MESA'}</p>
-					<h3 id="permission-title">
-						{$appLocale === 'en' ? 'Who can see this item?' : 'Quem pode ver este item?'}
-					</h3>
-					<span>{permissionDialog.label}</span>
-				</div>
-				<button
-					class="dialog-close"
-					onclick={() => (permissionDialog = null)}
-					disabled={savingPermissions}
-					aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}>×</button
-				>
-			</header>
-			{#if loadingPermissions}<p class="permission-empty">
-					{$appLocale === 'en' ? 'Loading campaign players…' : 'Carregando jogadores da mesa…'}
-				</p>{:else}
-				<div class="permission-modes">
-					<label
-						><input
-							type="radio"
-							name="access-mode"
-							checked={!permissionRestricted}
-							onchange={() => (permissionRestricted = false)}
-						/>{$appLocale === 'en' ? 'All players' : 'Todos os jogadores'}</label
-					>
-					<label
-						><input
-							type="radio"
-							name="access-mode"
-							checked={permissionRestricted}
-							onchange={() => (permissionRestricted = true)}
-						/>{$appLocale === 'en' ? 'Selected players' : 'Jogadores selecionados'}</label
-					>
-				</div>
-				{#if permissionRestricted}<div class="permission-roster">
-						{#each participants as participant (participant.userId)}<label class="player-option">
-								<input
-									type="checkbox"
-									checked={permissionUsers.includes(participant.userId)}
-									onchange={() => togglePermissionUser(participant.userId)}
-								/>
-								<span class="player-color" aria-hidden="true"></span>
-								<span
-									><strong
-										>{participant.displayName ||
-											($appLocale === 'en' ? 'Player' : 'Jogador')}</strong
-									>{#if participant.character?.sheet?.name}<small
-											>{participant.character.sheet.name}</small
-										>{/if}</span
-								>
-							</label>{:else}<p class="permission-empty">
-								{$appLocale === 'en'
-									? 'No players have joined this campaign yet.'
-									: 'Nenhum jogador entrou nesta mesa ainda.'}
-							</p>{/each}
-					</div>
-					<p class="permission-hint">
-						{permissionUsers.length === 0
-							? $appLocale === 'en'
-								? 'No selected players means only the GM can see it.'
-								: 'Sem jogadores selecionados, somente o narrador verá.'
-							: $appLocale === 'en'
-								? `${permissionUsers.length} player(s) selected.`
-								: `${permissionUsers.length} jogador(es) selecionado(s).`}
-					</p>{:else}<p class="permission-hint">
-						{$appLocale === 'en'
-							? 'Every current and future player in this campaign can see it.'
-							: 'Todos os jogadores atuais e futuros desta mesa poderão ver.'}
-					</p>{/if}
-			{/if}
-			<footer>
-				<button
-					class="secondary-button"
-					onclick={() => (permissionDialog = null)}
-					disabled={savingPermissions}>{$appLocale === 'en' ? 'Cancel' : 'Cancelar'}</button
-				><button
-					class="primary-button"
-					onclick={() => void savePermissionSelection()}
-					disabled={loadingPermissions || savingPermissions}
-					>{savingPermissions
-						? $appLocale === 'en'
-							? 'Saving…'
-							: 'Salvando…'
-						: $appLocale === 'en'
-							? 'Save access'
-							: 'Salvar acesso'}</button
-				>
-			</footer>
-		</dialog>
-	</div>{/if}
+
+{#if accessDialogModel}
+	<LibraryAccessDialog model={accessDialogModel} actions={accessDialogActions} {isGM} />
+{/if}
 
 <style>
 	.library-view {
@@ -1019,18 +628,6 @@
 		align-items: center;
 		flex-wrap: wrap;
 	}
-	.icon-catalog-link {
-		display: inline-block;
-		margin-top: 0.45rem;
-		color: #edc77f;
-		font-size: 0.75rem;
-		text-decoration: none;
-	}
-	.icon-catalog-link:hover {
-		color: #fff0cd;
-		text-decoration: underline;
-	}
-	.actions label,
 	.actions button {
 		border: 1px solid #765d3d;
 		border-radius: 7px;
@@ -1043,597 +640,25 @@
 		cursor: pointer;
 		white-space: nowrap;
 	}
-	.actions label {
-		border: 0;
-		color: #26190e;
-		background: #e0b86f;
-	}
-	.presentation-overlay-option {
-		display: flex;
-		align-items: center;
-		gap: 0.55rem;
-		color: #e8d9c8;
-		font-size: 0.82rem;
-	}
-	.drop-zone {
-		display: grid;
-		place-items: center;
-		gap: 0.35rem;
-		width: 100%;
-		min-height: 118px;
-		margin: 0 0 1.2rem;
-		padding: 1rem;
-		border: 1px dashed #806039;
-		border-radius: 10px;
-		color: #eee4d6;
-		background: #211b1e;
-		cursor: pointer;
-		transition:
-			border-color 140ms ease,
-			background-color 140ms ease,
-			transform 140ms ease;
-	}
-	.drop-zone:hover,
-	.drop-zone.dragging {
-		border-color: #e0b86f;
-		background: #30241f;
-	}
-	.drop-zone.dragging {
-		transform: scale(1.005);
-	}
-	.drop-zone > span {
-		color: #e0b86f;
-		font-size: 1.7rem;
-	}
-	.drop-zone strong {
-		font:
-			600 1rem Georgia,
-			serif;
-	}
-	.drop-zone small {
-		color: #a99c91;
-		font-size: 0.75rem;
-		text-align: center;
-	}
-	.actions input {
-		display: none;
-	}
-	.handout-form {
-		display: grid;
-		gap: 0.6rem;
-		margin: 0 0 1.2rem;
-		padding: 1rem;
-		border: 1px solid #5a493b;
-		border-radius: 10px;
-		background: #211b1e;
-	}
-	.handout-form input:not([type='checkbox']):not([type='radio']),
-	.handout-form textarea {
-		border: 1px solid #5a493b;
-		border-radius: 6px;
-		padding: 0.55rem;
-		color: #eee4d6;
-		background: #121012;
-		font: inherit;
-	}
-	.handout-form textarea {
-		min-height: 100px;
-		resize: vertical;
-	}
-	.handout-form div {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.6rem;
-	}
-	.handout-audience {
-		display: grid;
-		gap: 0.45rem;
-		margin: 0;
-		padding: 0.75rem;
-		border: 1px solid #493c39;
-		border-radius: 8px;
-	}
-	.handout-audience legend {
-		padding: 0 0.25rem;
-		color: #d8ad67;
-		font-size: 0.8rem;
-	}
-	.handout-audience > label,
-	.handout-player-list > label {
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		gap: 0.5rem;
-		font-size: 0.82rem;
-	}
-	.handout-audience input[type='checkbox'],
-	.handout-audience input[type='radio'] {
-		width: auto;
-		margin: 0;
-		accent-color: #d8ad67;
-	}
-	.handout-player-list {
-		display: grid;
-		gap: 0.4rem;
-		max-height: 9rem;
-		overflow: auto;
-		padding: 0.55rem;
-		border-left: 2px solid #80603b;
-	}
-	.handout-player-list span {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-	}
-	.handout-player-list small {
-		color: #ad9e91;
-	}
-	.handout-form button {
-		border: 0;
-		border-radius: 7px;
-		padding: 0.52rem 0.7rem;
-		color: #26190e;
-		background: #e0b86f;
-		font-weight: 750;
-		cursor: pointer;
-	}
-	.handouts {
-		margin: 0 0 1.4rem;
-	}
-	.handouts h3 {
-		margin: 0 0 0.7rem;
-		color: #d8ad67;
-		font:
-			0.8rem Georgia,
-			serif;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-	.handout-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-		gap: 0.7rem;
-	}
-	.handout-grid article {
-		min-width: 0;
-		padding: 0.85rem;
-		border: 1px solid #493c39;
-		border-radius: 9px;
-		background: #211b1e;
-	}
-	.handout-grid small {
-		color: #d8ad67;
-		font-size: 0.65rem;
-		text-transform: uppercase;
-	}
-	.handout-grid h4 {
-		margin: 0.35rem 0;
-		color: #eee4d6;
-		font:
-			600 1rem Georgia,
-			serif;
-	}
-	.handout-grid p {
-		color: #b9aa9d;
-		white-space: pre-wrap;
-		font-size: 0.82rem;
-		line-height: 1.45;
-	}
-	.handout-actions {
-		display: flex;
-		gap: 0.4rem;
-		margin-top: 0.7rem;
-	}
-	.handout-actions button {
-		border: 1px solid #5a493b;
-		border-radius: 5px;
-		padding: 0.35rem 0.5rem;
-		color: #edc77f;
-		background: #2b211e;
-		font-size: 0.68rem;
-		cursor: pointer;
-	}
-	.empty-handouts {
-		padding: 0.9rem;
-		border: 1px dashed #5a493b;
-		border-radius: 8px;
-		color: #a99c91;
-		font-size: 0.82rem;
-	}
-	.asset-filters {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-		margin: 0 0 0.75rem;
-	}
-	.asset-filters button {
-		border: 1px solid #5a493b;
-		border-radius: 6px;
-		padding: 0.35rem 0.55rem;
-		color: #b9aa9d;
-		background: #211b1e;
-		font-size: 0.68rem;
-		cursor: pointer;
-	}
-	.asset-filters button.active {
-		border-color: #c89655;
-		color: #26190e;
-		background: #e0b86f;
-	}
-	.document-mark {
-		display: grid;
-		place-items: center;
-		height: 125px;
-		color: #d8ad67;
-		background: #120f11;
-		font-size: 2rem;
-	}
-	.document-link {
+	.icon-catalog-link {
+		display: inline-block;
+		margin-top: 0.45rem;
 		color: #edc77f;
 		font-size: 0.75rem;
 		text-decoration: none;
+	}
+	.icon-catalog-link:hover {
+		color: #fff0cd;
+		text-decoration: underline;
 	}
 	.message {
 		margin: 0 0 1rem;
 		color: #f0cb85;
 		font-size: 0.8rem;
 	}
-	.empty {
-		display: grid;
-		gap: 0.35rem;
-		padding: 2rem;
-		border: 1px dashed #5a493b;
-		border-radius: 10px;
-		color: #a99c91;
-		text-align: center;
-	}
-	.empty strong {
-		color: #e9dcc9;
-		font:
-			600 1.1rem Georgia,
-			serif;
-	}
-	.asset-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-		gap: 0.8rem;
-	}
-	.asset-grid.audio-list {
-		grid-template-columns: minmax(0, 1fr);
-	}
-	.asset-grid.audio-list article {
-		grid-template-columns: auto minmax(0, 1fr);
-		align-items: center;
-		gap: 0.65rem 1rem;
-		padding: 0.85rem 1rem;
-	}
-	.asset-grid.audio-list audio,
-	.asset-grid.audio-list .asset-footer {
-		grid-column: 1 / -1;
-	}
-	.asset-grid.audio-list audio {
-		height: 42px;
-	}
-	.asset-grid.audio-list .asset-footer {
-		flex-wrap: wrap;
-	}
-	.asset-grid.audio-list small {
-		flex: 1 1 100%;
-		font-size: 0.82rem;
-		white-space: normal;
-	}
-	.asset-grid article {
-		display: grid;
-		gap: 0.45rem;
-		min-width: 0;
-		padding: 0.55rem;
-		border: 1px solid #493c39;
-		border-radius: 9px;
-		background: #211b1e;
-	}
-	.asset-footer {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.45rem;
-		min-width: 0;
-	}
-	.asset-image {
-		height: 125px;
-		overflow: hidden;
-		border: 0;
-		border-radius: 6px;
-		padding: 0;
-		background: #120f11;
-		cursor: zoom-in;
-	}
-	.asset-image img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.asset-grid small {
-		min-width: 0;
-		overflow: hidden;
-		color: #c8b8a8;
-		font-size: 0.7rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.audio-loop-badge {
-		color: #a99c91;
-	}
-	.asset-delete {
-		flex: 0 0 auto;
-		width: 1.45rem;
-		height: 1.45rem;
-		border: 1px solid #5a493b;
-		border-radius: 50%;
-		color: #d9a3a0;
-		background: #2b211e;
-		font-size: 1rem;
-		line-height: 1;
-		cursor: pointer;
-	}
-	.asset-actions {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.3rem;
-		flex: 0 0 auto;
-	}
-	.asset-audio-kind select {
-		max-width: 8.5rem;
-		border: 1px solid #5a493b;
-		border-radius: 5px;
-		padding: 0.28rem 0.35rem;
-		color: #edc77f;
-		background: #2b211e;
-		font-size: 0.66rem;
-	}
-	.asset-audio-kind select:disabled {
-		opacity: 0.6;
-		cursor: wait;
-	}
-	.asset-audio-loop {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
-		padding: 0.3rem 0.4rem;
-		border: 1px solid #5a493b;
-		border-radius: 5px;
-		color: #edc77f;
-		background: #2b211e;
-		font-size: 0.68rem;
-		white-space: nowrap;
-	}
-	.asset-audio-loop input {
-		margin: 0;
-		accent-color: #d8ad67;
-	}
-	.asset-present {
-		border: 1px solid #5a493b;
-		border-radius: 5px;
-		padding: 0.3rem 0.45rem;
-		color: #edc77f;
-		background: #2b211e;
-		font-size: 0.68rem;
-		cursor: pointer;
-	}
-	.asset-present:hover,
-	.handout-actions button:hover,
 	.actions button:hover {
 		border-color: #d8ad67;
 		background: #3a2920;
-	}
-	.asset-delete:hover:not(:disabled) {
-		border-color: #b96d68;
-		color: #fff0ed;
-		background: #6b302e;
-	}
-	.asset-delete:disabled {
-		opacity: 0.55;
-		cursor: wait;
-	}
-	.audio-mark {
-		color: #e0b86f;
-		font-size: 1.5rem;
-	}
-	.asset-grid audio {
-		width: 100%;
-		height: 30px;
-	}
-	.preview-backdrop {
-		position: fixed;
-		z-index: 30;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		padding: 1.5rem;
-		background: rgba(7, 5, 7, 0.82);
-		backdrop-filter: blur(7px);
-	}
-	.preview-backdrop section {
-		position: relative;
-		max-width: min(100%, 1100px);
-		max-height: 90vh;
-	}
-	.preview-backdrop img {
-		display: block;
-		max-width: 100%;
-		max-height: 82vh;
-		object-fit: contain;
-	}
-	.preview-backdrop button {
-		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
-		width: 2rem;
-		height: 2rem;
-		border: 0;
-		border-radius: 50%;
-		color: white;
-		background: rgba(0, 0, 0, 0.6);
-		font-size: 1.3rem;
-		cursor: pointer;
-	}
-	.preview-backdrop p {
-		margin: 0.55rem 0 0;
-		color: #e9dcc9;
-		text-align: center;
-	}
-	.permission-backdrop {
-		position: fixed;
-		z-index: 1100;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		padding: 1rem;
-		background: #080608cc;
-		backdrop-filter: blur(5px);
-	}
-	.permission-dialog {
-		position: relative;
-		inset: auto;
-		margin: 0;
-		width: min(100%, 480px);
-		max-height: min(80dvh, 680px);
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		overflow: hidden;
-		padding: 1.1rem;
-		border: 1px solid #5a493b;
-		border-radius: 12px;
-		color: #eee4d6;
-		background: #211b1e;
-		box-shadow: 0 22px 70px #000a;
-	}
-	.permission-dialog header {
-		align-items: flex-start;
-		margin: 0;
-		padding: 0 0 0.8rem;
-	}
-	.permission-dialog header p {
-		margin: 0 0 0.3rem;
-	}
-	.permission-dialog h3 {
-		margin: 0;
-		font:
-			600 1.25rem Georgia,
-			serif;
-	}
-	.permission-dialog header span {
-		display: block;
-		max-width: 370px;
-		margin-top: 0.35rem;
-		overflow: hidden;
-		color: #b9aa9d;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.dialog-close {
-		width: 2rem;
-		height: 2rem;
-		border: 1px solid #5a493b;
-		border-radius: 6px;
-		color: #edc77f;
-		background: #171316;
-		font-size: 1.2rem;
-		cursor: pointer;
-	}
-	.permission-modes {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.5rem;
-	}
-	.permission-modes label {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		min-height: 2.7rem;
-		padding: 0.55rem;
-		border: 1px solid #493c39;
-		border-radius: 7px;
-		color: #d8c9b9;
-		font-size: 0.78rem;
-		cursor: pointer;
-	}
-	.permission-roster {
-		display: grid;
-		gap: 0.35rem;
-		max-height: 36dvh;
-		overflow: auto;
-		padding-right: 0.2rem;
-	}
-	.player-option {
-		display: flex;
-		align-items: center;
-		gap: 0.65rem;
-		min-width: 0;
-		padding: 0.6rem;
-		border: 1px solid #493c39;
-		border-radius: 7px;
-		background: #171316;
-		cursor: pointer;
-	}
-	.player-option span:last-child {
-		display: grid;
-		gap: 0.15rem;
-		min-width: 0;
-	}
-	.player-option strong,
-	.player-option small {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.player-option small {
-		color: #a99c91;
-	}
-	.player-color {
-		width: 0.65rem;
-		height: 0.65rem;
-		flex: 0 0 auto;
-		border-radius: 50%;
-		background: #d8ad67;
-	}
-	.permission-empty,
-	.permission-hint {
-		margin: 0;
-		color: #b9aa9d;
-		font-size: 0.78rem;
-		line-height: 1.45;
-	}
-	.permission-dialog footer {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.5rem;
-		padding-top: 0.7rem;
-		border-top: 1px solid #493c39;
-	}
-	.permission-dialog footer button {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.5rem 0.7rem;
-		font-size: 0.78rem;
-		font-weight: 700;
-		cursor: pointer;
-	}
-	.secondary-button {
-		color: #edc77f;
-		background: #2b211e;
-	}
-	.primary-button {
-		border-color: #e0b86f !important;
-		color: #26190e;
-		background: #e0b86f;
-	}
-	button:focus-visible,
-	input:focus-visible,
-	textarea:focus-visible {
-		outline: 2px solid #f0cb85;
-		outline-offset: 2px;
 	}
 	@media (max-width: 650px) {
 		header {
@@ -1641,9 +666,6 @@
 		}
 		.actions {
 			flex-wrap: wrap;
-		}
-		.permission-modes {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>
