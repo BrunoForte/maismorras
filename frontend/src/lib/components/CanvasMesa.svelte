@@ -31,8 +31,15 @@
 		type Scene
 	} from '$lib/services/sceneApi';
 	import { SceneTokenController } from '$lib/services/sceneTokenController';
+	import SceneMapTools from '$lib/components/scene/SceneMapTools.svelte';
 	import { ApiError } from '$lib/services/httpClient';
 	import { applySceneDelta, fogBrushCells } from '$lib/utils/sceneDeltaState';
+	import {
+		toggleSceneMapTool,
+		type SceneMapTool,
+		type SceneMapToolsActions,
+		type SceneMapToolsState
+	} from '$lib/utils/sceneMapTools';
 	import {
 		removeSceneCharacter,
 		toSceneCharacter,
@@ -172,18 +179,35 @@
 	let saveAreaArmed = $state(false);
 	let areaLabel = $state('Área de efeito');
 	let areaVisible = $state(true);
-	let areaToolsOpen = $state(false);
 	let walls = $state<SceneWall[]>([]);
 	let wallDrawing = $state(false);
 	let wallKind = $state<'wall' | 'door'>('wall');
-	let wallToolsOpen = $state(false);
+	let openMapTool = $state<SceneMapTool | null>(null);
 	let pingArmed = $state(false);
 	let cameraZoom = $state(1);
 	let lastCameraView = '';
 	let gridVisible = $state(true);
 	let wallsVisible = $state(true);
 	let areasVisible = $state(true);
-	let layerToolsOpen = $state(false);
+	let mapToolsState = $derived<SceneMapToolsState>({
+		isGM,
+		isEnglish: $appLocale === 'en',
+		fogEnabled: scene.fogEnabled,
+		fogMode,
+		fogBrush,
+		areas,
+		saveAreaArmed,
+		areaLabel,
+		areaVisible,
+		walls,
+		wallDrawing,
+		wallKind,
+		openTool: openMapTool,
+		cameraZoom,
+		gridVisible,
+		wallsVisible,
+		areasVisible
+	});
 	let tokenRefreshTimer: number | undefined;
 	const personagemIdByToken = new SvelteMap<string, number>();
 	function personagemIdFor(tokenId: string, fallback: number) {
@@ -667,19 +691,28 @@
 			motor?.setAreasVisible(areasVisible);
 		}
 	}
-	type MapTool = 'layers' | 'areas' | 'barriers';
-	function toggleMapTool(tool: MapTool) {
-		const wasOpen =
-			tool === 'layers' ? layerToolsOpen : tool === 'areas' ? areaToolsOpen : wallToolsOpen;
-		layerToolsOpen = false;
-		areaToolsOpen = false;
-		wallToolsOpen = false;
-		if (wasOpen) return;
+	function toggleMapTool(tool: SceneMapTool) {
+		openMapTool = toggleSceneMapTool(openMapTool, tool);
+		if (!openMapTool) return;
 		window.dispatchEvent(new CustomEvent('maismorras:close-table-tools'));
-		if (tool === 'layers') layerToolsOpen = true;
-		if (tool === 'areas') areaToolsOpen = true;
-		if (tool === 'barriers') wallToolsOpen = true;
 	}
+	const mapToolsActions: SceneMapToolsActions = {
+		onFogModeToggle: (mode) => (fogMode = fogMode === mode ? null : mode),
+		onFogBrushChange: (brush) => (fogBrush = brush),
+		onZoom: ajustarZoom,
+		onRecenter: recentralizarMapa,
+		onToggleGrid: alternarGrade,
+		onToggleLayer: alternarCamada,
+		onToolToggle: toggleMapTool,
+		onAreaLabelChange: (label) => (areaLabel = label),
+		onAreaVisibilityToggle: () => (areaVisible = !areaVisible),
+		onSaveAreaToggle: () => (saveAreaArmed = !saveAreaArmed),
+		onAreaRemove: (area) => void removeArea(area),
+		onWallKindChange: (kind) => (wallKind = kind),
+		onWallDrawingToggle: toggleWallDrawing,
+		onDoorToggle: (wall) => void toggleDoor(wall),
+		onWallRemove: (wall) => void removeWall(wall)
+	};
 	function persistirVisaoDaCamera() {
 		if (!motor?.camera) return;
 		cameraZoom = motor.camera.zoom;
@@ -695,13 +728,11 @@
 
 	onMount(() => {
 		const mapToolHandler = (event: Event) => {
-			const tool = (event as CustomEvent<'layers' | 'areas' | 'barriers'>).detail;
+			const tool = (event as CustomEvent<SceneMapTool>).detail;
 			toggleMapTool(tool);
 		};
 		const closeHandler = () => {
-			layerToolsOpen = false;
-			areaToolsOpen = false;
-			wallToolsOpen = false;
+			openMapTool = null;
 		};
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
 		window.addEventListener('maismorras:close-map-tools', closeHandler);
@@ -1013,176 +1044,7 @@
 			>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button
 		>
 	</div>
-	<div class="camera-tools" aria-label={$appLocale === 'en' ? 'Map camera' : 'Câmera do mapa'}>
-		<button
-			onclick={() => ajustarZoom(-0.1)}
-			aria-label={$appLocale === 'en' ? 'Zoom out' : 'Diminuir zoom'}
-			title={$appLocale === 'en' ? 'Zoom out' : 'Diminuir zoom'}>−</button
-		>
-		<span>{`${Math.round(cameraZoom * 100)}%`}</span>
-		<button
-			onclick={() => ajustarZoom(0.1)}
-			aria-label={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'}
-			title={$appLocale === 'en' ? 'Zoom in' : 'Aumentar zoom'}>+</button
-		>
-		<button
-			class="camera-reset"
-			onclick={recentralizarMapa}
-			aria-label={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'}
-			title={$appLocale === 'en' ? 'Center map' : 'Recentralizar mapa'}>⌖</button
-		>
-		<button
-			class:active={!gridVisible}
-			onclick={alternarGrade}
-			aria-label={$appLocale === 'en' ? 'Toggle grid' : 'Alternar grade'}
-			title={$appLocale === 'en' ? 'Toggle grid' : 'Alternar grade'}>#</button
-		>
-	</div>
-	{#if isGM}<div
-			class="table-tools-gm"
-			aria-label={$appLocale === 'en' ? 'Table tools' : 'Ferramentas da mesa'}
-		>
-			<div class="table-tools-gm-buttons">
-				<div class="layer-tool-trigger">
-					<button
-						class:active={layerToolsOpen}
-						onclick={() => toggleMapTool('layers')}
-						aria-label={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
-						title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
-					>{#if layerToolsOpen}<div class="layer-tools">
-							<strong>{$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}</strong><label
-								><input type="checkbox" checked={gridVisible} onchange={alternarGrade} />
-								{$appLocale === 'en' ? 'Grid' : 'Grade'}</label
-							><label
-								><input
-									type="checkbox"
-									checked={wallsVisible}
-									onchange={() => alternarCamada('walls')}
-								/>
-								{$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}</label
-							><label
-								><input
-									type="checkbox"
-									checked={areasVisible}
-									onchange={() => alternarCamada('areas')}
-								/>
-								{$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}</label
-							><small
-								>{$appLocale === 'en'
-									? 'Visual only; scene data is preserved.'
-									: 'Apenas visual; os dados da cena são preservados.'}</small
-							>
-						</div>{/if}
-				</div>
-				<div class="area-tool-trigger">
-					<button
-						class:active={areaToolsOpen || saveAreaArmed}
-						onclick={() => toggleMapTool('areas')}
-						aria-label={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}
-						title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button
-					>{#if areaToolsOpen}<div class="area-tools">
-							<strong>{$appLocale === 'en' ? 'Persistent area' : 'Área persistente'}</strong><small
-								>{$appLocale === 'en'
-									? 'Choose the ruler and drag with Shift to save an area.'
-									: 'Escolha a régua e arraste com Shift para salvar a área.'}</small
-							><input
-								bind:value={areaLabel}
-								maxlength="80"
-								aria-label={$appLocale === 'en' ? 'Area label' : 'Rótulo da área'}
-							/><label
-								><input type="checkbox" bind:checked={areaVisible} />
-								{$appLocale === 'en' ? 'players can see' : 'jogadores veem'}</label
-							><button class:active={saveAreaArmed} onclick={() => (saveAreaArmed = !saveAreaArmed)}
-								>{saveAreaArmed
-									? $appLocale === 'en'
-										? 'Draw with Shift'
-										: 'Desenhe com Shift'
-									: $appLocale === 'en'
-										? 'Save next ruler'
-										: 'Salvar próxima régua'}</button
-							>{#if areas.length}<div class="area-list">
-									{#each areas as area (area.id)}<span
-											>{area.label}<button onclick={() => void removeArea(area)}>×</button></span
-										>{/each}
-								</div>{/if}
-						</div>{/if}
-				</div>
-				<div class="wall-tool-trigger">
-					<button
-						class:active={wallToolsOpen || wallDrawing}
-						onclick={() => toggleMapTool('barriers')}
-						aria-label={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}
-						title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
-					>{#if wallToolsOpen}<div class="wall-tools">
-							<strong>{$appLocale === 'en' ? 'Barriers' : 'Barreiras'}</strong><select
-								bind:value={wallKind}
-								aria-label="Tipo de barreira"
-								><option value="wall">{$appLocale === 'en' ? 'Wall' : 'Parede'}</option><option
-									value="door">{$appLocale === 'en' ? 'Door' : 'Porta'}</option
-								></select
-							><button class:active={wallDrawing} onclick={toggleWallDrawing}
-								>{wallDrawing
-									? $appLocale === 'en'
-										? 'Drag on map…'
-										: 'Arraste no mapa…'
-									: $appLocale === 'en'
-										? `Draw ${wallKind === 'door' ? 'door' : 'wall'}`
-										: `Desenhar ${wallKind === 'door' ? 'porta' : 'parede'}`}</button
-							><small
-								>{$appLocale === 'en'
-									? 'Closed barriers block vision and movement.'
-									: 'Fechadas bloqueiam visão e movimento.'}</small
-							>{#if walls.length}<div class="wall-list">
-									{#each walls as wall (wall.id)}<span
-											>{wall.kind === 'door'
-												? wall.open
-													? $appLocale === 'en'
-														? 'Open door'
-														: 'Porta aberta'
-													: $appLocale === 'en'
-														? 'Closed door'
-														: 'Porta fechada'
-												: $appLocale === 'en'
-													? 'Wall'
-													: 'Parede'}<span
-												>{#if wall.kind === 'door'}<button onclick={() => void toggleDoor(wall)}
-														>{wall.open
-															? $appLocale === 'en'
-																? 'Close'
-																: 'Fechar'
-															: $appLocale === 'en'
-																? 'Open'
-																: 'Abrir'}</button
-													>{/if}<button
-													onclick={() => void removeWall(wall)}
-													aria-label={$appLocale === 'en' ? 'Remove barrier' : 'Remover barreira'}
-													>×</button
-												></span
-											></span
-										>{/each}
-								</div>{/if}
-						</div>{/if}
-				</div>
-			</div>
-		</div>{/if}
-	{#if isGM && scene.fogEnabled}<div class="fog-tools">
-			<strong>🌫 Névoa</strong>
-			<div>
-				<button
-					class:active={fogMode === 'reveal'}
-					onclick={() => (fogMode = fogMode === 'reveal' ? null : 'reveal')}>Revelar</button
-				><button
-					class:active={fogMode === 'hide'}
-					onclick={() => (fogMode = fogMode === 'hide' ? null : 'hide')}>Ocultar</button
-				>
-			</div>
-			<select bind:value={fogBrush} aria-label="Tamanho do pincel"
-				><option value={1}>1×1</option><option value={3}>3×3</option><option value={5}>5×5</option
-				></select
-			>{#if fogMode}<small
-					>Clique no mapa para {fogMode === 'reveal' ? 'revelar' : 'ocultar'}.</small
-				>{/if}
-		</div>{/if}
+	<SceneMapTools state={mapToolsState} actions={mapToolsActions} />
 	{#if personagemSelecionado}
 		<section class="token-inspector" aria-label={`Informações de ${personagemSelecionado.nome}`}>
 			<header>
@@ -1512,367 +1374,6 @@
 		color: #291b10;
 		background: #e0b86f;
 	}
-	.camera-tools {
-		position: absolute;
-		z-index: 4;
-		top: 0.8rem;
-		left: 50%;
-		transform: translateX(-50%);
-		display: flex;
-		align-items: center;
-		gap: 0.2rem;
-		padding: 0.25rem;
-		border: 1px solid rgba(216, 173, 103, 0.45);
-		border-radius: 8px;
-		color: #ead8b7;
-		background: rgba(25, 19, 23, 0.92);
-		box-shadow: 0 8px 18px #0004;
-		backdrop-filter: blur(8px);
-	}
-	.camera-tools button {
-		display: grid;
-		place-items: center;
-		width: 1.8rem;
-		height: 1.8rem;
-		border: 0;
-		border-radius: 5px;
-		color: #f0cb85;
-		background: transparent;
-		font-size: 1rem;
-		cursor: pointer;
-	}
-	.camera-tools button:hover {
-		background: #453329;
-	}
-	.camera-tools span {
-		min-width: 3.1rem;
-		text-align: center;
-		font-size: 0.63rem;
-		font-variant-numeric: tabular-nums;
-	}
-	.camera-tools .camera-reset {
-		border-left: 1px solid #5c4b40;
-		border-radius: 0 5px 5px 0;
-		margin-left: 0.1rem;
-		padding-left: 0.35rem;
-	}
-	.fog-tools {
-		position: absolute;
-		z-index: 4;
-		top: 0.8rem;
-		right: 0.8rem;
-		display: grid;
-		gap: 0.35rem;
-		padding: 0.55rem;
-		border: 1px solid #765d3d;
-		border-radius: 8px;
-		color: #ebddca;
-		background: rgba(25, 19, 23, 0.92);
-		font-size: 0.65rem;
-	}
-	.fog-tools div {
-		display: flex;
-		gap: 0.25rem;
-	}
-	.fog-tools button,
-	.fog-tools select {
-		border: 1px solid #5d493b;
-		border-radius: 5px;
-		padding: 0.3rem;
-		color: #e8d3aa;
-		background: #241c1e;
-		font-size: 0.63rem;
-	}
-	.fog-tools button.active {
-		color: #271b10;
-		background: #e0b86f;
-	}
-	.fog-tools small {
-		color: #baaa98;
-		font-size: 0.58rem;
-	}
-	.area-tool-trigger {
-		position: absolute;
-		z-index: 5;
-		top: 8.8rem;
-		left: 0.9rem;
-	}
-	.area-tool-trigger > button {
-		display: grid;
-		place-items: center;
-		width: 3rem;
-		height: 3rem;
-		border: 1px solid #765d3d;
-		border-radius: 7px;
-		padding: 0.2rem;
-		color: #ecd8a8;
-		background: rgba(25, 19, 23, 0.92);
-		font-size: 1.05rem;
-		cursor: pointer;
-	}
-	.area-tool-trigger > button.active {
-		color: #291b10;
-		background: #e0b86f;
-	}
-	.area-tools {
-		position: absolute;
-		z-index: 1;
-		top: 0;
-		left: 3.45rem;
-		display: grid;
-		gap: 0.3rem;
-		width: 180px;
-		padding: 0.55rem;
-		border: 1px solid #765d3d;
-		border-radius: 8px;
-		color: #ebddca;
-		background: rgba(25, 19, 23, 0.96);
-		font-size: 0.62rem;
-		box-shadow: 0 10px 24px #0006;
-	}
-	.area-tools small {
-		color: #b9aa9d;
-		line-height: 1.35;
-	}
-	.area-tools input {
-		min-width: 0;
-		border: 1px solid #5d493b;
-		border-radius: 4px;
-		padding: 0.3rem;
-		color: #e8d3aa;
-		background: #241c1e;
-		font-size: 0.62rem;
-	}
-	.area-tools label {
-		color: #b9aa9d;
-	}
-	.area-tools button {
-		border: 1px solid #765d3d;
-		border-radius: 5px;
-		padding: 0.35rem;
-		color: #e8d3aa;
-		background: #2b211e;
-		font-size: 0.62rem;
-	}
-	.area-tools button.active {
-		color: #281a0f;
-		background: #e0b86f;
-	}
-	.area-list {
-		display: grid;
-		gap: 0.2rem;
-		max-height: 92px;
-		overflow: auto;
-	}
-	.area-list span {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.25rem;
-		color: #d8c5aa;
-	}
-	.area-list button {
-		border: 0;
-		padding: 0;
-		color: #dfa797;
-		background: transparent;
-	}
-	.layer-tool-trigger {
-		position: absolute;
-		z-index: 5;
-		top: 0.8rem;
-		left: 0.8rem;
-	}
-	.layer-tool-trigger > button {
-		display: grid;
-		place-items: center;
-		width: 2.35rem;
-		height: 2.35rem;
-		border: 1px solid #765d3d;
-		border-radius: 7px;
-		color: #ecd8a8;
-		background: rgba(25, 19, 23, 0.92);
-		font-size: 1rem;
-		cursor: pointer;
-	}
-	.layer-tool-trigger > button.active {
-		color: #291b10;
-		background: #e0b86f;
-	}
-	.layer-tools {
-		position: absolute;
-		top: 2.7rem;
-		left: 0;
-		display: grid;
-		gap: 0.42rem;
-		width: 190px;
-		padding: 0.6rem;
-		border: 1px solid #765d3d;
-		border-radius: 8px;
-		color: #ebddca;
-		background: rgba(25, 19, 23, 0.97);
-		font-size: 0.65rem;
-		box-shadow: 0 10px 24px #0006;
-	}
-	.layer-tools label {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		color: #cdbda9;
-	}
-	.layer-tools input {
-		accent-color: #d8ad67;
-	}
-	.layer-tools small {
-		color: #9f9186;
-		font-size: 0.58rem;
-		line-height: 1.3;
-	}
-	.wall-tools {
-		position: absolute;
-		z-index: 4;
-		top: 12rem;
-		right: 0.8rem;
-		display: grid;
-		gap: 0.3rem;
-		width: 145px;
-		padding: 0.55rem;
-		border: 1px solid #765d3d;
-		border-radius: 8px;
-		color: #ebddca;
-		background: rgba(25, 19, 23, 0.92);
-		font-size: 0.62rem;
-	}
-	.wall-tools button,
-	.wall-tools select {
-		border: 1px solid #765d3d;
-		border-radius: 5px;
-		padding: 0.35rem;
-		color: #e8d3aa;
-		background: #2b211e;
-		font-size: 0.62rem;
-	}
-	.wall-tools button.active {
-		color: #281a0f;
-		background: #e0b86f;
-	}
-	.wall-tools small {
-		color: #b9aa9d;
-		font-size: 0.58rem;
-	}
-	.wall-list {
-		display: grid;
-		gap: 0.2rem;
-		max-height: 70px;
-		overflow: auto;
-	}
-	.wall-list > span,
-	.wall-list > span > span {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.25rem;
-		color: #d8c5aa;
-	}
-	.wall-list button {
-		border: 0;
-		padding: 0;
-		color: #dfa797;
-		background: transparent;
-	}
-	.table-tools-gm {
-		position: absolute;
-		z-index: 6;
-		top: 0.8rem;
-		left: 0.9rem;
-		width: 0;
-		height: 0;
-	}
-	.table-tools-gm-buttons {
-		display: block;
-	}
-	.table-tools-gm-buttons > div {
-		position: relative;
-		width: 0;
-		height: 0;
-	}
-	.table-tools-gm-buttons .layer-tool-trigger,
-	.table-tools-gm-buttons .area-tool-trigger,
-	.table-tools-gm-buttons .wall-tool-trigger {
-		position: relative;
-		top: auto;
-		left: auto;
-		right: auto;
-		transform: none;
-	}
-	.table-tools-gm-buttons > div > button {
-		display: grid;
-		place-items: center;
-		width: 2.35rem;
-		height: 2.35rem;
-		border: 0;
-		border-radius: 6px;
-		color: #f0cb85;
-		background: transparent;
-		font-size: 1.05rem;
-		cursor: pointer;
-	}
-	.table-tools-gm-buttons > div > button {
-		display: none;
-	}
-	.table-tools-gm-buttons > div > button:hover,
-	.table-tools-gm-buttons > div > button.active {
-		background: #453329;
-	}
-	.table-tools-gm .layer-tools,
-	.table-tools-gm .area-tools,
-	.table-tools-gm .wall-tools {
-		box-sizing: border-box;
-		display: grid;
-		gap: 0.5rem;
-		top: 0;
-		left: 3rem;
-		right: auto;
-		width: min(300px, calc(100vw - 5rem));
-		max-height: calc(100dvh - 2rem);
-		overflow-y: auto;
-		padding: 0.85rem;
-		border: 1px solid rgba(216, 173, 103, 0.38);
-		border-radius: 10px;
-		color: #eee4d6;
-		background: rgba(25, 19, 23, 0.96);
-		box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-		backdrop-filter: blur(12px);
-		z-index: 20;
-		font-family: inherit;
-		font-size: 0.72rem;
-		line-height: 1.35;
-		text-align: left;
-	}
-	.table-tools-gm .area-tools {
-		top: 3rem;
-	}
-	.table-tools-gm .wall-tools {
-		top: 6rem;
-	}
-	.table-tools-gm .layer-tools label,
-	.table-tools-gm .area-tools label,
-	.table-tools-gm .layer-tools small,
-	.table-tools-gm .area-tools small,
-	.table-tools-gm .wall-tools small,
-	.table-tools-gm .layer-tools strong,
-	.table-tools-gm .area-tools strong,
-	.table-tools-gm .wall-tools strong {
-		width: 100%;
-		text-align: left;
-	}
-	.table-tools-gm .area-tools input,
-	.table-tools-gm .wall-tools select,
-	.table-tools-gm .area-tools button,
-	.table-tools-gm .wall-tools button {
-		width: 100%;
-		font: inherit;
-		font-size: 0.72rem;
-		text-align: left;
-	}
 	.remove-token {
 		border: 1px solid #9b5b4d;
 		border-radius: 6px;
@@ -1898,28 +1399,6 @@
 			width: calc(100% - 0.9rem);
 			max-height: 52%;
 			overflow: auto;
-		}
-		/* Four compact controls in one row: ruler, initiative, dice, and areas. */
-		.table-tools-gm {
-			top: 0.75rem;
-			left: 50%;
-			transform: translateX(-50%);
-		}
-		.table-tools-gm-buttons > div > button {
-			width: 2.35rem;
-			height: 2.35rem;
-			font-size: 1rem;
-		}
-		.table-tools-gm .layer-tools,
-		.table-tools-gm .area-tools,
-		.table-tools-gm .wall-tools {
-			top: 3.55rem;
-			left: 50%;
-			transform: translateX(-50%);
-			z-index: 20;
-		}
-		.camera-tools {
-			top: 0.65rem;
 		}
 		.ping-tool.has-fog {
 			top: 3.55rem;
