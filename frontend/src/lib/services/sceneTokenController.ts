@@ -27,7 +27,7 @@ export function toPersistedToken(personagem: Personagem): NewPersistedToken {
 		visionRange: personagem.visionRange,
 		lightRange: personagem.lightRange,
 		statuses: personagem.status ?? [],
-		hidden: false,
+		hidden: personagem.hidden ?? false,
 		visibility: {
 			...personagem.visibility,
 			imageScale: personagem.fotoEscala,

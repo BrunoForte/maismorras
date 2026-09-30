@@ -6,6 +6,7 @@ const token: Personagem = {
 	id: 7,
 	persistedId: 'token-id',
 	isOwned: true,
+	hidden: false,
 	visibility: {
 		showName: true,
 		showHP: true,
@@ -65,6 +66,10 @@ describe('scene token controller mapping', () => {
 				imageOffsetY: -2
 			}
 		});
+	});
+
+	it('preserves the narrator-controlled hidden state when serializing an edited token', () => {
+		expect(toPersistedToken({ ...token, hidden: true }).hidden).toBe(true);
 	});
 
 	it('does not mutate the local character while creating the request snapshot', () => {

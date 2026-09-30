@@ -45,6 +45,7 @@ describe('scene token state', () => {
 			persistedId: 'token-a',
 			actorId: 'actor-a',
 			isOwned: true,
+			hidden: false,
 			nome: 'Arqueira',
 			cor: 0x8844aa,
 			x: 12,
@@ -63,6 +64,7 @@ describe('scene token state', () => {
 			status: ['Caído'],
 			visibility: persistedToken.visibility
 		});
+		expect(toSceneCharacter({ ...persistedToken, hidden: true }, 9).hidden).toBe(true);
 		expect(toSceneCharacter({ ...persistedToken, imageUrl: null }, 8).fotoUrl).toBeUndefined();
 	});
 

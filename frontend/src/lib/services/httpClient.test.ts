@@ -38,12 +38,27 @@ describe('fetchAuthenticated', () => {
 
 		expect(response.status).toBe(200);
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls[0][1]?.cache).toBe('no-store');
+		expect(fetchMock.mock.calls[1][1]?.cache).toBe('no-store');
 		expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Authorization')).toBe(
 			'Bearer expired-token'
 		);
 		expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe(
 			'Bearer fresh-token'
 		);
+	});
+
+	it('preserves an explicit caller cache policy', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await fetchAuthenticated(
+			{ access_token: 'token', user: { id: 'user-1' } } as Session,
+			'https://api.example.test/resource',
+			{ cache: 'reload' }
+		);
+
+		expect(fetchMock.mock.calls[0][1]?.cache).toBe('reload');
 	});
 
 	it('does not retry with a refreshed session belonging to another user', async () => {

@@ -145,6 +145,45 @@ async function publishTokenInvalidation(page: Page, sceneId: string, tokenId: st
 	);
 }
 
+async function publishAndReadToken(
+	publisher: Page,
+	reader: Page,
+	reconciler: Page,
+	sceneId: string,
+	tokenId: string
+) {
+	const expectedUrl = new URL(`/api/v1/scenes/${sceneId}/tokens/${tokenId}`, apiBase).href;
+	const tokenRequest = reader.waitForRequest(
+		(request) => request.method() === 'GET' && request.url() === expectedUrl,
+		{ timeout: 15_000 }
+	);
+	const reconcileRequest = reconciler.waitForRequest(
+		(request) => request.method() === 'GET' && request.url() === expectedUrl,
+		{ timeout: 15_000 }
+	);
+	await publishTokenInvalidation(publisher, sceneId, tokenId);
+	const [request, reconcile] = await Promise.all([tokenRequest, reconcileRequest]);
+	const [response, reconcileResponse] = await Promise.all([
+		request.response(),
+		reconcile.response()
+	]);
+	if (!response || !reconcileResponse)
+		throw new Error('Realtime token reads did not produce HTTP responses.');
+	return { reader: response, reconciler: reconcileResponse };
+}
+
+function logCacheDiagnostics(response: { headers: () => Record<string, string> }) {
+	const headers = response.headers();
+	console.info(
+		'[E2E] API cache diagnostics',
+		JSON.stringify({
+			cacheControl: headers['cache-control'] ?? null,
+			age: headers.age ?? null,
+			etag: headers.etag ?? null
+		})
+	);
+}
+
 test.describe('disposable authenticated campaign and realtime token flow', () => {
 	test.skip(!ownerStatePath, 'Configure E2E_STORAGE_STATE with a dedicated narrator account.');
 
@@ -189,8 +228,21 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				playerContext = await browser.newContext({ storageState: playerStatePath });
 				const ownerPage = await ownerContext.newPage();
 				const playerPage = await playerContext.newPage();
+				const ownerRealtimePublisher = await ownerContext.newPage();
 				const sceneUrl = `${baseURL}/?campaign=${campaignId}&scene=${scene.id}`;
-				await Promise.all([ownerPage.goto(sceneUrl), playerPage.goto(sceneUrl)]);
+				const frontendSceneRequest = playerPage.waitForRequest(
+					(request) =>
+						request.method() === 'GET' &&
+						new URL(request.url()).pathname === `/api/v1/scenes/${scene.id}`,
+					{ timeout: 30_000 }
+				);
+				await Promise.all([
+					ownerPage.goto(sceneUrl),
+					playerPage.goto(sceneUrl),
+					ownerRealtimePublisher.goto(baseURL!)
+				]);
+				const actualFrontendAPIRequest = await frontendSceneRequest;
+				expect(new URL(actualFrontendAPIRequest.url()).origin).toBe(new URL(apiBase).origin);
 				await Promise.all([
 					expect(ownerPage.locator('canvas').first()).toBeVisible({ timeout: 30_000 }),
 					expect(playerPage.locator('canvas').first()).toBeVisible({ timeout: 30_000 })
@@ -228,13 +280,9 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				expect(tokenCreate.status()).toBe(201);
 				const token = (await tokenCreate.json()) as Token;
 
-				const visibleTokenResponse = playerPage.waitForResponse(
-					(response) => response.url().endsWith(`/api/v1/scenes/${scene.id}/tokens/${token.id}`),
-					{ timeout: 15_000 }
-				);
-				await publishTokenInvalidation(ownerPage, scene.id, token.id);
-				const visibleToken = await visibleTokenResponse;
+				const visibleToken = await playerApi.get(`/api/v1/scenes/${scene.id}/tokens/${token.id}`);
 				expect(visibleToken.status()).toBe(200);
+				logCacheDiagnostics(visibleToken);
 				expect((await visibleToken.json()).name).toBe(token.name);
 
 				const changedToken = { ...tokenData, id: token.id, x: 4, y: 3 };
@@ -243,25 +291,54 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 					{ data: changedToken }
 				);
 				expect(updateResponse.ok()).toBeTruthy();
-				const movedTokenResponse = playerPage.waitForResponse(
-					(response) => response.url().endsWith(`/api/v1/scenes/${scene.id}/tokens/${token.id}`),
-					{ timeout: 15_000 }
+				logCacheDiagnostics(updateResponse);
+				expect(await updateResponse.json()).toMatchObject({ x: 4, y: 3 });
+
+				const directTokenResponse = await ownerApi.get(
+					`/api/v1/scenes/${scene.id}/tokens/${token.id}`
 				);
-				await publishTokenInvalidation(ownerPage, scene.id, token.id);
-				const movedToken = await movedTokenResponse;
+				expect(directTokenResponse.status()).toBe(200);
+				logCacheDiagnostics(directTokenResponse);
+				expect(await directTokenResponse.json()).toMatchObject({ x: 4, y: 3 });
+				const playerDirectTokenResponse = await playerApi!.get(
+					`/api/v1/scenes/${scene.id}/tokens/${token.id}`
+				);
+				expect(playerDirectTokenResponse.status()).toBe(200);
+				logCacheDiagnostics(playerDirectTokenResponse);
+				expect(await playerDirectTokenResponse.json()).toMatchObject({ x: 4, y: 3 });
+
+				const realtimeReads = await publishAndReadToken(
+					ownerRealtimePublisher,
+					playerPage,
+					ownerPage,
+					scene.id,
+					token.id
+				);
+				const movedToken = realtimeReads.reader;
 				expect(movedToken.status()).toBe(200);
+				logCacheDiagnostics(movedToken);
 				expect(await movedToken.json()).toMatchObject({ x: 4, y: 3 });
+				expect(realtimeReads.reconciler.status()).toBe(200);
+				logCacheDiagnostics(realtimeReads.reconciler);
+				expect(await realtimeReads.reconciler.json()).toMatchObject({ x: 4, y: 3 });
 
 				const hideResponse = await ownerApi.patch(`/api/v1/scenes/${scene.id}/tokens/${token.id}`, {
 					data: { ...changedToken, hidden: true }
 				});
 				expect(hideResponse.ok()).toBeTruthy();
-				const hiddenTokenResponse = playerPage.waitForResponse(
-					(response) => response.url().endsWith(`/api/v1/scenes/${scene.id}/tokens/${token.id}`),
-					{ timeout: 15_000 }
+				logCacheDiagnostics(hideResponse);
+				expect(await hideResponse.json()).toMatchObject({ x: 4, y: 3, hidden: true });
+				const hiddenDirectResponse = await ownerApi.get(
+					`/api/v1/scenes/${scene.id}/tokens/${token.id}`
 				);
-				await publishTokenInvalidation(ownerPage, scene.id, token.id);
-				expect((await hiddenTokenResponse).status()).toBe(404);
+				expect(hiddenDirectResponse.status()).toBe(200);
+				logCacheDiagnostics(hiddenDirectResponse);
+				expect(await hiddenDirectResponse.json()).toMatchObject({ x: 4, y: 3, hidden: true });
+				const hiddenPlayerDirectResponse = await playerApi!.get(
+					`/api/v1/scenes/${scene.id}/tokens/${token.id}`
+				);
+				expect(hiddenPlayerDirectResponse.status()).toBe(404);
+				logCacheDiagnostics(hiddenPlayerDirectResponse);
 			}
 		} finally {
 			if (ownerContext) await ownerContext.close();

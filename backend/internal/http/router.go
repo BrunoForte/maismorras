@@ -125,7 +125,19 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.HandleFunc("GET /health", health)
 	mux.Handle("GET /health/ready", readinessHandler(readinessProvider))
 
-	return requestLogger(logger)(recoverer(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux))))
+	return requestLogger(logger)(apiNoStore(recoverer(logger)(securityHeaders(cors(cfg.CORSOrigin)(mux)))))
+}
+
+// apiNoStore prevents browsers and intermediary caches from serving stale
+// authenticated state after realtime invalidations. Keep it outside the API
+// handlers so auth errors and all response paths receive the same policy.
+func apiNoStore(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/") {
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {

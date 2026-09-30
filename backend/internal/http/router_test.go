@@ -2,11 +2,15 @@ package apphttp
 
 import (
 	"bufio"
+	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"vtt-backend/internal/config"
+	"vtt-backend/internal/overlayaccess"
 	"vtt-backend/internal/realtime"
 )
 
@@ -87,5 +91,44 @@ func TestStatusRecorderForwardsHijack(t *testing.T) {
 	}
 	if recorder.status != http.StatusSwitchingProtocols {
 		t.Fatalf("Hijack status = %d, want %d", recorder.status, http.StatusSwitchingProtocols)
+	}
+}
+
+func TestDynamicAPIResponsesAreNotStored(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := config.Config{CORSOrigin: "https://app.example.test"}
+	router := NewRouter(
+		cfg, logger,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusUnauthorized) }),
+		overlayaccess.NewHandler(nil, cfg),
+	)
+	paths := []string{
+		"/api/v1/campaigns",
+		"/api/v1/campaigns/00000000-0000-4000-8000-000000000001/scenes",
+		"/api/v1/campaigns/00000000-0000-4000-8000-000000000001/notes",
+		"/api/v1/campaigns/00000000-0000-4000-8000-000000000001/events",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002/tokens/00000000-0000-4000-8000-000000000003",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002/overlay-layout",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002/presentation",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002/combat",
+		"/api/v1/scenes/00000000-0000-4000-8000-000000000002/effects",
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, path, nil)
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, want unauthorized", response.Code)
+			}
+			if got := response.Header().Get("Cache-Control"); got != "no-store" {
+				t.Fatalf("cache control = %q, want no-store", got)
+			}
+			if got := response.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+				t.Fatalf("security header was lost: X-Content-Type-Options = %q", got)
+			}
+		})
 	}
 }

@@ -371,7 +371,6 @@
 				url: imageUrl ?? null,
 				expiresAt: Date.now() + 45 * 60 * 1000
 			});
-			let updatedCharacter: Personagem | undefined;
 			personagens.update((lista) => {
 				const existing = lista.find((item) => item.persistedId === token.id);
 				const updated = toSceneCharacter(
@@ -379,10 +378,11 @@
 					personagemIdFor(token.id, existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1),
 					imageUrl
 				);
-				updatedCharacter = updated;
+				// Mark the server snapshot before notifying the reactive store. Otherwise
+				// the GM persistence subscriber may write a stale local token back.
+				tokenController.remember(updated);
 				return upsertSceneCharacter(lista, updated);
 			});
-			if (updatedCharacter) tokenController.remember(updatedCharacter);
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 404) {
 				personagens.update((lista) => removeSceneCharacter(lista, signal.tokenId));

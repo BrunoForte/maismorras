@@ -28,7 +28,7 @@ export async function fetchAuthenticated(
 	const send = (accessToken: string) => {
 		const headers = new Headers(init.headers);
 		headers.set('Authorization', `Bearer ${accessToken}`);
-		return fetch(input, { ...init, headers });
+		return fetch(input, { ...init, cache: init.cache ?? 'no-store', headers });
 	};
 	const response = await send(session.access_token);
 	if (response.status !== 401) return response;

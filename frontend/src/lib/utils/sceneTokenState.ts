@@ -10,6 +10,7 @@ export function toSceneCharacter(
 	return {
 		id,
 		persistedId: token.id,
+		hidden: token.hidden,
 		actorId: token.actorId ?? undefined,
 		isOwned: token.isOwner,
 		nome: token.name,

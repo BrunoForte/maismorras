@@ -42,6 +42,8 @@ export type Personagem = {
 	id: number;
 	// UUID do token persistido no backend. O id numérico continua sendo usado pelo PixiJS.
 	persistedId?: string;
+	// Estado de ocultação controlado pelo narrador e preservado em atualizações de token.
+	hidden?: boolean;
 	actorId?: string;
 	isOwned?: boolean;
 	visibility: TokenVisibility;
