@@ -447,11 +447,11 @@ async function collapseAndRestore(
 ) {
 	const before = await panel.boundingBox();
 	expect(before).toBeTruthy();
-	await page.getByRole('button', { name: openLabel }).click();
-	await expect(panel).toHaveClass(/closed/);
 	const headerHeight = await panel
 		.locator(headerSelector)
 		.evaluate((node) => node.getBoundingClientRect().height);
+	await page.getByRole('button', { name: openLabel }).click();
+	await expect(panel).toHaveClass(/closed/);
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))
 		.toBeLessThanOrEqual(headerHeight + 4);
