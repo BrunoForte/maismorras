@@ -22,6 +22,13 @@ select ok((select relrowsecurity from pg_class where oid='public.overlay_pairing
 select ok((select relrowsecurity from pg_class where oid='public.overlay_access_sessions'::regclass), 'OBS access grants have RLS enabled');
 select ok(not has_table_privilege('anon','public.overlay_pairing_codes','SELECT') and not has_table_privilege('authenticated','public.overlay_pairing_codes','SELECT') and not has_table_privilege('anon','public.overlay_access_sessions','SELECT') and not has_table_privilege('authenticated','public.overlay_access_sessions','SELECT'), 'pairing secrets are not exposed to Data API roles');
 select ok(exists (select 1 from pg_trigger where tgrelid='public.game_events'::regclass and tgname='game_events_campaign_realtime' and tgisinternal=false), 'persisted campaign events publish realtime notifications');
-select ok(not has_function_privilege('anon', 'public.notify_campaign_game_event()', 'EXECUTE') and not has_function_privilege('authenticated', 'public.notify_campaign_game_event()', 'EXECUTE') and not has_function_privilege('service_role', 'public.notify_campaign_game_event()', 'EXECUTE'), 'campaign event notification function is not callable by Data API or service roles');
+select ok(not exists (
+  select 1
+  from pg_proc p
+  cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+  where p.oid='public.notify_campaign_game_event()'::regprocedure
+    and acl.grantee=0
+    and acl.privilege_type='EXECUTE'
+) and not has_function_privilege('anon', 'public.notify_campaign_game_event()', 'EXECUTE') and not has_function_privilege('authenticated', 'public.notify_campaign_game_event()', 'EXECUTE') and not has_function_privilege('service_role', 'public.notify_campaign_game_event()', 'EXECUTE'), 'campaign event trigger cannot be executed by PUBLIC, Data API or service roles');
 select * from finish();
 rollback;
