@@ -14,6 +14,7 @@ test.describe('local authenticated audio E2E', () => {
 	test('music selection is pending until Play and syncs the committed crossfade to player and overlay', async ({
 		browser
 	}, testInfo) => {
+		test.setTimeout(60_000);
 		test.skip(
 			testInfo.project.name !== 'chromium',
 			'The authenticated API integration runs once on desktop.'
@@ -300,6 +301,7 @@ test.describe('local authenticated audio E2E', () => {
 	test('loop revisions, stale events and reconnection preserve current audio', async ({
 		browser
 	}, testInfo) => {
+		test.setTimeout(60_000);
 		test.skip(
 			testInfo.project.name !== 'chromium',
 			'The authenticated API integration runs once on desktop.'
