@@ -88,7 +88,14 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await test.step('resize, minimize and restore table chat', async () => {
 				await setExpandedSize(chat, 480, 390);
 				await assertAboveAudioFooter(page, chat);
-				await collapseAndRestore(chat, page, 'Chat da mesa', 'Abrir chat', '.chat-body', 46);
+				await collapseAndRestore(
+					chat,
+					page,
+					'Chat da mesa',
+					'Abrir chat',
+					'.chat-body',
+					'.chat-titlebar'
+				);
 				await expect(chat).toHaveCSS('resize', 'both');
 			});
 			const actors = page.locator('.actor-drawer');
@@ -101,7 +108,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					'Atores da cena',
 					'Abrir atores',
 					'.drawer-body',
-					46
+					'.drawer-toggle'
 				);
 				await expect(actors).toHaveCSS('resize', 'both');
 			});
@@ -436,17 +443,22 @@ async function collapseAndRestore(
 	openLabel: string,
 	collapsedLabel: string,
 	bodySelector: string,
-	headerHeight: number
+	headerSelector: string
 ) {
 	const before = await panel.boundingBox();
 	expect(before).toBeTruthy();
 	await page.getByRole('button', { name: openLabel }).click();
+	await expect(panel).toHaveClass(/closed/);
+	const headerHeight = await panel
+		.locator(headerSelector)
+		.evaluate((node) => node.getBoundingClientRect().height);
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))
-		.toBeLessThan(headerHeight + 20);
+		.toBeLessThanOrEqual(headerHeight + 4);
 	await expect(panel).toHaveCSS('resize', 'none');
 	await expect(panel.locator(bodySelector)).toHaveCount(0);
 	await page.getByRole('button', { name: collapsedLabel }).click();
+	await expect(panel).not.toHaveClass(/closed/);
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))
 		.toBeGreaterThan((before?.height ?? 0) - 10);
