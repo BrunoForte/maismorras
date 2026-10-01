@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import TokenInspector, { type TokenInspectorPermissions } from './TokenInspector.svelte';
 import type { Personagem } from '$lib/stores/gameStore';
 import type { NPC } from '$lib/services/npcApi';
+import { createEmptySheet } from '$lib/services/characterApi';
 
 const token: Personagem = {
 	id: 7,
@@ -36,6 +37,8 @@ const token: Personagem = {
 };
 
 const allPermissions: TokenInspectorPermissions = {
+	canEditHitPoints: true,
+	canViewCharacterSummary: true,
 	canEditAppearance: true,
 	canEditVision: true,
 	canInteractWithDoor: false,
@@ -47,20 +50,37 @@ const allPermissions: TokenInspectorPermissions = {
 	canChangeVisibility: true
 };
 
-function createProps(permissions = allPermissions, npc: NPC | null = null) {
+function createProps(permissions = allPermissions, npc: NPC | null = null, includeSheet = true) {
 	const noop = vi.fn();
+	const characterSheet = {
+		...createEmptySheet(),
+		name: 'Thorin Carvalho',
+		class: 'Guerreiro',
+		subclass: 'Campeão',
+		level: 4,
+		species: 'Anão',
+		background: 'Soldado',
+		armorClass: 16,
+		hitPointsCurrent: 14,
+		hitPointsMax: 18,
+		proficiencyBonus: 2,
+		savingThrows: ['Strength'],
+		skillProficiencies: ['Atletismo'],
+		inventory: [
+			{
+				entryId: 'longsword',
+				name: 'Espada longa',
+				quantity: 1,
+				equipped: true,
+				rules: { category: 'weapon', damage: '1d8' }
+			}
+		]
+	};
 	return {
 		token,
 		npc,
-		characterSummary: {
-			name: 'Thorin Carvalho',
-			class: 'Guerreiro',
-			subclass: 'Campeão',
-			level: 4,
-			species: 'Anão',
-			background: 'Soldado',
-			proficiencyBonus: 2
-		},
+		characterSheet: includeSheet ? characterSheet : undefined,
+		hitPointsUpdating: false,
 		permissions,
 		initiativeAdvantage: true,
 		effectDefinitions: [{ slug: 'blinded', name: 'Cego', summary: 'Não enxerga.', source: 'SRD' }],
@@ -104,9 +124,21 @@ describe('TokenInspector', () => {
 		const { body } = render(TokenInspector, { props: createProps() });
 
 		expect(body).toContain('Thorin Carvalho');
-		expect(body).toContain('Guerreiro · Campeão · Nível 4');
-		expect(body).toContain('Bônus de proficiência +2');
+		expect(body).toContain('Guerreiro · Campeão · N4');
+		expect(body).toContain('Prof.');
+		expect(body).toContain('+2');
+		expect(body).toContain('Ficha resumida do personagem');
+		expect(body).toContain('Salvaguardas');
+		expect(body).toContain('Armas');
+		expect(body).toContain('Espada longa');
 		expect(body).toContain('16');
+	});
+
+	it('renders the authorized summary for a GM even when the token is not player-owned', () => {
+		const gmToken = { ...token, isOwned: false };
+		const { body } = render(TokenInspector, { props: { ...createProps(), token: gmToken } });
+		expect(body).toContain('Ficha resumida do personagem');
+		expect(body).toContain('Thorin Carvalho');
 	});
 
 	it('renders GM controls for conditions, visibility, token removal and vision', () => {
@@ -134,10 +166,24 @@ describe('TokenInspector', () => {
 		expect(body).toContain('Abrir ficha vinculada');
 		expect(body).toContain('Rolar iniciativa');
 		expect(body).toContain('Vantagem na próxima');
+		expect(body).toContain('Digite -10 para sofrer 10 de dano');
 		expect(body).not.toContain('Condições oficiais (SRD)');
 		expect(body).not.toContain('VISIBILIDADE PARA OUTROS JOGADORES');
 		expect(body).not.toContain('Visão na névoa');
 		expect(body).not.toContain('Remover token da cena');
+	});
+
+	it('does not render a private character summary without explicit access', () => {
+		const denied: TokenInspectorPermissions = {
+			...allPermissions,
+			canViewCharacterSummary: false,
+			canEditHitPoints: false,
+			canOpenSheet: false
+		};
+		const { body } = render(TokenInspector, { props: createProps(denied, null, false) });
+		expect(body).not.toContain('Thorin Carvalho');
+		expect(body).not.toContain('Ficha resumida do personagem');
+		expect(body).not.toContain('Pontos de vida atuais');
 	});
 
 	it('hides own-token controls for a player without permission', () => {
@@ -203,6 +249,7 @@ describe('TokenInspector', () => {
 			}
 		};
 		const gmProps = createProps(allPermissions, npc);
+		gmProps.npc!.sheet.actions.push({ ...gmProps.npc!.sheet.actions[0] });
 		const gmBody = render(TokenInspector, { props: gmProps }).body;
 		const playerBody = render(TokenInspector, {
 			props: createProps({ ...allPermissions, canUseNpcActions: false }, npc)
@@ -210,6 +257,7 @@ describe('TokenInspector', () => {
 
 		expect(gmBody).toContain('Ações da criatura');
 		expect(gmBody).toContain('Mordida');
+		expect(gmBody.match(/Mordida/g)).toHaveLength(1);
 		expect(playerBody).not.toContain('Ações da criatura');
 	});
 });

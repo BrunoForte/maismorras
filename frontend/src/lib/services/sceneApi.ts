@@ -276,6 +276,18 @@ export const moveToken = (
 		{ method: 'PATCH', body: JSON.stringify({ x, y }) }
 	);
 
+export type TokenHitPointsUpdate = { hpCurrent: number } | { delta: number };
+export const updateTokenHitPoints = (
+	session: Session,
+	sceneId: string,
+	tokenId: string,
+	update: TokenHitPointsUpdate
+) =>
+	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/${tokenId}/hit-points`, {
+		method: 'PATCH',
+		body: JSON.stringify(update)
+	});
+
 export const createTokenFromCharacter = (session: Session, sceneId: string, actorId: string) =>
 	request<PersistedToken>(session, `/api/v1/scenes/${sceneId}/tokens/from-character`, {
 		method: 'POST',

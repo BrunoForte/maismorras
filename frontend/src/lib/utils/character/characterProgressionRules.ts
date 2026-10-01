@@ -44,17 +44,26 @@ export function deriveCharacterFeatures(
 	level: number,
 	subclassName: string
 ): CharacterFeature[] {
-	const mapFeatures = (features: unknown[], prefix: 'class' | 'subclass'): CharacterFeature[] =>
+	const semanticKey = (feature: Pick<CharacterFeature, 'level' | 'name'>) =>
+		`${feature.level}:${feature.name
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, ' ')
+			.trim()}`;
+	const stableId = (feature: Pick<CharacterFeature, 'level' | 'name'>) =>
+		`feature-${semanticKey(feature).replace(/[^a-z0-9]+/g, '-')}`;
+	const mapFeatures = (features: unknown[]): CharacterFeature[] =>
 		features
 			.filter((feature) => {
 				const item = asRecord(feature);
 				const featureLevel = Number(item?.level ?? 0);
 				return Boolean(item) && Number.isFinite(featureLevel) && featureLevel <= level;
 			})
-			.map((feature, index) => {
+			.map((feature) => {
 				const item = asRecord(feature) ?? {};
 				return {
-					id: `${prefix}-${String(item.id ?? index)}`,
+					id: stableId({ level: Number(item.level ?? 0), name: String(item.name ?? '') }),
 					level: Number(item.level ?? 0),
 					name: String(item.name ?? ''),
 					description: String(item.description ?? '')
@@ -62,10 +71,10 @@ export function deriveCharacterFeatures(
 			})
 			.filter((feature) => feature.name);
 	const classFeaturesFromCompendium = Array.isArray(classEntry?.rules.features)
-		? mapFeatures(classEntry.rules.features, 'class')
+		? mapFeatures(classEntry.rules.features)
 		: [];
 	const subclassFeatures = Array.isArray(subclassEntry?.rules.features)
-		? mapFeatures(subclassEntry.rules.features, 'subclass')
+		? mapFeatures(subclassEntry.rules.features)
 		: [];
 	const customFeatures = customEntries
 		.filter((entry) => isClassProgressionFeature(entry.entryType, entry.rules))
@@ -79,22 +88,36 @@ export function deriveCharacterFeatures(
 			const featureLevel = Number(item?.level ?? 0);
 			return Boolean(item) && Number.isFinite(featureLevel) && featureLevel <= level;
 		})
-		.map((feature, index) => ({
-			id: `custom-${index}`,
+		.map((feature) => ({
+			id: stableId({
+				level: Number(asRecord(feature)?.level ?? 1),
+				name: String(asRecord(feature)?.name ?? '')
+			}),
 			level: Number(asRecord(feature)?.level ?? 1),
 			name: String(asRecord(feature)?.name ?? ''),
 			description: String(asRecord(feature)?.description ?? '')
 		}))
 		.filter((feature) => feature.name);
-	return classFeaturesFromCompendium.length || subclassFeatures.length || customFeatures.length
-		? [...classFeaturesFromCompendium, ...subclassFeatures, ...customFeatures].sort(
-				(a, b) => a.level - b.level || a.name.localeCompare(b.name)
-			)
-		: classFeatures(className, level, subclassName).map((feature, index) => ({
-				...feature,
-				id: `fallback-${index}`,
-				description: ''
-			}));
+	const fallbackFeatures = classFeatures(className, level, '')
+		.filter((feature) => !/subclasse/i.test(feature.name))
+		.concat(subclassName && level >= 3 ? [{ level: 3, name: subclassName }] : [])
+		.map((feature) => ({ ...feature, id: stableId(feature), description: '' }));
+	// Compendium descriptions are preferred, while local progression fills gaps
+	// independently for class and subclass instead of being disabled by either.
+	const byMeaning = new Map<string, CharacterFeature>();
+	for (const feature of [
+		...fallbackFeatures,
+		...classFeaturesFromCompendium,
+		...subclassFeatures,
+		...customFeatures
+	]) {
+		const key = semanticKey(feature);
+		const previous = byMeaning.get(key);
+		if (!previous || (!previous.description && feature.description)) {
+			byMeaning.set(key, { ...feature, id: stableId(feature) });
+		}
+	}
+	return [...byMeaning.values()].sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
 
 export function expertiseChoicesForLevel(className: string, level: number): number {

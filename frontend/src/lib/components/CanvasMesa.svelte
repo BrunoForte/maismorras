@@ -34,7 +34,12 @@
 	import SceneMapTools from '$lib/components/scene/SceneMapTools.svelte';
 	import TokenInspector from '$lib/components/scene/TokenInspector.svelte';
 	import { ApiError } from '$lib/services/httpClient';
-	import { applySceneDelta, fogBrushCells } from '$lib/utils/sceneDeltaState';
+	import {
+		applySceneDelta,
+		fogBrushCells,
+		normalizeSceneItemsById,
+		normalizeSceneItemsByKey
+	} from '$lib/utils/sceneDeltaState';
 	import {
 		toggleSceneMapTool,
 		type SceneMapTool,
@@ -43,6 +48,7 @@
 	} from '$lib/utils/sceneMapTools';
 	import {
 		removeSceneCharacter,
+		normalizeSceneCharacters,
 		toSceneCharacter,
 		upsertSceneCharacter
 	} from '$lib/utils/sceneTokenState';
@@ -55,6 +61,7 @@
 	import { diceOverlay, setDiceColor } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
+	import type { CharacterSheet } from '$lib/services/characterApi';
 	import { rollDice } from '$lib/services/eventApi';
 	import {
 		getCharacterForGM,
@@ -94,21 +101,21 @@
 	let personagemSelecionado = $derived(
 		$personagens.find((personagem) => personagem.id === tokenSelecionadoId)
 	);
+	$effect(() => {
+		if (tokenSelecionadoId !== null && !personagemSelecionado) tokenSelecionadoId = null;
+	});
 	let initiativeAdvantageByActor = $state<Record<string, boolean>>({});
-	let characterSummaryByActor = $state<
-		Record<
-			string,
-			{
-				name: string;
-				class: string;
-				subclass: string;
-				level: number;
-				species: string;
-				background: string;
-				proficiencyBonus: number;
-			}
-		>
-	>({});
+	let characterSummaryByActor = $state<Record<string, CharacterSheet>>({});
+	let characterSummaryContext = '';
+	$effect(() => {
+		const currentContext = `${session.user.id}:${campaignId}:${scene.id}:${isGM}`;
+		if (characterSummaryContext && characterSummaryContext !== currentContext) {
+			characterSummaryByActor = {};
+			initiativeAdvantageByActor = {};
+			tokenSelecionadoId = null;
+		}
+		characterSummaryContext = currentContext;
+	});
 	$effect(() => {
 		const actorId = personagemSelecionado?.actorId;
 		if (
@@ -126,18 +133,7 @@
 			.then((character) => {
 				if (!cancelled) {
 					const { sheet } = character;
-					characterSummaryByActor = {
-						...characterSummaryByActor,
-						[actorId]: {
-							name: sheet.name,
-							class: sheet.class,
-							subclass: sheet.subclass,
-							level: sheet.level,
-							species: sheet.species,
-							background: sheet.background,
-							proficiencyBonus: sheet.proficiencyBonus
-						}
-					};
+					characterSummaryByActor = { ...characterSummaryByActor, [actorId]: sheet };
 					personagens.update((tokens) =>
 						tokens.map((token) =>
 							token.actorId === actorId ? { ...token, nome: sheet.name || token.nome } : token
@@ -163,6 +159,7 @@
 			: undefined
 	);
 	let persistenceError = $state('');
+	let hitPointsUpdating = $state(false);
 	let sceneSocket: SceneSocket | null = null;
 	const tokenController = new SceneTokenController({
 		session: () => session,
@@ -345,14 +342,14 @@
 				response.fog.revealedCells,
 				response.fog.hiddenCells
 			);
-			areas = response.areas;
-			motor?.setAreas(response.areas);
+			areas = normalizeSceneItemsById(response.areas);
+			motor?.setAreas(areas);
 			motor?.setAreasVisible(areasVisible);
-			walls = response.walls;
-			motor?.setWalls(response.walls);
+			walls = normalizeSceneItemsById(response.walls);
+			motor?.setWalls(walls);
 			motor?.setWallsVisible(wallsVisible);
 			const carregados = await Promise.all(
-				response.tokens.map(async (token, index) => {
+				normalizeSceneItemsById(response.tokens).map(async (token, index) => {
 					const assetPath = token.imageUrl
 						? (campaignAssetPath(token.imageUrl) ?? token.imageUrl)
 						: null;
@@ -373,7 +370,13 @@
 			carregados.forEach((personagem) => {
 				tokenController.remember(personagem);
 			});
-			personagens.set(carregados);
+			const tokensNormalizados = normalizeSceneCharacters(carregados);
+			personagens.set(tokensNormalizados);
+			if (
+				tokenSelecionadoId !== null &&
+				!tokensNormalizados.some((token) => token.id === tokenSelecionadoId)
+			)
+				tokenSelecionadoId = null;
 		} catch (error) {
 			persistenceError =
 				error instanceof Error ? error.message : 'Não foi possível carregar os tokens.';
@@ -411,6 +414,7 @@
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 404) {
 				personagens.update((lista) => removeSceneCharacter(lista, signal.tokenId));
+				if (personagemSelecionado?.persistedId === signal.tokenId) tokenSelecionadoId = null;
 				personagemIdByToken.delete(signal.tokenId);
 				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
 				tokenController.forget(signal.tokenId);
@@ -469,8 +473,8 @@
 				listEffectDefinitions(session, scene.id),
 				listSceneEffects(session, scene.id)
 			]);
-			definicoesDeEfeito = catalogo.definitions;
-			efeitosAtivos = aplicados.effects;
+			definicoesDeEfeito = normalizeSceneItemsByKey(catalogo.definitions, (item) => item.slug);
+			efeitosAtivos = normalizeSceneItemsById(aplicados.effects);
 			if (!definicaoSelecionada && catalogo.definitions[0])
 				definicaoSelecionada = catalogo.definitions[0].slug;
 		} catch (error) {
@@ -846,22 +850,45 @@
 		};
 	});
 
+	async function salvarHp(update: { hpCurrent: number } | { delta: number }) {
+		const selected = personagemSelecionado;
+		if (!selected?.persistedId || (!isGM && !selected.isOwned) || hitPointsUpdating) return;
+		const operationSceneId = scene.id;
+		const operationUserId = session.user.id;
+		hitPointsUpdating = true;
+		persistenceError = '';
+		try {
+			const persisted = await tokenController.updateHitPoints(selected.persistedId, update);
+			if (scene.id !== operationSceneId || session.user.id !== operationUserId) return;
+			const updated = toSceneCharacter(persisted, selected.id, selected.fotoUrl);
+			tokenController.remember(updated);
+			personagens.update((items) => upsertSceneCharacter(items, updated));
+		} catch (error) {
+			persistenceError =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not update hit points.'
+						: 'Não foi possível atualizar os pontos de vida.';
+		} finally {
+			hitPointsUpdating = false;
+		}
+	}
+
 	function alterarHp(delta: number) {
-		if (!personagemSelecionado) return;
-		atualizarSelecionado((personagem) => ({
-			...personagem,
-			hpAtual: Math.min(personagem.hpMax, Math.max(0, personagem.hpAtual + delta))
-		}));
+		void salvarHp({ delta });
 	}
 
 	function definirHp(valor: string) {
-		if (!personagemSelecionado) return;
-		const hp = Number(valor);
+		const trimmed = valor.trim();
+		if (!trimmed) return;
+		if (/^[+-]\d+$/.test(trimmed)) {
+			void salvarHp({ delta: Number(trimmed) });
+			return;
+		}
+		const hp = Number(trimmed);
 		if (!Number.isFinite(hp)) return;
-		atualizarSelecionado((personagem) => ({
-			...personagem,
-			hpAtual: Math.min(personagem.hpMax, Math.max(0, hp))
-		}));
+		void salvarHp({ hpCurrent: Math.trunc(hp) });
 	}
 
 	function alterarVisibilidade(campo: keyof TokenVisibility, marcado: boolean) {
@@ -1050,9 +1077,13 @@
 		<TokenInspector
 			token={personagemSelecionado}
 			npc={npcSelecionado}
-			characterSummary={characterSummaryByActor[personagemSelecionado.actorId ?? '']}
+			characterSheet={isGM || personagemSelecionado.isOwned
+				? characterSummaryByActor[personagemSelecionado.actorId ?? '']
+				: undefined}
 			isEnglish={$appLocale === 'en'}
 			permissions={{
+				canViewCharacterSummary: Boolean(isGM || personagemSelecionado.isOwned),
+				canEditHitPoints: Boolean(isGM || personagemSelecionado.isOwned),
 				canEditAppearance: Boolean(isGM || personagemSelecionado.isOwned),
 				canEditVision: isGM && scene.fogEnabled,
 				canInteractWithDoor: Boolean(
@@ -1085,6 +1116,7 @@
 			onNpcAction={(action) => void rolarAcaoDeNPC(action)}
 			onHitPointsChange={alterarHp}
 			onHitPointsSet={definirHp}
+			{hitPointsUpdating}
 			onEffectSelectionChange={(slug) => (definicaoSelecionada = slug)}
 			onEffectDurationChange={(duration) => (duracaoEfeito = duration)}
 			onApplyEffect={aplicarCondicaoOficial}

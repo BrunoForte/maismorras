@@ -2,6 +2,28 @@ package events
 
 import "testing"
 
+func TestRollWithModeReturnsKeptFaceAndBothRolledFaces(t *testing.T) {
+	for _, mode := range []string{"advantage", "disadvantage"} {
+		result, err := rollWithMode("1d20+4", mode)
+		if err != nil {
+			t.Fatalf("rollWithMode(%q): %v", mode, err)
+		}
+		if len(result.Dice) != 1 || len(result.OriginalDice) != 2 {
+			t.Fatalf("mode result must include kept and both rolled faces: %#v", result)
+		}
+		wantKept := result.OriginalDice[0]
+		if mode == "advantage" && result.OriginalDice[1] > wantKept {
+			wantKept = result.OriginalDice[1]
+		}
+		if mode == "disadvantage" && result.OriginalDice[1] < wantKept {
+			wantKept = result.OriginalDice[1]
+		}
+		if result.Dice[0] != wantKept || result.Total != wantKept+4 {
+			t.Fatalf("incorrect kept result for %s: %#v", mode, result)
+		}
+	}
+}
+
 func TestRollProducesAResultWithinRequestedDiceBounds(t *testing.T) {
 	result, err := roll("2d6+3")
 	if err != nil {

@@ -497,23 +497,35 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				const result = event.payload as { expressao: string; dados: number[]; total: number };
 				const critical = result.dados.includes(20);
 				lastCriticalWeapon = critical ? `${details.stableWeaponKey}:${details.profileKey}` : null;
+				const modeLabel =
+					mode === 'advantage'
+						? localized(context.locale, 'Vantagem', 'Advantage')
+						: mode === 'disadvantage'
+							? localized(context.locale, 'Desvantagem', 'Disadvantage')
+							: localized(context.locale, 'Normal', 'Normal');
+				const rolledFaces =
+					(result as typeof result & { dadosOriginais?: number[] }).dadosOriginais ?? result.dados;
+				const modeDescription =
+					mode === 'normal' ? '' : ` · ${modeLabel} · d20 [${rolledFaces.join(', ')}]`;
 				addChat({
 					id: String(event.id),
 					autor: event.author ?? '',
-					texto: `${attackName} · ataque${critical ? ' · CRÍTICO!' : ''}`,
+					texto: `${attackName} · ataque${modeDescription}${critical ? ' · CRÍTICO!' : ''}`,
 					tipo: 'rolagem',
 					canal: 'combat',
 					detalhesRolagem: {
 						...result,
+						dadosOriginais: rolledFaces,
+						mode,
 						modificador: details.attackBonus,
 						label: `${attackName} · ataque`
 					}
 				});
 				deps.setDiceOverlay({
-					expression: `${sheet.name || 'Personagem'} · ${attackName} · ataque`,
+					expression: `${sheet.name || 'Personagem'} · ${attackName} · ataque${modeDescription}`,
 					notation: result.expressao,
 					total: result.total,
-					dice: result.dados,
+					dice: rolledFaces,
 					nonce: String(event.id)
 				});
 			} else {
@@ -600,16 +612,20 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const attack = event.payload as { dados: number[]; total: number; expressao: string };
 		const critical = attack.dados[0] === 20;
 		lastCriticalAttack = critical ? attackIndex : null;
+		const modeDescription =
+			mode === 'normal'
+				? ''
+				: ` · ${mode === 'advantage' ? localized(context.locale, 'Vantagem', 'Advantage') : localized(context.locale, 'Desvantagem', 'Disadvantage')} · d20 [${attack.dados.join(', ')}]`;
 		addChat({
 			id: String(event.id),
 			autor: sheet.name || 'Personagem',
-			texto: `${label}${critical ? ' · CRÍTICO!' : ''}`,
+			texto: `${label}${modeDescription}${critical ? ' · CRÍTICO!' : ''}`,
 			tipo: 'rolagem',
 			canal: 'combat',
-			detalhesRolagem: { ...attack, modificador: bonus, label }
+			detalhesRolagem: { ...attack, modificador: bonus, label, mode }
 		});
 		deps.setDiceOverlay({
-			expression: `${sheet.name || 'Personagem'} · ${label}`,
+			expression: `${sheet.name || 'Personagem'} · ${label}${modeDescription}`,
 			notation: attack.expressao,
 			total: attack.total,
 			dice: attack.dados,

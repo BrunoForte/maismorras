@@ -6,11 +6,15 @@
 		items,
 		attributes,
 		rollingWeaponAction,
+		rollMode = $bindable<'normal' | 'advantage' | 'disadvantage'>('normal'),
+		attackDisadvantage = false,
 		actions
 	}: {
 		items: InventoryItem[];
 		attributes: { key: keyof AbilityScores; label: string }[];
 		rollingWeaponAction: string | null;
+		rollMode?: 'normal' | 'advantage' | 'disadvantage';
+		attackDisadvantage?: boolean;
 		actions: WeaponCombatActions;
 	} = $props();
 	let expandedWeapon = $state<string | null>(null);
@@ -19,7 +23,25 @@
 <section class="combat-equipment">
 	<div class="section-title">
 		<h3>{$appLocale === 'en' ? 'Weapon attacks' : 'Ataques com armas'}</h3>
+		<label class="weapon-roll-mode">
+			{$appLocale === 'en' ? 'Attack roll' : 'Rolagem de ataque'}
+			<select
+				bind:value={rollMode}
+				aria-label={$appLocale === 'en' ? 'Weapon attack mode' : 'Modo de ataque das armas'}
+			>
+				<option value="normal">{$appLocale === 'en' ? 'Normal' : 'Normal'}</option>
+				<option value="advantage" disabled={attackDisadvantage}
+					>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
+				>
+				<option value="disadvantage">{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option>
+			</select>
+		</label>
 	</div>
+	{#if attackDisadvantage}<small class="forced-disadvantage"
+			>{$appLocale === 'en'
+				? 'An active condition forces disadvantage.'
+				: 'Uma condição ativa impõe desvantagem.'}</small
+		>{/if}
 	{#if items.length}
 		<div class="weapon-combat-list">
 			{#each items as item (actions.weaponKey(item))}
@@ -323,6 +345,25 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+	}
+	.weapon-roll-mode {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		color: #bcae9f;
+		font-size: 0.7rem;
+	}
+	.weapon-roll-mode select {
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.4rem 0.5rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.forced-disadvantage {
+		color: #e3a09a;
+		font-size: 0.68rem;
 	}
 	.weapon-combat-list {
 		display: grid;

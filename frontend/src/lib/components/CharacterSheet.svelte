@@ -87,6 +87,7 @@
 		weaponProficiencyStatus as resolveWeaponProficiency,
 		weaponSupportsGreatWeaponFighting,
 		updateInventoryItemRules,
+		resolveWeaponAttackMode,
 		type WeaponAttackProfile,
 		type WeaponEffect,
 		type WeaponFeat
@@ -149,6 +150,7 @@
 	);
 	let inventoryFilter = $state<InventoryCategory>('all');
 	let rollMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
+	let weaponAttackMode = $state<'normal' | 'advantage' | 'disadvantage'>('normal');
 	let expandedSpell = $state<number | null>(null);
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
@@ -161,9 +163,10 @@
 		lifecycle.state.activeConditions.some((condition) =>
 			['Cego', 'Envenenado', 'Impedido'].includes(condition)
 		);
-	const selectedAttackMode = () => (hasAttackDisadvantage() ? 'disadvantage' : rollMode);
+	const selectedAttackMode = () =>
+		resolveWeaponAttackMode(weaponAttackMode, lifecycle.state.activeConditions);
 	$effect(() => {
-		if (hasAttackDisadvantage() && rollMode === 'advantage') rollMode = 'normal';
+		if (hasAttackDisadvantage() && weaponAttackMode === 'advantage') weaponAttackMode = 'normal';
 	});
 	$effect(() => {
 		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
@@ -1036,6 +1039,8 @@
 						rollingWeaponAction={combatActions.state.rollingWeaponAction}
 						rollingAttack={combatActions.state.rollingAttack}
 						rollingAttackAction={combatActions.state.rollingAttackAction}
+						bind:rollMode={weaponAttackMode}
+						attackDisadvantage={hasAttackDisadvantage()}
 						spells={grantedSpells()}
 						actions={{
 							rest: (kind) => void combatActions.rest(kind),

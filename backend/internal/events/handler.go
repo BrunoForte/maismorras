@@ -248,6 +248,7 @@ func rollWithMode(expression, mode string) (DiceResult, error) {
 		kept = second
 	}
 	kept.Expression = fmt.Sprintf("%s (%s: %d/%d)", expression, map[string]string{"advantage": "vantagem", "disadvantage": "desvantagem"}[mode], firstFace, secondFace)
+	kept.OriginalDice = []int{firstFace, secondFace}
 	return kept, nil
 }
 func write(w http.ResponseWriter, status int, v any) error {

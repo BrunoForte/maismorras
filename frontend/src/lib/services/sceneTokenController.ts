@@ -6,6 +6,8 @@ import {
 	moveToken,
 	updateToken,
 	updateTokenAppearance,
+	updateTokenHitPoints,
+	type TokenHitPointsUpdate,
 	type PersistedToken
 } from './sceneApi';
 
@@ -121,6 +123,16 @@ export class SceneTokenController {
 		if (!personagem.persistedId) throw new Error('Token ainda não foi persistido.');
 		await moveToken(this.options.session(), this.options.sceneId(), personagem.persistedId, x, y);
 		this.options.publish({ tokenId: personagem.persistedId });
+	}
+
+	async updateHitPoints(tokenId: string, update: TokenHitPointsUpdate): Promise<PersistedToken> {
+		const session = this.options.session();
+		const sceneId = this.options.sceneId();
+		const token = await updateTokenHitPoints(session, sceneId, tokenId, update);
+		if (this.options.sceneId() === sceneId && this.options.session().user.id === session.user.id) {
+			this.options.publish({ tokenId });
+		}
+		return token;
 	}
 
 	async remove(tokenId: string): Promise<void> {

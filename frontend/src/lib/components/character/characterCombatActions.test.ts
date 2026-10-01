@@ -122,7 +122,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		publishChatUpdated,
 		publishCombatUpdated,
 		publishPresentationUpdated,
-		rollDice,
+		rollDice: dependencies.rollDice as typeof rollDice,
 		castMySpell,
 		restCharacter
 	};
@@ -159,6 +159,46 @@ describe('character combat actions', () => {
 		expect(test.appendChat).toHaveBeenCalledOnce();
 		expect(test.publishChatUpdated).toHaveBeenCalledOnce();
 		expect(test.setDiceOverlay).toHaveBeenCalledOnce();
+		expect(test.rollDice.mock.calls[0][3]).toBeUndefined();
+	});
+
+	it('envia vantagem/desvantagem autoritativa para ataques e nunca para dano', async () => {
+		for (const mode of ['advantage', 'disadvantage'] as const) {
+			const test = setup({
+				getAttackMode: () => mode,
+				rollDice: vi.fn(async (_session, _campaign, expression, requestedMode) => {
+					void requestedMode;
+					return {
+						id: `roll-${mode}`,
+						author: 'Heroína',
+						payload: {
+							expressao: `${expression} (${mode}: 17/8)`,
+							dados: [17],
+							dadosOriginais: [17, 8],
+							total: 22
+						}
+					};
+				})
+			});
+			await test.controller.rollWeapon(weapon, 'attack', {
+				id: 'power-strike',
+				name: 'Golpe poderoso',
+				description: '',
+				attackAbility: 'strength',
+				damage: '1d8',
+				attackBonus: 1,
+				damageBonus: 0,
+				greatWeaponFighting: false
+			});
+			await test.controller.rollWeapon(weapon, 'damage');
+			expect(test.rollDice.mock.calls[0][3]).toBe(mode);
+			expect(test.rollDice.mock.calls[1][3]).toBeUndefined();
+			expect(test.appendChat.mock.calls[0][0].texto).toContain(
+				mode === 'advantage' ? 'Vantagem' : 'Desvantagem'
+			);
+			expect(test.appendChat.mock.calls[0][0].texto).toContain('17, 8');
+			expect(test.setDiceOverlay.mock.calls[0][0].dice).toEqual([17, 8]);
+		}
 	});
 
 	it('duplica os dados de dano após crítico e consome a marca crítica', async () => {

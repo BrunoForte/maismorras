@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedToken } from '$lib/services/sceneApi';
 import type { Personagem } from '$lib/stores/gameStore';
-import { removeSceneCharacter, toSceneCharacter, upsertSceneCharacter } from './sceneTokenState';
+import {
+	normalizeSceneCharacters,
+	removeSceneCharacter,
+	toSceneCharacter,
+	upsertSceneCharacter
+} from './sceneTokenState';
 
 const persistedToken: PersistedToken = {
 	id: 'token-a',
@@ -81,6 +86,25 @@ describe('scene token state', () => {
 		const updated = { ...first, x: 44 };
 
 		expect(upsertSceneCharacter([first, second], updated)).toEqual([updated, second]);
+	});
+
+	it('preserves local tokens without persisted ids when normalizing and upserting', () => {
+		const local = { ...character(3, 'token-local'), persistedId: undefined, nome: 'Local' };
+		const existing = character(1, 'token-a');
+		const incoming = character(2, 'token-b');
+
+		expect(normalizeSceneCharacters([local, existing])).toEqual([local, existing]);
+		expect(upsertSceneCharacter([local, existing], incoming)).toEqual([local, existing, incoming]);
+	});
+
+	it('normalizes duplicate API tokens and realtime upserts without duplicate keyed ids', () => {
+		const stale = { ...character(1, 'token-a'), x: 10 };
+		const latest = { ...character(2, 'token-a'), x: 40 };
+		const normalized = normalizeSceneCharacters([stale, latest]);
+		expect(normalized).toEqual([latest]);
+		expect(upsertSceneCharacter([stale, latest], { ...latest, y: 30 })).toMatchObject([
+			{ persistedId: 'token-a', x: 40, y: 30 }
+		]);
 	});
 
 	it('removes only the requested persisted token and is a no-op for an unknown id', () => {

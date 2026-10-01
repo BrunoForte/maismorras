@@ -38,12 +38,24 @@ export function toSceneCharacter(
 
 /** Replaces a token in place by persisted id, or appends it when first received. */
 export function upsertSceneCharacter(characters: Personagem[], token: Personagem): Personagem[] {
-	const index = characters.findIndex((character) => character.persistedId === token.persistedId);
-	if (index < 0) return [...characters, token];
-	if (characters[index] === token) return characters;
-	const next = [...characters];
-	next[index] = token;
-	return next;
+	const unpersisted = characters.filter((character) => !character.persistedId);
+	const byPersistedId = new Map<string, Personagem>();
+	for (const character of characters) {
+		if (!character.persistedId) continue;
+		byPersistedId.set(character.persistedId, character);
+	}
+	if (token.persistedId) byPersistedId.set(token.persistedId, token);
+	return [...unpersisted, ...byPersistedId.values()];
+}
+
+/** Deduplicates API/realtime token collections, keeping the last item per persisted id. */
+export function normalizeSceneCharacters(characters: readonly Personagem[]): Personagem[] {
+	const unpersisted = characters.filter((character) => !character.persistedId);
+	const byPersistedId = new Map<string, Personagem>();
+	for (const character of characters) {
+		if (character.persistedId) byPersistedId.set(character.persistedId, character);
+	}
+	return [...unpersisted, ...byPersistedId.values()];
 }
 
 /** Removes only the character corresponding to the persisted scene token id. */

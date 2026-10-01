@@ -36,6 +36,8 @@
 		rollingWeaponAction,
 		rollingAttack,
 		rollingAttackAction,
+		rollMode = $bindable<'normal' | 'advantage' | 'disadvantage'>('normal'),
+		attackDisadvantage = false,
 		spells,
 		actions
 	}: {
@@ -46,6 +48,8 @@
 		rollingWeaponAction: string | null;
 		rollingAttack: number | null;
 		rollingAttackAction: 'attack' | 'damage' | null;
+		rollMode?: 'normal' | 'advantage' | 'disadvantage';
+		attackDisadvantage?: boolean;
 		spells: GrantedSpell[];
 		actions: Actions;
 	} = $props();
@@ -165,6 +169,8 @@
 		items={weaponItems()}
 		{attributes}
 		{rollingWeaponAction}
+		bind:rollMode
+		{attackDisadvantage}
 		actions={actions.weapons}
 	/>
 

@@ -316,6 +316,83 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	return t, nil
 }
 
+// UpdateTokenHitPoints is deliberately narrower than UpdateToken: a player may
+// change only HP on their own character token, never an NPC or another player's
+// token. Token and linked character sheet are committed atomically.
+func (r *Repository) UpdateTokenHitPoints(ctx context.Context, sceneID, tokenID, userID string, input hitPointsUpdate) (Token, error) {
+	role, err := r.memberRole(ctx, sceneID, userID)
+	if err != nil {
+		return Token{}, err
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Token{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var actorOwnerID, actorID *string
+	var actorKind string
+	var current, maximum int
+	err = tx.QueryRow(ctx, `select a.owner_id::text,st.actor_id::text,coalesce(a.kind,''),st.hp_current,st.hp_max from scene_tokens st left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&actorOwnerID, &actorID, &actorKind, &current, &maximum)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, ErrTokenNotFound
+	}
+	if err != nil {
+		return Token{}, fmt.Errorf("lock token hit points: %w", err)
+	}
+	if !canEditCharacterTokenHitPoints(role, actorKind, actorOwnerID, userID) {
+		return Token{}, ErrForbidden
+	}
+	next := current
+	if input.HPCurrent != nil {
+		next = *input.HPCurrent
+	} else if input.Delta != nil {
+		next += *input.Delta
+	}
+	next = clampHitPoints(next, maximum)
+	if _, err = tx.Exec(ctx, `update scene_tokens set hp_current=$1,updated_at=now() where id=$2 and scene_id=$3`, next, tokenID, sceneID); err != nil {
+		return Token{}, fmt.Errorf("update token hit points: %w", err)
+	}
+	if actorID != nil && actorKind == "character" {
+		if _, err = tx.Exec(ctx, `update actors set sheet=jsonb_set(coalesce(sheet,'{}'::jsonb),'{hitPointsCurrent}',to_jsonb($1::int),true) where id=$2 and kind='character'`, next, *actorID); err != nil {
+			return Token{}, fmt.Errorf("sync hit points to character: %w", err)
+		}
+	}
+	var token Token
+	var raw, visibility []byte
+	err = tx.QueryRow(ctx, `select st.id::text,st.actor_id::text,coalesce(st.owner_id,a.owner_id)::text,st.name,st.image_url,st.color,st.position_x,st.position_y,st.size,st.hp_current,st.hp_max,st.armor_class,st.initiative,st.initiative_bonus,st.vision_range,st.light_range,st.movement_limit,coalesce(tm.spent_squares,0),st.statuses,st.is_hidden,st.visibility from scene_tokens st left join actors a on a.id=st.actor_id left join scene_token_turn_movement tm on tm.scene_id=st.scene_id and tm.token_id=st.id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&token.ID, &token.ActorID, &token.OwnerID, &token.Name, &token.ImageURL, &token.Color, &token.X, &token.Y, &token.Size, &token.HPCurrent, &token.HPMax, &token.ArmorClass, &token.Initiative, &token.InitiativeBonus, &token.VisionRange, &token.LightRange, &token.MovementLimit, &token.MovementSpent, &raw, &token.Hidden, &visibility)
+	if err != nil {
+		return Token{}, fmt.Errorf("read updated hit points: %w", err)
+	}
+	if err = json.Unmarshal(raw, &token.Statuses); err != nil {
+		return Token{}, err
+	}
+	if err = json.Unmarshal(visibility, &token.Visibility); err != nil {
+		return Token{}, err
+	}
+	token.IsOwner = token.OwnerID != nil && *token.OwnerID == userID
+	if err = tx.Commit(ctx); err != nil {
+		return Token{}, err
+	}
+	return token, nil
+}
+
+func canEditCharacterTokenHitPoints(role, actorKind string, actorOwnerID *string, userID string) bool {
+	if role == "gm" {
+		return true
+	}
+	return role == "player" && actorKind == "character" && actorOwnerID != nil && *actorOwnerID == userID
+}
+
+func clampHitPoints(value, maximum int) int {
+	if value < 0 {
+		return 0
+	}
+	if value > maximum {
+		return maximum
+	}
+	return value
+}
+
 func (r *Repository) UpdateTokenAppearance(ctx context.Context, sceneID, tokenID, userID string, imageURL *string, color int, visibility Visibility) error {
 	role, err := r.memberRole(ctx, sceneID, userID)
 	if err != nil {

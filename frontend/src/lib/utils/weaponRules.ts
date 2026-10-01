@@ -21,6 +21,18 @@ export type WeaponAttackProfile = {
 };
 export type WeaponFeature = { id: string; name: string; description: string };
 export type WeaponFeat = { id: string; name: string; rules: Record<string, unknown> };
+export type WeaponRollMode = 'normal' | 'advantage' | 'disadvantage';
+
+const forcedAttackDisadvantage = new Set(['Cego', 'Envenenado', 'Impedido']);
+
+export function resolveWeaponAttackMode(
+	requested: WeaponRollMode,
+	activeConditions: readonly string[]
+): WeaponRollMode {
+	return activeConditions.some((condition) => forcedAttackDisadvantage.has(condition))
+		? 'disadvantage'
+		: requested;
+}
 /** UI boundary for weapon operations; pure rules stay independent of the callbacks' effects. */
 export type WeaponCombatActions = {
 	weaponKey: (item: InventoryItem) => string;

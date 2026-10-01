@@ -16,6 +16,7 @@ type Campaign = { id: string; name: string };
 type Scene = { id: string; campaignId: string };
 type Token = {
 	id: string;
+	actorId?: string | null;
 	name: string;
 	imageUrl: string | null;
 	color: number;
@@ -223,6 +224,42 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 					data: {}
 				});
 				expect(joinResponse.ok()).toBeTruthy();
+				const participantsResponse = await ownerApi.get(
+					`/api/v1/campaigns/${campaignId}/participants`
+				);
+				expect(participantsResponse.ok()).toBeTruthy();
+				const participants = (await participantsResponse.json()) as {
+					participants: { userId: string; role: string }[];
+				};
+				const player = participants.participants.find(
+					(participant) => participant.role === 'player'
+				);
+				expect(player).toBeTruthy();
+				const characterCreate = await ownerApi.post(`/api/v1/campaigns/${campaignId}/characters`, {
+					data: { ownerId: player!.userId }
+				});
+				expect(characterCreate.status()).toBe(201);
+				const character = (await characterCreate.json()) as {
+					id: string;
+					sheet: Record<string, unknown>;
+				};
+				const preparedSheet = {
+					...character.sheet,
+					name: 'Ficha E2E de jogador',
+					hitPointsCurrent: 12,
+					hitPointsMax: 12
+				};
+				const saveCharacter = await ownerApi.put(
+					`/api/v1/campaigns/${campaignId}/characters/${character.id}`,
+					{ data: preparedSheet }
+				);
+				expect(saveCharacter.ok()).toBeTruthy();
+				const linkedTokenResponse = await ownerApi.post(
+					`/api/v1/scenes/${scene.id}/tokens/from-character`,
+					{ data: { actorId: character.id } }
+				);
+				expect(linkedTokenResponse.status()).toBe(201);
+				const playerOwnedToken = (await linkedTokenResponse.json()) as Token;
 
 				ownerContext = await browser.newContext({ storageState: ownerStatePath });
 				playerContext = await browser.newContext({ storageState: playerStatePath });
@@ -279,6 +316,16 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				});
 				expect(tokenCreate.status()).toBe(201);
 				const token = (await tokenCreate.json()) as Token;
+				const playerMapErrors: string[] = [];
+				let duplicateTokenReads = 0;
+				playerPage.on('pageerror', (error) => playerMapErrors.push(error.message));
+				playerPage.on('request', (request) => {
+					if (
+						request.method() === 'GET' &&
+						request.url() === new URL(`/api/v1/scenes/${scene.id}/tokens/${token.id}`, apiBase).href
+					)
+						duplicateTokenReads += 1;
+				});
 
 				const visibleToken = await playerApi.get(`/api/v1/scenes/${scene.id}/tokens/${token.id}`);
 				expect(visibleToken.status()).toBe(200);
@@ -322,6 +369,26 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				logCacheDiagnostics(realtimeReads.reconciler);
 				expect(await realtimeReads.reconciler.json()).toMatchObject({ x: 4, y: 3 });
 
+				// Back-to-back invalidations can make the same id arrive more than once
+				// while list-based scene state is being reconciled.
+				const readsBeforeDuplicateEvents = duplicateTokenReads;
+				await Promise.all([
+					publishTokenInvalidation(ownerRealtimePublisher, scene.id, token.id),
+					publishTokenInvalidation(ownerRealtimePublisher, scene.id, token.id)
+				]);
+				await expect
+					.poll(() => duplicateTokenReads - readsBeforeDuplicateEvents, { timeout: 15_000 })
+					.toBeGreaterThanOrEqual(2);
+				const workspaceNavigation = playerPage.getByRole('navigation', {
+					name: /Áreas da mesa|Table areas/
+				});
+				await workspaceNavigation
+					.getByRole('button', { name: /Fichas|Sheets/, exact: true })
+					.click();
+				await workspaceNavigation.getByRole('button', { name: /Mesa|Table/, exact: true }).click();
+				await expect(playerPage.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+				expect(playerMapErrors.filter((message) => /each_key_duplicate/.test(message))).toEqual([]);
+
 				const hideResponse = await ownerApi.patch(`/api/v1/scenes/${scene.id}/tokens/${token.id}`, {
 					data: { ...changedToken, hidden: true }
 				});
@@ -339,6 +406,36 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				);
 				expect(hiddenPlayerDirectResponse.status()).toBe(404);
 				logCacheDiagnostics(hiddenPlayerDirectResponse);
+
+				const ownedHPUpdate = await playerApi!.patch(
+					`/api/v1/scenes/${scene.id}/tokens/${playerOwnedToken.id}/hit-points`,
+					{ data: { delta: -3 } }
+				);
+				expect(ownedHPUpdate.status()).toBe(200);
+				expect(await ownedHPUpdate.json()).toMatchObject({ hpCurrent: 9, hpMax: 12 });
+				const hpRealtimeReads = await publishAndReadToken(
+					playerPage,
+					ownerPage,
+					playerPage,
+					scene.id,
+					playerOwnedToken.id
+				);
+				expect(hpRealtimeReads.reader.status()).toBe(200);
+				expect(await hpRealtimeReads.reader.json()).toMatchObject({ hpCurrent: 9 });
+				expect(hpRealtimeReads.reconciler.status()).toBe(200);
+				expect(await hpRealtimeReads.reconciler.json()).toMatchObject({ hpCurrent: 9 });
+				const linkedSheetResponse = await playerApi!.get(
+					`/api/v1/campaigns/${campaignId}/character`
+				);
+				expect(linkedSheetResponse.ok()).toBeTruthy();
+				expect(await linkedSheetResponse.json()).toMatchObject({
+					sheet: { name: 'Ficha E2E de jogador', hitPointsCurrent: 9, hitPointsMax: 12 }
+				});
+				const unrelatedTokenHPUpdate = await playerApi!.patch(
+					`/api/v1/scenes/${scene.id}/tokens/${token.id}/hit-points`,
+					{ data: { delta: -1 } }
+				);
+				expect(unrelatedTokenHPUpdate.status()).toBe(403);
 			}
 		} finally {
 			if (ownerContext) await ownerContext.close();

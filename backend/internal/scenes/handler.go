@@ -3,6 +3,7 @@ package scenes
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -406,6 +407,46 @@ func (h *Handler) UpdateToken(w http.ResponseWriter, r *http.Request) error {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, token)
+}
+
+func (h *Handler) UpdateTokenHitPoints(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	input, err := decodeHitPointsUpdate(r)
+	if err != nil {
+		return apperror.BadRequest("INVALID_HIT_POINTS", "Informe somente hpCurrent ou delta como número inteiro.")
+	}
+	token, err := h.repo.UpdateTokenHitPoints(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, input)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, token)
+}
+
+type hitPointsUpdate struct {
+	HPCurrent *int `json:"hpCurrent,omitempty"`
+	Delta     *int `json:"delta,omitempty"`
+}
+
+func decodeHitPointsUpdate(r *http.Request) (hitPointsUpdate, error) {
+	var input hitPointsUpdate
+	decoder := json.NewDecoder(io.LimitReader(r.Body, 32<<10))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		return hitPointsUpdate{}, err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return hitPointsUpdate{}, errors.New("body must contain one JSON object")
+	}
+	if (input.HPCurrent == nil) == (input.Delta == nil) {
+		return hitPointsUpdate{}, errors.New("exactly one hit point operation is required")
+	}
+	if input.Delta != nil && (*input.Delta > 1_000_000 || *input.Delta < -1_000_000) {
+		return hitPointsUpdate{}, errors.New("hit point delta out of range")
+	}
+	if input.HPCurrent != nil && (*input.HPCurrent > 1_000_000 || *input.HPCurrent < -1_000_000) {
+		return hitPointsUpdate{}, errors.New("hit point value out of range")
+	}
+	return input, nil
 }
 func (h *Handler) UpdateTokenAppearance(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())

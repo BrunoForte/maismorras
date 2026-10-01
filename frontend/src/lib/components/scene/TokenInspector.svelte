@@ -2,18 +2,12 @@
 	import type { Personagem, TokenVisibility } from '$lib/stores/gameStore';
 	import type { NPC } from '$lib/services/npcApi';
 	import type { EffectDefinition, SceneEffect } from '$lib/services/sceneApi';
-
-	export type TokenCharacterSummary = {
-		name: string;
-		class: string;
-		subclass: string;
-		level: number;
-		species: string;
-		background: string;
-		proficiencyBonus: number;
-	};
+	import type { CharacterSheet } from '$lib/services/characterApi';
+	import CharacterMapSummary from './CharacterMapSummary.svelte';
 
 	export type TokenInspectorPermissions = {
+		canEditHitPoints: boolean;
+		canViewCharacterSummary: boolean;
 		canEditAppearance: boolean;
 		canEditVision: boolean;
 		canInteractWithDoor: boolean;
@@ -28,13 +22,14 @@
 	let {
 		token,
 		npc = null,
-		characterSummary,
+		characterSheet,
 		isEnglish = false,
 		permissions,
 		initiativeAdvantage = false,
 		effectDefinitions = [],
 		selectedEffectSlug = '',
 		effectDuration = '',
+		hitPointsUpdating = false,
 		activeEffects = [],
 		onClose,
 		onAppearanceChange,
@@ -59,13 +54,14 @@
 	}: {
 		token: Personagem;
 		npc?: NPC | null;
-		characterSummary?: TokenCharacterSummary;
+		characterSheet?: CharacterSheet;
 		isEnglish?: boolean;
 		permissions: TokenInspectorPermissions;
 		initiativeAdvantage?: boolean;
 		effectDefinitions?: EffectDefinition[];
 		selectedEffectSlug?: string;
 		effectDuration?: string;
+		hitPointsUpdating?: boolean;
 		activeEffects?: SceneEffect[];
 		onClose: () => void;
 		onAppearanceChange: (
@@ -95,6 +91,25 @@
 		) => void;
 	} = $props();
 	let selectedEffect = $derived(effectDefinitions.find((item) => item.slug === selectedEffectSlug));
+	function npcActionKey(action: NPC['sheet']['actions'][number]): string {
+		return [action.name, action.kind, action.toHit, action.range, action.damage, action.saveDC]
+			.map((part) =>
+				String(part ?? '')
+					.trim()
+					.toLocaleLowerCase()
+			)
+			.join(':');
+	}
+	const npcActions = $derived.by(() => {
+		if (!npc) return [];
+		const seen: Record<string, true> = Object.create(null) as Record<string, true>;
+		return npc.sheet.actions.filter((action) => {
+			const key = npcActionKey(action);
+			if (Object.hasOwn(seen, key)) return false;
+			seen[key] = true;
+			return true;
+		});
+	});
 </script>
 
 <section
@@ -104,7 +119,7 @@
 	<header>
 		<div>
 			<span class="inspector-eyebrow">{isEnglish ? 'SELECTED TOKEN' : 'TOKEN SELECIONADO'}</span>
-			<h2>{characterSummary?.name || token.nome}</h2>
+			<h2>{characterSheet?.name || token.nome}</h2>
 		</div>
 		<button
 			class="close-button"
@@ -116,19 +131,8 @@
 		<span><b>CA</b>{token.ca}</span><span><b>INI</b>{token.iniciativa}</span>
 		<span><b>TAM</b>{token.tamanho}×{token.tamanho}</span>
 	</div>
-	{#if token.actorId && !npc && characterSummary}
-		<div class="linked-character-summary">
-			<strong
-				>{characterSummary.class}{characterSummary.subclass
-					? ` · ${characterSummary.subclass}`
-					: ''} · Nível {characterSummary.level}</strong
-			>
-			<span
-				>{characterSummary.species || 'Espécie não definida'} · {characterSummary.background ||
-					'Antecedente não definido'}</span
-			>
-			<small>Bônus de proficiência +{characterSummary.proficiencyBonus}</small>
-		</div>
+	{#if token.actorId && !npc && characterSheet && permissions.canViewCharacterSummary}
+		<CharacterMapSummary sheet={characterSheet} />
 	{/if}
 	{#if permissions.canEditAppearance}
 		<div class="token-appearance">
@@ -243,7 +247,7 @@
 	{#if permissions.canUseNpcActions && npc?.sheet.actions.length}
 		<div class="npc-actions">
 			<span>{isEnglish ? 'Creature actions' : 'Ações da criatura'}</span>
-			{#each npc.sheet.actions as action (action.name)}<button
+			{#each npcActions as action (npcActionKey(action))}<button
 					onclick={() => onNpcAction(action)}
 					title={action.description || action.damage}
 					><strong>{action.name}</strong><small
@@ -260,18 +264,29 @@
 				>{token.hpAtual} <small>/ {token.hpMax}</small></strong
 			>
 		</div>
-		<div class="hp-actions">
-			<button onclick={() => onHitPointsChange(-1)} aria-label="Reduzir 1 ponto de vida">−</button
-			><input
-				aria-label="Pontos de vida atuais"
-				type="number"
-				min="0"
-				max={token.hpMax}
-				value={token.hpAtual}
-				onchange={(event) => onHitPointsSet(event.currentTarget.value)}
-			/><button onclick={() => onHitPointsChange(1)} aria-label="Aumentar 1 ponto de vida">+</button
-			>
-		</div>
+		{#if permissions.canEditHitPoints}<div class="hp-edit">
+				<div class="hp-actions">
+					<button
+						disabled={hitPointsUpdating}
+						onclick={() => onHitPointsChange(-1)}
+						aria-label="Reduzir 1 ponto de vida">−</button
+					><input
+						aria-label="Pontos de vida atuais"
+						type="text"
+						inputmode="numeric"
+						value={token.hpAtual}
+						aria-busy={hitPointsUpdating}
+						onchange={(event) => onHitPointsSet(event.currentTarget.value)}
+					/><button
+						disabled={hitPointsUpdating}
+						onclick={() => onHitPointsChange(1)}
+						aria-label="Aumentar 1 ponto de vida">+</button
+					>
+				</div>
+				<small class="hp-hint"
+					>{isEnglish ? 'Type -10 to take 10 damage' : 'Digite -10 para sofrer 10 de dano'}</small
+				>
+			</div>{/if}
 	</div>
 	{#if permissions.canManageConditions}
 		<div class="official-effects">
@@ -400,7 +415,6 @@
 	}
 	.token-inspector > header,
 	.token-inspector > .quick-stats,
-	.token-inspector > .linked-character-summary,
 	.token-inspector > .hp-control,
 	.token-inspector > .token-rolls {
 		order: 0;
@@ -471,24 +485,6 @@
 		font:
 			600 1.2rem Georgia,
 			serif;
-	}
-	.linked-character-summary {
-		display: grid;
-		gap: 0.25rem;
-		margin: 0 0 0.5rem;
-		border: 1px solid rgba(216, 173, 103, 0.25);
-		border-radius: 7px;
-		padding: 0.55rem 0.65rem;
-		background: rgba(53, 42, 34, 0.5);
-	}
-	.linked-character-summary strong {
-		color: #f0d29d;
-		font-size: 0.75rem;
-	}
-	.linked-character-summary span,
-	.linked-character-summary small {
-		color: #c5b7a9;
-		font-size: 0.67rem;
 	}
 	.token-rolls {
 		display: flex;
@@ -671,6 +667,15 @@
 		justify-content: space-between;
 		gap: 0.75rem;
 	}
+	.hp-edit {
+		display: grid;
+		justify-items: end;
+		gap: 0.2rem;
+	}
+	.hp-hint {
+		color: #aa9c90;
+		font-size: 0.62rem;
+	}
 	.hp-control > div:first-child {
 		display: grid;
 		gap: 0.2rem;
@@ -701,6 +706,10 @@
 		color: #f0debf;
 		background: #302629;
 		text-align: center;
+	}
+	.hp-actions button:disabled {
+		cursor: wait;
+		opacity: 0.55;
 	}
 	.hp-actions button:hover {
 		background: #4a382d;
