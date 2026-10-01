@@ -328,15 +328,11 @@
 			return;
 		}
 		try {
-			// The optimistic browser preview does not advance the authoritative
-			// revision; only the successful server response does that.
-			const preview = { ...next, revision: current.revision };
-			const playable = effects ? await applyEffectsState(preview) : await applyState(preview);
-			if (!playable && (effects ? effectsPlayback : playback)?.failureReason === 'unavailable') {
-				// A missing/unauthorized asset is not a valid playback command. Keep the
-				// scene state and the currently playing track untouched.
-				if (effects) await applyEffectsState(current);
-				else await applyState(current);
+			// Resolve access before committing, but do not touch either media element
+			// until the server has accepted the authoritative state transition.
+			if (command === 'play' && path && !(await signed(path))) {
+				if (effects) effectsUnavailable = true;
+				else musicUnavailable = true;
 				return;
 			}
 			const saved = await persistAudio(channel, next, current.revision ?? 0);
