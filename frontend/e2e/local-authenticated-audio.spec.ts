@@ -453,11 +453,38 @@ test.describe('local authenticated audio E2E', () => {
 				).toHaveLength(
 					before.operations.filter((item) => item.kind === 'pause' || item.kind === 'load').length
 				);
-				const reconnected = audio.player.waitForEvent('websocket', {
-					predicate: (socket) =>
-						new URL(socket.url()).searchParams.get('sceneId') === audio.sceneId,
-					timeout: 15_000
-				});
+				const previousSocketCount = await audio.player.evaluate((sceneId) => {
+					const tracked = window as Window & { __audioE2E?: { sockets: WebSocket[] } };
+					return (
+						tracked.__audioE2E?.sockets.filter((socket) => {
+							try {
+								return new URL(socket.url).searchParams.get('sceneId') === sceneId;
+							} catch {
+								return false;
+							}
+						}).length ?? 0
+					);
+				}, audio.sceneId);
+				const reconnected = audio.player.waitForFunction(
+					({ sceneId, previousSocketCount }) => {
+						const tracked = window as Window & { __audioE2E?: { sockets: WebSocket[] } };
+						const sockets = (tracked.__audioE2E?.sockets ?? []).filter((socket) => {
+							try {
+								return new URL(socket.url).searchParams.get('sceneId') === sceneId;
+							} catch {
+								return false;
+							}
+						});
+						return (
+							sockets.length > previousSocketCount &&
+							sockets
+								.slice(previousSocketCount)
+								.some((socket) => socket.readyState === WebSocket.OPEN)
+						);
+					},
+					{ sceneId: audio.sceneId, previousSocketCount },
+					{ timeout: 15_000 }
+				);
 				await audio.player.evaluate((sceneId) => {
 					const tracked = window as Window & { __audioE2E?: { sockets: WebSocket[] } };
 					const socket = tracked.__audioE2E?.sockets.find((item) => {
