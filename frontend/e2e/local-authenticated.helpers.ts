@@ -70,7 +70,13 @@ export type LocalAuthenticatedFixture = {
 	campaignId: string;
 	sceneId: string;
 	gmPublisher: Page;
+	gmUserId: string;
 	playerUserId: string;
+	createCharacter: (
+		ownerId: string,
+		sheetChanges?: Record<string, unknown>
+	) => Promise<{ id: string; sheet: Record<string, unknown> }>;
+	createCharacterToken: (characterId: string) => Promise<string>;
 	startAudio: () => Promise<AudioSetup>;
 	close: () => Promise<void>;
 };
@@ -252,7 +258,34 @@ export async function createLocalAuthenticatedFixture(
 			campaignId,
 			sceneId,
 			gmPublisher,
+			gmUserId,
 			playerUserId,
+			createCharacter: async (ownerId, sheetChanges = {}) => {
+				const response = await gmApi!.post(`/api/v1/campaigns/${campaignId}/characters`, {
+					data: { ownerId }
+				});
+				expect(response.status()).toBe(201);
+				const character = (await response.json()) as {
+					id: string;
+					sheet: Record<string, unknown>;
+				};
+				const saved = await gmApi!.put(
+					`/api/v1/campaigns/${campaignId}/characters/${character.id}`,
+					{ data: { ...character.sheet, ...sheetChanges } }
+				);
+				expect(saved.ok()).toBeTruthy();
+				return {
+					id: character.id,
+					sheet: ((await saved.json()) as { sheet: Record<string, unknown> }).sheet
+				};
+			},
+			createCharacterToken: async (characterId) => {
+				const response = await gmApi!.post(`/api/v1/scenes/${sceneId}/tokens/from-character`, {
+					data: { actorId: characterId }
+				});
+				expect(response.status()).toBe(201);
+				return ((await response.json()) as { id: string }).id;
+			},
 			startAudio: async () => {
 				if (!withAudio) throw new Error('Audio assets were not provisioned for this scenario.');
 				const grant = await test.step('pair overlay using a one-time test code', async () => {

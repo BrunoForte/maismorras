@@ -266,7 +266,7 @@ jobs:
 
             Push-Location frontend
             try {
-              npx playwright test e2e/local-authenticated.spec.ts e2e/local-authenticated-audio.spec.ts --project=chromium --workers=1
+              npx playwright test e2e/local-authenticated.spec.ts e2e/local-authenticated-audio.spec.ts e2e/local-authenticated-map-sheet.spec.ts --project=chromium --workers=1
               if ($LASTEXITCODE -ne 0) { throw 'Mandatory authenticated E2E failed.' }
             } finally { Pop-Location }
           } finally {
