@@ -332,7 +332,7 @@ func (r *Repository) UpdateTokenHitPoints(ctx context.Context, sceneID, tokenID,
 	var actorOwnerID, actorID *string
 	var actorKind string
 	var current, maximum int
-	err = tx.QueryRow(ctx, `select a.owner_id::text,st.actor_id::text,coalesce(a.kind,''),st.hp_current,st.hp_max from scene_tokens st left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&actorOwnerID, &actorID, &actorKind, &current, &maximum)
+	err = tx.QueryRow(ctx, `select a.owner_id::text,st.actor_id::text,coalesce(a.kind::text,''),st.hp_current,st.hp_max from scene_tokens st left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&actorOwnerID, &actorID, &actorKind, &current, &maximum)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Token{}, ErrTokenNotFound
 	}

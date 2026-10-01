@@ -417,6 +417,10 @@ func (h *Handler) UpdateTokenHitPoints(w http.ResponseWriter, r *http.Request) e
 	}
 	token, err := h.repo.UpdateTokenHitPoints(r.Context(), r.PathValue("sceneID"), r.PathValue("tokenID"), p.UserID, input)
 	if err != nil {
+		if !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrTokenNotFound) {
+			attrs := []any{"event", "scene.token_hit_points_update_failed", "request_id", r.Header.Get("X-Request-ID"), "scene_id", observability.SafeUUID(r.PathValue("sceneID")), "token_id", observability.SafeUUID(r.PathValue("tokenID"))}
+			slog.Error("token hit points update failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+		}
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, token)
