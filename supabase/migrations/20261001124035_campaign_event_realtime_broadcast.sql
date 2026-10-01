@@ -45,7 +45,8 @@ begin
 end;
 $$;
 
-revoke all on function public.notify_campaign_game_event() from public;
+revoke all privileges on function public.notify_campaign_game_event()
+  from public, anon, authenticated, service_role;
 
 drop trigger if exists game_events_campaign_realtime on public.game_events;
 create trigger game_events_campaign_realtime
