@@ -23,6 +23,7 @@
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import { appLocale } from '$lib/stores/locale';
+	import { resizablePanel } from '$lib/utils/resizablePanel';
 
 	let { campaignId, session }: { campaignId: string; session: Session } = $props();
 	let open = $state(true);
@@ -229,6 +230,7 @@
 </script>
 
 <aside
+	use:resizablePanel={{ collapsed: !open, headerSelector: '.chat-titlebar', minWidth: 190 }}
 	class:closed={!open}
 	class:docked
 	class="floating-chat"
@@ -370,8 +372,8 @@
 		position: fixed;
 		z-index: 8;
 		left: 1rem;
-		bottom: 4.25rem;
-		height: min(420px, calc(100dvh - 7rem));
+		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.35rem);
+		height: min(420px, calc(100dvh - 7.5rem));
 		min-width: 260px;
 		min-height: 180px;
 		resize: both;
@@ -391,9 +393,9 @@
 		bottom: auto;
 		left: 0;
 		width: min(350px, 82vw);
-		height: min(70vh, calc(100dvh - 10.25rem));
+		height: min(70vh, calc(100dvh - 10.75rem));
 		min-height: 170px;
-		max-height: calc(100dvh - 10.25rem);
+		max-height: calc(100dvh - 10.75rem);
 		max-width: calc(100vw - 1rem);
 		resize: both;
 		border-radius: 0 12px 12px 0;
@@ -410,7 +412,7 @@
 	}
 	.floating-chat.docked.closed {
 		top: auto;
-		bottom: 4.25rem;
+		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.35rem);
 		left: 0;
 		width: min(220px, calc(100% - 1rem));
 		max-width: calc(100vw - 1rem);
@@ -621,9 +623,9 @@
 	@media (max-width: 650px) {
 		.floating-chat {
 			left: 0.6rem;
-			bottom: 4.25rem;
+			bottom: calc(var(--mm-audio-footer-offset, 6.5rem) + 0.35rem);
 			width: calc(100% - 1.2rem);
-			height: min(380px, calc(100dvh - 6rem));
+			height: min(380px, calc(100dvh - 7.5rem));
 			min-width: 240px;
 		}
 		.floating-chat.docked {
@@ -631,9 +633,9 @@
 			bottom: auto;
 			left: 0;
 			width: min(88vw, 350px);
-			height: min(65vh, calc(100dvh - 10rem));
+			height: min(65vh, calc(100dvh - 10.5rem));
 			min-height: 160px;
-			max-height: calc(100dvh - 10rem);
+			max-height: calc(100dvh - 10.5rem);
 		}
 	}
 	.expand {

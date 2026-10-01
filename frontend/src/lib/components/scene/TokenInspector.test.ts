@@ -124,14 +124,13 @@ describe('TokenInspector', () => {
 		const { body } = render(TokenInspector, { props: createProps() });
 
 		expect(body).toContain('Thorin Carvalho');
-		expect(body).toContain('Guerreiro · Campeão · N4');
-		expect(body).toContain('Prof.');
-		expect(body).toContain('+2');
+		expect(body).toContain('CA');
 		expect(body).toContain('Ficha resumida do personagem');
-		expect(body).toContain('Salvaguardas');
-		expect(body).toContain('Armas');
+		expect(body).toContain('Ataques');
 		expect(body).toContain('Espada longa');
 		expect(body).toContain('16');
+		expect(body).not.toContain('Salvaguardas');
+		expect(body).not.toContain('Perícias');
 	});
 
 	it('renders the authorized summary for a GM even when the token is not player-owned', () => {
@@ -167,10 +166,21 @@ describe('TokenInspector', () => {
 		expect(body).toContain('Rolar iniciativa');
 		expect(body).toContain('Vantagem na próxima');
 		expect(body).toContain('Digite -10 para sofrer 10 de dano');
-		expect(body).not.toContain('Condições oficiais (SRD)');
+		expect(body).toContain('Condições oficiais (SRD)');
+		expect(body).toContain('Cego');
+		expect(body).not.toContain('Aplicar');
 		expect(body).not.toContain('VISIBILIDADE PARA OUTROS JOGADORES');
 		expect(body).not.toContain('Visão na névoa');
 		expect(body).not.toContain('Remover token da cena');
+	});
+
+	it('keeps initiative and both sheet actions outside the collapsed token settings', () => {
+		const { body } = render(TokenInspector, { props: createProps() });
+		expect(body).toContain('Rolar iniciativa');
+		expect(body).toContain('Abrir ficha vinculada');
+		expect(body).toContain('Abrir ficha em nova janela');
+		expect(body).toMatch(/<details class="token-settings(?:\s[^>]*)?">/);
+		expect(body).not.toMatch(/<details class="token-settings(?:\s[^>]*)?" open/);
 	});
 
 	it('does not render a private character summary without explicit access', () => {

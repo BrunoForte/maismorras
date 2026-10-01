@@ -135,7 +135,6 @@
 	let loadingCampaigns = $state(true);
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
-	let standaloneSheet = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
 	let workspaceTab = $state<WorkspaceTab>('map');
 	$effect(() => {
@@ -238,7 +237,6 @@
 			const requestedCampaignId = new URLSearchParams(window.location.search).get('campaign');
 			const requestedSceneId = new URLSearchParams(window.location.search).get('scene');
 			const requestedCharacterId = new URLSearchParams(window.location.search).get('character');
-			standaloneSheet = new URLSearchParams(window.location.search).get('sheetWindow') === '1';
 			const requestedCampaign =
 				invitedCampaign ?? campaigns.find((item) => item.id === requestedCampaignId);
 			if (requestedCampaign) {
@@ -329,7 +327,6 @@
 		activeScene = null;
 		availableScenes = [];
 		sheetOpen = initialView.sheetOpen;
-		standaloneSheet = initialView.standaloneSheet;
 		editingCharacter = initialView.editingCharacter;
 		participantsOpen = initialView.participantsOpen;
 		npcsOpen = initialView.npcsOpen;
@@ -440,16 +437,21 @@
 	}
 	function openCharacterWindow(characterId: string) {
 		if (!activeCampaign) return;
-		const url = new URL('/', window.location.origin);
+		const url = new URL('/sheet', window.location.origin);
 		url.searchParams.set('campaign', activeCampaign.id);
 		url.searchParams.set('character', characterId);
-		url.searchParams.set('sheetWindow', '1');
 		const popup = window.open(
 			url,
 			`maismorras-sheet-${characterId}`,
 			'popup,width=1400,height=900,resizable=yes,scrollbars=no'
 		);
-		popup?.focus();
+		if (popup) popup.focus();
+		else
+			showInviteStatus(
+				$appLocale === 'en'
+					? 'The browser blocked the new window. Allow pop-ups for MaisMorras and try again.'
+					: 'O navegador bloqueou a nova janela. Permita pop-ups para o MaisMorras e tente novamente.'
+			);
 	}
 	function selectScene(sceneId: string) {
 		const scene = availableScenes.find((item) => item.id === sceneId);
@@ -791,11 +793,10 @@
 				isGM={activeCampaign.role === 'gm'}
 				characterId={editingCharacter?.id}
 				characterOwnerName={editingCharacter?.ownerName ?? ''}
-				docked={workspaceTab === 'map' && !standaloneSheet}
-				standalone={standaloneSheet}
+				docked={workspaceTab === 'map'}
+				standalone={false}
 				onclose={() => {
-					if (standaloneSheet) window.close();
-					else sheetOpen = false;
+					sheetOpen = false;
 				}}
 				onTokenCreated={() => void reloadActiveScene()}
 			/>{/if}
@@ -842,6 +843,7 @@
 
 <style>
 	.app-shell {
+		--mm-audio-footer-offset: 4.1rem;
 		min-height: 100vh;
 		padding-bottom: 7.5rem;
 		background:
@@ -878,6 +880,7 @@
 	}
 	@media (max-width: 760px) {
 		.app-shell {
+			--mm-audio-footer-offset: 6.5rem;
 			padding-bottom: calc(8rem + env(safe-area-inset-bottom));
 		}
 		.vtt-workspace {

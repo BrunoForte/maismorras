@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { onMount } from 'svelte';
+	import { resizablePanel } from '$lib/utils/resizablePanel';
 	import type { Session } from '@supabase/supabase-js';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
@@ -121,7 +122,12 @@
 	onMount(() => void load());
 </script>
 
-<aside class:closed={!open} class="actor-drawer" aria-label="Atores da cena">
+<aside
+	use:resizablePanel={{ collapsed: !open, headerSelector: '.drawer-toggle', minWidth: 190 }}
+	class:closed={!open}
+	class="actor-drawer"
+	aria-label="Atores da cena"
+>
 	<button class="drawer-toggle" onclick={() => (open = !open)} aria-expanded={open}>
 		<span>♟</span>{open ? 'Atores da cena' : 'Abrir atores'}
 	</button>
@@ -162,9 +168,16 @@
 		position: fixed;
 		z-index: 8;
 		right: 1rem;
-		bottom: 4.25rem;
+		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.35rem);
 		width: min(330px, calc(100% - 2rem));
-		overflow: hidden;
+		height: min(420px, calc(100dvh - 7.5rem));
+		min-width: min(250px, calc(100vw - 1rem));
+		min-height: 180px;
+		max-width: calc(100vw - 1rem);
+		resize: both;
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr);
+		overflow: auto;
 		border: 1px solid rgba(216, 173, 103, 0.4);
 		border-radius: 12px;
 		color: #eee4d6;
@@ -174,7 +187,10 @@
 	}
 	.actor-drawer.closed {
 		width: min(220px, calc(100% - 2rem));
+		min-width: 0;
+		min-height: 0;
 		height: auto;
+		resize: none;
 	}
 	.compendium-link {
 		border: 1px solid #765d3d;
@@ -212,15 +228,17 @@
 	.drawer-body {
 		display: grid;
 		gap: 0.6rem;
-		max-height: 360px;
+		max-height: none;
+		min-height: 0;
 		overflow: auto;
 		padding: 0.7rem;
 	}
 	@media (max-width: 650px) {
 		.actor-drawer {
 			right: 0.6rem;
-			bottom: 4.25rem;
+			bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.35rem);
 			width: min(330px, calc(100% - 1.2rem));
+			height: min(420px, calc(100dvh - 7.5rem));
 		}
 	}
 	.hint,
@@ -300,11 +318,12 @@
 	@media (max-width: 650px) {
 		.actor-drawer {
 			left: 0.6rem;
-			bottom: 3.65rem;
+			bottom: calc(var(--mm-audio-footer-offset, 6.5rem) + 0.35rem);
 			width: calc(100% - 1.2rem);
+			height: min(340px, calc(100dvh - 7.5rem));
 		}
 		.drawer-body {
-			max-height: 260px;
+			max-height: none;
 		}
 	}
 </style>

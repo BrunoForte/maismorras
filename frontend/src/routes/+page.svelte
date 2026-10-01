@@ -1,6 +1,6 @@
-<!-- eslint-disable svelte/no-navigation-without-resolve -- overlay intentionally opens in a separate tab. -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import type { Session } from '@supabase/supabase-js';
 	import CampaignWorkspace from '$lib/components/CampaignWorkspace.svelte';
 	import { getSupabaseClient, supabaseConfigured } from '$lib/services/supabase';
@@ -22,6 +22,18 @@
 	onMount(() => {
 		let disposed = false;
 		let unsubscribeAuth: (() => void) | undefined;
+		const legacySheetParams = new URLSearchParams(window.location.search);
+		if (
+			legacySheetParams.get('sheetWindow') === '1' &&
+			legacySheetParams.has('campaign') &&
+			legacySheetParams.has('character')
+		) {
+			const dedicatedUrl = new URL('/sheet', window.location.origin);
+			dedicatedUrl.searchParams.set('campaign', legacySheetParams.get('campaign') ?? '');
+			dedicatedUrl.searchParams.set('character', legacySheetParams.get('character') ?? '');
+			window.location.replace(`${resolve('/sheet')}${dedicatedUrl.search}`);
+			return;
+		}
 		restoreAppLocale();
 		const rememberInstallPrompt = (event: Event) => {
 			event.preventDefault();

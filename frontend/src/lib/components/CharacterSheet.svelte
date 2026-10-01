@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resizablePanel } from '$lib/utils/resizablePanel';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -940,7 +941,12 @@
 		if (event.currentTarget === event.target) onclose();
 	}}
 >
-	<section class="sheet" class:minimized aria-label="Ficha de personagem D&D 2024">
+	<section
+		use:resizablePanel={{ collapsed: docked && minimized, headerSelector: 'header', minWidth: 300 }}
+		class="sheet"
+		class:minimized
+		aria-label="Ficha de personagem D&D 2024"
+	>
 		<header>
 			<div class="sheet-heading">
 				<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
@@ -1225,13 +1231,13 @@
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
 		top: 5.8rem;
-		bottom: 4.8rem;
+		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.55rem);
 		left: 1rem;
 		width: min(780px, calc(100vw - 2rem));
 		min-width: min(640px, calc(100vw - 2rem));
 		max-width: calc(100vw - 1rem);
 		min-height: 320px;
-		max-height: calc(100dvh - 10.6rem);
+		max-height: calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 4.25rem));
 		resize: both;
 		overflow: auto;
 		pointer-events: auto;
@@ -1450,9 +1456,9 @@
 	}
 	@media (max-width: 700px) {
 		.sheet-backdrop.docked .sheet {
-			bottom: 6.8rem;
+			bottom: calc(var(--mm-audio-footer-offset, 6.5rem) + 0.55rem);
 			height: auto;
-			max-height: calc(100dvh - 12.6rem);
+			max-height: calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 6.5rem));
 		}
 	}
 </style>

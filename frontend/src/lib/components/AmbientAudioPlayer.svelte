@@ -731,17 +731,17 @@
 		position: fixed;
 		z-index: 45;
 		box-sizing: border-box;
-		min-height: 3.5rem;
+		min-height: 3rem;
 		inset-inline: 0;
 		inset-block-end: 0;
 		width: 100vw;
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: clamp(0.35rem, 1vw, 0.75rem);
+		gap: clamp(0.25rem, 0.7vw, 0.55rem);
 		align-items: center;
-		padding: clamp(0.35rem, 0.8vw, 0.6rem) max(0.55rem, env(safe-area-inset-right))
-			calc(clamp(0.35rem, 0.8vw, 0.6rem) + env(safe-area-inset-bottom))
-			max(0.55rem, env(safe-area-inset-left));
+		padding: clamp(0.22rem, 0.5vw, 0.38rem) max(0.45rem, env(safe-area-inset-right))
+			calc(clamp(0.22rem, 0.5vw, 0.38rem) + env(safe-area-inset-bottom))
+			max(0.45rem, env(safe-area-inset-left));
 		border-top: 1px solid #5a493b;
 		background: #211b1e;
 		box-shadow: 0 -5px 20px #0008;
@@ -750,7 +750,7 @@
 		position: static;
 		box-sizing: border-box;
 		min-width: 0;
-		min-height: 2.8rem;
+		min-height: 2.35rem;
 		width: 100%;
 		display: grid;
 		grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr);
@@ -772,7 +772,7 @@
 		max-width: 100%;
 		border: 1px solid #5a493b;
 		border-radius: 6px;
-		padding: clamp(0.4rem, 0.6vw, 0.55rem);
+		padding: clamp(0.3rem, 0.45vw, 0.4rem);
 		color: #eee4d6;
 		background: #121012;
 	}
@@ -806,7 +806,7 @@
 		display: flex;
 		justify-content: space-between;
 		gap: 0.65rem;
-		font-size: 0.76rem;
+		font-size: 0.69rem;
 	}
 	.track-state span {
 		min-width: 0;
@@ -839,7 +839,7 @@
 		flex: 0 0 auto;
 		border: 1px solid #765d3d;
 		border-radius: 6px;
-		padding: clamp(0.35rem, 0.6vw, 0.5rem) clamp(0.45rem, 0.8vw, 0.8rem);
+		padding: clamp(0.28rem, 0.45vw, 0.36rem) clamp(0.4rem, 0.65vw, 0.6rem);
 		color: #26190e;
 		background: #e0b86f;
 		font-weight: 700;
@@ -875,7 +875,7 @@
 		.ambient-player {
 			width: 100%;
 			grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.5fr);
-			min-height: 2.6rem;
+			min-height: 2.2rem;
 		}
 	}
 	@media (max-width: 520px) {

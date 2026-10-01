@@ -2,7 +2,8 @@
 	import type { Personagem, TokenVisibility } from '$lib/stores/gameStore';
 	import type { NPC } from '$lib/services/npcApi';
 	import type { EffectDefinition, SceneEffect } from '$lib/services/sceneApi';
-	import type { CharacterSheet } from '$lib/services/characterApi';
+	import type { Attack, CharacterSheet, InventoryItem, Spell } from '$lib/services/characterApi';
+	import type { WeaponAttackProfile } from '$lib/utils/weaponRules';
 	import CharacterMapSummary from './CharacterMapSummary.svelte';
 
 	export type TokenInspectorPermissions = {
@@ -50,7 +51,11 @@
 		onEffectDurationChange,
 		onApplyEffect,
 		onRemoveEffect,
-		onVisibilityChange
+		onVisibilityChange,
+		onWeaponRoll = () => {},
+		onCustomAttack = () => {},
+		onCastSpell = () => {},
+		onPresentSpell = () => {}
 	}: {
 		token: Personagem;
 		npc?: NPC | null;
@@ -89,6 +94,14 @@
 			field: keyof Pick<TokenVisibility, 'showName' | 'showHP' | 'showAC' | 'showStatuses'>,
 			checked: boolean
 		) => void;
+		onWeaponRoll?: (
+			item: InventoryItem,
+			action: 'attack' | 'damage',
+			profile?: WeaponAttackProfile
+		) => void;
+		onCustomAttack?: (attack: Attack, index: number, action: 'attack' | 'damage') => void;
+		onCastSpell?: (spell: Spell, index: number) => void;
+		onPresentSpell?: (spell: Spell) => void;
 	} = $props();
 	let selectedEffect = $derived(effectDefinitions.find((item) => item.slug === selectedEffectSlug));
 	function npcActionKey(action: NPC['sheet']['actions'][number]): string {
@@ -128,110 +141,40 @@
 		>
 	</header>
 	<div class="quick-stats">
-		<span><b>CA</b>{token.ca}</span><span><b>INI</b>{token.iniciativa}</span>
-		<span><b>TAM</b>{token.tamanho}×{token.tamanho}</span>
+		<span><b>INI</b>{token.iniciativa}</span><span><b>TAM</b>{token.tamanho}×{token.tamanho}</span>
 	</div>
 	{#if token.actorId && !npc && characterSheet && permissions.canViewCharacterSummary}
-		<CharacterMapSummary sheet={characterSheet} />
-	{/if}
-	{#if permissions.canEditAppearance}
-		<div class="token-appearance">
-			<strong>Aparência do token</strong>
-			<label
-				>Zoom <input
-					type="range"
-					min="0.5"
-					max="3"
-					step="0.05"
-					value={token.fotoEscala}
-					onchange={(event) => onAppearanceChange('fotoEscala', event.currentTarget.value)}
-				/></label
-			>
-			<label
-				>Horizontal <input
-					type="range"
-					min="-100"
-					max="100"
-					step="1"
-					value={token.fotoOffsetX}
-					onchange={(event) => onAppearanceChange('fotoOffsetX', event.currentTarget.value)}
-				/></label
-			>
-			<label
-				>Vertical <input
-					type="range"
-					min="-100"
-					max="100"
-					step="1"
-					value={token.fotoOffsetY}
-					onchange={(event) => onAppearanceChange('fotoOffsetY', event.currentTarget.value)}
-				/></label
-			>
-			<label class="color-control"
-				>Cor do jogador <input
-					type="color"
-					value={`#${token.cor.toString(16).padStart(6, '0')}`}
-					onchange={(event) => onColorChange(event.currentTarget.value)}
-					aria-label="Cor de identificação do token"
-				/></label
-			>
-			<small class="color-hint"
-				>{isEnglish
-					? 'Choose a color different from other characters in the campaign.'
-					: 'Escolha uma cor diferente dos outros personagens da campanha.'}</small
-			>
-			<button onclick={onToggleTransparentBackground}
-				>{token.visibility.transparentBackground
-					? 'Usar fundo colorido'
-					: 'Remover fundo colorido'}</button
-			>
-		</div>
-	{/if}
-	{#if permissions.canEditVision}
-		<div class="vision-control">
-			<span
-				>{isEnglish ? 'Fog vision' : 'Visão na névoa'}
-				<small>({isEnglish ? 'squares' : 'quadrados'})</small></span
-			><input
-				type="number"
-				min="0"
-				max="30"
-				value={token.visionRange}
-				onchange={(event) => onVisionChange(event.currentTarget.value)}
-				aria-label={isEnglish ? 'Vision range in squares' : 'Raio de visão em quadrados'}
-			/>
-		</div>
-		<div class="vision-control">
-			<span
-				>{isEnglish ? 'Light source' : 'Fonte de luz'}
-				<small>({isEnglish ? 'squares' : 'quadrados'})</small></span
-			><input
-				type="number"
-				min="0"
-				max="30"
-				value={token.lightRange}
-				onchange={(event) => onLightChange(event.currentTarget.value)}
-				aria-label={isEnglish ? 'Light range in squares' : 'Raio de luz em quadrados'}
-			/>
-		</div>
+		<CharacterMapSummary
+			sheet={characterSheet}
+			{isEnglish}
+			isGM={permissions.canManageConditions}
+			canCastSpells={token.isOwned}
+			hitPointsCurrent={token.hpAtual}
+			hitPointsMax={token.hpMax}
+			{hitPointsUpdating}
+			{onHitPointsChange}
+			{onHitPointsSet}
+			{onWeaponRoll}
+			{onCustomAttack}
+			{onCastSpell}
+			{onPresentSpell}
+		/>
 	{/if}
 	{#if permissions.canInteractWithDoor}<button class="door-interaction" onclick={onInteractWithDoor}
 			>🚪 {isEnglish ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button
 		>{/if}
 	{#if token.actorId && permissions.canOpenSheet}
-		<button class="open-sheet" onclick={() => onOpenSheet(token.actorId!)}
-			>{isEnglish ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button
-		>
-		<button class="open-sheet-new-window" onclick={() => onOpenSheetInNewWindow(token.actorId!)}
-			>{isEnglish ? 'Open sheet in new window' : 'Abrir ficha em nova janela'}</button
-		>
+		<div class="sheet-actions">
+			<button class="open-sheet" onclick={() => onOpenSheet(token.actorId!)}
+				>{isEnglish ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button
+			>
+			<button class="open-sheet-new-window" onclick={() => onOpenSheetInNewWindow(token.actorId!)}
+				>{isEnglish ? 'Open sheet in new window' : 'Abrir ficha em nova janela'}</button
+			>
+		</div>
 	{/if}
-	{#if permissions.canRemoveToken}<button class="remove-token" onclick={onRemoveToken}
-			>{isEnglish ? 'Remove token from scene' : 'Remover token da cena'}</button
-		>{/if}
 	{#if permissions.canRollInitiative}
 		<div class="token-rolls">
-			<span>{isEnglish ? 'Token rolls' : 'Rolagem do token'}</span>
 			<button class="token-initiative-button" onclick={onRollInitiative}
 				>⚔️ {isEnglish ? 'Roll initiative' : 'Rolar iniciativa'}</button
 			>
@@ -258,46 +201,48 @@
 				>{/each}
 		</div>
 	{/if}
-	<div class="hp-control">
-		<div>
-			<span>{isEnglish ? 'Hit points' : 'Pontos de vida'}</span><strong
-				>{token.hpAtual} <small>/ {token.hpMax}</small></strong
-			>
-		</div>
-		{#if permissions.canEditHitPoints}<div class="hp-edit">
-				<div class="hp-actions">
-					<button
-						disabled={hitPointsUpdating}
-						onclick={() => onHitPointsChange(-1)}
-						aria-label="Reduzir 1 ponto de vida">−</button
-					><input
-						aria-label="Pontos de vida atuais"
-						type="text"
-						inputmode="numeric"
-						value={token.hpAtual}
-						aria-busy={hitPointsUpdating}
-						onchange={(event) => onHitPointsSet(event.currentTarget.value)}
-					/><button
-						disabled={hitPointsUpdating}
-						onclick={() => onHitPointsChange(1)}
-						aria-label="Aumentar 1 ponto de vida">+</button
-					>
-				</div>
-				<small class="hp-hint"
-					>{isEnglish ? 'Type -10 to take 10 damage' : 'Digite -10 para sofrer 10 de dano'}</small
+	{#if !characterSheet || !token.actorId || npc}
+		<div class="hp-control">
+			<div>
+				<span>{isEnglish ? 'Hit points' : 'Pontos de vida'}</span><strong
+					>{token.hpAtual} <small>/ {token.hpMax}</small></strong
 				>
-			</div>{/if}
-	</div>
-	{#if permissions.canManageConditions}
-		<div class="official-effects">
-			<div class="status-heading">
-				<span>{isEnglish ? 'Official conditions (SRD)' : 'Condições oficiais (SRD)'}</span>
 			</div>
+			{#if permissions.canEditHitPoints}<div class="hp-edit">
+					<div class="hp-actions">
+						<button
+							disabled={hitPointsUpdating}
+							onclick={() => onHitPointsChange(-1)}
+							aria-label="Reduzir 1 ponto de vida">−</button
+						><input
+							aria-label="Pontos de vida atuais"
+							type="text"
+							inputmode="numeric"
+							value={token.hpAtual}
+							aria-busy={hitPointsUpdating}
+							onchange={(event) => onHitPointsSet(event.currentTarget.value)}
+						/><button
+							disabled={hitPointsUpdating}
+							onclick={() => onHitPointsChange(1)}
+							aria-label="Aumentar 1 ponto de vida">+</button
+						>
+					</div>
+					<small class="hp-hint"
+						>{isEnglish ? 'Type -10 to take 10 damage' : 'Digite -10 para sofrer 10 de dano'}</small
+					>
+				</div>{/if}
+		</div>
+	{/if}
+	<div class="official-effects">
+		<div class="status-heading">
+			<span>{isEnglish ? 'Official conditions (SRD)' : 'Condições oficiais (SRD)'}</span>
+		</div>
+		{#if permissions.canManageConditions}
 			{#if effectDefinitions.length}
 				<select
 					value={selectedEffectSlug}
 					onchange={(event) => onEffectSelectionChange(event.currentTarget.value)}
-					aria-label="Condição oficial"
+					aria-label={isEnglish ? 'Official condition' : 'Condição oficial'}
 					>{#each effectDefinitions as definition (definition.slug)}<option value={definition.slug}
 							>{definition.name}</option
 						>{/each}</select
@@ -310,8 +255,8 @@
 						inputmode="numeric"
 						type="number"
 						min="1"
-						placeholder="Turnos (opcional)"
-						aria-label="Duração em turnos"
+						placeholder={isEnglish ? 'Turns (optional)' : 'Turnos (opcional)'}
+						aria-label={isEnglish ? 'Duration in turns' : 'Duração em turnos'}
 					/><button onclick={onApplyEffect}>{isEnglish ? 'Apply' : 'Aplicar'}</button>
 				</div>
 			{:else}<p class="effect-empty">
@@ -319,59 +264,152 @@
 						? 'Run migration 0017 to load the SRD catalog.'
 						: 'Execute a migração 0017 para carregar o catálogo SRD.'}
 				</p>{/if}
-			{#if activeEffects.length}<div class="official-effect-list">
-					{#each activeEffects as effect (effect.id)}<span title={effect.source}
-							>{effect.name}{effect.remainingTurns
-								? ` · ${effect.remainingTurns} turnos`
-								: ''}<button
+		{/if}
+		{#if activeEffects.length}<div class="official-effect-list">
+				{#each activeEffects as effect (effect.id)}<span title={effect.source}
+						>{effect.name}{effect.remainingTurns
+							? ` · ${effect.remainingTurns} ${isEnglish ? 'turns' : 'turnos'}`
+							: ''}{#if permissions.canManageConditions}<button
 								onclick={() => onRemoveEffect(effect)}
-								aria-label={`Remover ${effect.name}`}>×</button
-							></span
-						>{/each}
-				</div>{/if}
-		</div>
-	{/if}
-	{#if permissions.canChangeVisibility}
-		<div class="visibility-control">
-			<div>
-				<span class="inspector-eyebrow"
-					>{isEnglish ? 'VISIBILITY FOR OTHER PLAYERS' : 'VISIBILIDADE PARA OUTROS JOGADORES'}</span
-				>
-				<p>
-					{isEnglish
-						? 'The Game Master always sees complete data. These options control what other players see.'
-						: 'O narrador sempre vê os dados completos. Estas opções regulam os outros jogadores.'}
-				</p>
-			</div>
-			<label
-				><input
-					type="checkbox"
-					checked={token.visibility.showName}
-					onchange={(event) => onVisibilityChange('showName', event.currentTarget.checked)}
-				/>{isEnglish ? 'Name' : 'Nome'}</label
-			>
-			<label
-				><input
-					type="checkbox"
-					checked={token.visibility.showHP}
-					onchange={(event) => onVisibilityChange('showHP', event.currentTarget.checked)}
-				/> HP</label
-			>
-			<label
-				><input
-					type="checkbox"
-					checked={token.visibility.showAC}
-					onchange={(event) => onVisibilityChange('showAC', event.currentTarget.checked)}
-				/>{isEnglish ? 'AC' : 'CA'}</label
-			>
-			<label
-				><input
-					type="checkbox"
-					checked={token.visibility.showStatuses}
-					onchange={(event) => onVisibilityChange('showStatuses', event.currentTarget.checked)}
-				/>{isEnglish ? 'Conditions' : 'Condições'}</label
-			>
-		</div>
+								aria-label={`${isEnglish ? 'Remove' : 'Remover'} ${effect.name}`}>×</button
+							>{/if}</span
+					>{/each}
+			</div>{:else}<p class="effect-empty">
+				{isEnglish ? 'No active conditions.' : 'Nenhuma condição ativa.'}
+			</p>{/if}
+	</div>
+	{#if permissions.canEditAppearance || permissions.canEditVision || permissions.canChangeVisibility || permissions.canRemoveToken}
+		<details class="token-settings">
+			<summary>{isEnglish ? 'Token settings' : 'Configurações do token'}</summary>
+			{#if permissions.canEditAppearance}
+				<div class="token-appearance">
+					<strong>Aparência do token</strong>
+					<label
+						>Zoom <input
+							type="range"
+							min="0.5"
+							max="3"
+							step="0.05"
+							value={token.fotoEscala}
+							onchange={(event) => onAppearanceChange('fotoEscala', event.currentTarget.value)}
+						/></label
+					>
+					<label
+						>Horizontal <input
+							type="range"
+							min="-100"
+							max="100"
+							step="1"
+							value={token.fotoOffsetX}
+							onchange={(event) => onAppearanceChange('fotoOffsetX', event.currentTarget.value)}
+						/></label
+					>
+					<label
+						>Vertical <input
+							type="range"
+							min="-100"
+							max="100"
+							step="1"
+							value={token.fotoOffsetY}
+							onchange={(event) => onAppearanceChange('fotoOffsetY', event.currentTarget.value)}
+						/></label
+					>
+					<label class="color-control"
+						>Cor do jogador <input
+							type="color"
+							value={`#${token.cor.toString(16).padStart(6, '0')}`}
+							onchange={(event) => onColorChange(event.currentTarget.value)}
+							aria-label="Cor de identificação do token"
+						/></label
+					>
+					<small class="color-hint"
+						>{isEnglish
+							? 'Choose a color different from other characters in the campaign.'
+							: 'Escolha uma cor diferente dos outros personagens da campanha.'}</small
+					>
+					<button onclick={onToggleTransparentBackground}
+						>{token.visibility.transparentBackground
+							? 'Usar fundo colorido'
+							: 'Remover fundo colorido'}</button
+					>
+				</div>
+			{/if}
+			{#if permissions.canEditVision}
+				<div class="vision-control">
+					<span
+						>{isEnglish ? 'Fog vision' : 'Visão na névoa'}
+						<small>({isEnglish ? 'squares' : 'quadrados'})</small></span
+					><input
+						type="number"
+						min="0"
+						max="30"
+						value={token.visionRange}
+						onchange={(event) => onVisionChange(event.currentTarget.value)}
+						aria-label={isEnglish ? 'Vision range in squares' : 'Raio de visão em quadrados'}
+					/>
+				</div>
+				<div class="vision-control">
+					<span
+						>{isEnglish ? 'Light source' : 'Fonte de luz'}
+						<small>({isEnglish ? 'squares' : 'quadrados'})</small></span
+					><input
+						type="number"
+						min="0"
+						max="30"
+						value={token.lightRange}
+						onchange={(event) => onLightChange(event.currentTarget.value)}
+						aria-label={isEnglish ? 'Light range in squares' : 'Raio de luz em quadrados'}
+					/>
+				</div>
+			{/if}
+			{#if permissions.canChangeVisibility}
+				<div class="visibility-control">
+					<div>
+						<span class="inspector-eyebrow"
+							>{isEnglish
+								? 'VISIBILITY FOR OTHER PLAYERS'
+								: 'VISIBILIDADE PARA OUTROS JOGADORES'}</span
+						>
+						<p>
+							{isEnglish
+								? 'The Game Master always sees complete data. These options control what other players see.'
+								: 'O narrador sempre vê os dados completos. Estas opções regulam os outros jogadores.'}
+						</p>
+					</div>
+					<label
+						><input
+							type="checkbox"
+							checked={token.visibility.showName}
+							onchange={(event) => onVisibilityChange('showName', event.currentTarget.checked)}
+						/>{isEnglish ? 'Name' : 'Nome'}</label
+					>
+					<label
+						><input
+							type="checkbox"
+							checked={token.visibility.showHP}
+							onchange={(event) => onVisibilityChange('showHP', event.currentTarget.checked)}
+						/> HP</label
+					>
+					<label
+						><input
+							type="checkbox"
+							checked={token.visibility.showAC}
+							onchange={(event) => onVisibilityChange('showAC', event.currentTarget.checked)}
+						/>{isEnglish ? 'AC' : 'CA'}</label
+					>
+					<label
+						><input
+							type="checkbox"
+							checked={token.visibility.showStatuses}
+							onchange={(event) => onVisibilityChange('showStatuses', event.currentTarget.checked)}
+						/>{isEnglish ? 'Conditions' : 'Condições'}</label
+					>
+				</div>
+			{/if}
+			{#if permissions.canRemoveToken}<button class="remove-token" onclick={onRemoveToken}
+					>{isEnglish ? 'Remove token from scene' : 'Remover token da cena'}</button
+				>{/if}
+		</details>
 	{/if}
 </section>
 
@@ -419,20 +457,17 @@
 	.token-inspector > .token-rolls {
 		order: 0;
 	}
-	.token-inspector > .token-appearance,
-	.token-inspector > .vision-control,
-	.token-inspector > .visibility-control,
+	.token-inspector .token-settings > .token-appearance,
+	.token-inspector .token-settings > .vision-control,
+	.token-inspector .token-settings > .visibility-control,
 	.token-inspector > .official-effects,
-	.token-inspector > .remove-token {
+	.token-inspector .token-settings > .remove-token {
 		order: 5;
-	}
-	.token-inspector > .token-appearance {
-		margin-top: auto;
 	}
 	.token-appearance {
 		display: grid;
 		gap: 0.45rem;
-		margin: 0.7rem 0;
+		margin: 0.2rem 0;
 		border-top: 1px solid #393034;
 		padding-top: 0.65rem;
 	}
@@ -487,18 +522,12 @@
 			serif;
 	}
 	.token-rolls {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+		align-items: center;
 		gap: 0.35rem;
-		padding: 0.7rem 1rem;
+		padding: 0.55rem 0;
 		border-top: 1px solid #493c39;
-	}
-	.token-rolls > span {
-		width: 100%;
-		color: #b9aa9d;
-		font-size: 0.66rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
 	}
 	.token-rolls button {
 		border: 1px solid #765d3d;
@@ -541,6 +570,36 @@
 	}
 	.open-sheet-new-window {
 		margin-top: 0.3rem;
+	}
+	.sheet-actions {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.4rem;
+	}
+	.sheet-actions .open-sheet,
+	.sheet-actions .open-sheet-new-window {
+		min-width: 0;
+		margin: 0;
+		padding: 0.48rem 0.45rem;
+		line-height: 1.25;
+	}
+	.token-settings {
+		display: grid;
+		gap: 0.5rem;
+		border: 1px solid #423839;
+		border-radius: 8px;
+		padding: 0.55rem 0.65rem;
+		background: rgba(15, 13, 15, 0.34);
+	}
+	.token-settings > summary {
+		color: #e8c786;
+		font-size: 0.72rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.token-settings[open] > summary {
+		padding-bottom: 0.4rem;
+		border-bottom: 1px solid #423839;
 	}
 	.npc-actions {
 		display: grid;
@@ -600,7 +659,7 @@
 	}
 	.quick-stats {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		margin-bottom: 0.8rem;
 		border: 1px solid #423839;
 		border-radius: 8px;
