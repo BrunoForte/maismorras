@@ -12,7 +12,8 @@ import {
 export const localStackEnabled = process.env.E2E_LOCAL_STACK === 'true';
 const supabaseUrl = process.env.LOCAL_SUPABASE_URL;
 const publishableKey = process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const serviceRoleKey = process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey =
+	process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY;
 export const apiBase = process.env.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8080';
 
 if (

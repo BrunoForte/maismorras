@@ -220,7 +220,6 @@ jobs:
             "SUPABASE_URL=$($values['API_URL'])",
             "PUBLIC_SUPABASE_URL=$($values['API_URL'])",
             "PUBLIC_SUPABASE_PUBLISHABLE_KEY=$($values['ANON_KEY'])",
-            "LOCAL_SUPABASE_SERVICE_ROLE_KEY=$($values['SERVICE_ROLE_KEY'])",
             "SUPABASE_SERVICE_ROLE_KEY=$($values['SERVICE_ROLE_KEY'])",
             "SUPABASE_JWT_SECRET=$($values['JWT_SECRET'])",
             "DATABASE_URL=$($values['DB_URL'])",
@@ -284,7 +283,7 @@ jobs:
             (Join-Path $env:GITHUB_WORKSPACE 'frontend/test-results'),
             (Join-Path $env:GITHUB_WORKSPACE 'frontend/playwright-report')
           )
-          $textExtensions = @('.log', '.txt', '.json', '.html', '.xml', '.trace', '.snapshot', '.js', '.css')
+          $textExtensions = @('.log', '.txt', '.json', '.html', '.xml', '.md', '.trace', '.snapshot', '.js', '.css')
           $sensitiveValue = '(?i)(["'']?(?:access[_-]?token|refresh[_-]?token|service[_-]?role[_-]?key|secret[_-]?key|publishable[_-]?key|api[_-]?key|jwt[_-]?secret|database[_-]?url|password|authorization)["'']?\s*[:=]\s*["'']?)[^"'',}\s]+'
           $headerValue = '(?i)(["'']name["'']\s*:\s*["''](?:authorization|apikey|x-api-key)["'']\s*,\s*["'']value["'']\s*:\s*["''])(?:Bearer\s+)?[^"'']*'
           $jwt = '\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{8,}\b'
@@ -297,7 +296,7 @@ jobs:
           foreach ($root in $diagnosticRoots) {
             if (-not (Test-Path -LiteralPath $root)) { continue }
             foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse) {
-              if ($file.Length -gt 2MB -or $file.Extension -notin $textExtensions) { continue }
+              if ($file.Extension -notin $textExtensions) { continue }
               $content = [IO.File]::ReadAllText($file.FullName)
               $content = [regex]::Replace($content, $sensitiveValue, '$1[REDACTED]')
               $content = [regex]::Replace($content, $headerValue, '$1[REDACTED]')
@@ -310,32 +309,20 @@ jobs:
               [IO.File]::WriteAllText($file.FullName, $content, $utf8)
             }
           }
-          # Playwright stores its trace as a zip. Scrub its network trace and DOM snapshots before upload.
-          foreach ($trace in Get-ChildItem -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'frontend/test-results') -Filter '*.zip' -File -Recurse -ErrorAction SilentlyContinue) {
-            $temporaryDirectory = Join-Path $env:RUNNER_TEMP ('trace-sanitize-' + [guid]::NewGuid().ToString('N'))
-            $temporaryZip = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString('N') + '.zip')
-            try {
-              Expand-Archive -LiteralPath $trace.FullName -DestinationPath $temporaryDirectory -Force
-              foreach ($file in Get-ChildItem -LiteralPath $temporaryDirectory -File -Recurse) {
-                if ($file.Length -gt 5MB -or $file.Extension -notin $textExtensions) { continue }
-                $content = [IO.File]::ReadAllText($file.FullName)
-                $content = [regex]::Replace($content, $headerValue, '$1[REDACTED]')
-                $content = [regex]::Replace($content, $sensitiveValue, '$1[REDACTED]')
-                $content = [regex]::Replace($content, $jwt, '[REDACTED_JWT]')
-                $content = [regex]::Replace($content, $bearer, '$1[REDACTED]')
-                $content = [regex]::Replace($content, $signedQuery, '$1[REDACTED]')
-                $content = [regex]::Replace($content, $supabaseKey, '[REDACTED_SUPABASE_KEY]')
-                $content = [regex]::Replace($content, $testPassword, '[TEMP_TEST_PASSWORD]')
-                [IO.File]::WriteAllText($file.FullName, $content, $utf8)
+          # Traces and network captures can contain credentials in arbitrary internal files.
+          # Exclude them wholesale; diagnostics retain sanitized text and non-network visual failures.
+          foreach ($root in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'frontend/test-results'),
+            (Join-Path $env:GITHUB_WORKSPACE 'frontend/playwright-report')
+          )) {
+            if (-not (Test-Path -LiteralPath $root)) { continue }
+            foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse) {
+              if ($file.Extension -in @('.zip', '.network', '.trace', '.har') -or $file.Name -match '(?i)(trace|network)') {
+                Remove-Item -LiteralPath $file.FullName -Force
               }
-              Compress-Archive -Path (Join-Path $temporaryDirectory '*') -DestinationPath $temporaryZip -Force
-              Move-Item -LiteralPath $temporaryZip -Destination $trace.FullName -Force
-            } finally {
-              if (Test-Path -LiteralPath $temporaryDirectory) { Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force }
-              if (Test-Path -LiteralPath $temporaryZip) { Remove-Item -LiteralPath $temporaryZip -Force }
             }
           }
-      - name: Upload local E2E diagnostics (no auth state)
+      - name: Upload sanitized local E2E diagnostics (no traces or network captures)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -344,6 +331,12 @@ jobs:
             artifacts/*.log
             frontend/test-results/
             frontend/playwright-report/
+            !frontend/test-results/**/*.zip
+            !frontend/test-results/**/*trace*
+            !frontend/test-results/**/*network*
+            !frontend/playwright-report/**/*.zip
+            !frontend/playwright-report/**/*trace*
+            !frontend/playwright-report/**/*network*
           if-no-files-found: ignore
           retention-days: 7
       - name: Stop isolated Supabase stack
