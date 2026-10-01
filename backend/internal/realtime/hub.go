@@ -65,6 +65,7 @@ type audioRealtimeState struct {
 	Position  int64   `json:"positionMs"`
 	StartedAt int64   `json:"startedAt"`
 	Revision  int64   `json:"revision"`
+	Loop      *bool   `json:"loop,omitempty"`
 }
 
 func validAudioRealtimeState(state *audioRealtimeState) bool {
@@ -207,7 +208,7 @@ func (h *Hub) publishRoomEvent(ctx context.Context, sceneID string, payload []by
 
 // BroadcastAudioState relays a server-persisted path change to every client in
 // the scene. The handler only supplies state read back from the database.
-func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool, requestID string) {
+func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, loop, effects bool, requestID string) {
 	eventType := "audio.state"
 	if effects {
 		eventType = "audio.effects"
@@ -215,7 +216,7 @@ func (h *Hub) BroadcastAudioState(sceneID, path string, playing bool, volume flo
 	payload, err := json.Marshal(struct {
 		Type  string             `json:"type"`
 		State audioRealtimeState `json:"state"`
-	}{Type: eventType, State: audioRealtimeState{Path: path, Playing: playing, Volume: volume, Position: positionMs, StartedAt: startedAt, Revision: revision}})
+	}{Type: eventType, State: audioRealtimeState{Path: path, Playing: playing, Volume: volume, Position: positionMs, StartedAt: startedAt, Revision: revision, Loop: &loop}})
 	if err == nil {
 		h.publishRoomEvent(withRequestID(context.Background(), requestID), sceneID, payload)
 	}

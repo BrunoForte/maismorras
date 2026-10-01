@@ -18,7 +18,6 @@
 	let draft = $state<Scene>({} as Scene),
 		saving = $state(false),
 		message = $state('');
-	let audioFiles = $state<{ path: string; name: string }[]>([]);
 	let imageFiles = $state<{ path: string; name: string }[]>([]);
 	let mapPrompt = $state('');
 	let generating = $state(false);
@@ -40,12 +39,6 @@
 			);
 			return;
 		}
-		audioFiles = (data ?? [])
-			.filter((file) => file.metadata?.mimetype?.startsWith('audio/'))
-			.map((file) => ({
-				path: `${folder}/${file.name}`,
-				name: file.name.replace(/^[a-f0-9-]+-/, '')
-			}));
 		imageFiles = (data ?? [])
 			.filter((file) => file.metadata?.mimetype?.startsWith('image/'))
 			.map((file) => ({
@@ -180,29 +173,6 @@
 				</small>
 			</div>
 			<label
-				>{$appLocale === 'en' ? 'Scene soundtrack' : 'Trilha da cena'}<select
-					bind:value={draft.ambientAudioPath}
-					><option value="">{$appLocale === 'en' ? 'No soundtrack' : 'Sem trilha'}</option
-					>{#each audioFiles as audio (audio.path)}<option value={audio.path}>{audio.name}</option
-						>{/each}</select
-				></label
-			><label
-				>{$appLocale === 'en' ? 'Soundtrack volume' : 'Volume da trilha'}<input
-					bind:value={draft.ambientAudioVolume}
-					type="number"
-					min="0"
-					max="100"
-				/></label
-			><label class="toggle"
-				><input
-					type="checkbox"
-					bind:checked={draft.ambientAudioEnabled}
-					disabled={!draft.ambientAudioPath}
-				/>
-				{$appLocale === 'en'
-					? 'Play soundtrack for players'
-					: 'Reproduzir trilha para participantes'}</label
-			><label
 				>{$appLocale === 'en' ? 'Grid in pixels' : 'Grid em pixels'}<input
 					bind:value={draft.gridSize}
 					type="number"

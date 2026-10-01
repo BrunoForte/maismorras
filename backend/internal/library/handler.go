@@ -26,7 +26,7 @@ type Handler struct {
 }
 
 type audioStateBroadcaster interface {
-	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, effects bool, requestID string)
+	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, loop, effects bool, requestID string)
 }
 
 func NewHandler(pool *pgxpool.Pool, cfg config.Config, audio ...audioStateBroadcaster) *Handler {
@@ -94,7 +94,7 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
     where m.campaign_id=$1 and m.user_id=$2
     and (
       m.role='gm'::public.campaign_role
-      or ($3 and exists (select 1 from public.scenes s where s.campaign_id=$1 and s.ambient_audio_path=$4 and s.ambient_audio_enabled))
+	      or ($3 and exists (select 1 from public.scenes s where s.campaign_id=$1 and ((s.ambient_audio_path=$4 and s.ambient_audio_enabled) or (s.ambient_effect_path=$4 and s.ambient_effect_enabled))))
       or (not $3 and $5 in ('presentation','overlay') and exists (
         select 1 from public.scene_presentations sp
         join public.scenes ps on ps.id=sp.scene_id and ps.campaign_id=$1
@@ -150,13 +150,13 @@ func (h *Handler) SignedURL(w http.ResponseWriter, r *http.Request) error {
 // Remove database references only after Storage definitively reports that the
 // object is missing, so clients stop requesting an asset that no longer exists.
 func (h *Handler) removeStaleAssetReferences(r *http.Request, campaignID, assetPath string) {
+	h.clearStaleAudioReferences(r, campaignID, assetPath)
 	queries := []struct {
 		name string
 		sql  string
 	}{
 		{"scene tokens", `update public.scene_tokens st set image_url=null from public.scenes s where st.scene_id=s.id and s.campaign_id=$1 and st.image_url=$2`},
 		{"scene backgrounds", `update public.scenes set background_url=null,updated_at=now() where campaign_id=$1 and background_url=$2`},
-		{"scene audio", `update public.scenes set ambient_audio_path=null,ambient_audio_enabled=false,ambient_audio_started_at=null,ambient_audio_revision=ambient_audio_revision+1,updated_at=now() where campaign_id=$1 and ambient_audio_path=$2`},
 		{"scene presentations", `update public.scene_presentations set asset_path='',visible=false,updated_at=now() where campaign_id=$1 and asset_path=$2`},
 		{"actor portraits", `update public.actors set sheet=jsonb_set(sheet,'{portraitPath}','null'::jsonb,true) where campaign_id=$1 and sheet->>'portraitPath'=$2`},
 		{"actor token portraits", `update public.actors set sheet=jsonb_set(sheet,'{tokenPortraitPath}','null'::jsonb,true) where campaign_id=$1 and sheet->>'tokenPortraitPath'=$2`},
@@ -169,6 +169,46 @@ func (h *Handler) removeStaleAssetReferences(r *http.Request, campaignID, assetP
 		if _, err := h.pool.Exec(r.Context(), query.sql, campaignID, assetPath); err != nil {
 			attrs := []any{"event", "library.asset_reference_cleanup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID), "reference_type", query.name}
 			slog.Warn("removed asset reference cleanup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+		}
+	}
+}
+
+func (h *Handler) clearStaleAudioReferences(r *http.Request, campaignID, assetPath string) {
+	for _, channel := range []struct {
+		column  string
+		effects bool
+	}{{column: "ambient_audio"}, {column: "ambient_effect", effects: true}} {
+		query := `update public.scenes set ` + channel.column + `_path=null,` + channel.column + `_enabled=false,` + channel.column + `_started_at=null,` + channel.column + `_position_ms=0,` + channel.column + `_revision=` + channel.column + `_revision+1,updated_at=now() where campaign_id=$1 and ` + channel.column + `_path=$2 returning id::text,` + channel.column + `_revision,` + channel.column + `_loop`
+		rows, err := h.pool.Query(r.Context(), query, campaignID, assetPath)
+		if err != nil {
+			attrs := []any{"event", "library.asset_reference_cleanup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID), "reference_type", channel.column}
+			slog.Warn("removed asset audio reference cleanup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+			continue
+		}
+		type clearedAudio struct {
+			sceneID  string
+			revision int64
+			loop     bool
+		}
+		cleared := make([]clearedAudio, 0, 1)
+		for rows.Next() {
+			var state clearedAudio
+			if err := rows.Scan(&state.sceneID, &state.revision, &state.loop); err != nil {
+				attrs := []any{"event", "library.asset_reference_cleanup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID), "reference_type", channel.column}
+				slog.Warn("removed asset audio reference cleanup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+				continue
+			}
+			cleared = append(cleared, state)
+		}
+		if err := rows.Err(); err != nil {
+			attrs := []any{"event", "library.asset_reference_cleanup_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(campaignID), "reference_type", channel.column}
+			slog.Warn("removed asset audio reference cleanup failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+		}
+		rows.Close()
+		if h.audio != nil {
+			for _, state := range cleared {
+				h.audio.BroadcastAudioState(state.sceneID, "", false, 0, 0, 0, state.revision, state.loop, channel.effects, r.Header.Get("X-Request-ID"))
+			}
 		}
 	}
 }

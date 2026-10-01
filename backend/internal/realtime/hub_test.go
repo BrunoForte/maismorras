@@ -95,6 +95,38 @@ func TestAudioRealtimeStateValidation(t *testing.T) {
 	}
 }
 
+func TestBroadcastAudioStateIncludesLoopAndChannelRevision(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		effects   bool
+		eventType string
+		loop      bool
+	}{
+		{name: "music loop on", eventType: "audio.state", loop: true},
+		{name: "effect loop off", effects: true, eventType: "audio.effects", loop: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			hub := NewHub()
+			broker := &brokerSpy{}
+			hub.ConfigureBroker(broker)
+			hub.BroadcastAudioState("scene-1", "campaigns/c1/media/track.mp3", true, .6, 1200, 1_700_000_000_000, 7, test.loop, test.effects, "request-1")
+			if len(broker.published) != 1 {
+				t.Fatalf("published envelopes = %d, want 1", len(broker.published))
+			}
+			var event struct {
+				Type  string             `json:"type"`
+				State audioRealtimeState `json:"state"`
+			}
+			if err := json.Unmarshal(broker.published[0].Payload, &event); err != nil {
+				t.Fatal(err)
+			}
+			if event.Type != test.eventType || event.State.Revision != 7 || event.State.Loop == nil || *event.State.Loop != test.loop {
+				t.Fatalf("broadcast state = %#v, want type %q, revision 7, loop %t", event, test.eventType, test.loop)
+			}
+		})
+	}
+}
+
 func TestOverlayReceivesOnlyReadOnlyRoomEvents(t *testing.T) {
 	for _, raw := range []string{`{"type":"dice.roll"}`, `{"type":"map.ping"}`, `{"type":"scene.delta"}`, `not json`} {
 		if safeOverlayEvent([]byte(raw)) {

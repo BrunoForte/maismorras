@@ -60,6 +60,7 @@ type changedAudioScene struct {
 	positionMs int64
 	startedAt  int64
 	revision   int64
+	loop       bool
 	effects    bool
 }
 
@@ -135,7 +136,7 @@ func (h *Handler) SetAudioKind(w http.ResponseWriter, r *http.Request) error {
 	}
 	if h.audio != nil {
 		for _, state := range changed {
-			h.audio.BroadcastAudioState(state.id, state.path, state.playing, state.volume, state.positionMs, state.startedAt, state.revision, state.effects, r.Header.Get("X-Request-ID"))
+			h.audio.BroadcastAudioState(state.id, state.path, state.playing, state.volume, state.positionMs, state.startedAt, state.revision, state.loop, state.effects, r.Header.Get("X-Request-ID"))
 		}
 	}
 	return write(w, http.StatusOK, map[string]any{"path": destination, "kind": in.Kind, "looping": looping})
@@ -194,14 +195,14 @@ func updateAudioSceneReferences(ctx context.Context, tx pgx.Tx, campaignID, oldP
 		if effect {
 			column = "ambient_effect"
 		}
-		query := `update public.scenes set ` + column + `_path=$3,` + column + `_revision=` + column + `_revision+1,updated_at=now() where campaign_id=$1 and ` + column + `_path=$2 returning id::text,` + column + `_path,` + column + `_enabled,` + column + `_volume::double precision/100,` + column + `_position_ms,coalesce((extract(epoch from ` + column + `_started_at)*1000)::bigint,0),` + column + `_revision`
+		query := `update public.scenes set ` + column + `_path=$3,` + column + `_revision=` + column + `_revision+1,updated_at=now() where campaign_id=$1 and ` + column + `_path=$2 returning id::text,` + column + `_path,` + column + `_enabled,` + column + `_volume::double precision/100,` + column + `_position_ms,coalesce((extract(epoch from ` + column + `_started_at)*1000)::bigint,0),` + column + `_revision,` + column + `_loop`
 		rows, err := tx.Query(ctx, query, campaignID, oldPath, newPath)
 		if err != nil {
 			return nil, err
 		}
 		for rows.Next() {
 			state := changedAudioScene{effects: effect}
-			if err := rows.Scan(&state.id, &state.path, &state.playing, &state.volume, &state.positionMs, &state.startedAt, &state.revision); err != nil {
+			if err := rows.Scan(&state.id, &state.path, &state.playing, &state.volume, &state.positionMs, &state.startedAt, &state.revision, &state.loop); err != nil {
 				rows.Close()
 				return nil, err
 			}

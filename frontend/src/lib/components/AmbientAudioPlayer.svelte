@@ -1,16 +1,28 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import type { Scene } from '$lib/services/sceneApi';
-	import { loadScene, updateScene } from '$lib/services/sceneApi';
+	import {
+		loadScene,
+		updateSceneAudio,
+		type SceneAudioChannel,
+		type SceneAudioUpdate
+	} from '$lib/services/sceneApi';
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import type { AudioPlaybackState } from '$lib/services/audioPlayback';
 	import {
 		audioAssetDisplayName,
 		audioAssetKind,
+		audioAssetLooping,
 		CrossfadeAudio,
 		withListenerVolume
 	} from '$lib/services/audioPlayback';
+	import {
+		acceptsAudioRevision,
+		createLoopUpdate,
+		createPendingAudioSelection,
+		createPlaybackCommand
+	} from '$lib/services/audioPlaybackControls';
 	import { getSupabaseClient } from '$lib/services/supabase';
 	import { appLocale } from '$lib/stores/locale';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
@@ -35,6 +47,26 @@
 	let lastEffectsState: AudioPlaybackState | null = null;
 	let listenerVolume = $state(100);
 	let effectsListenerVolume = $state(100);
+	let selectedMusicPath = $state<string | null>(null);
+	let selectedEffectPath = $state<string | null>(null);
+	let selectedMusicLoop = $state(true);
+	let selectedEffectLoop = $state(false);
+	let selectionSceneId = '';
+	let musicUnavailable = $state(false);
+	let effectsUnavailable = $state(false);
+	let musicBusy = $state(false);
+	let effectsBusy = $state(false);
+	let musicElements: [HTMLAudioElement, HTMLAudioElement] | null = null;
+	let effectsElements: [HTMLAudioElement, HTMLAudioElement] | null = null;
+	let playbackSceneId = '';
+	$effect(() => {
+		if (selectionSceneId === scene.id) return;
+		selectionSceneId = scene.id;
+		selectedMusicPath = scene.ambientAudioPath;
+		selectedEffectPath = scene.ambientEffectPath;
+		selectedMusicLoop = scene.ambientAudioLoop ?? true;
+		selectedEffectLoop = scene.ambientEffectLoop ?? false;
+	});
 	const targetVolume = (value?: number) =>
 		Math.max(0, Math.min(1, (value ?? scene.ambientAudioVolume) / 100));
 	const volumeStorageKey = () => `maismorras-audio-volume:${scene.campaignId}:${session.user.id}`;
@@ -48,7 +80,8 @@
 			volume: targetVolume(value.ambientAudioVolume),
 			positionMs: value.ambientAudioPositionMs ?? 0,
 			startedAt: value.ambientAudioStartedAt ? Date.parse(value.ambientAudioStartedAt) : 0,
-			revision: value.ambientAudioRevision ?? 0
+			revision: value.ambientAudioRevision ?? 0,
+			loop: value.ambientAudioLoop ?? true
 		};
 	}
 
@@ -59,29 +92,41 @@
 			volume: Math.max(0, Math.min(1, value.ambientEffectVolume / 100)),
 			positionMs: value.ambientEffectPositionMs ?? 0,
 			startedAt: value.ambientEffectStartedAt ? Date.parse(value.ambientEffectStartedAt) : 0,
-			revision: value.ambientEffectRevision ?? 0
+			revision: value.ambientEffectRevision ?? 0,
+			loop: value.ambientEffectLoop ?? false
 		};
 	}
 
 	async function signed(path: string) {
-		return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
+		try {
+			return (await getSignedAssetUrl(session, scene.campaignId, path)) ?? '';
+		} catch {
+			return '';
+		}
 	}
 
-	async function applyState(state: AudioPlaybackState) {
+	async function applyState(state: AudioPlaybackState): Promise<boolean> {
+		if (!acceptsAudioRevision(lastState, state)) return false;
 		lastState = state;
-		if (!playback) return;
+		if (!playback) return false;
 		const applied = await playback.apply(withListenerVolume(state, listenerVolume), signed);
-		needsGesture = state.playing && !applied;
+		needsGesture = state.playing && !applied && playback.failureReason === 'autoplay';
+		musicUnavailable = state.playing && !applied && playback.failureReason === 'unavailable';
+		return applied;
 	}
 
-	async function applyEffectsState(state: AudioPlaybackState) {
+	async function applyEffectsState(state: AudioPlaybackState): Promise<boolean> {
+		if (!acceptsAudioRevision(lastEffectsState, state)) return false;
 		lastEffectsState = state;
-		if (!effectsPlayback) return;
+		if (!effectsPlayback) return false;
 		const applied = await effectsPlayback.apply(
 			withListenerVolume(state, effectsListenerVolume),
 			signed
 		);
-		effectsNeedGesture = state.playing && !applied;
+		effectsNeedGesture = state.playing && !applied && effectsPlayback.failureReason === 'autoplay';
+		effectsUnavailable =
+			state.playing && !applied && effectsPlayback.failureReason === 'unavailable';
+		return applied;
 	}
 
 	function setListenerVolume(event: Event) {
@@ -110,10 +155,15 @@
 		if (lastEffectsState) void applyEffectsState(lastEffectsState);
 	}
 
-	async function refreshScene() {
+	function trackName(path: string | null, empty: string) {
+		if (!path) return empty;
+		return tracks.find((track) => track.path === path)?.name ?? audioAssetDisplayName(path);
+	}
+
+	async function refreshScene(currentSession = session, currentSceneId = scene.id) {
 		try {
-			const loaded = await loadScene(session, scene.id);
-			if (loaded.scene.id === scene.id) {
+			const loaded = await loadScene(currentSession, currentSceneId);
+			if (loaded.scene.id === scene.id && currentSession.access_token === session.access_token) {
 				onSceneUpdate(loaded.scene);
 				await applyState(stateFromScene(loaded.scene));
 				await applyEffectsState(effectsStateFromScene(loaded.scene));
@@ -123,19 +173,20 @@
 		}
 	}
 
-	async function loadTracks() {
+	async function loadTracks(currentCampaignId = scene.campaignId) {
 		const supabase = await getSupabaseClient();
 		if (!supabase) return;
 		const { data } = await supabase.storage
 			.from('campaign-assets')
-			.list(`campaigns/${scene.campaignId}/media`, {
+			.list(`campaigns/${currentCampaignId}/media`, {
 				limit: 200,
 				sortBy: { column: 'created_at', order: 'desc' }
 			});
+		if (scene.campaignId !== currentCampaignId) return;
 		tracks = (data ?? [])
 			.filter((file) => file.metadata?.mimetype?.startsWith('audio/'))
 			.map((file) => {
-				const path = `campaigns/${scene.campaignId}/media/${file.name}`;
+				const path = `campaigns/${currentCampaignId}/media/${file.name}`;
 				const kind = audioAssetKind(file.name);
 				return {
 					path,
@@ -146,174 +197,208 @@
 			});
 	}
 
-	async function save(next: Scene, notify = true) {
-		const saved = await updateScene(session, next);
-		onSceneUpdate(saved);
-		if (notify) sceneSocket?.publishAudioState(stateFromScene(saved));
-		return saved;
-	}
-
-	async function applyRemoteState(state: AudioPlaybackState) {
-		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
-			void loadTracks();
-		onSceneUpdate({
-			...scene,
-			ambientAudioPath: state.path,
-			ambientAudioEnabled: state.playing,
-			ambientAudioVolume: Math.round(state.volume * 100),
-			ambientAudioPositionMs: state.positionMs,
-			ambientAudioStartedAt:
-				state.playing && state.startedAt > 0 ? new Date(state.startedAt).toISOString() : null,
-			ambientAudioRevision: state.revision ?? scene.ambientAudioRevision ?? 0
-		});
-		await applyState(state);
-	}
-
-	async function applyRemoteEffectsState(state: AudioPlaybackState) {
-		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
-			void loadTracks();
-		onSceneUpdate({
-			...scene,
+	function sceneWithAudio(
+		value: Scene,
+		channel: SceneAudioChannel,
+		state: AudioPlaybackState
+	): Scene {
+		if (channel === 'music')
+			return {
+				...value,
+				ambientAudioPath: state.path,
+				ambientAudioEnabled: state.playing,
+				ambientAudioVolume: Math.round(state.volume * 100),
+				ambientAudioPositionMs: state.positionMs,
+				ambientAudioStartedAt:
+					state.playing && state.startedAt > 0 ? new Date(state.startedAt).toISOString() : null,
+				ambientAudioRevision: state.revision ?? value.ambientAudioRevision,
+				ambientAudioLoop: state.loop ?? value.ambientAudioLoop
+			};
+		return {
+			...value,
 			ambientEffectPath: state.path,
 			ambientEffectEnabled: state.playing,
 			ambientEffectVolume: Math.round(state.volume * 100),
 			ambientEffectPositionMs: state.positionMs,
 			ambientEffectStartedAt:
 				state.playing && state.startedAt > 0 ? new Date(state.startedAt).toISOString() : null,
-			ambientEffectRevision: state.revision ?? scene.ambientEffectRevision ?? 0
-		});
+			ambientEffectRevision: state.revision ?? value.ambientEffectRevision,
+			ambientEffectLoop: state.loop ?? value.ambientEffectLoop
+		};
+	}
+
+	async function persistAudio(
+		channel: SceneAudioChannel,
+		state: AudioPlaybackState,
+		expectedRevision: number
+	) {
+		const payload: SceneAudioUpdate = {
+			channel,
+			...state,
+			loop: state.loop ?? channel === 'music',
+			expectedRevision
+		};
+		const saved = await updateSceneAudio(session, scene.id, payload);
+		const canonical = { ...saved, path: saved.path ?? null };
+		onSceneUpdate(sceneWithAudio(scene, channel, canonical));
+		if (channel === 'music') {
+			selectedMusicPath = canonical.path;
+			selectedMusicLoop = canonical.loop ?? selectedMusicLoop;
+		} else {
+			selectedEffectPath = canonical.path;
+			selectedEffectLoop = canonical.loop ?? selectedEffectLoop;
+		}
+		return canonical;
+	}
+
+	async function applyRemoteState(state: AudioPlaybackState) {
+		if (!acceptsAudioRevision(lastState, state)) return;
+		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
+			void loadTracks();
+		const previousPath = scene.ambientAudioPath;
+		const canonical = {
+			...state,
+			path: state.path || null,
+			loop: state.loop ?? audioAssetLooping(state.path ?? '')
+		};
+		onSceneUpdate(sceneWithAudio(scene, 'music', canonical));
+		if (selectedMusicPath === previousPath) {
+			selectedMusicPath = canonical.path;
+			selectedMusicLoop = canonical.loop ?? selectedMusicLoop;
+		}
+		await applyState(state);
+	}
+
+	async function applyRemoteEffectsState(state: AudioPlaybackState) {
+		if (!acceptsAudioRevision(lastEffectsState, state)) return;
+		if (state.playing && state.path && !tracks.some((track) => track.path === state.path))
+			void loadTracks();
+		const previousPath = scene.ambientEffectPath;
+		const canonical = {
+			...state,
+			path: state.path || null,
+			loop: state.loop ?? audioAssetLooping(state.path ?? '')
+		};
+		onSceneUpdate(sceneWithAudio(scene, 'effect', canonical));
+		if (selectedEffectPath === previousPath) {
+			selectedEffectPath = canonical.path;
+			selectedEffectLoop = canonical.loop ?? selectedEffectLoop;
+		}
 		await applyEffectsState(state);
 	}
 
-	function publishState(state: AudioPlaybackState) {
-		sceneSocket?.publishAudioState(state);
+	function selectMusic(event: Event) {
+		const path = (event.currentTarget as HTMLSelectElement).value || null;
+		const track = tracks.find((item) => item.path === path);
+		const selection = createPendingAudioSelection(
+			path,
+			track ? audioAssetLooping(track.path) : true
+		);
+		selectedMusicPath = selection.path;
+		selectedMusicLoop = selection.loop;
 	}
 
-	async function selectTrack(event: Event) {
-		if (!isGM) return;
-		const path = (event.currentTarget as HTMLSelectElement).value;
-		if (path === (scene.ambientAudioPath ?? '')) return;
-		const continuePlayback = scene.ambientAudioEnabled && Boolean(path);
-		const startedAt = continuePlayback ? new Date().toISOString() : null;
-		const next = {
-			...scene,
-			ambientAudioPath: path || null,
-			ambientAudioEnabled: continuePlayback,
-			ambientAudioPositionMs: 0,
-			ambientAudioStartedAt: startedAt,
-			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
-		};
-		const saved = await save(next, false);
-		const state: AudioPlaybackState = {
-			path: saved.ambientAudioPath,
-			playing: continuePlayback,
-			volume: targetVolume(saved.ambientAudioVolume),
-			positionMs: saved.ambientAudioPositionMs ?? 0,
-			startedAt:
-				continuePlayback && saved.ambientAudioStartedAt
-					? Date.parse(saved.ambientAudioStartedAt)
-					: 0,
-			revision: saved.ambientAudioRevision ?? 0
-		};
-		publishState(state);
-		await applyState(state);
+	function selectEffect(event: Event) {
+		const path = (event.currentTarget as HTMLSelectElement).value || null;
+		const track = tracks.find((item) => item.path === path);
+		const selection = createPendingAudioSelection(
+			path,
+			track ? audioAssetLooping(track.path) : false
+		);
+		selectedEffectPath = selection.path;
+		selectedEffectLoop = selection.loop;
 	}
 
-	async function toggle() {
+	async function runPlaybackCommand(channel: SceneAudioChannel, command: 'play' | 'stop') {
 		if (!isGM) return;
-		const playing = !scene.ambientAudioEnabled;
-		const positionMs = playing ? 0 : Math.round((playback?.currentTime ?? 0) * 1000);
-		const next = {
-			...scene,
-			ambientAudioEnabled: playing,
-			ambientAudioPositionMs: positionMs,
-			ambientAudioStartedAt: playing ? new Date().toISOString() : null,
-			ambientAudioRevision: (scene.ambientAudioRevision ?? 0) + 1
-		};
-		const state: AudioPlaybackState = {
-			path: next.ambientAudioPath,
-			playing,
-			volume: targetVolume(next.ambientAudioVolume),
-			positionMs,
-			startedAt: playing ? Date.parse(next.ambientAudioStartedAt ?? '') || Date.now() : 0,
-			revision: next.ambientAudioRevision ?? 0
-		};
-		// Start locally during the click gesture; waiting for the API save first can
-		// outlive the browser's autoplay-activation window and make the first play fail.
-		await applyState(state);
+		const effects = channel === 'effect';
+		if (effects ? effectsBusy : musicBusy) return;
+		if (effects) effectsBusy = true;
+		else musicBusy = true;
+		const current = effects ? effectsStateFromScene(scene) : stateFromScene(scene);
+		const path = effects ? selectedEffectPath : selectedMusicPath;
+		const loop = effects ? selectedEffectLoop : selectedMusicLoop;
+		const engine = effects ? effectsPlayback : playback;
+		const positionMs =
+			command === 'stop' ? Math.round((engine?.currentTime ?? 0) * 1000) : current.positionMs;
+		const next = createPlaybackCommand(current, path, loop, command, Date.now(), positionMs);
+		if (!next) {
+			if (effects) effectsBusy = false;
+			else musicBusy = false;
+			return;
+		}
 		try {
-			const saved = await save(next, false);
-			state.revision = saved.ambientAudioRevision ?? state.revision;
-			publishState(state);
+			// The optimistic browser preview does not advance the authoritative
+			// revision; only the successful server response does that.
+			const preview = { ...next, revision: current.revision };
+			const playable = effects ? await applyEffectsState(preview) : await applyState(preview);
+			if (!playable && (effects ? effectsPlayback : playback)?.failureReason === 'unavailable') {
+				// A missing/unauthorized asset is not a valid playback command. Keep the
+				// scene state and the currently playing track untouched.
+				if (effects) await applyEffectsState(current);
+				else await applyState(current);
+				return;
+			}
+			const saved = await persistAudio(channel, next, current.revision ?? 0);
+			if (effects) await applyEffectsState(saved);
+			else await applyState(saved);
 		} catch {
-			await applyState(stateFromScene(scene));
+			await refreshScene();
 			notifyUserRequestError(
 				$appLocale === 'en'
-					? 'Could not update music playback.'
-					: 'Não foi possível atualizar a música.'
+					? 'Could not update audio playback. The latest scene state was restored.'
+					: 'Não foi possível atualizar o áudio. O estado mais recente da cena foi restaurado.'
+			);
+		} finally {
+			if (effects) effectsBusy = false;
+			else musicBusy = false;
+		}
+	}
+
+	async function changeLoop(channel: SceneAudioChannel, event: Event) {
+		if (!isGM) return;
+		const loop = (event.currentTarget as HTMLInputElement).checked;
+		const effects = channel === 'effect';
+		if (effects) selectedEffectLoop = loop;
+		else selectedMusicLoop = loop;
+		const selected = effects ? selectedEffectPath : selectedMusicPath;
+		const active = effects ? scene.ambientEffectPath : scene.ambientAudioPath;
+		if (!selected || selected !== active) return;
+		const current = effects ? effectsStateFromScene(scene) : stateFromScene(scene);
+		const next = createLoopUpdate(current, loop);
+		if (!next) return;
+		try {
+			const preview = { ...next, revision: current.revision };
+			if (effects) await applyEffectsState(preview);
+			else await applyState(preview);
+			const saved = await persistAudio(channel, next, current.revision ?? 0);
+			if (effects) await applyEffectsState(saved);
+			else await applyState(saved);
+		} catch {
+			await refreshScene();
+			notifyUserRequestError(
+				$appLocale === 'en'
+					? 'Could not change the playback loop.'
+					: 'Não foi possível alterar o loop da reprodução.'
 			);
 		}
 	}
 
-	async function selectEffect(event: Event) {
-		if (!isGM) return;
-		const path = (event.currentTarget as HTMLSelectElement).value;
-		if (path === (scene.ambientEffectPath ?? '')) return;
-		try {
-			const continuePlayback = scene.ambientEffectEnabled && Boolean(path);
-			const startedAt = continuePlayback ? new Date().toISOString() : null;
-			const saved = await save(
-				{
-					...scene,
-					ambientEffectPath: path || null,
-					ambientEffectEnabled: continuePlayback,
-					ambientEffectPositionMs: 0,
-					ambientEffectStartedAt: startedAt,
-					ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
-				},
-				false
-			);
-			const state = effectsStateFromScene(saved);
-			sceneSocket?.publishAudioEffects(state);
-			await applyEffectsState(state);
-		} catch {
-			notifyUserRequestError(
-				$appLocale === 'en'
-					? 'Could not change the sound effect.'
-					: 'Não foi possível trocar o efeito sonoro.'
-			);
-		}
-	}
-
-	async function toggleEffect() {
-		if (!isGM) return;
-		try {
-			const playing = !scene.ambientEffectEnabled;
-			const positionMs = playing ? 0 : Math.round((effectsPlayback?.currentTime ?? 0) * 1000);
-			const next = {
-				...scene,
-				ambientEffectEnabled: playing,
-				ambientEffectPositionMs: positionMs,
-				ambientEffectStartedAt: playing ? new Date().toISOString() : null,
-				ambientEffectRevision: (scene.ambientEffectRevision ?? 0) + 1
-			};
-			const state = effectsStateFromScene(next);
-			await applyEffectsState(state);
-			const saved = await save(next, false);
-			state.revision = saved.ambientEffectRevision ?? state.revision;
-			sceneSocket?.publishAudioEffects(state);
-		} catch {
-			notifyUserRequestError(
-				$appLocale === 'en'
-					? 'Could not update sound playback.'
-					: 'Não foi possível atualizar a reprodução do efeito.'
-			);
-		}
-	}
-
-	async function enableAudio() {
-		if (lastState) await applyState({ ...lastState, startedAt: Date.now() });
-		if (lastEffectsState) await applyEffectsState({ ...lastEffectsState, startedAt: Date.now() });
+	function enableAudio() {
+		// Both play() calls happen immediately inside the explicit user gesture;
+		// signed-URL resolution and scene state are not rewritten here.
+		const resumeMusic = needsGesture;
+		const resumeEffects = effectsNeedGesture;
+		const musicAttempt = resumeMusic
+			? (playback?.resumeFromGesture() ?? Promise.resolve(false))
+			: Promise.resolve(true);
+		const effectsAttempt = resumeEffects
+			? (effectsPlayback?.resumeFromGesture() ?? Promise.resolve(false))
+			: Promise.resolve(true);
+		void Promise.all([musicAttempt, effectsAttempt]).then(([musicApplied, effectsApplied]) => {
+			if (resumeMusic) needsGesture = !musicApplied;
+			if (resumeEffects) effectsNeedGesture = !effectsApplied;
+		});
 	}
 
 	onMount(() => {
@@ -336,16 +421,43 @@
 		const effectsSecond = document.getElementById(
 			'maismorras-effects-b'
 		) as HTMLAudioElement | null;
-		if (first && second) playback = new CrossfadeAudio([first, second]);
-		if (effectsFirst && effectsSecond)
-			effectsPlayback = new CrossfadeAudio([effectsFirst, effectsSecond]);
+		if (first && second) {
+			musicElements = [first, second];
+			playback = new CrossfadeAudio(musicElements);
+		}
+		if (effectsFirst && effectsSecond) {
+			effectsElements = [effectsFirst, effectsSecond];
+			effectsPlayback = new CrossfadeAudio(effectsElements);
+		}
 		void loadTracks();
-		void applyState(stateFromScene(scene));
-		void applyEffectsState(effectsStateFromScene(scene));
-		sceneSocket = connectSceneSocket(
-			session,
-			scene.id,
-			() => void refreshScene(),
+		return () => {
+			playback?.dispose();
+			effectsPlayback?.dispose();
+			playback = null;
+			effectsPlayback = null;
+		};
+	});
+
+	$effect(() => {
+		const currentSceneId = scene.id;
+		const currentSession = session;
+		if (!currentSession.access_token) return;
+		if (playbackSceneId && playbackSceneId !== currentSceneId) {
+			playback?.dispose();
+			effectsPlayback?.dispose();
+			playback = musicElements ? new CrossfadeAudio(musicElements) : null;
+			effectsPlayback = effectsElements ? new CrossfadeAudio(effectsElements) : null;
+			lastState = null;
+			lastEffectsState = null;
+			untrack(() => {
+				void loadTracks(scene.campaignId);
+			});
+		}
+		playbackSceneId = currentSceneId;
+		const socket = connectSceneSocket(
+			currentSession,
+			currentSceneId,
+			() => void refreshScene(currentSession, currentSceneId),
 			undefined,
 			undefined,
 			(state) => void applyRemoteState(state),
@@ -357,11 +469,10 @@
 			undefined,
 			(state) => void applyRemoteEffectsState(state)
 		);
+		sceneSocket = socket;
 		return () => {
-			sceneSocket?.close();
-			sceneSocket = null;
-			playback = null;
-			effectsPlayback = null;
+			if (sceneSocket === socket) sceneSocket = null;
+			socket.close();
 		};
 	});
 
@@ -371,7 +482,9 @@
 			!lastState ||
 			state.path !== lastState.path ||
 			state.playing !== lastState.playing ||
-			state.volume !== lastState.volume
+			state.volume !== lastState.volume ||
+			state.loop !== lastState.loop ||
+			state.revision !== lastState.revision
 		) {
 			void applyState(state);
 		}
@@ -383,7 +496,9 @@
 			!lastEffectsState ||
 			state.path !== lastEffectsState.path ||
 			state.playing !== lastEffectsState.playing ||
-			state.volume !== lastEffectsState.volume
+			state.volume !== lastEffectsState.volume ||
+			state.loop !== lastEffectsState.loop ||
+			state.revision !== lastEffectsState.revision
 		)
 			void applyEffectsState(state);
 	});
@@ -394,10 +509,7 @@
 		class="ambient-player music-player"
 		aria-label={$appLocale === 'en' ? 'Campaign music player' : 'Player de música da campanha'}
 	>
-		{#if isGM}<select
-				value={scene.ambientAudioPath ?? ''}
-				onchange={(event) => void selectTrack(event)}
-			>
+		{#if isGM}<select value={selectedMusicPath ?? ''} onchange={selectMusic}>
 				<option value=""
 					>{$appLocale === 'en'
 						? 'Select campaign music…'
@@ -407,15 +519,62 @@
 					>{/each}
 			</select>
 			<div class="gm-status">
-				<strong
-					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
-						($appLocale === 'en' ? 'No music selected' : 'Nenhuma música selecionada')}</strong
-				>
-				{#if scene.ambientAudioPath}<button onclick={() => void toggle()}
-						>{scene.ambientAudioEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
-					>{/if}
+				<p class="track-state">
+					<span
+						>{$appLocale === 'en' ? 'Selected:' : 'Selecionada:'}
+						<strong>{trackName(selectedMusicPath, $appLocale === 'en' ? 'None' : 'Nenhuma')}</strong
+						></span
+					>
+					<span
+						>{$appLocale === 'en' ? 'Playing:' : 'Tocando:'}
+						<strong
+							>{scene.ambientAudioEnabled
+								? trackName(scene.ambientAudioPath, $appLocale === 'en' ? 'Nothing' : 'Nada')
+								: $appLocale === 'en'
+									? 'Stopped'
+									: 'Parada'}</strong
+						></span
+					>
+				</p>
+				<div class="channel-actions">
+					<button
+						disabled={!selectedMusicPath ||
+							musicBusy ||
+							(scene.ambientAudioEnabled &&
+								selectedMusicPath === scene.ambientAudioPath &&
+								selectedMusicLoop === scene.ambientAudioLoop)}
+						onclick={() => void runPlaybackCommand('music', 'play')}
+						>{musicBusy
+							? '…'
+							: scene.ambientAudioEnabled && selectedMusicPath !== scene.ambientAudioPath
+								? $appLocale === 'en'
+									? 'Apply & play'
+									: 'Aplicar e tocar'
+								: $appLocale === 'en'
+									? 'Play'
+									: 'Tocar'}</button
+					>
+					{#if scene.ambientAudioEnabled}<button
+							disabled={musicBusy}
+							onclick={() => void runPlaybackCommand('music', 'stop')}
+							>{$appLocale === 'en' ? 'Stop' : 'Parar'}</button
+						>{/if}
+					<label class="loop-control"
+						><input
+							type="checkbox"
+							checked={selectedMusicLoop}
+							disabled={!selectedMusicPath}
+							onchange={(event) => void changeLoop('music', event)}
+						/><span>{$appLocale === 'en' ? 'Loop' : 'Repetir'}</span></label
+					>
+				</div>
 				{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+					>{/if}
+				{#if musicUnavailable}<span class="audio-warning"
+						>{$appLocale === 'en'
+							? 'Audio unavailable. Check the asset or access.'
+							: 'Áudio indisponível. Verifique o arquivo ou o acesso.'}</span
 					>{/if}
 				<label class="volume-control">
 					<span>{$appLocale === 'en' ? 'My volume' : 'Meu volume'}</span>
@@ -432,9 +591,16 @@
 			</div>
 		{:else}<div class="listener-status">
 				<strong
-					>{tracks.find((track) => track.path === scene.ambientAudioPath)?.name ??
-						'Nenhuma música'}</strong
+					>{trackName(
+						scene.ambientAudioPath,
+						$appLocale === 'en' ? 'No music' : 'Nenhuma música'
+					)}</strong
 				>
+				{#if musicUnavailable}<span class="audio-warning"
+						>{$appLocale === 'en'
+							? 'Audio unavailable; tell the narrator.'
+							: 'Áudio indisponível; avise o narrador.'}</span
+					>{/if}
 				{#if needsGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 					>{/if}
@@ -459,10 +625,7 @@
 			? 'Campaign sound effects player'
 			: 'Player de efeitos sonoros da campanha'}
 	>
-		{#if isGM}<select
-				value={scene.ambientEffectPath ?? ''}
-				onchange={(event) => void selectEffect(event)}
-			>
+		{#if isGM}<select value={selectedEffectPath ?? ''} onchange={selectEffect}>
 				<option value=""
 					>{$appLocale === 'en' ? 'Select a sound effect…' : 'Selecionar efeito sonoro…'}</option
 				>
@@ -470,12 +633,62 @@
 					>{/each}
 			</select>
 			<div class="gm-status">
-				<strong
-					>{tracks.find((track) => track.path === scene.ambientEffectPath)?.name ??
-						($appLocale === 'en' ? 'No effect selected' : 'Nenhum efeito selecionado')}</strong
-				>
-				{#if scene.ambientEffectPath}<button onclick={() => void toggleEffect()}
-						>{scene.ambientEffectEnabled ? '❚❚ Parar' : '♫ Tocar'}</button
+				<p class="track-state">
+					<span
+						>{$appLocale === 'en' ? 'Selected:' : 'Selecionado:'}
+						<strong>{trackName(selectedEffectPath, $appLocale === 'en' ? 'None' : 'Nenhum')}</strong
+						></span
+					>
+					<span
+						>{$appLocale === 'en' ? 'Playing:' : 'Tocando:'}
+						<strong
+							>{scene.ambientEffectEnabled
+								? trackName(scene.ambientEffectPath, $appLocale === 'en' ? 'Nothing' : 'Nada')
+								: $appLocale === 'en'
+									? 'Stopped'
+									: 'Parado'}</strong
+						></span
+					>
+				</p>
+				<div class="channel-actions">
+					<button
+						disabled={!selectedEffectPath ||
+							effectsBusy ||
+							(scene.ambientEffectEnabled &&
+								selectedEffectPath === scene.ambientEffectPath &&
+								selectedEffectLoop === scene.ambientEffectLoop)}
+						onclick={() => void runPlaybackCommand('effect', 'play')}
+						>{effectsBusy
+							? '…'
+							: scene.ambientEffectEnabled && selectedEffectPath !== scene.ambientEffectPath
+								? $appLocale === 'en'
+									? 'Apply & play'
+									: 'Aplicar e tocar'
+								: $appLocale === 'en'
+									? 'Play'
+									: 'Tocar'}</button
+					>
+					{#if scene.ambientEffectEnabled}<button
+							disabled={effectsBusy}
+							onclick={() => void runPlaybackCommand('effect', 'stop')}
+							>{$appLocale === 'en' ? 'Stop' : 'Parar'}</button
+						>{/if}
+					<label class="loop-control"
+						><input
+							type="checkbox"
+							checked={selectedEffectLoop}
+							disabled={!selectedEffectPath}
+							onchange={(event) => void changeLoop('effect', event)}
+						/><span>{$appLocale === 'en' ? 'Loop' : 'Repetir'}</span></label
+					>
+				</div>
+				{#if effectsNeedGesture}<button class="audio-enable" onclick={() => void enableAudio()}
+						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
+					>{/if}
+				{#if effectsUnavailable}<span class="audio-warning"
+						>{$appLocale === 'en'
+							? 'Audio unavailable. Check the asset or access.'
+							: 'Áudio indisponível. Verifique o arquivo ou o acesso.'}</span
 					>{/if}
 				<label class="volume-control"
 					><span>{$appLocale === 'en' ? 'My effects' : 'Meus efeitos'}</span><input
@@ -490,9 +703,16 @@
 			</div>
 		{:else}<div class="listener-status">
 				<strong
-					>{tracks.find((track) => track.path === scene.ambientEffectPath)?.name ??
-						($appLocale === 'en' ? 'No sound effect' : 'Nenhum efeito sonoro')}</strong
+					>{trackName(
+						scene.ambientEffectPath,
+						$appLocale === 'en' ? 'No sound effect' : 'Nenhum efeito sonoro'
+					)}</strong
 				>
+				{#if effectsUnavailable}<span class="audio-warning"
+						>{$appLocale === 'en'
+							? 'Audio unavailable; tell the narrator.'
+							: 'Áudio indisponível; avise o narrador.'}</span
+					>{/if}
 				{#if effectsNeedGesture}<button class="audio-enable" onclick={() => void enableAudio()}
 						>{$appLocale === 'en' ? 'Enable audio' : 'Ativar áudio'}</button
 					>{/if}
@@ -564,6 +784,7 @@
 	.gm-status {
 		display: flex;
 		flex: 1 1 auto;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
 		gap: clamp(0.35rem, 0.75vw, 0.9rem);
@@ -581,6 +802,42 @@
 		color: #e8c786;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.track-state {
+		flex: 1 1 100%;
+		min-width: 0;
+		margin: 0;
+		display: flex;
+		justify-content: space-between;
+		gap: 0.65rem;
+		font-size: 0.76rem;
+	}
+	.track-state span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.channel-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.loop-control {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		color: #eee4d6;
+		font-size: 0.78rem;
+		white-space: nowrap;
+	}
+	.loop-control input {
+		accent-color: #e0b86f;
+	}
+	.audio-warning {
+		flex: 1 1 100%;
+		color: #f2b7a2;
+		font-size: 0.72rem;
 	}
 	.ambient-player button {
 		flex: 0 0 auto;
@@ -637,6 +894,13 @@
 		.listener-status,
 		.gm-status {
 			gap: 0.3rem;
+		}
+		.track-state {
+			font-size: 0.68rem;
+		}
+		.ambient-player button {
+			padding: 0.3rem 0.4rem;
+			font-size: 0.72rem;
 		}
 		.volume-control span {
 			position: absolute;

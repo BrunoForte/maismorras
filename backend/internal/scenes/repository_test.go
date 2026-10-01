@@ -1,6 +1,14 @@
 package scenes
 
 import "testing"
+import "context"
+import "crypto/rand"
+import "encoding/hex"
+import "errors"
+import "os"
+import "time"
+
+import "github.com/jackc/pgx/v5/pgxpool"
 import "vtt-backend/internal/systems"
 
 func TestOverlayCameraCharacterIDs(t *testing.T) {
@@ -15,6 +23,89 @@ func TestOverlayCameraCharacterIDs(t *testing.T) {
 	if _, err := overlayCameraCharacterIDs([]byte(`[{"characterId":"not-a-uuid"}]`)); err == nil {
 		t.Fatal("expected invalid character id to be rejected")
 	}
+}
+
+func TestSceneAudioStatePersistenceAuthorizationAndRevisionIntegration(t *testing.T) {
+	databaseURL := os.Getenv("REALTIME_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("REALTIME_TEST_DATABASE_URL is not configured")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	ids := []string{sceneTestUUID(t), sceneTestUUID(t), sceneTestUUID(t), sceneTestUUID(t)}
+	campaignID, ownerID, playerID, sceneID := ids[0], ids[1], ids[2], ids[3]
+	cleanup := func() {
+		_, _ = pool.Exec(context.Background(), `delete from campaigns where id=$1`, campaignID)
+		_, _ = pool.Exec(context.Background(), `delete from profiles where id in ($1,$2)`, ownerID, playerID)
+	}
+	defer cleanup()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(ctx, `set local session_replication_role=replica`); err != nil {
+		t.Skipf("database role cannot create isolated profiles: %v", err)
+	}
+	for _, user := range []struct{ id, name string }{{ownerID, "Audio GM"}, {playerID, "Audio player"}} {
+		if _, err := tx.Exec(ctx, `insert into profiles(id,display_name) values($1,$2)`, user.id, user.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `insert into campaigns(id,name,owner_id,system_id) values($1,'Audio state integration',$2,'dnd2024')`, campaignID, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'gm'),($1,$3,'player')`, campaignID, ownerID, playerID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(ctx, `insert into scenes(campaign_id,name,player_access) values($1,'Audio integration','available') returning id::text`, campaignID).Scan(&sceneID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := NewRepository(pool)
+	path := "campaigns/" + campaignID + "/media/theme.mp3"
+	music, err := repo.UpdateAudioState(ctx, sceneID, ownerID, "music", 0, AudioChannelState{Path: &path, Playing: true, Volume: .7, PositionMs: 0, StartedAt: time.Now().UnixMilli(), Loop: true})
+	if err != nil || music.Revision != 1 || !music.Loop || !music.Playing {
+		t.Fatalf("music state = %+v, err=%v", music, err)
+	}
+	if _, err := repo.UpdateAudioState(ctx, sceneID, ownerID, "music", 0, AudioChannelState{Path: &path, Playing: false, Volume: .7}); !errors.Is(err, ErrAudioRevisionConflict) {
+		t.Fatalf("stale music update error = %v, want revision conflict", err)
+	}
+	effectPath := "campaigns/" + campaignID + "/media/rain.ogg"
+	effect, err := repo.UpdateAudioState(ctx, sceneID, ownerID, "effect", 0, AudioChannelState{Path: &effectPath, Playing: true, Volume: .5, StartedAt: time.Now().UnixMilli(), Loop: false})
+	if err != nil || effect.Revision != 1 || effect.Loop {
+		t.Fatalf("effect state = %+v, err=%v", effect, err)
+	}
+	if _, err := repo.UpdateAudioState(ctx, sceneID, playerID, "effect", effect.Revision, effect); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("player audio update error = %v, want forbidden", err)
+	}
+	var savedMusic, savedEffect bool
+	if err := pool.QueryRow(ctx, `select ambient_audio_loop,ambient_effect_loop from scenes where id=$1`, sceneID).Scan(&savedMusic, &savedEffect); err != nil {
+		t.Fatal(err)
+	}
+	if !savedMusic || savedEffect {
+		t.Fatalf("persisted loops = music:%v effects:%v", savedMusic, savedEffect)
+	}
+}
+
+func sceneTestUUID(t *testing.T) string {
+	t.Helper()
+	var raw [16]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		t.Fatal(err)
+	}
+	raw[6] = raw[6]&0x0f | 0x40
+	raw[8] = raw[8]&0x3f | 0x80
+	encoded := hex.EncodeToString(raw[:])
+	return encoded[:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:]
 }
 
 func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {

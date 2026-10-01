@@ -20,7 +20,12 @@
 	import OverlayCameraCard from '$lib/components/overlay/OverlayCameraCard.svelte';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { request } from '$lib/services/httpClient';
-	import { CrossfadeAudio, type AudioPlaybackState } from '$lib/services/audioPlayback';
+	import {
+		audioAssetLooping,
+		CrossfadeAudio,
+		type AudioPlaybackState
+	} from '$lib/services/audioPlayback';
+	import { acceptsAudioRevision } from '$lib/services/audioPlaybackControls';
 	import { getOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { cameraCharacterLabel, findCameraCharacterToken } from '$lib/utils/overlayCamera';
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
@@ -52,6 +57,8 @@
 	let lastEffectsState: AudioPlaybackState | null = null;
 	let audioBlocked = $state(false);
 	let effectsAudioBlocked = $state(false);
+	let audioUnavailable = $state(false);
+	let effectsAudioUnavailable = $state(false);
 	type CameraSlot = {
 		url: string;
 		playerName: string;
@@ -263,6 +270,7 @@
 		return token?.visibility.showHP ? token : null;
 	};
 	async function applyAudioState(state: AudioPlaybackState) {
+		if (!acceptsAudioRevision(lastAudioState, state)) return;
 		lastAudioState = state;
 		if (!playback || !session) return;
 		const applied = await playback.apply(
@@ -273,9 +281,11 @@
 					surface: 'overlay'
 				})) ?? ''
 		);
-		audioBlocked = state.playing && !applied;
+		audioBlocked = state.playing && !applied && playback.failureReason === 'autoplay';
+		audioUnavailable = state.playing && !applied && playback.failureReason === 'unavailable';
 	}
 	async function applyEffectsState(state: AudioPlaybackState) {
+		if (!acceptsAudioRevision(lastEffectsState, state)) return;
 		lastEffectsState = state;
 		if (!effectsPlayback || !session) return;
 		const applied = await effectsPlayback.apply(
@@ -286,7 +296,9 @@
 					surface: 'overlay'
 				})) ?? ''
 		);
-		effectsAudioBlocked = state.playing && !applied;
+		effectsAudioBlocked = state.playing && !applied && effectsPlayback.failureReason === 'autoplay';
+		effectsAudioUnavailable =
+			state.playing && !applied && effectsPlayback.failureReason === 'unavailable';
 	}
 	function sceneEffectsState(value: Scene): AudioPlaybackState {
 		return {
@@ -295,7 +307,21 @@
 			volume: Math.max(0, Math.min(1, value.ambientEffectVolume / 100)),
 			positionMs: value.ambientEffectPositionMs ?? 0,
 			startedAt: value.ambientEffectStartedAt ? Date.parse(value.ambientEffectStartedAt) : 0,
-			revision: value.ambientEffectRevision ?? 0
+			revision: value.ambientEffectRevision ?? 0,
+			loop: value.ambientEffectLoop ?? false
+		};
+	}
+	function sceneMusicState(value: Scene): AudioPlaybackState {
+		return {
+			path: value.ambientAudioPath,
+			playing: value.ambientAudioEnabled,
+			volume: Math.max(0, Math.min(1, value.ambientAudioVolume / 100)),
+			positionMs: value.ambientAudioPositionMs ?? 0,
+			startedAt: value.ambientAudioStartedAt ? Date.parse(value.ambientAudioStartedAt) : 0,
+			revision: value.ambientAudioRevision ?? 0,
+			loop:
+				value.ambientAudioLoop ??
+				(value.ambientAudioPath ? audioAssetLooping(value.ambientAudioPath) : true)
 		};
 	}
 	async function refresh(currentSession: Session) {
@@ -310,16 +336,7 @@
 			]);
 			scene = loadedScene.scene;
 			tokens = loadedScene.tokens;
-			await applyAudioState({
-				path: loadedScene.scene.ambientAudioPath,
-				playing: loadedScene.scene.ambientAudioEnabled,
-				volume: Math.max(0, Math.min(1, loadedScene.scene.ambientAudioVolume / 100)),
-				positionMs: loadedScene.scene.ambientAudioPositionMs ?? 0,
-				startedAt: loadedScene.scene.ambientAudioStartedAt
-					? Date.parse(loadedScene.scene.ambientAudioStartedAt)
-					: 0,
-				revision: loadedScene.scene.ambientAudioRevision ?? 0
-			});
+			await applyAudioState(sceneMusicState(loadedScene.scene));
 			await applyEffectsState(sceneEffectsState(loadedScene.scene));
 			if (supabaseConfigured) {
 				const signedEntries = await Promise.all(
@@ -533,9 +550,19 @@
 			socket?.close();
 		};
 	});
-	async function enableAudio() {
-		if (lastAudioState) await applyAudioState({ ...lastAudioState, startedAt: Date.now() });
-		if (lastEffectsState) await applyEffectsState({ ...lastEffectsState, startedAt: Date.now() });
+	function enableAudio() {
+		const resumeMusic = audioBlocked;
+		const resumeEffects = effectsAudioBlocked;
+		const musicAttempt = resumeMusic
+			? (playback?.resumeFromGesture() ?? Promise.resolve(false))
+			: Promise.resolve(true);
+		const effectsAttempt = resumeEffects
+			? (effectsPlayback?.resumeFromGesture() ?? Promise.resolve(false))
+			: Promise.resolve(true);
+		void Promise.all([musicAttempt, effectsAttempt]).then(([musicApplied, effectsApplied]) => {
+			if (resumeMusic) audioBlocked = !musicApplied;
+			if (resumeEffects) effectsAudioBlocked = !effectsApplied;
+		});
 	}
 	$effect(() => {
 		if (audio && audioB && !playback) playback = new CrossfadeAudio([audio, audioB]);
@@ -635,6 +662,10 @@
 		<audio bind:this={audioB} loop preload="metadata"></audio>
 		<audio bind:this={effectsAudio} loop preload="metadata"></audio>
 		<audio bind:this={effectsAudioB} loop preload="metadata"></audio>
+		{#if audioUnavailable || effectsAudioUnavailable}<p class="audio-warning">
+				Não foi possível acessar um arquivo de áudio da cena. O estado continua sincronizado;
+				confira o arquivo e as permissões.
+			</p>{/if}
 		{#if audioBlocked || effectsAudioBlocked}<button
 				class="audio-enable"
 				onclick={() => void enableAudio()}>Clique para ativar o áudio da transmissão</button
@@ -1056,6 +1087,22 @@
 		font: inherit;
 		font-weight: 800;
 		cursor: pointer;
+	}
+	.audio-warning {
+		position: fixed;
+		z-index: 1000;
+		inset-inline: 1rem;
+		inset-block-start: 1rem;
+		margin: 0 auto;
+		width: fit-content;
+		max-width: calc(100vw - 2rem);
+		border: 1px solid #9f6251;
+		border-radius: 0.5rem;
+		padding: 0.6rem 0.8rem;
+		color: #fff1e8;
+		background: #512d29ee;
+		text-align: center;
+		font-size: 0.85rem;
 	}
 	.audio-enable {
 		position: absolute;

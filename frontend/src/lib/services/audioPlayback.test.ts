@@ -111,4 +111,131 @@ describe('CrossfadeAudio', () => {
 		await applying;
 		expect(element.volume).toBe(0);
 	});
+
+	it('uses the scene loop override instead of the file name default', async () => {
+		const elements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const playback = new CrossfadeAudio(elements, 0);
+		await playback.apply(
+			{
+				path: 'music_once__theme.mp3',
+				playing: true,
+				volume: 0.5,
+				positionMs: 0,
+				startedAt: 0,
+				loop: true,
+				revision: 1
+			},
+			async (path) => path
+		);
+		expect(elements[1].loop).toBe(true);
+		await playback.apply(
+			{
+				path: 'music_once__theme.mp3',
+				playing: true,
+				volume: 0.5,
+				positionMs: 0,
+				startedAt: 0,
+				loop: false,
+				revision: 2
+			},
+			async (path) => path
+		);
+		expect(elements[1].loop).toBe(false);
+	});
+
+	it('fades out and pauses the active track when Stop is applied', async () => {
+		const elements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const playback = new CrossfadeAudio(elements, 0);
+		await playback.apply(
+			{ path: 'theme.mp3', playing: true, volume: 0.5, positionMs: 0, startedAt: 0, revision: 1 },
+			async (path) => path
+		);
+		await playback.apply(
+			{
+				path: 'theme.mp3',
+				playing: false,
+				volume: 0.5,
+				positionMs: 1000,
+				startedAt: 0,
+				revision: 2
+			},
+			async (path) => path
+		);
+		expect(elements[1].pause).toHaveBeenCalled();
+		expect(elements[1].volume).toBe(0.5);
+		expect(playback.path).toBe('theme.mp3');
+	});
+
+	it('keeps the current track audible if a selected replacement cannot be resolved', async () => {
+		const elements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const playback = new CrossfadeAudio(elements, 0);
+		await playback.apply(
+			{ path: 'current.mp3', playing: true, volume: 0.5, positionMs: 0, startedAt: 0, revision: 1 },
+			async (path) => path
+		);
+		expect(
+			await playback.apply(
+				{
+					path: 'missing.mp3',
+					playing: true,
+					volume: 0.5,
+					positionMs: 0,
+					startedAt: 0,
+					revision: 2
+				},
+				async () => ''
+			)
+		).toBe(false);
+		expect(playback.failureReason).toBe('unavailable');
+		expect(playback.path).toBe('current.mp3');
+		expect(elements[1].src).toBe('current.mp3');
+		expect((elements[1].play as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+	});
+
+	it('resumes an already signed track directly from a browser gesture', async () => {
+		const element = audioElement(0);
+		const elements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), element];
+		const play = vi
+			.fn<() => Promise<void>>()
+			.mockRejectedValueOnce(new DOMException('Gesture required', 'NotAllowedError'))
+			.mockResolvedValueOnce();
+		element.play = play;
+		const playback = new CrossfadeAudio(elements, 0);
+		const resolveUrl = vi.fn(async () => 'signed-track-url');
+
+		await playback.apply(
+			{ path: 'theme.mp3', playing: true, volume: 0.6, positionMs: 0, startedAt: 0 },
+			resolveUrl
+		);
+		expect(playback.failureReason).toBe('autoplay');
+		expect(playback.path).toBe('theme.mp3');
+
+		expect(await playback.resumeFromGesture()).toBe(true);
+		expect(resolveUrl).toHaveBeenCalledTimes(1);
+		expect(play).toHaveBeenCalledTimes(2);
+		expect(element.volume).toBe(0.6);
+	});
+
+	it('does not start or preserve stale async URL resolutions after a newer revision', async () => {
+		const elements: [HTMLAudioElement, HTMLAudioElement] = [audioElement(0), audioElement(0)];
+		const playback = new CrossfadeAudio(elements, 0);
+		let resolveOld!: (url: string) => void;
+		const old = playback.apply(
+			{ path: 'old.mp3', playing: true, volume: 0.4, positionMs: 0, startedAt: 0, revision: 1 },
+			() =>
+				new Promise((resolve) => {
+					resolveOld = resolve;
+				})
+		);
+		await playback.apply(
+			{ path: 'new.mp3', playing: true, volume: 0.4, positionMs: 0, startedAt: 0, revision: 2 },
+			async (path) => path
+		);
+		resolveOld('old.mp3');
+		expect(await old).toBe(false);
+		expect(playback.path).toBe('new.mp3');
+		expect(
+			elements.flatMap((element) => (element.play as ReturnType<typeof vi.fn>).mock.calls).length
+		).toBe(1);
+	});
 });

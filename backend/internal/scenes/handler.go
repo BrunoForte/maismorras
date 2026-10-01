@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"regexp"
 	"strings"
@@ -14,9 +15,22 @@ import (
 	"vtt-backend/internal/observability"
 )
 
-type Handler struct{ repo *Repository }
+type audioStateBroadcaster interface {
+	BroadcastAudioState(sceneID, path string, playing bool, volume float64, positionMs, startedAt, revision int64, loop, effects bool, requestID string)
+}
 
-func NewHandler(repo *Repository) *Handler { return &Handler{repo} }
+type Handler struct {
+	repo  *Repository
+	audio audioStateBroadcaster
+}
+
+func NewHandler(repo *Repository, audio ...audioStateBroadcaster) *Handler {
+	handler := &Handler{repo: repo}
+	if len(audio) > 0 {
+		handler.audio = audio[0]
+	}
+	return handler
+}
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	items, err := h.repo.List(r.Context(), r.PathValue("campaignID"), p.UserID)
@@ -65,6 +79,52 @@ func (h *Handler) UpdateScene(w http.ResponseWriter, r *http.Request) error {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, scene)
+}
+
+func (h *Handler) UpdateAudioState(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Channel          string  `json:"channel"`
+		Path             *string `json:"path"`
+		Playing          bool    `json:"playing"`
+		Volume           float64 `json:"volume"`
+		PositionMs       int64   `json:"positionMs"`
+		StartedAt        int64   `json:"startedAt"`
+		Loop             bool    `json:"loop"`
+		ExpectedRevision int64   `json:"expectedRevision"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	path := ""
+	if in.Path != nil {
+		path = strings.TrimSpace(*in.Path)
+		in.Path = &path
+	}
+	if (in.Channel != "music" && in.Channel != "effect") || in.Volume < 0 || in.Volume > 1 || math.IsNaN(in.Volume) || math.IsInf(in.Volume, 0) || in.PositionMs < 0 || in.PositionMs > 24*60*60*1000 || in.StartedAt < 0 || in.ExpectedRevision < 0 || (in.Playing && (path == "" || in.StartedAt == 0)) || (path != "" && (len(path) > 500 || strings.Contains(path, "..") || !strings.HasPrefix(path, "campaigns/"))) {
+		return apperror.BadRequest("INVALID_AUDIO_STATE", "Confira a faixa, o canal e os dados da reprodução.")
+	}
+	if !in.Playing {
+		in.StartedAt = 0
+	}
+	saved, err := h.repo.UpdateAudioState(r.Context(), r.PathValue("sceneID"), p.UserID, in.Channel, in.ExpectedRevision, AudioChannelState{
+		Path: in.Path, Playing: in.Playing, Volume: in.Volume, PositionMs: in.PositionMs,
+		StartedAt: in.StartedAt, Loop: in.Loop,
+	})
+	if err != nil {
+		if errors.Is(err, ErrAudioRevisionConflict) {
+			return apperror.Conflict("AUDIO_STATE_STALE", "A reprodução mudou em outra sessão. O estado mais recente foi mantido.")
+		}
+		return mapError(err)
+	}
+	if h.audio != nil {
+		assetPath := ""
+		if saved.Path != nil {
+			assetPath = *saved.Path
+		}
+		h.audio.BroadcastAudioState(r.PathValue("sceneID"), assetPath, saved.Playing, saved.Volume, saved.PositionMs, saved.StartedAt, saved.Revision, saved.Loop, in.Channel == "effect", r.Header.Get("X-Request-ID"))
+	}
+	return write(w, http.StatusOK, saved)
 }
 func validMapDimensions(width, height int) bool {
 	return width >= 5 && width <= 100 && height >= 5 && height <= 100
@@ -599,6 +659,9 @@ func mapError(err error) error {
 	}
 	if errors.Is(err, ErrTokenColorInUse) {
 		return apperror.Conflict("TOKEN_COLOR_IN_USE", "Esta cor já está sendo usada por outro personagem da campanha.")
+	}
+	if errors.Is(err, ErrAudioRevisionConflict) {
+		return apperror.Conflict("AUDIO_STATE_STALE", "A reprodução mudou em outra sessão. O estado mais recente foi mantido.")
 	}
 	if errors.Is(err, ErrTokenNotFound) {
 		return apperror.NotFound("TOKEN_NOT_FOUND", "Este token não existe mais nesta cena. Atualize a cena e tente novamente.")

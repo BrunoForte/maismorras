@@ -17,12 +17,14 @@ type Scene struct {
 	AmbientAudioPositionMs     int64      `json:"ambientAudioPositionMs"`
 	AmbientAudioStartedAt      *time.Time `json:"ambientAudioStartedAt"`
 	AmbientAudioRevision       int64      `json:"ambientAudioRevision"`
+	AmbientAudioLoop           bool       `json:"ambientAudioLoop"`
 	AmbientEffectPath          *string    `json:"ambientEffectPath"`
 	AmbientEffectEnabled       bool       `json:"ambientEffectEnabled"`
 	AmbientEffectVolume        int        `json:"ambientEffectVolume"`
 	AmbientEffectPositionMs    int64      `json:"ambientEffectPositionMs"`
 	AmbientEffectStartedAt     *time.Time `json:"ambientEffectStartedAt"`
 	AmbientEffectRevision      int64      `json:"ambientEffectRevision"`
+	AmbientEffectLoop          bool       `json:"ambientEffectLoop"`
 	GridSize                   int        `json:"gridSize"`
 	MapWidthCells              int        `json:"mapWidthCells"`
 	MapHeightCells             int        `json:"mapHeightCells"`
@@ -32,6 +34,15 @@ type Scene struct {
 	AllowPlayerMovement        bool       `json:"allowPlayerMovement"`
 	AllowPlayerDoorInteraction bool       `json:"allowPlayerDoorInteraction"`
 	EnforceTurnOrder           bool       `json:"enforceTurnOrder"`
+}
+type AudioChannelState struct {
+	Path       *string `json:"path"`
+	Playing    bool    `json:"playing"`
+	Volume     float64 `json:"volume"`
+	PositionMs int64   `json:"positionMs"`
+	StartedAt  int64   `json:"startedAt"`
+	Loop       bool    `json:"loop"`
+	Revision   int64   `json:"revision"`
 }
 type CombatState struct {
 	ActiveTokenID *string            `json:"activeTokenId"`
@@ -177,4 +188,5 @@ var ErrForbidden = fmt.Errorf("forbidden")
 var ErrTokenColorInUse = fmt.Errorf("token color already in use")
 var ErrAlreadyLinked = fmt.Errorf("character already linked to scene")
 var ErrBlockedMovement = fmt.Errorf("movement blocked by wall")
+var ErrAudioRevisionConflict = fmt.Errorf("audio state revision conflict")
 var ErrTokenNotFound = fmt.Errorf("token not found in scene")

@@ -12,12 +12,14 @@ export type Scene = {
 	ambientAudioPositionMs: number;
 	ambientAudioStartedAt: string | null;
 	ambientAudioRevision: number;
+	ambientAudioLoop?: boolean;
 	ambientEffectPath: string | null;
 	ambientEffectEnabled: boolean;
 	ambientEffectVolume: number;
 	ambientEffectPositionMs: number;
 	ambientEffectStartedAt: string | null;
 	ambientEffectRevision: number;
+	ambientEffectLoop?: boolean;
 	gridSize: number;
 	mapWidthCells: number;
 	mapHeightCells: number;
@@ -112,6 +114,26 @@ export const updateScene = (session: Session, scene: Scene) =>
 		method: 'PATCH',
 		body: JSON.stringify(scene)
 	});
+export type SceneAudioChannel = 'music' | 'effect';
+export type SceneAudioUpdate = {
+	channel: SceneAudioChannel;
+	path: string | null;
+	playing: boolean;
+	volume: number;
+	positionMs: number;
+	startedAt: number;
+	loop: boolean;
+	expectedRevision: number;
+};
+export const updateSceneAudio = (session: Session, sceneId: string, update: SceneAudioUpdate) =>
+	request<import('./audioPlayback').AudioPlaybackState>(
+		session,
+		`/api/v1/scenes/${sceneId}/audio`,
+		{
+			method: 'PUT',
+			body: JSON.stringify(update)
+		}
+	);
 export const updateFog = (
 	session: Session,
 	sceneId: string,

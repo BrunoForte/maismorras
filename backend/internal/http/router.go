@@ -95,6 +95,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/scenes/{sceneID}/presentation", overlayHandler.AuthenticateOrOverlay(sceneHandler.GetPresentation))
 	mux.Handle("PUT /api/v1/scenes/{sceneID}/presentation", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.SavePresentation))
 	mux.Handle("PATCH /api/v1/scenes/{sceneID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateScene))
+	mux.Handle("PUT /api/v1/scenes/{sceneID}/audio", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.UpdateAudioState))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/combat", overlayHandler.AuthenticateOrOverlay(sceneHandler.Combat))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/effects", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.Effects))
 	mux.Handle("GET /api/v1/scenes/{sceneID}/effect-definitions", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, sceneHandler.EffectDefinitions))
