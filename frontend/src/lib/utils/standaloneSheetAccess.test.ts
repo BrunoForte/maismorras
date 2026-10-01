@@ -33,13 +33,28 @@ describe('resolveStandaloneSheetAccess', () => {
 
 	it('uses the backend-authorized character read for a GM', async () => {
 		const deps = dependencies('gm');
+		const playerCharacter = {
+			id: 'player-character',
+			campaignId: campaign.id,
+			ownerId: 'another-user'
+		} as unknown as Character;
+		deps.getCharacterForGM.mockResolvedValue(playerCharacter);
 		await expect(
-			resolveStandaloneSheetAccess(session, campaign.id, ownCharacter.id, deps)
+			resolveStandaloneSheetAccess(session, campaign.id, playerCharacter.id, deps)
 		).resolves.toMatchObject({
 			isGM: true,
-			characterId: ownCharacter.id
+			characterId: playerCharacter.id
 		});
-		expect(deps.getCharacterForGM).toHaveBeenCalledWith(session, campaign.id, ownCharacter.id);
+		expect(deps.getCharacterForGM).toHaveBeenCalledWith(session, campaign.id, playerCharacter.id);
+	});
+
+	it('does not grant a player access to a different character through the standalone route', async () => {
+		const deps = dependencies('player');
+		await expect(
+			resolveStandaloneSheetAccess(session, campaign.id, 'player-character', deps)
+		).rejects.toThrow('Você não tem acesso a esta ficha.');
+		expect(deps.getMyCharacter).toHaveBeenCalledWith(session, campaign.id);
+		expect(deps.getCharacterForGM).not.toHaveBeenCalled();
 	});
 
 	it('denies a campaign outside the user membership list and rejects missing identifiers', async () => {

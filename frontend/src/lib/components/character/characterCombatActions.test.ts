@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@supabase/supabase-js';
 import {
 	createEmptySheet,
 	type CharacterSheet,
@@ -31,7 +32,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		sceneId: 'scene-1',
 		characterId: 'character-1',
 		isGM: true,
-		session: { user: { id: 'user-1' }, access_token: 'test-token' },
+		session: { user: { id: 'user-1' }, access_token: 'test-token' } as Session,
 		locale: 'pt-BR' as const,
 		onTokenCreated: vi.fn()
 	};
@@ -46,6 +47,13 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 	const publishChatUpdated = vi.fn();
 	const publishCombatUpdated = vi.fn();
 	const publishPresentationUpdated = vi.fn();
+	const saveSpellDisplay = vi.fn(async () => ({
+		id: 'chat-1',
+		autor: 'Heroína',
+		texto: '✨ Heroína: Mísseis mágicos\nDescrição',
+		tipo: 'texto' as const,
+		canal: 'chat' as const
+	}));
 	const rollDice = vi.fn<CharacterCombatActionDependencies['rollDice']>(async (...args) => ({
 		id: 'roll-1',
 		author: 'Heroína',
@@ -66,6 +74,8 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 	const dependencies = {
 		getContext: () => context,
 		getSheet: () => sheet,
+		getCanCastSelectedCharacter: () => true,
+		getCanDisplaySelectedCharacter: () => true,
 		setSheet,
 		getResolvedCharacterId: () => 'character-1',
 		getInitiativeTokenId: () => 'token-1',
@@ -100,6 +110,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		restCharacter,
 		castMySpell,
 		savePresentation: vi.fn(async () => undefined),
+		saveSpellDisplay,
 		appendChat,
 		setDiceOverlay,
 		beginDiceBatch,
@@ -122,6 +133,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		publishChatUpdated,
 		publishCombatUpdated,
 		publishPresentationUpdated,
+		saveSpellDisplay,
 		rollDice: dependencies.rollDice as typeof rollDice,
 		castMySpell,
 		restCharacter
@@ -254,6 +266,64 @@ describe('character combat actions', () => {
 		expect(test.getSheet().name).toBe('Ficha após conjuração');
 		expect(test.getSheet().spellSlots[1].current).toBe(0);
 		expect(test.appendChat.mock.calls[0][0].texto).toContain('espaço usado 2');
+	});
+
+	it.each([
+		{ name: 'truque', spell: { name: 'Luz', level: 0, notes: '' } },
+		{ name: 'magia com espaço', spell: { name: 'Escudo', level: 1, notes: '' } }
+	])(
+		'narrador não usa a rota de ficha própria para $name de personagem de terceiro',
+		async ({ spell }) => {
+			const test = setup({ getCanCastSelectedCharacter: () => false });
+			test.context({ characterId: 'player-character', isGM: true });
+
+			await test.controller.castSpell(spell, 0);
+
+			expect(test.castMySpell).not.toHaveBeenCalled();
+			expect(test.setMessage).toHaveBeenCalledWith(
+				'Só é possível lançar magias da sua própria ficha.'
+			);
+			expect(test.getSheet().spellSlots[0].current).toBe(1);
+		}
+	);
+
+	it('publica Exibir no chat para jogador sem controlar a apresentação da cena', async () => {
+		const test = setup({
+			getContext: () => ({
+				campaignId: 'campaign-1',
+				sceneId: 'scene-1',
+				characterId: 'character-1',
+				isGM: false,
+				session: { user: { id: 'user-1' }, access_token: 'test-token' } as Session,
+				locale: 'pt-BR' as const,
+				onTokenCreated: vi.fn()
+			})
+		});
+
+		await test.controller.presentSpell(test.getSheet().spells[0]);
+
+		expect(test.saveSpellDisplay).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			'Heroína',
+			'Mísseis mágicos',
+			'Descrição'
+		);
+		expect(test.appendChat).toHaveBeenCalledOnce();
+		expect(test.publishPresentationUpdated).not.toHaveBeenCalled();
+	});
+
+	it('Exibir do narrador publica no chat e também atualiza apresentação e overlay', async () => {
+		const test = setup();
+
+		await test.controller.presentSpell(test.getSheet().spells[0]);
+
+		expect(test.saveSpellDisplay).toHaveBeenCalledOnce();
+		expect(test.appendChat).toHaveBeenCalledOnce();
+		expect(test.publishPresentationUpdated).toHaveBeenCalledOnce();
+		expect(test.setMessage).toHaveBeenCalledWith(
+			'Magia publicada no chat e destacada para a mesa.'
+		);
 	});
 
 	it('aplica à ficha o retorno remoto de um descanso', async () => {

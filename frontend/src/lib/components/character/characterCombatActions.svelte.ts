@@ -60,6 +60,8 @@ type WeaponRollDetails = {
 export type CharacterCombatActionDependencies = {
 	getContext: () => CharacterCombatContext;
 	getSheet: () => CharacterSheet;
+	getCanCastSelectedCharacter: () => boolean;
+	getCanDisplaySelectedCharacter: () => boolean;
 	setSheet: (sheet: CharacterSheet) => void;
 	getResolvedCharacterId: () => string | null;
 	getInitiativeTokenId: () => string | null;
@@ -123,6 +125,13 @@ export type CharacterCombatActionDependencies = {
 		sceneId: string,
 		presentation: Presentation
 	) => Promise<unknown>;
+	saveSpellDisplay: (
+		session: Session,
+		campaignId: string,
+		characterName: string,
+		spellName: string,
+		description: string
+	) => Promise<Mensagem>;
 	appendChat: (message: Mensagem) => void;
 	setDiceOverlay: (result: DiceOverlayResult) => void;
 	beginDiceBatch: () => void;
@@ -784,26 +793,39 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 	async function presentSpell(spell: Spell) {
 		const operation = captureOperation();
 		const context = deps.getContext();
-		if (!context.isGM || !context.sceneId) return;
+		if (!deps.getCanDisplaySelectedCharacter()) return;
 		const details = deps.getSpellPresentation(spell);
-		const presentation = {
-			assetPath: '',
-			title: details.title,
-			description: details.description || spell.notes,
-			visible: true,
-			visibleUserIds: [],
-			audienceRestricted: false,
-			overlayVisible: false
-		};
 		try {
-			await deps.savePresentation(context.session, context.sceneId, presentation);
+			const message = await deps.saveSpellDisplay(
+				context.session,
+				context.campaignId,
+				deps.getSheet().name,
+				details.title,
+				details.description || spell.notes
+			);
 			if (!isCurrent(operation)) return;
-			deps.publishPresentationUpdated({ presentation });
-			deps.setMessage('Magia destacada para a mesa.');
+			addChat(message);
+			if (context.isGM && context.sceneId) {
+				const presentation = {
+					assetPath: '',
+					title: details.title,
+					description: details.description || spell.notes,
+					visible: true,
+					visibleUserIds: [],
+					audienceRestricted: false,
+					overlayVisible: false
+				};
+				await deps.savePresentation(context.session, context.sceneId, presentation);
+				if (!isCurrent(operation)) return;
+				deps.publishPresentationUpdated({ presentation });
+				deps.setMessage('Magia publicada no chat e destacada para a mesa.');
+			} else {
+				deps.setMessage('Magia publicada no chat da mesa.');
+			}
 		} catch (error) {
 			if (isCurrent(operation))
 				deps.setMessage(
-					error instanceof Error ? error.message : 'Não foi possível destacar a magia.'
+					error instanceof Error ? error.message : 'Não foi possível publicar a magia no chat.'
 				);
 		}
 	}
@@ -821,6 +843,10 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 	}
 
 	async function castSpell(spell: Spell, index: number) {
+		if (!deps.getCanCastSelectedCharacter()) {
+			deps.setMessage('Só é possível lançar magias da sua própria ficha.');
+			return;
+		}
 		if (state.castingSpell !== null || (spell.level > 0 && !compatibleSlots(spell).length)) return;
 		const operation = captureOperation();
 		const context = deps.getContext();

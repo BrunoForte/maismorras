@@ -39,7 +39,7 @@
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { connectSceneSocket } from '$lib/services/sceneRealtime';
-	import { rollDice } from '$lib/services/eventApi';
+	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import {
@@ -144,6 +144,7 @@
 		onTokenCreated: () => void;
 	} = $props();
 	let sheet = $state<Sheet>(createEmptySheet());
+	let sheetOwnerId = $state('');
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let compendiumSources = $state<CompendiumSource[]>([]);
 	let activeTab = $state<'profile' | 'skills' | 'combat' | 'inventory' | 'spells' | 'details'>(
@@ -291,6 +292,7 @@
 		getContext: () => ({ campaignId, sceneId, characterId, isGM, session, onTokenCreated }),
 		onContextChanged: () => {
 			sheet = createEmptySheet();
+			sheetOwnerId = '';
 			compendiumEntries = [];
 			compendiumSources = [];
 			activeTab = 'profile';
@@ -309,6 +311,7 @@
 		getCharacterForGM,
 		getMyCharacter,
 		onCharacterLoaded: (loadedCharacter) => {
+			sheetOwnerId = loadedCharacter.ownerId;
 			sheet = loadedCharacter.sheet;
 			sheet.attacks ??= [];
 			sheet.attacks = sheet.attacks.map((attack) => {
@@ -397,6 +400,8 @@
 			onTokenCreated
 		}),
 		getSheet: () => sheet,
+		getCanCastSelectedCharacter: () => !isGM || sheetOwnerId === session.user.id,
+		getCanDisplaySelectedCharacter: () => isGM || !characterId || sheetOwnerId === session.user.id,
 		setSheet: (next) => (sheet = next),
 		getResolvedCharacterId: () => lifecycle.state.resolvedCharacterId,
 		getInitiativeTokenId: () => lifecycle.state.initiativeTokenId,
@@ -441,6 +446,7 @@
 		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
 		restCharacter,
 		castMySpell,
+		saveSpellDisplay: publishSpellToChat,
 		savePresentation: (activeSession, activeSceneId, presentation) =>
 			savePresentation(activeSession, activeSceneId, presentation),
 		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),

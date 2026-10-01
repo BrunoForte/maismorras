@@ -63,6 +63,20 @@ export const saveMessage = (session: Session, campaignId: string, text: string) 
 		method: 'POST',
 		body: JSON.stringify({ type: 'chat.message', payload: { text } })
 	});
+
+/** Publishes a spell card as a normal campaign chat event; audience is always campaign members. */
+export async function publishSpellToChat(
+	session: Session,
+	campaignId: string,
+	characterName: string,
+	spellName: string,
+	description: string
+): Promise<Mensagem> {
+	const text = `✨ ${characterName || 'Personagem'}: ${spellName}${description ? `\n${description}` : ''}`;
+	const message = campaignEventToMessage(await saveMessage(session, campaignId, text));
+	if (!message) throw new Error('Não foi possível publicar a magia no chat.');
+	return message;
+}
 export const saveRoll = (
 	session: Session,
 	campaignId: string,

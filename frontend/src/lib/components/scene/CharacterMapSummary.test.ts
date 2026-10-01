@@ -50,7 +50,6 @@ describe('CharacterMapSummary', () => {
 		const { body } = render(CharacterMapSummary, {
 			props: {
 				sheet,
-				isGM: true,
 				canCastSpells: true,
 				onHitPointsSet: vi.fn(),
 				onWeaponRoll: vi.fn(),
@@ -82,15 +81,30 @@ describe('CharacterMapSummary', () => {
 		expect(body).not.toContain('Another long description');
 	});
 
-	it('keeps display GM-only and disables slot casting for non-owners', () => {
+	it('allows display to a visible authorized sheet and disables casting for non-owners', () => {
 		const sheet = createEmptySheet();
-		sheet.spells = [{ name: 'Escudo', level: 1, notes: '' }];
+		sheet.spells = [
+			{ name: 'Luz', level: 0, notes: '' },
+			{ name: 'Escudo', level: 1, notes: '' }
+		];
 		const { body } = render(CharacterMapSummary, {
-			props: { sheet, isGM: false, canCastSpells: false }
+			props: { sheet, canCastSpells: false }
 		});
 
-		expect(body).toContain('disabled');
-		expect(body).not.toContain('Exibir');
+		expect(body.match(/disabled=""/g)).toHaveLength(2);
+		expect(body.match(/Exibir/g)).toHaveLength(2);
+	});
+
+	it('allows an owning player to cast a cantrip and display it in campaign chat', () => {
+		const sheet = createEmptySheet();
+		sheet.spells = [{ name: 'Luz', level: 0, notes: '' }];
+		const { body } = render(CharacterMapSummary, {
+			props: { sheet, canCastSpells: true }
+		});
+
+		expect(body).not.toContain('disabled=""');
+		expect(body).toContain('Lançar');
+		expect(body).toContain('Exibir');
 	});
 
 	it('disables leveled spells when the owner has no compatible available slot', () => {

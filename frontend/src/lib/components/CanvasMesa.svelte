@@ -78,7 +78,7 @@
 		type InventoryItem,
 		type Spell
 	} from '$lib/services/characterApi';
-	import { rollDice } from '$lib/services/eventApi';
+	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
@@ -238,6 +238,8 @@
 			onTokenCreated: () => void carregarTokens()
 		}),
 		getSheet: mapSheet,
+		getCanCastSelectedCharacter: () => Boolean(personagemSelecionado?.isOwned),
+		getCanDisplaySelectedCharacter: () => Boolean(isGM || personagemSelecionado?.isOwned),
 		setSheet: (next) => {
 			const actorId = personagemSelecionado?.actorId;
 			if (actorId) characterSummaryByActor = { ...characterSummaryByActor, [actorId]: next };
@@ -344,6 +346,8 @@
 		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
 		restCharacter,
 		castMySpell,
+		saveSpellDisplay: (activeSession, activeCampaignId, characterName, spellName, description) =>
+			publishSpellToChat(activeSession, activeCampaignId, characterName, spellName, description),
 		savePresentation,
 		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),
 		setDiceOverlay: (result) => diceOverlay.set(result),

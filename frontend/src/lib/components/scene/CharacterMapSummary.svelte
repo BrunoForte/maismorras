@@ -13,7 +13,6 @@
 	type Props = {
 		sheet: CharacterSheet;
 		isEnglish?: boolean;
-		isGM?: boolean;
 		canCastSpells?: boolean;
 		hitPointsUpdating?: boolean;
 		hitPointsCurrent?: number;
@@ -28,7 +27,6 @@
 	let {
 		sheet,
 		isEnglish = false,
-		isGM = false,
 		canCastSpells = false,
 		hitPointsUpdating = false,
 		hitPointsCurrent = sheet.hitPointsCurrent,
@@ -51,8 +49,8 @@
 		return [...groups.entries()].sort(([left], [right]) => left - right);
 	});
 	const canCastSpell = (spell: Spell) =>
-		spell.level === 0 ||
-		(canCastSpells &&
+		canCastSpells &&
+		(spell.level === 0 ||
 			sheet.spellSlots.some((slot) => slot.level >= spell.level && slot.current > 0));
 	const circleLabel = (level: number) =>
 		level === 0
@@ -177,9 +175,9 @@
 								<button disabled={!canCastSpell(spell)} onclick={() => onCastSpell(spell, index)}
 									>{isEnglish ? 'Cast' : 'Lançar'}</button
 								>
-								{#if isGM}<button onclick={() => onPresentSpell(spell)}
-										>{isEnglish ? 'Display' : 'Exibir'}</button
-									>{/if}
+								<button onclick={() => onPresentSpell(spell)}
+									>{isEnglish ? 'Display' : 'Exibir'}</button
+								>
 							</div>
 						</div>
 					{/each}

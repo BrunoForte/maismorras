@@ -147,7 +147,6 @@
 		<CharacterMapSummary
 			sheet={characterSheet}
 			{isEnglish}
-			isGM={permissions.canManageConditions}
 			canCastSpells={token.isOwned}
 			hitPointsCurrent={token.hpAtual}
 			hitPointsMax={token.hpMax}
