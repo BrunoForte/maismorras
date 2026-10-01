@@ -1,24 +1,20 @@
 import type { Session } from '@supabase/supabase-js';
 import { request as httpRequest } from './httpClient';
 import type { Mensagem } from '$lib/stores/chatStore';
+import type { CampaignEvent } from './campaignRealtime';
 
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
 	return httpRequest<T>(session, path, init);
 }
-type StoredEvent = {
-	id: number;
-	author: string;
-	type: 'chat.message' | 'dice.roll' | 'combat.log' | 'system.info';
-	payload: unknown;
-};
-function asMessage(event: StoredEvent): Mensagem | null {
+export type StoredEvent = CampaignEvent;
+export function campaignEventToMessage(event: StoredEvent): Mensagem | null {
 	if (
 		event.type === 'chat.message' ||
 		event.type === 'combat.log' ||
 		event.type === 'system.info'
 	) {
-		const p = event.payload as { text?: string };
-		return p.text
+		const p = event.payload as { text?: string } | null;
+		return p?.text
 			? {
 					id: String(event.id),
 					autor: event.author,
@@ -35,12 +31,14 @@ function asMessage(event: StoredEvent): Mensagem | null {
 				}
 			: null;
 	}
-	const p = event.payload as Mensagem['detalhesRolagem'] & {
-		text?: string;
-		channel?: 'chat' | 'combat';
-		modo?: 'normal' | 'advantage' | 'disadvantage';
-		label?: string;
-	};
+	const p = event.payload as
+		| (Mensagem['detalhesRolagem'] & {
+				text?: string;
+				channel?: 'chat' | 'combat';
+				modo?: 'normal' | 'advantage' | 'disadvantage';
+				label?: string;
+		  })
+		| undefined;
 	return p?.expressao
 		? {
 				id: String(event.id),
@@ -58,10 +56,10 @@ export async function loadMessages(session: Session, campaignId: string, afterId
 		session,
 		`/api/v1/campaigns/${campaignId}/events${cursor}`
 	);
-	return result.events.map(asMessage).filter((m): m is Mensagem => m !== null);
+	return result.events.map(campaignEventToMessage).filter((m): m is Mensagem => m !== null);
 }
 export const saveMessage = (session: Session, campaignId: string, text: string) =>
-	request(session, `/api/v1/campaigns/${campaignId}/events`, {
+	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
 		body: JSON.stringify({ type: 'chat.message', payload: { text } })
 	});

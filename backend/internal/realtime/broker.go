@@ -40,6 +40,8 @@ type Envelope struct {
 	ProtocolVersion int             `json:"protocolVersion"`
 	EventID         string          `json:"eventId"`
 	OriginInstance  string          `json:"originInstanceId"`
+	RoomType        string          `json:"roomType,omitempty"`
+	CampaignID      string          `json:"campaignId,omitempty"`
 	SceneID         string          `json:"sceneId"`
 	Payload         json.RawMessage `json:"payload"`
 }

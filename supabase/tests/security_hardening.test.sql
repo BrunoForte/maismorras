@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(22);
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'INSERT'), 'authenticated cannot insert profiles');
 select ok(has_column_privilege('authenticated', 'public.profiles', 'display_name', 'UPDATE'), 'authenticated may update display_name');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'is_admin', 'UPDATE'), 'authenticated cannot update is_admin');
@@ -20,5 +20,7 @@ select ok((select count(*) = 6 from information_schema.columns where table_schem
 select ok((select relrowsecurity from pg_class where oid='public.overlay_pairing_codes'::regclass), 'OBS pairing codes have RLS enabled');
 select ok((select relrowsecurity from pg_class where oid='public.overlay_access_sessions'::regclass), 'OBS access grants have RLS enabled');
 select ok(not has_table_privilege('anon','public.overlay_pairing_codes','SELECT') and not has_table_privilege('authenticated','public.overlay_pairing_codes','SELECT') and not has_table_privilege('anon','public.overlay_access_sessions','SELECT') and not has_table_privilege('authenticated','public.overlay_access_sessions','SELECT'), 'pairing secrets are not exposed to Data API roles');
+select ok(has_trigger('public', 'game_events', 'game_events_campaign_realtime'), 'persisted campaign events publish realtime notifications');
+select ok(not has_function_privilege('anon', 'public.notify_campaign_game_event()', 'EXECUTE') and not has_function_privilege('authenticated', 'public.notify_campaign_game_event()', 'EXECUTE'), 'campaign event notification function is not callable from Data API roles');
 select * from finish();
 rollback;

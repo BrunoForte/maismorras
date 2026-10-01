@@ -85,6 +85,21 @@ func ListenCompatibleDatabaseURL(raw string) bool {
 	return true
 }
 
+// CampaignEventsListenCompatibleDatabaseURL additionally permits the direct
+// loopback port exposed by the local Supabase stack. Production remains limited
+// to direct/session-mode port 5432 connections.
+func CampaignEventsListenCompatibleDatabaseURL(raw string) bool {
+	if ListenCompatibleDatabaseURL(raw) {
+		return true
+	}
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (parsed.Scheme != "postgres" && parsed.Scheme != "postgresql") || parsed.Port() != "54322" {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
 func (b *PostgresBroker) Publish(ctx context.Context, envelope Envelope) error {
 	if b.pool == nil {
 		return errors.New("realtime postgres publisher has no request pool")
@@ -111,6 +126,16 @@ func (b *PostgresBroker) Publish(ctx context.Context, envelope Envelope) error {
 
 func (b *PostgresBroker) Listen(ctx context.Context, receive func(Envelope), onConnected func()) error {
 	return b.listen(ctx, receive, onConnected, nil)
+}
+
+// ListenCampaignEvents is used by single-instance/local mode: persisted events
+// still reach local campaign rooms without enabling distributed scene events.
+func (b *PostgresBroker) ListenCampaignEvents(ctx context.Context, receive func(Envelope), onConnected func()) error {
+	return b.listen(ctx, func(envelope Envelope) {
+		if envelope.RoomType == campaignRoomType && receive != nil {
+			receive(envelope)
+		}
+	}, onConnected, nil)
 }
 
 func (b *PostgresBroker) listen(ctx context.Context, receive func(Envelope), onConnected func(), onListenerEstablished func(uint32)) error {

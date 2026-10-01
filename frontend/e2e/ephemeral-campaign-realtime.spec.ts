@@ -230,6 +230,16 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				const playerPage = await playerContext.newPage();
 				const ownerRealtimePublisher = await ownerContext.newPage();
 				const sceneUrl = `${baseURL}/?campaign=${campaignId}&scene=${scene.id}`;
+				const ownerCampaignSocket = ownerPage.waitForEvent('websocket', {
+					predicate: (socket) =>
+						new URL(socket.url()).searchParams.get('campaignId') === campaignId,
+					timeout: 30_000
+				});
+				const playerCampaignSocket = playerPage.waitForEvent('websocket', {
+					predicate: (socket) =>
+						new URL(socket.url()).searchParams.get('campaignId') === campaignId,
+					timeout: 30_000
+				});
 				const frontendSceneRequest = playerPage.waitForRequest(
 					(request) =>
 						request.method() === 'GET' &&
@@ -247,6 +257,25 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 					expect(ownerPage.locator('canvas').first()).toBeVisible({ timeout: 30_000 }),
 					expect(playerPage.locator('canvas').first()).toBeVisible({ timeout: 30_000 })
 				]);
+				await Promise.all([ownerCampaignSocket, playerCampaignSocket]);
+
+				// Chat stays subscribed while the player navigates away from the map.
+				const workspaceNavigation = playerPage.getByRole('navigation', {
+					name: /Áreas da mesa|Table areas/
+				});
+				await workspaceNavigation
+					.getByRole('button', { name: /Fichas|Sheets/, exact: true })
+					.click();
+				const rollResponse = await playerApi.post(`/api/v1/campaigns/${campaignId}/events`, {
+					data: { type: 'dice.roll', payload: { expression: '1d20+4' } }
+				});
+				expect(rollResponse.status()).toBe(201);
+				const rollEvent = (await rollResponse.json()) as { id: number };
+				const eventSelector = `[data-event-id="${rollEvent.id}"]`;
+				await expect(playerPage.locator(eventSelector)).toHaveCount(1, { timeout: 15_000 });
+				await expect(ownerPage.locator(eventSelector)).toHaveCount(1, { timeout: 15_000 });
+				await playerPage.reload();
+				await expect(playerPage.locator(eventSelector)).toHaveCount(1, { timeout: 30_000 });
 
 				const tokenData: Omit<Token, 'id'> = {
 					name: 'Token de teste ao vivo',
@@ -342,9 +371,6 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				await expect
 					.poll(() => duplicateTokenReads - readsBeforeDuplicateEvents, { timeout: 15_000 })
 					.toBeGreaterThanOrEqual(2);
-				const workspaceNavigation = playerPage.getByRole('navigation', {
-					name: /Áreas da mesa|Table areas/
-				});
 				await workspaceNavigation
 					.getByRole('button', { name: /Fichas|Sheets/, exact: true })
 					.click();

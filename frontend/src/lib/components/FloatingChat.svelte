@@ -3,30 +3,40 @@
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { chatMensagens } from '$lib/stores/chatStore';
-	import { loadMessages, rollDice, saveMessage } from '$lib/services/eventApi';
+	import {
+		campaignEventToMessage,
+		loadMessages,
+		rollDice,
+		saveMessage,
+		type StoredEvent
+	} from '$lib/services/eventApi';
+	import {
+		connectCampaignSocket,
+		type CampaignRealtimeStatus,
+		type CampaignSocket
+	} from '$lib/services/campaignRealtime';
+	import { mergeCampaignMessages } from '$lib/utils/campaignChatState';
 	import {
 		diceOverlay,
 		completedDiceRollNonces,
 		diceRendererMode,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
-	import {
-		connectSceneSocket,
-		type RealtimeStatus,
-		type SceneSocket
-	} from '$lib/services/sceneRealtime';
 	import { appLocale } from '$lib/stores/locale';
 
-	let { campaignId, sceneId, session }: { campaignId: string; sceneId: string; session: Session } =
-		$props();
+	let { campaignId, session }: { campaignId: string; session: Session } = $props();
 	let open = $state(true);
 	let docked = $state(false);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
-	let sceneSocket: SceneSocket | null = null;
+	let campaignSocket: CampaignSocket | null = null;
 	let messagesElement = $state<HTMLDivElement>();
 	let initialized = false;
+	let disposed = false;
+	let reloadInFlight = false;
+	let reloadPending = false;
+	let reloadFullHistoryPending = false;
 	let lastEventId = 0;
 	const knownMessageIds = new SvelteSet<string>();
 	const revealedRollIds = new SvelteSet<string>();
@@ -70,43 +80,83 @@
 		message.detalhesRolagem?.expressao ||
 		($appLocale === 'en' ? 'Roll' : 'Rolagem');
 
-	async function reloadMessages() {
+	function consumeEvent(event: StoredEvent, animate = true) {
+		const message = campaignEventToMessage(event);
+		if (knownMessageIds.has(String(event.id))) return;
+		if (!message) {
+			void reloadMessages();
+			return;
+		}
+		knownMessageIds.add(message.id);
+		if (message.tipo === 'rolagem') {
+			if (animate) queueRollReveal(message.id);
+			else revealedRollIds.add(message.id);
+			if (message.detalhesRolagem) {
+				$diceOverlay = {
+					expression: `${message.autor} · ${message.detalhesRolagem.label ?? message.detalhesRolagem.expressao}`,
+					notation: message.detalhesRolagem.expressao,
+					total: message.detalhesRolagem.total,
+					dice: message.detalhesRolagem.dados,
+					nonce: message.id
+				};
+			}
+		}
+		$chatMensagens = mergeCampaignMessages($chatMensagens, [message]);
+		const numericId = Number(message.id);
+		if (Number.isSafeInteger(numericId)) lastEventId = Math.max(lastEventId, numericId);
+	}
+
+	async function reloadMessages(fullHistory = false) {
+		if (reloadInFlight) {
+			reloadPending = true;
+			reloadFullHistoryPending ||= fullHistory;
+			return;
+		}
+		reloadInFlight = true;
 		try {
-			const nextMessages = await loadMessages(
-				session,
-				campaignId,
-				initialized ? lastEventId : undefined
-			);
-			if (!initialized) {
-				nextMessages.forEach((message) => {
-					knownMessageIds.add(message.id);
-					if (message.tipo === 'rolagem') revealedRollIds.add(message.id);
-				});
-				$chatMensagens = nextMessages;
-				initialized = true;
-			} else {
-				for (const message of nextMessages) {
-					if (knownMessageIds.has(message.id)) continue;
-					knownMessageIds.add(message.id);
-					if ($chatMensagens.some((current) => current.id === message.id)) continue;
-					if (message.tipo === 'rolagem') queueRollReveal(message.id);
-					if (message.tipo === 'rolagem' && message.detalhesRolagem)
-						$diceOverlay = {
-							expression: message.detalhesRolagem.label ?? message.detalhesRolagem.expressao,
-							notation: message.detalhesRolagem.expressao,
-							total: message.detalhesRolagem.total,
-							dice: message.detalhesRolagem.dados,
-							nonce: message.id
-						};
+			do {
+				reloadPending = false;
+				const fetchFullHistory = fullHistory || reloadFullHistoryPending;
+				reloadFullHistoryPending = false;
+				try {
+					const nextMessages = await loadMessages(
+						session,
+						campaignId,
+						initialized && !fetchFullHistory ? lastEventId : undefined
+					);
+					if (disposed) return;
+					const newlyFetched = [];
+					for (const message of nextMessages) {
+						if (knownMessageIds.has(message.id)) continue;
+						knownMessageIds.add(message.id);
+						newlyFetched.push(message);
+						if (message.tipo === 'rolagem') {
+							if (initialized) queueRollReveal(message.id);
+							else revealedRollIds.add(message.id);
+							if (initialized && message.detalhesRolagem)
+								$diceOverlay = {
+									expression: `${message.autor} · ${message.detalhesRolagem.label ?? message.detalhesRolagem.expressao}`,
+									notation: message.detalhesRolagem.expressao,
+									total: message.detalhesRolagem.total,
+									dice: message.detalhesRolagem.dados,
+									nonce: message.id
+								};
+						}
+						const numericId = Number(message.id);
+						if (Number.isSafeInteger(numericId)) lastEventId = Math.max(lastEventId, numericId);
+					}
+					if (!initialized) {
+						$chatMensagens = mergeCampaignMessages($chatMensagens, newlyFetched);
+						initialized = true;
+					} else if (newlyFetched.length) {
+						$chatMensagens = mergeCampaignMessages($chatMensagens, newlyFetched);
+					}
+				} catch (error) {
+					console.error('Falha ao carregar histórico do chat:', error);
 				}
-				if (nextMessages.length) $chatMensagens = [...$chatMensagens, ...nextMessages].slice(-100);
-			}
-			for (const message of nextMessages) {
-				const numericId = Number(message.id);
-				if (Number.isSafeInteger(numericId)) lastEventId = Math.max(lastEventId, numericId);
-			}
-		} catch (error) {
-			console.error('Falha ao carregar histórico do chat:', error);
+			} while (reloadPending && !disposed);
+		} finally {
+			reloadInFlight = false;
 		}
 	}
 
@@ -121,31 +171,36 @@
 	});
 
 	onMount(() => {
-		void reloadMessages();
+		disposed = false;
+		initialized = false;
+		lastEventId = 0;
+		knownMessageIds.clear();
+		revealedRollIds.clear();
+		$chatMensagens = [];
 		let fallbackTimer: number | undefined;
-		const updateFallback = (status: RealtimeStatus) => {
+		let hasConnected = false;
+		const updateFallback = (status: CampaignRealtimeStatus) => {
 			if (status === 'connected') {
 				if (fallbackTimer) window.clearInterval(fallbackTimer);
 				fallbackTimer = undefined;
+				if (hasConnected) void reloadMessages(true);
+				hasConnected = true;
 				return;
 			}
 			if (!fallbackTimer) fallbackTimer = window.setInterval(() => void reloadMessages(), 60_000);
 		};
-		sceneSocket = connectSceneSocket(
+		campaignSocket = connectCampaignSocket(
 			session,
-			sceneId,
-			undefined,
-			undefined,
+			campaignId,
+			(event) => consumeEvent(event),
 			updateFallback,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			() => void reloadMessages()
+			() => void reloadMessages(true)
 		);
+		void reloadMessages();
 		return () => {
-			sceneSocket?.close();
-			sceneSocket = null;
+			disposed = true;
+			campaignSocket?.close();
+			campaignSocket = null;
 			if (fallbackTimer) window.clearInterval(fallbackTimer);
 			for (const timer of revealTimers.values()) clearTimeout(timer);
 			revealTimers.clear();
@@ -162,35 +217,10 @@
 		try {
 			if (/^\/(r|roll)\s+/i.test(input)) {
 				const event = await rollDice(session, campaignId, input.replace(/^\/(r|roll)\s+/i, ''));
-				const result = event.payload as NonNullable<
-					(typeof $chatMensagens)[number]['detalhesRolagem']
-				>;
-				$chatMensagens = [
-					...$chatMensagens,
-					{
-						id: String(event.id),
-						autor: event.author,
-						texto: '',
-						tipo: 'rolagem',
-						detalhesRolagem: result
-					}
-				];
-				knownMessageIds.add(String(event.id));
-				$diceOverlay = {
-					expression: `${event.author} · ${result.expressao}`,
-					notation: result.expressao,
-					total: result.total,
-					dice: result.dados,
-					nonce: String(event.id)
-				};
+				consumeEvent(event, true);
 			} else {
-				await saveMessage(session, campaignId, input);
-				$chatMensagens = [
-					...$chatMensagens,
-					{ id: crypto.randomUUID(), autor: 'Você', texto: input, tipo: 'texto' }
-				];
+				consumeEvent((await saveMessage(session, campaignId, input)) as StoredEvent, false);
 			}
-			sceneSocket?.publishChatUpdated();
 			form.reset();
 		} finally {
 			sending = false;
@@ -265,6 +295,7 @@
 					</p>{/if}
 				{#each visibleMessages as message (message.id)}
 					<article
+						data-event-id={message.id}
 						class:combat={message.canal === 'combat'}
 						class:info={message.canal === 'info'}
 						class:roll-article={message.tipo === 'rolagem'}

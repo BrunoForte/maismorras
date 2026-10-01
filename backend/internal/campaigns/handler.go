@@ -39,7 +39,7 @@ func (h *Handler) AcceptInvite(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	campaign, err := h.repo.AcceptInvite(r.Context(), r.PathValue("code"), p.UserID)
 	if errors.Is(err, ErrInviteInvalid) {
-		return apperror.BadRequest("INVALID_INVITE", "Este convite expirou, foi usado ou não existe.")
+		return apperror.BadRequest("INVALID_INVITE", "Este convite expirou, foi revogado ou não existe.")
 	}
 	if err != nil {
 		return apperror.Internal(err)

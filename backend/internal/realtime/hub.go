@@ -45,8 +45,18 @@ type peer struct {
 	userID      string
 	ip          string
 	canControl  bool
+	roomType    string
+	campaignID  string
+	role        string
 	overlayOnly bool
 }
+
+const (
+	sceneRoomType    = "scene"
+	campaignRoomType = "campaign"
+)
+
+func roomKey(roomType, id string) string { return roomType + ":" + id }
 
 type audioRealtimeState struct {
 	Path      string  `json:"path"`
@@ -97,17 +107,31 @@ func (h *Hub) Readiness() (bool, string) {
 // HandleRemote delivers a broker event to this instance's peers only. This
 // path deliberately does not invoke the broker, preventing notification loops.
 func (h *Hub) HandleRemote(envelope Envelope) {
-	if envelope.ProtocolVersion != realtimeProtocolVersion || envelope.EventID == "" || envelope.SceneID == "" || envelope.OriginInstance == "" || envelope.OriginInstance == h.originID {
+	roomType := envelope.RoomType
+	if roomType == "" { // Backward-compatible envelopes from existing instances.
+		roomType = sceneRoomType
+	}
+	roomID := envelope.SceneID
+	if roomType == campaignRoomType {
+		roomID = envelope.CampaignID
+	}
+	if envelope.ProtocolVersion != realtimeProtocolVersion || envelope.EventID == "" || roomID == "" || envelope.OriginInstance == "" || envelope.OriginInstance == h.originID || (roomType != sceneRoomType && roomType != campaignRoomType) {
 		return
 	}
 	if !h.rememberRemoteEvent(envelope.EventID) {
 		return
 	}
 	payload := boundedRealtimePayload(envelope.Payload)
+	if roomType == campaignRoomType {
+		if validCampaignEvent(payload) {
+			h.broadcastCampaign(roomKey(campaignRoomType, roomID), payload)
+		}
+		return
+	}
 	if !validRemoteEventType(eventType(payload)) {
 		payload = []byte(`{"type":"scene.refresh"}`)
 	}
-	h.broadcast(envelope.SceneID, payload)
+	h.broadcastRoom(roomKey(roomType, roomID), payload)
 }
 
 // RefreshLocalRooms reconciles peers after a broker listener reconnect, when
@@ -115,13 +139,21 @@ func (h *Hub) HandleRemote(envelope Envelope) {
 // only and deliberately does not publish another broker event.
 func (h *Hub) RefreshLocalRooms() {
 	h.mu.RLock()
-	rooms := make([]string, 0, len(h.rooms))
-	for sceneID := range h.rooms {
-		rooms = append(rooms, sceneID)
+	sceneRooms := make([]string, 0, len(h.rooms))
+	campaignRooms := make([]string, 0, len(h.rooms))
+	for room := range h.rooms {
+		if strings.HasPrefix(room, sceneRoomType+":") {
+			sceneRooms = append(sceneRooms, room)
+		} else if strings.HasPrefix(room, campaignRoomType+":") {
+			campaignRooms = append(campaignRooms, room)
+		}
 	}
 	h.mu.RUnlock()
-	for _, sceneID := range rooms {
-		h.broadcast(sceneID, []byte(`{"type":"scene.refresh"}`))
+	for _, sceneID := range sceneRooms {
+		h.broadcastRoom(sceneID, []byte(`{"type":"scene.refresh"}`))
+	}
+	for _, room := range campaignRooms {
+		h.broadcastRoom(room, []byte(`{"type":"campaign.refresh"}`))
 	}
 }
 
@@ -161,7 +193,7 @@ func (h *Hub) publishRoomEvent(ctx context.Context, sceneID string, payload []by
 	if broker == nil {
 		return
 	}
-	envelope := Envelope{ProtocolVersion: realtimeProtocolVersion, EventID: newRealtimeID(), OriginInstance: origin, SceneID: sceneID, Payload: payload}
+	envelope := Envelope{ProtocolVersion: realtimeProtocolVersion, EventID: newRealtimeID(), OriginInstance: origin, RoomType: sceneRoomType, SceneID: sceneID, Payload: payload}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -221,15 +253,27 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 	requestCtx := withRequestID(r.Context(), r.Header.Get("X-Request-ID"))
 	sceneID := strings.TrimSpace(r.URL.Query().Get("sceneId"))
-	if sceneID == "" {
-		http.Error(w, "sceneId required", http.StatusBadRequest)
+	campaignID := strings.TrimSpace(r.URL.Query().Get("campaignId"))
+	if (sceneID == "") == (campaignID == "") {
+		http.Error(w, "exactly one of sceneId or campaignId is required", http.StatusBadRequest)
 		return nil
 	}
 	p, _ := auth.FromContext(r.Context())
 	var allowed, canControl bool
-	if err := h.pool.QueryRow(r.Context(), `select
+	var role string
+	roomType, roomID := sceneRoomType, sceneID
+	query := `select
 		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (m.user_id is not null or c.owner_id=$2 or coalesce(pr.is_admin,false))),
-		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(pr.is_admin,false)))`, sceneID, p.UserID).Scan(&allowed, &canControl); err != nil {
+		exists(select 1 from scenes s join campaigns c on c.id=s.campaign_id left join campaign_members m on m.campaign_id=s.campaign_id and m.user_id=$2 left join profiles pr on pr.id=$2 where s.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(pr.is_admin,false))),
+		coalesce((select m.role::text from scenes s join campaign_members m on m.campaign_id=s.campaign_id where s.id=$1 and m.user_id=$2),'player')`
+	if campaignID != "" {
+		roomType, roomID = campaignRoomType, campaignID
+		query = `select
+			exists(select 1 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$2 left join profiles pr on pr.id=$2 where c.id=$1 and (m.user_id is not null or c.owner_id=$2 or coalesce(pr.is_admin,false))),
+			exists(select 1 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$2 left join profiles pr on pr.id=$2 where c.id=$1 and (c.owner_id=$2 or (m.user_id=$2 and m.role='gm'::public.campaign_role) or coalesce(pr.is_admin,false))),
+			coalesce((select m.role::text from campaign_members m where m.campaign_id=$1 and m.user_id=$2),case when exists(select 1 from campaigns c where c.id=$1 and c.owner_id=$2) then 'gm' else 'player' end)`
+	}
+	if err := h.pool.QueryRow(r.Context(), query, roomID, p.UserID).Scan(&allowed, &canControl, &role); err != nil {
 		// Do not turn a database outage into a misleading authorization failure.
 		// The client can retry a 503, while a genuine 403 remains actionable.
 		attrs := []any{"event", "realtime.websocket.authorization_lookup_failed", "request_id", requestIDFromContext(requestCtx), "scene_id", observability.SafeUUID(sceneID)}
@@ -252,20 +296,21 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		slog.Error("websocket accept failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return nil
 	}
-	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl}
+	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl, roomType: roomType, campaignID: campaignID, role: role}
 	peer.overlayOnly = p.OverlayOnly
 	if peer.overlayOnly {
 		peer.canControl = false
 	}
 	conn.SetReadLimit(32 << 10)
-	if !h.hub.join(sceneID, peer) {
+	joinedRoom := roomKey(roomType, roomID)
+	if !h.hub.join(joinedRoom, peer) {
 		_ = conn.Close(websocket.StatusPolicyViolation, "room connection limit reached")
 		return nil
 	}
-	h.hub.logRoomPeerCount(sceneID, "joined")
+	h.hub.logRoomPeerCount(joinedRoom, "joined")
 	defer func() {
-		h.hub.leave(sceneID, peer)
-		h.hub.logRoomPeerCount(sceneID, "left")
+		h.hub.leave(joinedRoom, peer)
+		h.hub.logRoomPeerCount(joinedRoom, "left")
 	}()
 	defer conn.Close(websocket.StatusNormalClosure, "bye")
 	for {
@@ -292,6 +337,11 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		if peer.overlayOnly {
 			// A paired OBS connection is view-only: it can subscribe to room events
 			// but cannot publish actions back into the game.
+			continue
+		}
+		if peer.roomType == campaignRoomType {
+			// Campaign sockets subscribe to server-persisted event notifications;
+			// clients cannot inject chat or dice events over this channel.
 			continue
 		}
 		var event struct {
@@ -540,6 +590,10 @@ func clientIP(remote string) string {
 	return host
 }
 func (h *Hub) broadcast(room string, raw []byte) {
+	h.broadcastRoom(roomKey(sceneRoomType, room), raw)
+}
+
+func (h *Hub) broadcastRoom(room string, raw []byte) {
 	h.mu.RLock()
 	peers := make([]*peer, 0, len(h.rooms[room]))
 	for p := range h.rooms[room] {
@@ -549,6 +603,23 @@ func (h *Hub) broadcast(room string, raw []byte) {
 		peers = append(peers, p)
 	}
 	h.mu.RUnlock()
+	writePeers(peers, raw)
+}
+
+func (h *Hub) broadcastCampaign(room string, raw []byte) {
+	h.mu.RLock()
+	peers := make([]*peer, 0, len(h.rooms[room]))
+	for p := range h.rooms[room] {
+		if p.overlayOnly || !canSeeCampaignEvent(raw, p.canControl) {
+			continue
+		}
+		peers = append(peers, p)
+	}
+	h.mu.RUnlock()
+	writePeers(peers, raw)
+}
+
+func writePeers(peers []*peer, raw []byte) {
 	for _, p := range peers {
 		go func(p *peer) {
 			p.mu.Lock()
@@ -560,6 +631,40 @@ func (h *Hub) broadcast(room string, raw []byte) {
 			}
 		}(p)
 	}
+}
+
+func validCampaignEvent(raw []byte) bool {
+	var update struct {
+		Type  string `json:"type"`
+		Event struct {
+			ID   int64  `json:"id"`
+			Type string `json:"type"`
+		} `json:"event"`
+	}
+	if len(raw) == 0 || len(raw) > maxRealtimePayloadBytes || json.Unmarshal(raw, &update) != nil || update.Type != "campaign.event" || update.Event.ID <= 0 {
+		return false
+	}
+	switch update.Event.Type {
+	case "chat.message", "dice.roll", "combat.log", "system.info":
+		return true
+	default:
+		return false
+	}
+}
+
+func canSeeCampaignEvent(raw []byte, canControl bool) bool {
+	if !validCampaignEvent(raw) {
+		return false
+	}
+	var update struct {
+		Event struct {
+			Type string `json:"type"`
+		} `json:"event"`
+	}
+	if json.Unmarshal(raw, &update) != nil {
+		return false
+	}
+	return canControl || update.Event.Type != "combat.log"
 }
 
 func safeOverlayEvent(raw []byte) bool {

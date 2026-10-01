@@ -74,18 +74,19 @@
 	let TableToolsComponent = $state<TableToolsComponentType | null>(null);
 	let error = $state('');
 	async function ensureMapComponents() {
-		const [canvas, dice, table, chat, actor] = await Promise.all([
+		const [canvas, dice, table, actor] = await Promise.all([
 			import('$lib/components/CanvasMesa.svelte'),
 			import('$lib/components/DiceOverlay.svelte'),
 			import('$lib/components/TableTools.svelte'),
-			import('$lib/components/FloatingChat.svelte'),
 			import('$lib/components/ActorDrawer.svelte')
 		]);
 		CanvasMesaComponent ??= canvas.default;
 		DiceOverlayComponent ??= dice.default;
 		TableToolsComponent ??= table.default;
-		FloatingChatComponent ??= chat.default;
 		ActorDrawerComponent ??= actor.default;
+	}
+	async function ensureChatComponent() {
+		FloatingChatComponent ??= (await import('$lib/components/FloatingChat.svelte')).default;
 	}
 	async function ensureTabComponent(tab: WorkspaceTab) {
 		if (tab === 'sheets')
@@ -116,6 +117,7 @@
 		ActorDrawerComponent ??= actor.default;
 	}
 	$effect(() => {
+		if (activeCampaign) void ensureChatComponent();
 		if (workspaceTab === 'map' && activeScene) void ensureMapComponents();
 		if (workspaceTab !== 'map') void ensureTabComponent(workspaceTab);
 		if (sheetOpen) void ensureSheetComponent();
@@ -213,7 +215,9 @@
 		try {
 			const campaign = await acceptCampaignInvite(currentSession, code);
 			inviteStatus = `Você entrou em “${campaign.name}”.`;
-			window.history.replaceState({}, '', window.location.pathname);
+			const nextUrl = new URL(window.location.href);
+			nextUrl.searchParams.delete('invite');
+			window.history.replaceState({}, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
 			return campaign;
 		} catch (err) {
 			inviteStatus =
@@ -714,11 +718,6 @@
 									{session}
 									isGM={activeCampaign.role === 'gm'}
 								/>{/if}
-							{#if FloatingChatComponent}<FloatingChatComponent
-									campaignId={activeCampaign.id}
-									sceneId={activeScene.id}
-									{session}
-								/>{/if}
 							{#if activeCampaign.role === 'gm' && ActorDrawerComponent}<ActorDrawerComponent
 									campaignId={activeCampaign.id}
 									sceneId={activeScene.id}
@@ -773,6 +772,10 @@
 				actions={campaignPanelActions}
 			/>
 		{/if}
+		{#if activeCampaign && session && FloatingChatComponent}{#key activeCampaign.id}<FloatingChatComponent
+					campaignId={activeCampaign.id}
+					{session}
+				/>{/key}{/if}
 		{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 		{#if sheetOpen && !CharacterSheetComponent}<p
 				class="status-message"

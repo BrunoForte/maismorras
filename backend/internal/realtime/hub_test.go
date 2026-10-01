@@ -169,6 +169,72 @@ func TestRemoteEventIsNotRepublishedAndDuplicateIsIgnored(t *testing.T) {
 	}
 }
 
+func TestPersistedCampaignEventsFanOutOnceAndKeepCombatLogsGMOnly(t *testing.T) {
+	hub := NewHub()
+	spy := &brokerSpy{}
+	hub.ConfigureBroker(spy)
+	player, closePlayer := openCampaignTestPeer(t, hub, "campaign-1", "player", false)
+	defer closePlayer()
+	secondPlayer, closeSecondPlayer := openCampaignTestPeer(t, hub, "campaign-1", "second-player", false)
+	defer closeSecondPlayer()
+	gm, closeGM := openCampaignTestPeer(t, hub, "campaign-1", "gm", true)
+	defer closeGM()
+
+	message := Envelope{ProtocolVersion: realtimeProtocolVersion, EventID: "db-event-101", OriginInstance: "postgres", RoomType: campaignRoomType, CampaignID: "campaign-1", Payload: json.RawMessage(`{"type":"campaign.event","event":{"id":101,"author":"Jogador","type":"dice.roll","payload":{"dados":[13]},"createdAt":"2026-10-01T12:00:00Z"}}`)}
+	hub.HandleRemote(message)
+	hub.HandleRemote(message)
+	for _, conn := range []*websocket.Conn{player, secondPlayer, gm} {
+		readCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, raw, err := conn.Read(readCtx)
+		cancel()
+		if err != nil || !strings.Contains(string(raw), `"id":101`) {
+			t.Fatalf("member did not receive committed campaign event: %s, %v", raw, err)
+		}
+	}
+	if len(spy.published) != 0 {
+		t.Fatalf("database-origin events must not be republished, got %d", len(spy.published))
+	}
+
+	combat := Envelope{ProtocolVersion: realtimeProtocolVersion, EventID: "db-event-102", OriginInstance: "postgres", RoomType: campaignRoomType, CampaignID: "campaign-1", Payload: json.RawMessage(`{"type":"campaign.event","event":{"id":102,"author":"Narrador","type":"combat.log","payload":{"text":"turno privado"},"createdAt":"2026-10-01T12:00:01Z"}}`)}
+	hub.HandleRemote(combat)
+	readCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	_, raw, err := gm.Read(readCtx)
+	cancel()
+	if err != nil || !strings.Contains(string(raw), `"id":102`) {
+		t.Fatalf("GM did not receive private combat log: %s, %v", raw, err)
+	}
+	readCtx, cancel = context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+	if _, raw, err = player.Read(readCtx); err == nil {
+		t.Fatalf("player received GM-only combat log: %s", raw)
+	}
+}
+
+func TestCampaignEventRejectsInvalidTypesAndMalformedIDs(t *testing.T) {
+	for _, raw := range []json.RawMessage{
+		json.RawMessage(`{"type":"campaign.event","event":{"id":0,"type":"dice.roll"}}`),
+		json.RawMessage(`{"type":"campaign.event","event":{"id":1,"type":"scene.delta"}}`),
+		json.RawMessage(`not-json`),
+	} {
+		if validCampaignEvent(raw) {
+			t.Errorf("expected invalid campaign event to be rejected: %s", raw)
+		}
+	}
+}
+
+func TestCampaignRoomsAreInvalidatedAfterBrokerReconnect(t *testing.T) {
+	hub := NewHub()
+	peer, closePeer := openCampaignTestPeer(t, hub, "campaign-1", "player", false)
+	defer closePeer()
+	hub.RefreshLocalRooms()
+	readCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, raw, err := peer.Read(readCtx)
+	if err != nil || string(raw) != `{"type":"campaign.refresh"}` {
+		t.Fatalf("campaign reconnect should request a history reconciliation: %s, %v", raw, err)
+	}
+}
+
 func TestTwoLocalHubsRelayRemoteEventToTheirPeersOnce(t *testing.T) {
 	const sceneID = "scene-1"
 	publisher := NewHub()
@@ -204,6 +270,14 @@ func TestTwoLocalHubsRelayRemoteEventToTheirPeersOnce(t *testing.T) {
 }
 
 func openTestPeer(t *testing.T, hub *Hub, sceneID, userID string) (*websocket.Conn, func()) {
+	return openTestRoomPeer(t, hub, roomKey(sceneRoomType, sceneID), &peer{userID: userID, ip: userID})
+}
+
+func openCampaignTestPeer(t *testing.T, hub *Hub, campaignID, userID string, canControl bool) (*websocket.Conn, func()) {
+	return openTestRoomPeer(t, hub, roomKey(campaignRoomType, campaignID), &peer{userID: userID, ip: userID, canControl: canControl, roomType: campaignRoomType, role: map[bool]string{true: "gm", false: "player"}[canControl]})
+}
+
+func openTestRoomPeer(t *testing.T, hub *Hub, room string, localPeer *peer) (*websocket.Conn, func()) {
 	t.Helper()
 	ready := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -211,14 +285,14 @@ func openTestPeer(t *testing.T, hub *Hub, sceneID, userID string) (*websocket.Co
 		if err != nil {
 			return
 		}
-		localPeer := &peer{conn: conn, userID: userID, ip: userID}
-		if !hub.join(sceneID, localPeer) {
+		localPeer.conn = conn
+		if !hub.join(room, localPeer) {
 			_ = conn.Close(websocket.StatusPolicyViolation, "test peer rejected")
 			return
 		}
 		close(ready)
 		<-r.Context().Done()
-		hub.leave(sceneID, localPeer)
+		hub.leave(room, localPeer)
 		_ = conn.Close(websocket.StatusNormalClosure, "test complete")
 	}))
 	clientURL := "ws" + strings.TrimPrefix(server.URL, "http")

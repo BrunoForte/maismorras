@@ -30,6 +30,10 @@ var (
 	ErrNotFound      = errors.New("not found")
 )
 
+func inviteLinkGrantsAccess(inactive, alreadyMember bool) bool {
+	return alreadyMember || !inactive
+}
+
 type Repository struct{ pool *pgxpool.Pool }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
@@ -123,8 +127,28 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 	}
 	defer tx.Rollback(ctx)
 	var campaignID string
-	err = tx.QueryRow(ctx, `select campaign_id::text from campaign_invites where code=$1 and revoked_at is null and expires_at > now() for update`, code).Scan(&campaignID)
+	var inactive bool
+	err = tx.QueryRow(ctx, `select campaign_id::text,(revoked_at is not null or expires_at <= now()) from campaign_invites where code=$1 for update`, code).Scan(&campaignID, &inactive)
 	if err != nil {
+		return Campaign{}, ErrInviteInvalid
+	}
+	// A previously accepted member may safely follow their old link again.
+	// Membership, not possession of an expired/revoked code, remains the source
+	// of authorization. Do not mutate the invite in this path.
+	var campaign Campaign
+	err = tx.QueryRow(ctx, `select c.id::text,c.name,c.system_id,m.role::text
+		from campaigns c join campaign_members m on m.campaign_id=c.id
+		where c.id=$1 and m.user_id=$2`, campaignID, userID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID, &campaign.Role)
+	if err == nil {
+		if err = tx.Commit(ctx); err != nil {
+			return Campaign{}, err
+		}
+		return campaign, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return Campaign{}, err
+	}
+	if !inviteLinkGrantsAccess(inactive, false) {
 		return Campaign{}, ErrInviteInvalid
 	}
 	if _, err = tx.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'player') on conflict (campaign_id,user_id) do nothing`, campaignID, userID); err != nil {
@@ -133,7 +157,6 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 	if _, err = tx.Exec(ctx, `update campaign_invites set accepted_by=coalesce(accepted_by,$1),accepted_at=coalesce(accepted_at,now()) where code=$2`, userID, code); err != nil {
 		return Campaign{}, err
 	}
-	var campaign Campaign
 	if err = tx.QueryRow(ctx, `select id::text,name,system_id from campaigns where id=$1`, campaignID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID); err != nil {
 		return Campaign{}, err
 	}

@@ -87,11 +87,11 @@ func main() {
 	instanceID := hub.OriginInstanceID()
 	runCtx, cancelRun := context.WithCancel(context.Background())
 	defer cancelRun()
+	brokerURL := cfg.RealtimeBrokerDatabaseURL
+	if brokerURL == "" {
+		brokerURL = cfg.DatabaseURL
+	}
 	if brokerMode == "postgres" {
-		brokerURL := cfg.RealtimeBrokerDatabaseURL
-		if brokerURL == "" {
-			brokerURL = cfg.DatabaseURL
-		}
 		if pool == nil || !realtime.ListenCompatibleDatabaseURL(brokerURL) {
 			logger.Error("postgres realtime broker requires a direct or session-mode PostgreSQL connection on port 5432", "broker_mode", brokerMode, "origin_instance_id", instanceID)
 			os.Exit(1)
@@ -101,6 +101,15 @@ func main() {
 		go func() {
 			if err := broker.Listen(runCtx, hub.HandleRemote, hub.RefreshLocalRooms); err != nil && runCtx.Err() == nil {
 				logger.Error("realtime broker listener stopped unexpectedly", append([]any{"event", "realtime.broker.listener_stopped", "broker_mode", brokerMode, "origin_instance_id", instanceID}, observability.SafeErrorAttrs(err)...)...)
+			}
+		}()
+	} else if pool != nil && realtime.CampaignEventsListenCompatibleDatabaseURL(brokerURL) {
+		// Even with the in-memory scene broker, committed game_events must reach
+		// clients connected to this process through PostgreSQL's commit-aware NOTIFY.
+		broker := realtime.NewPostgresBroker(pool, brokerURL, instanceID, logger)
+		go func() {
+			if err := broker.ListenCampaignEvents(runCtx, hub.HandleRemote, hub.RefreshLocalRooms); err != nil && runCtx.Err() == nil {
+				logger.Error("campaign event listener stopped unexpectedly", append([]any{"event", "realtime.campaign.listener_stopped", "broker_mode", brokerMode, "origin_instance_id", instanceID}, observability.SafeErrorAttrs(err)...)...)
 			}
 		}()
 	}
