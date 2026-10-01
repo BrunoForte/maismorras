@@ -113,9 +113,14 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await setExpandedSize(sheet, 850, 520);
 				await assertAboveAudioFooter(page, sheet);
 				await page.getByRole('button', { name: 'Minimizar ficha' }).click();
+				const minimizedHeaderHeight = await sheet
+					.locator('header')
+					.evaluate((node) => node.getBoundingClientRect().height);
 				await expect
 					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().height))
-					.toBeLessThan(100);
+					.toBeLessThanOrEqual(minimizedHeaderHeight + 4);
+				await expect(sheet).toHaveClass(/minimized/);
+				await expect(sheet).toHaveCSS('resize', 'none');
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
 				await page.getByRole('button', { name: 'Minimizar ficha' }).click();
 				await expect
