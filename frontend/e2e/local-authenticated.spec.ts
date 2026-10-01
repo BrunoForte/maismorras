@@ -181,6 +181,32 @@ test.describe('local authenticated authorization E2E', () => {
 						data: {}
 					});
 					expect(accepted.ok()).toBeTruthy();
+					const characterCreate = await gmApi.post(`/api/v1/campaigns/${campaignId}/characters`, {
+						data: { ownerId: playerUserId }
+					});
+					expect(characterCreate.status()).toBe(201);
+					const ownedCharacter = (await characterCreate.json()) as {
+						id: string;
+						sheet: Record<string, unknown>;
+					};
+					const saveOwnedCharacter = await gmApi.put(
+						`/api/v1/campaigns/${campaignId}/characters/${ownedCharacter.id}`,
+						{
+							data: {
+								...ownedCharacter.sheet,
+								name: 'Ficha E2E de jogador',
+								hitPointsCurrent: 12,
+								hitPointsMax: 12
+							}
+						}
+					);
+					expect(saveOwnedCharacter.ok()).toBeTruthy();
+					const linkedTokenCreate = await gmApi.post(
+						`/api/v1/scenes/${sceneId}/tokens/from-character`,
+						{ data: { actorId: ownedCharacter.id } }
+					);
+					expect(linkedTokenCreate.status()).toBe(201);
+					const ownedToken = (await linkedTokenCreate.json()) as { id: string };
 					const forbidden = await playerApi.patch(`/api/v1/campaigns/${campaignId}`, {
 						data: { name: 'Alteração não autorizada' }
 					});
@@ -301,6 +327,40 @@ test.describe('local authenticated authorization E2E', () => {
 					);
 					expect(hiddenPlayerDirectRead.status()).toBe(404);
 					expectNoStore(hiddenPlayerDirectRead);
+
+					const ownedHPUpdate = await playerApi.patch(
+						`/api/v1/scenes/${sceneId}/tokens/${ownedToken.id}/hit-points`,
+						{ data: { delta: -3 } }
+					);
+					expect(ownedHPUpdate.status()).toBe(200);
+					expect(await ownedHPUpdate.json()).toMatchObject({ hpCurrent: 9, hpMax: 12 });
+					const hpRealtimeReads = await publishAndReadToken(
+						gmRealtimePublisher,
+						player.page,
+						gm.page,
+						sceneId,
+						ownedToken.id
+					);
+					expect(hpRealtimeReads.reader.status()).toBe(200);
+					expect(await hpRealtimeReads.reader.json()).toMatchObject({ hpCurrent: 9 });
+					expect(hpRealtimeReads.reconciler.status()).toBe(200);
+					expect(await hpRealtimeReads.reconciler.json()).toMatchObject({ hpCurrent: 9 });
+					const linkedSheetResponse = await playerApi.get(
+						`/api/v1/campaigns/${campaignId}/character`
+					);
+					expect(linkedSheetResponse.ok()).toBeTruthy();
+					expect(await linkedSheetResponse.json()).toMatchObject({
+						sheet: {
+							name: 'Ficha E2E de jogador',
+							hitPointsCurrent: 9,
+							hitPointsMax: 12
+						}
+					});
+					const unrelatedTokenHPUpdate = await playerApi.patch(
+						`/api/v1/scenes/${sceneId}/tokens/${token.id}/hit-points`,
+						{ data: { delta: -1 } }
+					);
+					expect(unrelatedTokenHPUpdate.status()).toBe(403);
 				} finally {
 					await playerApi.dispose();
 				}

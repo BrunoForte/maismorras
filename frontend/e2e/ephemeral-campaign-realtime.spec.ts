@@ -224,43 +224,6 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 					data: {}
 				});
 				expect(joinResponse.ok()).toBeTruthy();
-				const participantsResponse = await ownerApi.get(
-					`/api/v1/campaigns/${campaignId}/participants`
-				);
-				expect(participantsResponse.ok()).toBeTruthy();
-				const participants = (await participantsResponse.json()) as {
-					participants: { userId: string; role: string }[];
-				};
-				const player = participants.participants.find(
-					(participant) => participant.role === 'player'
-				);
-				expect(player).toBeTruthy();
-				const characterCreate = await ownerApi.post(`/api/v1/campaigns/${campaignId}/characters`, {
-					data: { ownerId: player!.userId }
-				});
-				expect(characterCreate.status()).toBe(201);
-				const character = (await characterCreate.json()) as {
-					id: string;
-					sheet: Record<string, unknown>;
-				};
-				const preparedSheet = {
-					...character.sheet,
-					name: 'Ficha E2E de jogador',
-					hitPointsCurrent: 12,
-					hitPointsMax: 12
-				};
-				const saveCharacter = await ownerApi.put(
-					`/api/v1/campaigns/${campaignId}/characters/${character.id}`,
-					{ data: preparedSheet }
-				);
-				expect(saveCharacter.ok()).toBeTruthy();
-				const linkedTokenResponse = await ownerApi.post(
-					`/api/v1/scenes/${scene.id}/tokens/from-character`,
-					{ data: { actorId: character.id } }
-				);
-				expect(linkedTokenResponse.status()).toBe(201);
-				const playerOwnedToken = (await linkedTokenResponse.json()) as Token;
-
 				ownerContext = await browser.newContext({ storageState: ownerStatePath });
 				playerContext = await browser.newContext({ storageState: playerStatePath });
 				const ownerPage = await ownerContext.newPage();
@@ -406,36 +369,6 @@ test.describe('disposable authenticated campaign and realtime token flow', () =>
 				);
 				expect(hiddenPlayerDirectResponse.status()).toBe(404);
 				logCacheDiagnostics(hiddenPlayerDirectResponse);
-
-				const ownedHPUpdate = await playerApi!.patch(
-					`/api/v1/scenes/${scene.id}/tokens/${playerOwnedToken.id}/hit-points`,
-					{ data: { delta: -3 } }
-				);
-				expect(ownedHPUpdate.status()).toBe(200);
-				expect(await ownedHPUpdate.json()).toMatchObject({ hpCurrent: 9, hpMax: 12 });
-				const hpRealtimeReads = await publishAndReadToken(
-					playerPage,
-					ownerPage,
-					playerPage,
-					scene.id,
-					playerOwnedToken.id
-				);
-				expect(hpRealtimeReads.reader.status()).toBe(200);
-				expect(await hpRealtimeReads.reader.json()).toMatchObject({ hpCurrent: 9 });
-				expect(hpRealtimeReads.reconciler.status()).toBe(200);
-				expect(await hpRealtimeReads.reconciler.json()).toMatchObject({ hpCurrent: 9 });
-				const linkedSheetResponse = await playerApi!.get(
-					`/api/v1/campaigns/${campaignId}/character`
-				);
-				expect(linkedSheetResponse.ok()).toBeTruthy();
-				expect(await linkedSheetResponse.json()).toMatchObject({
-					sheet: { name: 'Ficha E2E de jogador', hitPointsCurrent: 9, hitPointsMax: 12 }
-				});
-				const unrelatedTokenHPUpdate = await playerApi!.patch(
-					`/api/v1/scenes/${scene.id}/tokens/${token.id}/hit-points`,
-					{ data: { delta: -1 } }
-				);
-				expect(unrelatedTokenHPUpdate.status()).toBe(403);
 			}
 		} finally {
 			if (ownerContext) await ownerContext.close();
