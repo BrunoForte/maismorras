@@ -2,9 +2,58 @@ export type ResizablePanelOptions = {
 	collapsed: boolean;
 	headerSelector: string;
 	minWidth?: number;
+	storageKey?: string;
 };
 
 type PanelSize = { width: number; height: number };
+type PanelPreference = { collapsed: boolean; size: PanelSize };
+
+const preferences = new Map<string, PanelPreference>();
+const preferencePrefix = 'maismorras:resizable-panel:';
+
+function isPanelPreference(value: unknown): value is PanelPreference {
+	if (!value || typeof value !== 'object') return false;
+	const preference = value as Partial<PanelPreference>;
+	return (
+		typeof preference.collapsed === 'boolean' &&
+		typeof preference.size?.width === 'number' &&
+		preference.size.width > 0 &&
+		typeof preference.size.height === 'number' &&
+		preference.size.height > 0
+	);
+}
+
+function readPreference(key: string): PanelPreference | null {
+	const cached = preferences.get(key);
+	if (cached) return cached;
+	if (typeof localStorage === 'undefined') return null;
+	try {
+		const value: unknown = JSON.parse(localStorage.getItem(`${preferencePrefix}${key}`) ?? 'null');
+		if (isPanelPreference(value)) {
+			preferences.set(key, value);
+			return value;
+		}
+	} catch {
+		// Invalid/blocked browser storage only disables persistence across remounts.
+	}
+	return null;
+}
+
+function writePreference(key: string | undefined, preference: PanelPreference) {
+	if (!key) return;
+	preferences.set(key, preference);
+	if (typeof localStorage === 'undefined') return;
+	try {
+		localStorage.setItem(`${preferencePrefix}${key}`, JSON.stringify(preference));
+	} catch {
+		// Keep the in-memory preference even when browser storage is unavailable.
+	}
+}
+
+/** Read the last collapse state so Svelte components can restore content on remount. */
+export function resizablePanelPreference(key: string): Readonly<PanelPreference> | null {
+	return readPreference(key);
+}
 
 function viewportSize(size: PanelSize): PanelSize {
 	return {
@@ -13,18 +62,25 @@ function viewportSize(size: PanelSize): PanelSize {
 	};
 }
 
-/** Preserves native-resize dimensions while making a minimized panel physically compact. */
+/** Preserves resize dimensions and collapsed state across remounts and viewport changes. */
 export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions) {
 	let options = initial;
+	const saved = initial.storageKey ? readPreference(initial.storageKey) : null;
+	let lastExpandedSize: PanelSize = saved?.size ?? {
+		width: node.getBoundingClientRect().width || node.offsetWidth || 1,
+		height: node.getBoundingClientRect().height || node.offsetHeight || 1
+	};
 	let collapsed = false;
-	let lastExpandedSize: PanelSize | null = null;
 	const observer =
 		typeof ResizeObserver === 'undefined'
 			? null
 			: new ResizeObserver(() => {
 					if (collapsed) return;
 					const { width, height } = node.getBoundingClientRect();
-					if (width > 0 && height > 0) lastExpandedSize = { width, height };
+					if (width > 0 && height > 0) {
+						lastExpandedSize = { width, height };
+						writePreference(options.storageKey, { collapsed: false, size: lastExpandedSize });
+					}
 				});
 	observer?.observe(node);
 
@@ -36,29 +92,25 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 		};
 	}
 
-	function setCollapsed(next: boolean) {
-		if (collapsed === next) return;
-		if (next) {
-			lastExpandedSize = currentSize();
-			const header = node.querySelector<HTMLElement>(options.headerSelector);
-			const headerHeight = Math.ceil(header?.getBoundingClientRect().height ?? 44);
-			const width = Math.min(
-				Math.max(options.minWidth ?? 190, header?.scrollWidth ?? 0),
-				window.innerWidth - 16
-			);
-			node.style.resize = 'none';
-			node.style.width = `${width}px`;
-			node.style.height = `${Math.min(headerHeight, window.innerHeight - 16)}px`;
-			node.style.minWidth = '0';
-			node.style.minHeight = '0';
-			node.style.maxWidth = `${window.innerWidth - 16}px`;
-			node.style.maxHeight = 'none';
-			node.style.overflow = 'hidden';
-			collapsed = true;
-			return;
-		}
-		collapsed = false;
-		const restored = viewportSize(lastExpandedSize ?? currentSize());
+	function applyCollapsedStyles() {
+		const header = node.querySelector<HTMLElement>(options.headerSelector);
+		const headerHeight = Math.ceil(header?.getBoundingClientRect().height ?? 44);
+		const width = Math.min(
+			Math.max(options.minWidth ?? 190, header?.scrollWidth ?? 0),
+			window.innerWidth - 16
+		);
+		node.style.resize = 'none';
+		node.style.width = `${width}px`;
+		node.style.height = `${Math.min(headerHeight, window.innerHeight - 16)}px`;
+		node.style.minWidth = '0';
+		node.style.minHeight = '0';
+		node.style.maxWidth = `${window.innerWidth - 16}px`;
+		node.style.maxHeight = 'none';
+		node.style.overflow = 'hidden';
+	}
+
+	function applyExpandedStyles() {
+		const restored = viewportSize(lastExpandedSize);
 		node.style.removeProperty('resize');
 		node.style.removeProperty('min-width');
 		node.style.removeProperty('min-height');
@@ -67,9 +119,42 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 		node.style.removeProperty('overflow');
 		node.style.width = `${restored.width}px`;
 		node.style.height = `${restored.height}px`;
+		lastExpandedSize = restored;
 	}
 
-	setCollapsed(options.collapsed);
+	function setCollapsed(next: boolean, captureExpandedSize = true) {
+		if (collapsed === next) return;
+		if (next) {
+			if (captureExpandedSize) {
+				const size = currentSize();
+				if (size.width > (options.minWidth ?? 190) || size.height > 80) lastExpandedSize = size;
+			}
+			collapsed = true;
+			applyCollapsedStyles();
+		} else {
+			collapsed = false;
+			applyExpandedStyles();
+		}
+		writePreference(options.storageKey, { collapsed, size: lastExpandedSize });
+	}
+
+	// The component initializes its content from the saved preference. Apply the same state
+	// physically here, without capturing collapsed header dimensions as the expanded size.
+	setCollapsed(initial.collapsed, false);
+	if (!initial.collapsed && saved) applyExpandedStyles();
+
+	const onResize = () => {
+		if (collapsed) applyCollapsedStyles();
+		else {
+			const size = viewportSize(lastExpandedSize);
+			lastExpandedSize = size;
+			node.style.width = `${size.width}px`;
+			node.style.height = `${size.height}px`;
+			writePreference(options.storageKey, { collapsed: false, size });
+		}
+	};
+	window.addEventListener('resize', onResize);
+
 	return {
 		update(next: ResizablePanelOptions) {
 			options = next;
@@ -77,6 +162,9 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 		},
 		destroy() {
 			observer?.disconnect();
+			window.removeEventListener('resize', onResize);
+			if (!collapsed)
+				writePreference(options.storageKey, { collapsed: false, size: currentSize() });
 		}
 	};
 }

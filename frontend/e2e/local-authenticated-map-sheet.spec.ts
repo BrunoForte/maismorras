@@ -36,9 +36,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				for (let cycle = 0; cycle < 3; cycle += 1) {
 					await f.player.getByRole('button', { name: 'Fichas', exact: true }).click();
 					await expect(f.player.locator('canvas')).toHaveCount(0);
-					await f.player.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+					await f.player.getByRole('button', { name: 'Mídias', exact: true }).click();
 					await expect(
-						f.player.getByRole('region', { name: /Biblioteca da campanha|Campaign library/i })
+						f.player.getByRole('region', { name: /Mídias da campanha|Campaign media/i })
 					).toBeVisible();
 					await f.player.getByRole('button', { name: 'Mesa', exact: true }).click();
 					await expect(f.player.locator('canvas').first()).toBeVisible();
@@ -135,6 +135,96 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.toBeGreaterThan(500);
 				await assertAboveAudioFooter(page, sheet);
 			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player restores chat and owned map sheet after tab switches; GM actors restore after remount', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare the player sheet and map', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Painel jogador E2E',
+					hitPointsCurrent: 12,
+					hitPointsMax: 12
+				});
+				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+			});
+			const player = fixture!.player;
+			const chat = player.locator('.floating-chat');
+			await test.step('minimize chat, swap tabs, and restore its saved size as a real player', async () => {
+				await setExpandedSize(chat, 440, 340);
+				const expandedWidth = (await chat.boundingBox())!.width;
+				await player.getByRole('button', { name: 'Chat da mesa' }).click();
+				await expect(chat).toHaveClass(/closed/);
+				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(chat).toHaveClass(/closed/);
+				await expect(chat.locator('.chat-body')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Abrir chat' }).click();
+				await expect(chat.locator('.chat-body')).toBeVisible();
+				await expect
+					.poll(() => chat.evaluate((node) => node.getBoundingClientRect().width))
+					.toBeGreaterThan(expandedWidth - 10);
+			});
+			await test.step('minimize the owned sheet, switch tabs, reopen and restore after remount', async () => {
+				await selectTokenAtDefaultPosition(player);
+				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+				const sheet = player.locator('.sheet-backdrop.docked .sheet');
+				await expect(sheet).toBeVisible();
+				await setExpandedSize(sheet, 780, 500);
+				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await selectTokenAtDefaultPosition(player);
+				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+				const remountedSheet = player.locator('.sheet-backdrop.docked .sheet');
+				await expect(remountedSheet).toHaveClass(/minimized/);
+				await expect(remountedSheet.locator('.sheet-body')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
+				await expect(remountedSheet.locator('.sheet-body')).toBeVisible();
+				await expect
+					.poll(() => remountedSheet.evaluate((node) => node.getBoundingClientRect().height))
+					.toBeGreaterThan(400);
+			});
+			await test.step('GM-only actors drawer remains unavailable to a player', async () => {
+				await expect(player.locator('.actor-drawer')).toHaveCount(0);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('GM actor panel retains minimized state and restores after map remount', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare GM map with an actor', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				await fixture.createCharacter(fixture.playerUserId, { name: 'Ator em remount E2E' });
+				await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			});
+			const gm = fixture!.gm;
+			const actors = gm.locator('.actor-drawer');
+			await setExpandedSize(actors, 410, 330);
+			await gm.getByRole('button', { name: 'Atores da cena' }).click();
+			await expect(actors).toHaveClass(/closed/);
+			await gm.getByRole('button', { name: 'Compêndio', exact: true }).click();
+			await gm.getByRole('button', { name: 'Mesa', exact: true }).click();
+			await expect(actors).toHaveClass(/closed/);
+			await expect(actors.locator('.drawer-body')).toHaveCount(0);
+			await gm.getByRole('button', { name: 'Abrir atores' }).click();
+			await expect(actors.locator('.drawer-body')).toBeVisible();
+			await expect
+				.poll(() => actors.evaluate((node) => node.getBoundingClientRect().height))
+				.toBeGreaterThan(300);
 		} finally {
 			await fixture?.close();
 		}
@@ -333,6 +423,89 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	test('armor descriptions span the combat panel and sheet actions share a responsive style', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare a player token with equipped armor description', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Armadura layout E2E',
+					inventory: [
+						{
+							entryId: 'e2e-half-plate',
+							name: 'Meia armadura',
+							quantity: 1,
+							equipped: true,
+							rules: {
+								category: 'armor',
+								ac: '15 + Dex (máx. 2)',
+								description: 'Placas articuladas protegem o torso e os braços.'
+							}
+						}
+					]
+				});
+				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+			});
+			const page = fixture!.player;
+			await selectTokenAtDefaultPosition(page);
+			const actions = page.locator('.token-inspector .sheet-actions');
+			await test.step('linked-sheet controls share dimensions, typography, focus surface, and side-by-side desktop layout', async () => {
+				const styles = await actions.locator('button').evaluateAll((nodes) =>
+					nodes.map((node) => {
+						const style = getComputedStyle(node);
+						const bounds = node.getBoundingClientRect();
+						return {
+							width: bounds.width,
+							height: bounds.height,
+							border: style.border,
+							font: style.font,
+							padding: style.padding,
+							background: style.backgroundColor
+						};
+					})
+				);
+				expect(styles).toHaveLength(2);
+				expect(styles[0]).toEqual(styles[1]);
+				const desktopColumns = await actions.evaluate(
+					(node) => getComputedStyle(node).gridTemplateColumns
+				);
+				expect(desktopColumns.trim().split(/\s+/)).toHaveLength(2);
+			});
+			await test.step('equipped armor description occupies the full row in the combat tab', async () => {
+				await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+				const sheet = page.locator('.sheet-backdrop.docked .sheet');
+				await expect(sheet).toBeVisible();
+				await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+				const description = sheet.locator('.combat-armor-list .armor-description');
+				await expect(description).toContainText('Placas articuladas protegem');
+				const width = await description.evaluate((node) => node.getBoundingClientRect().width);
+				const rowWidth = await description.evaluate(
+					(node) => node.parentElement!.getBoundingClientRect().width
+				);
+				expect(width).toBeGreaterThanOrEqual(rowWidth * 0.95);
+			});
+			await test.step('narrow layout stacks both sheet actions without changing their style', async () => {
+				await page.setViewportSize({ width: 520, height: 850 });
+				await expect
+					.poll(() =>
+						actions.evaluate((node) =>
+							getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/)
+						)
+					)
+					.toHaveLength(1);
+				const styles = await actions
+					.locator('button')
+					.evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).border));
+				expect(styles[0]).toBe(styles[1]);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
 	test('GM cannot cast through the own-character route for a selected player; display reaches chat and presentation', async ({
 		browser
 	}) => {
@@ -350,6 +523,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					spellSlots: [{ level: 1, current: 1, max: 1 }]
 				});
 				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
 				await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
 			});
 			const f = fixture!;
@@ -385,6 +559,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await expect(
 					f.gm.locator('.floating-chat [data-event-id]').filter({ hasText: 'Magia alvo E2E' })
 				).toBeVisible();
+				await expect(f.player.locator('.presentation-text')).toContainText('Magia alvo E2E');
+				await expect(f.player.locator('.presentation-text')).toContainText('Efeito com espaço.');
 				await expect
 					.poll(async () => {
 						const response = await f.gmApi.get(`/api/v1/scenes/${f.sceneId}/presentation`);
@@ -393,6 +569,14 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					})
 					.toContain('Magia alvo E2E');
 				expect(unauthorizedSpellRequests).toEqual([]);
+				await f.gm.getByRole('button', { name: 'Mídias', exact: true }).click();
+				await expect(f.gm.getByTestId('presentation-status')).toContainText('Magia alvo E2E');
+				await expect(f.gm.getByTestId('presentation-status')).toContainText('oculta');
+				await f.gm.getByRole('button', { name: 'Ocultar mídia' }).click();
+				await expect(f.gm.getByTestId('presentation-status')).toContainText(
+					'Nenhuma mídia em exibição'
+				);
+				await expect(f.player.locator('.presentation-text')).toHaveCount(0);
 			});
 		} finally {
 			await fixture?.close();

@@ -105,7 +105,7 @@ func (r *Repository) GetPresentation(ctx context.Context, sceneID, userID string
 	if role == "gm" && !overlay {
 		return p, nil
 	}
-	if !presentationVisibleTo(p, role, userID, overlay) || strings.TrimSpace(p.AssetPath) == "" {
+	if !presentationVisibleTo(p, role, userID, overlay) {
 		return Presentation{}, nil
 	}
 	return p, nil

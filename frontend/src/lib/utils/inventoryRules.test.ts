@@ -3,6 +3,7 @@ import type { InventoryItem } from '$lib/services/characterApi';
 import {
 	cloneInventoryRules,
 	filterItemEntries,
+	groupInventoryOptions,
 	projectInventory,
 	totalInventoryWeight
 } from './inventoryRules';
@@ -52,5 +53,34 @@ describe('cloneInventoryRules', () => {
 		expect(filterItemEntries(entries, 'all')).toHaveLength(2);
 		expect(filterItemEntries(entries, 'weapon').map((entry) => entry.id)).toEqual(['sword']);
 		expect(filterItemEntries(entries, 'tool')).toEqual([]);
+	});
+
+	it('groups picker options in the requested order and alphabetizes localized display names', () => {
+		const entries = [
+			{ id: 'w2', name: 'Spear', display: 'Lança', rules: { category: 'weapon' } },
+			{ id: 'w1', name: 'Axe', display: 'Machado', rules: { category: 'weapon' } },
+			{ id: 'a', name: 'Half Plate', display: 'Meia armadura', rules: { category: 'armor' } },
+			{ id: 's', name: 'Shield', display: 'Escudo', rules: { category: 'shield' } },
+			{ id: 'e', name: 'Rations', display: 'Rações', rules: { category: 'consumable' } },
+			{
+				id: 't',
+				name: 'Thieves tools',
+				display: 'Ferramentas de ladrão',
+				rules: { category: 'tool' }
+			},
+			{ id: 'o', name: 'Odd item', display: 'Relíquia', rules: {} }
+		];
+		const groups = groupInventoryOptions(entries, (entry) => entry.display, 'pt-BR');
+		expect(groups.map((group) => group.category)).toEqual([
+			'weapon',
+			'armor',
+			'shield',
+			'equipment',
+			'tool',
+			'other'
+		]);
+		expect(groups[0].items.map((entry) => entry.id)).toEqual(['w2', 'w1']);
+		expect(groups[3].items[0].id).toBe('e');
+		expect(groups[5].items[0].id).toBe('o');
 	});
 });

@@ -65,6 +65,11 @@
 	async function applyPresentation(next: Presentation) {
 		const generation = ++presentationGeneration;
 		item = next;
+		window.dispatchEvent(
+			new CustomEvent('maismorras:presentation-state', {
+				detail: { sceneId, presentation: { ...next, visibleUserIds: [...next.visibleUserIds] } }
+			})
+		);
 		if (!next.visible || !next.assetPath) {
 			url = '';
 			return;

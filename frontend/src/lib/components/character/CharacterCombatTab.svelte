@@ -182,7 +182,10 @@
 					<label
 						><input type="checkbox" bind:checked={item.equipped} /><span
 							>{$appLocale === 'en' ? 'Equipped' : 'Equipado'} · {item.name}</span
-						></label
+						>{#if String(item.rules.description ?? item.rules.summary ?? '').trim()}<small
+								class="armor-description"
+								>{String(item.rules.description ?? item.rules.summary)}</small
+							>{/if}</label
 					>
 				{/each}
 			</div>
@@ -399,11 +402,25 @@
 		font-size: 0.78rem;
 	}
 	.combat-armor-list label {
-		display: flex;
-		align-items: center;
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: start;
+		width: 100%;
 		gap: 0.35rem;
 		color: #d5c7b9;
 		font-size: 0.75rem;
+	}
+	.combat-armor-list .armor-description {
+		grid-column: 1 / -1;
+		width: 100%;
+		min-width: 0;
+		color: #b9aa9d;
+		font-size: 0.72rem;
+		font-weight: 400;
+		letter-spacing: normal;
+		line-height: 1.45;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 	.line-item {
 		display: grid;

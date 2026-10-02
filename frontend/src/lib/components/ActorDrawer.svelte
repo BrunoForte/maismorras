@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { onMount } from 'svelte';
-	import { resizablePanel } from '$lib/utils/resizablePanel';
+	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 	import type { Session } from '@supabase/supabase-js';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
@@ -27,7 +27,7 @@
 	} = $props();
 
 	type ActorRow = { id: string; name: string; kind: 'character' | 'npc'; detail: string };
-	let open = $state(true);
+	let open = $state(!(resizablePanelPreference('scene-actors')?.collapsed ?? false));
 	let actors = $state<ActorRow[]>([]);
 	// Svelte collections still need $state so reassignment invalidates the component.
 	// eslint-disable-next-line svelte/no-unnecessary-state-wrap
@@ -123,7 +123,12 @@
 </script>
 
 <aside
-	use:resizablePanel={{ collapsed: !open, headerSelector: '.drawer-toggle', minWidth: 190 }}
+	use:resizablePanel={{
+		collapsed: !open,
+		headerSelector: '.drawer-toggle',
+		minWidth: 190,
+		storageKey: 'scene-actors'
+	}}
 	class:closed={!open}
 	class="actor-drawer"
 	aria-label="Atores da cena"

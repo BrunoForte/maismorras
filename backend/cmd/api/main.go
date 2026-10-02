@@ -66,21 +66,21 @@ func main() {
 
 	client := &http.Client{Timeout: cfg.UpstreamTimeout}
 	var imageService tokens.ImageGenerator
-	if cfg.CloudflareAccountID != "" && cfg.CloudflareAPIToken != "" {
+	if cfg.ImageProvider() == "cloudflare_workers_ai" {
 		imageService = tokens.NewCloudflareService(client, cfg.CloudflareAccountID, cfg.CloudflareAPIToken, cfg.CloudflareImageModel, cfg.MaxImageBytes)
-		logger.Info("image generation provider selected", "provider", "cloudflare_workers_ai", "model", cfg.CloudflareImageModel)
+		logger.Info("image generation provider selected", "provider", cfg.ImageProvider())
 	} else {
 		imageService = tokens.NewPollinationsService(client, cfg.PollinationsBaseURL, cfg.MaxImageBytes)
-		logger.Info("image generation provider selected", "provider", "pollinations", "reason", "Cloudflare Workers AI credentials are not configured")
+		logger.Info("image generation provider selected", "provider", cfg.ImageProvider())
 	}
 	translationClient := &http.Client{Timeout: cfg.TranslationTimeout}
 	var translationService compendium.Translator
-	if cfg.DeepLAPIKey != "" {
+	if cfg.TranslationProvider() == "deepl" {
 		translationService = translation.NewDeepLService(translationClient, cfg.DeepLTranslateURL, cfg.DeepLAPIKey)
 		logger.Info("compendium translation provider selected", "provider", "deepl")
 	} else {
 		translationService = translation.NewService(translationClient, cfg.PollinationsTextURL, cfg.PollinationsAPIKey, cfg.TranslationModel)
-		logger.Info("compendium translation provider selected", "provider", "pollinations", "reason", "DeepL API key is not configured")
+		logger.Info("compendium translation provider selected", "provider", cfg.TranslationProvider())
 	}
 	hub := realtime.NewHub()
 	hub.ConfigureBroker(nil)

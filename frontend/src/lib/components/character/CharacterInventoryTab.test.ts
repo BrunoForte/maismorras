@@ -1,0 +1,73 @@
+import { describe, expect, it, vi } from 'vitest';
+import { render } from 'svelte/server';
+import CharacterInventoryTab from './CharacterInventoryTab.svelte';
+import type { CompendiumEntry } from '$lib/services/compendiumApi';
+
+const entries: CompendiumEntry[] = [
+	{
+		id: 'b',
+		sourceId: 'srd',
+		entryType: 'item',
+		name: 'Besta',
+		summary: '',
+		rules: { category: 'weapon' },
+		translations: {},
+		isPublished: true
+	},
+	{
+		id: 'a',
+		sourceId: 'srd',
+		entryType: 'item',
+		name: 'Adaga',
+		summary: '',
+		rules: { category: 'weapon' },
+		translations: {},
+		isPublished: true
+	},
+	{
+		id: 'shield',
+		sourceId: 'srd',
+		entryType: 'item',
+		name: 'Escudo',
+		summary: '',
+		rules: { category: 'shield' },
+		translations: {},
+		isPublished: true
+	},
+	{
+		id: 'other',
+		sourceId: 'srd',
+		entryType: 'item',
+		name: 'Relíquia',
+		summary: '',
+		rules: {},
+		translations: {},
+		isPublished: true
+	}
+];
+
+describe('CharacterInventoryTab compendium picker', () => {
+	it('renders accessible localized groups and keeps stable entry IDs as option values', () => {
+		const html = render(CharacterInventoryTab, {
+			props: {
+				itemEntries: entries,
+				visibleItems: [],
+				totalWeight: 0,
+				inventoryFilter: 'all',
+				optionLabel: (entry) => entry.name,
+				onAddCompendiumItem: vi.fn(),
+				onAddCustomItem: vi.fn(async () => true),
+				onRemoveItem: vi.fn(),
+				onChangeQuantity: vi.fn(),
+				onChangeDescription: vi.fn()
+			}
+		}).body;
+		expect(html).toContain('aria-label="Escolher item do compêndio"');
+		expect(html).toContain('<optgroup label="Armas">');
+		expect(html).toContain('<optgroup label="Escudos">');
+		expect(html).toContain('<optgroup label="Outros itens">');
+		expect(html.indexOf('value="a"')).toBeLessThan(html.indexOf('value="b"'));
+		expect(html).toContain('value="shield"');
+		expect(html).toContain('value="other"');
+	});
+});

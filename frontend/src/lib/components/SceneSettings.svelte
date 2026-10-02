@@ -137,9 +137,8 @@
 					placeholder={$appLocale === 'en' ? 'Public image URL' : 'URL pública da imagem'}
 				/></label
 			><label
-				>{$appLocale === 'en'
-					? 'Choose image from Library'
-					: 'Escolher imagem da Biblioteca'}<select bind:value={draft.backgroundUrl}
+				>{$appLocale === 'en' ? 'Choose image from Library' : 'Escolher imagem de Mídias'}<select
+					bind:value={draft.backgroundUrl}
 					><option value=""
 						>{$appLocale === 'en' ? 'No background image' : 'Sem imagem de fundo'}</option
 					>{#each imageFiles as image (image.path)}<option value={image.path}>{image.name}</option
@@ -236,7 +235,7 @@
 			<p>
 				{$appLocale === 'en'
 					? 'Upload images and audio in the Library. Private media gets a temporary browser URL without exposing the bucket publicly.'
-					: 'Envie imagens e áudios na Biblioteca. Mídias privadas recebem uma URL temporária no navegador, sem expor o bucket publicamente.'}
+					: 'Envie imagens e áudios em Mídias. Arquivos privados recebem uma URL temporária no navegador, sem expor o bucket publicamente.'}
 			</p>
 			{#if message}<small>{message}</small>{/if}
 			<footer>

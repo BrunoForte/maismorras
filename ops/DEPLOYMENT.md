@@ -44,3 +44,13 @@ gcloud secrets add-iam-policy-binding SUPABASE_SECRET_KEY `
 ```
 
 Repita o mesmo comando para `DATABASE_URL`, `SUPABASE_JWT_SECRET` e `POLLINATIONS_API_KEY` se eles também estiverem configurados como referências do Secret Manager. O caminho mais seguro para produção é criar uma service account exclusiva da API e conceder acesso somente aos secrets necessários, em vez de usar a conta Compute Engine padrão.
+
+### Provedores de tradução e geração de imagens
+
+O backend seleciona DeepL quando `DEEPL_API_KEY` estiver configurada; sem ela, mantém o fallback Pollinations Text. Para imagens, seleciona Cloudflare Workers AI somente quando **ambos** `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` estiverem configurados; caso contrário, mantém o fallback Pollinations. Configure os valores sensíveis como secrets do Secret Manager referenciados pelo serviço Cloud Run — nunca no frontend ou em arquivos versionados:
+
+- `DEEPL_API_KEY`: chave da API DeepL;
+- `CLOUDFLARE_ACCOUNT_ID`: identificador da conta Cloudflare;
+- `CLOUDFLARE_API_TOKEN`: token de API com as permissões mínimas para Workers AI.
+
+Registre as três variáveis acima como referências do Secret Manager no serviço Cloud Run (inclusive o identificador da conta, para manter uma única configuração backend); localmente, os nomes e valores vazios opcionais aparecem em `backend/.env.example`. Os logs estruturados de inicialização registram apenas o identificador do provedor selecionado, sem chaves, prompts ou conteúdo de requisição. Nenhuma conta ou secret é criado automaticamente.

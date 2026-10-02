@@ -1,4 +1,5 @@
 export type InventoryCategory = 'all' | 'weapon' | 'armor' | 'consumable' | 'tool' | 'gear';
+export type InventoryOptionGroup = 'weapon' | 'armor' | 'shield' | 'equipment' | 'tool' | 'other';
 export type AbilityKey =
 	'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
 
@@ -35,6 +36,29 @@ export function equipmentCategory(item: EquipmentLike): InventoryCategory {
 	)
 		return 'weapon';
 	return 'gear';
+}
+
+/** Visual compendium picker grouping built from the same item metadata as inventory rules. */
+export function inventoryOptionGroup(item: EquipmentLike): InventoryOptionGroup {
+	const rawCategory = String(item.rules.category ?? '')
+		.trim()
+		.toLowerCase();
+	const catalog = String(item.rules.catalog ?? '')
+		.trim()
+		.toLowerCase();
+	const name = item.name.toLowerCase();
+	if (rawCategory === 'shield' || catalog === 'shields' || /\b(shield|escudo)s?\b/.test(name))
+		return 'shield';
+	if (equipmentCategory(item) === 'weapon') return 'weapon';
+	if (equipmentCategory(item) === 'armor') return 'armor';
+	if (equipmentCategory(item) === 'tool') return 'tool';
+	if (
+		['consumable', 'gear'].includes(rawCategory) ||
+		['equipment', 'equipamento', 'gear', 'consumables'].includes(catalog) ||
+		equipmentCategory(item) === 'consumable'
+	)
+		return 'equipment';
+	return 'other';
 }
 
 export function weaponRange(item: EquipmentLike): 'melee' | 'ranged' {

@@ -16,9 +16,11 @@
 		saveLibraryPermissions
 	} from '$lib/services/libraryPermissionsApi';
 	import { libraryAccessMode } from '$lib/utils/libraryRules';
+	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
 	import LibraryAssetsPanel from '$lib/components/library/LibraryAssetsPanel.svelte';
 	import LibraryHandoutsPanel from '$lib/components/library/LibraryHandoutsPanel.svelte';
 	import LibraryAccessDialog from '$lib/components/library/LibraryAccessDialog.svelte';
+	import LibraryPresentationStatus from '$lib/components/library/LibraryPresentationStatus.svelte';
 	import type {
 		LibraryAccessDialogActions,
 		LibraryAccessDialogModel,
@@ -29,12 +31,14 @@
 
 	let {
 		campaignId,
+		sceneId,
 		session,
 		isGM,
 		onpresent,
 		onhide
 	}: {
 		campaignId: string;
+		sceneId: string;
 		session: Session;
 		isGM: boolean;
 		onpresent: (
@@ -64,6 +68,7 @@
 	let presentationUserIds = $state<string[]>([]);
 	let presentationRestricted = $state(false);
 	let presentationOverlayVisible = $state(true);
+	let scenePresentation = $state<Presentation | null>(null);
 	let loadingPresentationTargets = $state(false);
 	let permissionDialog = $state<{ type: 'asset' | 'note'; key: string; label: string } | null>(
 		null
@@ -74,6 +79,77 @@
 	let loadingPermissions = $state(false);
 	let savingPermissions = $state(false);
 	const folder = () => `campaigns/${campaignId}/media`;
+	let presentationGeneration = 0;
+	$effect(() => {
+		const currentSceneId = sceneId;
+		const currentSession = session;
+		const generation = ++presentationGeneration;
+		if (!currentSceneId) {
+			scenePresentation = null;
+			return;
+		}
+		void getPresentation(currentSession, currentSceneId)
+			.then((presentation) => {
+				if (generation === presentationGeneration) scenePresentation = presentation;
+			})
+			.catch(() => {
+				if (generation === presentationGeneration) scenePresentation = null;
+			});
+		return () => {
+			presentationGeneration++;
+		};
+	});
+	const hasActivePresentation = $derived(
+		scenePresentation?.visible === true &&
+			Boolean(
+				scenePresentation.assetPath || scenePresentation.title || scenePresentation.description
+			)
+	);
+	const presentationAudience = $derived.by(() => {
+		if (!scenePresentation?.audienceRestricted)
+			return $appLocale === 'en' ? 'All players' : 'Todos os jogadores';
+		const count = scenePresentation.visibleUserIds.length;
+		return $appLocale === 'en'
+			? `${count} selected player${count === 1 ? '' : 's'}`
+			: `${count} jogador${count === 1 ? '' : 'es'} selecionado${count === 1 ? '' : 's'}`;
+	});
+	const presentationName = $derived(
+		scenePresentation?.title || scenePresentation?.assetPath.split('/').at(-1) || ''
+	);
+	onMount(() => {
+		const onPresentationChanged = (event: Event) => {
+			const detail = (event as CustomEvent<{ sceneId?: string }>).detail;
+			if (detail?.sceneId === sceneId) {
+				const currentSceneId = sceneId;
+				const generation = ++presentationGeneration;
+				void getPresentation(session, currentSceneId)
+					.then((presentation) => {
+						if (generation === presentationGeneration) scenePresentation = presentation;
+					})
+					.catch(() => {
+						if (generation === presentationGeneration) scenePresentation = null;
+					});
+			}
+		};
+		const onPresentationState = (event: Event) => {
+			const detail = (event as CustomEvent<{ sceneId?: string; presentation?: Presentation }>)
+				.detail;
+			if (detail?.sceneId !== sceneId || !detail.presentation) return;
+			presentationGeneration++;
+			const next = detail.presentation;
+			const currentTime = Date.parse(scenePresentation?.updatedAt ?? '');
+			const nextTime = Date.parse(next.updatedAt ?? '');
+			if (Number.isFinite(currentTime) && Number.isFinite(nextTime) && nextTime < currentTime)
+				return;
+			scenePresentation = next;
+		};
+		window.addEventListener('maismorras:presentation-changed', onPresentationChanged);
+		window.addEventListener('maismorras:presentation-state', onPresentationState);
+		return () => {
+			window.removeEventListener('maismorras:presentation-changed', onPresentationChanged);
+			window.removeEventListener('maismorras:presentation-state', onPresentationState);
+		};
+	});
 
 	onMount(() => {
 		void loadAssets();
@@ -527,30 +603,36 @@
 
 <section
 	class="library-view"
-	aria-label={$appLocale === 'en' ? 'Campaign library' : 'Biblioteca da campanha'}
+	aria-label={$appLocale === 'en' ? 'Campaign media' : 'Mídias da campanha'}
 >
 	<header>
 		<div>
-			<p>{$appLocale === 'en' ? 'CAMPAIGN LIBRARY' : 'BIBLIOTECA DA CAMPANHA'}</p>
+			<p>{$appLocale === 'en' ? 'CAMPAIGN MEDIA' : 'MÍDIAS DA CAMPANHA'}</p>
 			<h2>{$appLocale === 'en' ? 'Handouts and media' : 'Handouts e mídias'}</h2>
 			<span
 				>{$appLocale === 'en'
 					? 'Images, maps, documents, and music for this table.'
 					: 'Imagens, mapas, documentos e trilhas desta mesa.'}</span
 			>
-			<a class="icon-catalog-link" href="/icons">Biblioteca de ícones do projeto</a>
+			<a class="icon-catalog-link" href="/icons">Catálogo de ícones do projeto</a>
 		</div>
 		{#if isGM}
 			<div class="actions">
 				<button onclick={() => void openNewHandout()}
 					>{$appLocale === 'en' ? 'New handout' : 'Novo handout'}</button
 				>
-				<button onclick={onhide}
-					>{$appLocale === 'en' ? 'Hide presentation' : 'Ocultar imagem exibida'}</button
-				>
 			</div>
 		{/if}
 	</header>
+	{#if isGM}
+		<LibraryPresentationStatus
+			active={hasActivePresentation}
+			name={presentationName}
+			audience={presentationAudience}
+			overlayVisible={scenePresentation?.overlayVisible === true}
+			{onhide}
+		/>
+	{/if}
 	{#if message}<p class="message">{message}</p>{/if}
 	<LibraryHandoutsPanel
 		{handouts}

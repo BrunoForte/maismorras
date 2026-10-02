@@ -568,7 +568,7 @@
 		accent-color: #d8ad67;
 	}
 	.open-sheet-new-window {
-		margin-top: 0.3rem;
+		margin: 0 1rem 0.5rem;
 	}
 	.sheet-actions {
 		display: grid;
@@ -577,10 +577,35 @@
 	}
 	.sheet-actions .open-sheet,
 	.sheet-actions .open-sheet-new-window {
+		width: 100%;
 		min-width: 0;
 		margin: 0;
+		min-height: 2.25rem;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
 		padding: 0.48rem 0.45rem;
+		color: #f0d29d;
+		background: #2b211c;
+		font: inherit;
+		font-size: 0.7rem;
+		font-weight: 650;
 		line-height: 1.25;
+		cursor: pointer;
+	}
+	.sheet-actions .open-sheet:hover,
+	.sheet-actions .open-sheet-new-window:hover {
+		border-color: #d8ad67;
+		background: #403027;
+	}
+	.sheet-actions .open-sheet:focus-visible,
+	.sheet-actions .open-sheet-new-window:focus-visible {
+		outline: 2px solid #e0b86f;
+		outline-offset: 2px;
+	}
+	.sheet-actions .open-sheet:disabled,
+	.sheet-actions .open-sheet-new-window:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 	.token-settings {
 		display: grid;
@@ -892,6 +917,9 @@
 			min-width: 0;
 			max-height: 52%;
 			resize: none;
+		}
+		.sheet-actions {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

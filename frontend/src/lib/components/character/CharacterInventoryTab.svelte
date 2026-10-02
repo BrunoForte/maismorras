@@ -2,7 +2,12 @@
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
-	import { itemWeight, type InventoryCategory } from '$lib/utils/characterEquipment';
+	import {
+		itemWeight,
+		type InventoryCategory,
+		type InventoryOptionGroup
+	} from '$lib/utils/characterEquipment';
+	import { groupInventoryOptions } from '$lib/utils/inventoryRules';
 	import type { CustomInventoryItemDraft } from './inventoryTypes';
 
 	let {
@@ -48,6 +53,20 @@
 		['tool', 'Ferramentas', 'Tools'],
 		['gear', 'Outros', 'Other']
 	];
+	const itemOptionGroups = $derived(
+		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
+	);
+	const optionGroupLabel = (category: InventoryOptionGroup) => {
+		const labels: Record<InventoryOptionGroup, [string, string]> = {
+			weapon: ['Armas', 'Weapons'],
+			armor: ['Armaduras', 'Armor'],
+			shield: ['Escudos', 'Shields'],
+			equipment: ['Equipamentos', 'Equipment'],
+			tool: ['Ferramentas', 'Tools'],
+			other: ['Outros itens', 'Other items']
+		};
+		return labels[category][$appLocale === 'en' ? 1 : 0];
+	};
 	async function addCustomItem() {
 		if (await onAddCustomItem({ ...customItem })) {
 			customItem = {
@@ -98,8 +117,13 @@
 					? 'Add item from compendium…'
 					: 'Adicionar item do compêndio…'}</option
 			>
-			{#each itemEntries as entry (entry.id)}<option value={entry.id}>{optionLabel(entry)}</option
-				>{/each}
+			{#each itemOptionGroups as group (group.category)}
+				<optgroup label={optionGroupLabel(group.category)}>
+					{#each group.items as entry (entry.id)}<option value={entry.id}
+							>{optionLabel(entry)}</option
+						>{/each}
+				</optgroup>
+			{/each}
 		</select>
 		<button
 			type="button"

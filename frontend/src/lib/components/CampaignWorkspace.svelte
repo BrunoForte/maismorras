@@ -741,6 +741,7 @@
 			/>
 		{:else if workspaceTab === 'library' && LibraryViewComponent}<LibraryViewComponent
 				campaignId={activeCampaign.id}
+				sceneId={activeScene?.id ?? ''}
 				{session}
 				isGM={activeCampaign.role === 'gm'}
 				onpresent={(asset, userIds, restricted, overlayVisible) =>

@@ -33,6 +33,22 @@ type Config struct {
 	RealtimeBrokerDatabaseURL string
 }
 
+// TranslationProvider reports the configured backend provider without exposing credentials.
+func (c Config) TranslationProvider() string {
+	if strings.TrimSpace(c.DeepLAPIKey) != "" {
+		return "deepl"
+	}
+	return "pollinations"
+}
+
+// ImageProvider reports the configured backend provider without exposing credentials.
+func (c Config) ImageProvider() string {
+	if strings.TrimSpace(c.CloudflareAccountID) != "" && strings.TrimSpace(c.CloudflareAPIToken) != "" {
+		return "cloudflare_workers_ai"
+	}
+	return "pollinations"
+}
+
 func Load() Config {
 	// Local development convenience. Production values continue to come from the host environment.
 	_ = godotenv.Load()

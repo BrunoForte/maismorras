@@ -3,6 +3,7 @@ import { render } from 'svelte/server';
 import LibraryAccessDialog from './LibraryAccessDialog.svelte';
 import LibraryAssetsPanel from './LibraryAssetsPanel.svelte';
 import LibraryHandoutsPanel from './LibraryHandoutsPanel.svelte';
+import LibraryPresentationStatus from './LibraryPresentationStatus.svelte';
 import type { LibraryAsset, LibraryHandout } from './libraryTypes';
 
 const asset: LibraryAsset = {
@@ -105,5 +106,52 @@ describe('library panels role controls', () => {
 		expect(gmHtml).toContain('Salvar acesso');
 		expect(playerHtml).not.toContain('Mapa secreto');
 		expect(playerHtml).not.toContain('Salvar acesso');
+	});
+
+	it('groups all media into audio, visual, and optional document sections while preserving audio lists', () => {
+		const props = {
+			assets: [
+				{ ...asset, type: 'audio' as const, path: 'song.mp3', name: 'Trilha.mp3' },
+				asset,
+				{ ...asset, type: 'map' as const, path: 'map.png', name: 'Mapa.png' },
+				{ ...asset, type: 'document' as const, path: 'note.pdf', name: 'Nota.pdf' }
+			],
+			isGM: false,
+			filter: 'all' as const,
+			uploading: false,
+			deletingAsset: null,
+			changingAudioKind: null,
+			actions: assetActions
+		};
+		const allHtml = render(LibraryAssetsPanel, { props }).body;
+		expect(allHtml).toContain('Músicas e efeitos');
+		expect(allHtml).toContain('Imagens e mapas');
+		expect(allHtml).toContain('Documentos');
+		const audioHtml = render(LibraryAssetsPanel, { props: { ...props, filter: 'audio' } }).body;
+		expect(audioHtml).toContain('audio-list');
+		expect(audioHtml).toContain('Trilha.mp3');
+		expect(audioHtml).not.toContain('Imagens e mapas');
+	});
+
+	it('shows current presentation source state and offers hide only when media is active', () => {
+		const onhide = () => {};
+		const inactive = render(LibraryPresentationStatus, {
+			props: { active: false, name: '', audience: '', overlayVisible: false, onhide }
+		}).body;
+		expect(inactive).toContain('Nenhuma mídia em exibição');
+		expect(inactive).not.toContain('Ocultar mídia');
+		const active = render(LibraryPresentationStatus, {
+			props: {
+				active: true,
+				name: 'Magia de luz',
+				audience: 'Todos os jogadores',
+				overlayVisible: false,
+				onhide
+			}
+		}).body;
+		expect(active).toContain('Magia de luz');
+		expect(active).toContain('Todos os jogadores');
+		expect(active).toContain('oculta');
+		expect(active).toContain('Ocultar mídia');
 	});
 });

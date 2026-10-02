@@ -44,3 +44,21 @@ func TestLoadNormalizesOperationalValues(t *testing.T) {
 		t.Fatalf("provider settings not loaded: %+v", cfg)
 	}
 }
+
+func TestProviderSelectionUsesConfiguredServicesAndSafeFallbacks(t *testing.T) {
+	if (Config{}).TranslationProvider() != "pollinations" {
+		t.Fatal("missing DeepL configuration should use Pollinations Text fallback")
+	}
+	if (Config{}).ImageProvider() != "pollinations" {
+		t.Fatal("missing Cloudflare configuration should use Pollinations image fallback")
+	}
+	if (Config{DeepLAPIKey: "configured"}).TranslationProvider() != "deepl" {
+		t.Fatal("configured DeepL key should select DeepL")
+	}
+	if (Config{CloudflareAccountID: "account"}).ImageProvider() != "pollinations" {
+		t.Fatal("incomplete Cloudflare credentials should use Pollinations fallback")
+	}
+	if (Config{CloudflareAccountID: "account", CloudflareAPIToken: "configured"}).ImageProvider() != "cloudflare_workers_ai" {
+		t.Fatal("complete Cloudflare configuration should select Workers AI")
+	}
+}

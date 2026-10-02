@@ -32,9 +32,31 @@
 	} = $props();
 	let draggingFiles = $state(false);
 	let preview = $state<LibraryAsset | null>(null);
-	const visibleAssets = $derived(
-		filter === 'all' ? assets : assets.filter((asset) => asset.type === filter)
-	);
+	type AssetGroup = {
+		key: 'audio' | 'visual' | 'document' | AssetFilter;
+		assets: readonly LibraryAsset[];
+	};
+	const visibleAssetGroups = $derived.by((): AssetGroup[] => {
+		if (filter !== 'all') {
+			const filtered = assets.filter((asset) => asset.type === filter);
+			return filtered.length ? [{ key: filter, assets: filtered }] : [];
+		}
+		const groups: AssetGroup[] = [
+			{ key: 'audio', assets: assets.filter((asset) => asset.type === 'audio') },
+			{
+				key: 'visual',
+				assets: assets.filter((asset) => asset.type === 'image' || asset.type === 'map')
+			},
+			{ key: 'document', assets: assets.filter((asset) => asset.type === 'document') }
+		];
+		return groups.filter((group) => group.assets.length > 0);
+	});
+	const groupLabel = (key: AssetGroup['key']) => {
+		if (key === 'audio') return $appLocale === 'en' ? 'Music and effects' : 'Músicas e efeitos';
+		if (key === 'visual') return $appLocale === 'en' ? 'Images and maps' : 'Imagens e mapas';
+		if (key === 'document') return $appLocale === 'en' ? 'Documents' : 'Documentos';
+		return '';
+	};
 	$effect(() => {
 		const previewPath = preview?.path;
 		if (previewPath && !assets.some((asset) => asset.path === previewPath)) preview = null;
@@ -139,119 +161,126 @@
 	{/if}
 
 	{#if assets.length}
-		{#if visibleAssets.length}
-			<section class="asset-grid" class:audio-list={filter === 'audio'}>
-				{#each visibleAssets as asset (asset.path)}
-					<article class="asset-card">
-						{#if asset.type === 'image' || asset.type === 'map'}
-							<button class="asset-image" onclick={() => (preview = asset)}>
-								<img
-									src={asset.thumbnailUrl ?? asset.url}
-									alt={asset.name}
-									loading="lazy"
-									decoding="async"
-								/>
-							</button>
-						{:else if asset.type === 'audio'}
-							<span class="audio-mark">♫</span>
-							<audio controls loop={audioLoops(asset)} src={asset.url}></audio>
-						{:else}
-							<span class="document-mark">▤</span>
-							<a class="document-link" href={asset.url} target="_blank" rel="noreferrer">
-								{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}
-							</a>
-						{/if}
-						<div class="asset-footer">
-							<small>
-								{asset.name}
-								{#if asset.audioKind}
-									<span class="audio-kind-badge">
-										· {asset.audioKind === 'music'
-											? $appLocale === 'en'
-												? 'Music'
-												: 'Música'
-											: $appLocale === 'en'
-												? 'Sound effect'
-												: 'Efeito sonoro'}
-									</span>
-									<span class="audio-loop-badge">
-										{audioLoops(asset)
-											? $appLocale === 'en'
-												? '· loops'
-												: '· em loop'
-											: $appLocale === 'en'
-												? '· plays once'
-												: '· sem loop'}
-									</span>
+		{#if visibleAssetGroups.length}
+			{#each visibleAssetGroups as group (group.key)}
+				<section class="media-group">
+					{#if filter === 'all'}<h3>{groupLabel(group.key)}</h3>{/if}
+					<div class="asset-grid" class:audio-list={group.key === 'audio'}>
+						{#each group.assets as asset (asset.path)}
+							<article class="asset-card">
+								{#if asset.type === 'image' || asset.type === 'map'}
+									<button class="asset-image" onclick={() => (preview = asset)}>
+										<img
+											src={asset.thumbnailUrl ?? asset.url}
+											alt={asset.name}
+											loading="lazy"
+											decoding="async"
+										/>
+									</button>
+								{:else if asset.type === 'audio'}
+									<span class="audio-mark">♫</span>
+									<audio controls loop={audioLoops(asset)} src={asset.url}></audio>
+								{:else}
+									<span class="document-mark">▤</span>
+									<a class="document-link" href={asset.url} target="_blank" rel="noreferrer">
+										{$appLocale === 'en' ? 'Open document' : 'Abrir documento'}
+									</a>
 								{/if}
-							</small>
-							{#if isGM}
-								<div class="asset-actions">
-									{#if asset.type === 'audio'}
-										<label class="asset-audio-kind">
-											<select
-												aria-label={($appLocale === 'en' ? 'Audio type for ' : 'Tipo do áudio: ') +
-													asset.name}
-												value={asset.audioKind ?? 'music'}
-												disabled={changingAudioKind === asset.path}
-												onchange={(event) =>
-													actions.changeAudioSettings(asset, {
-														kind: event.currentTarget.value as 'music' | 'effect'
-													})}
+								<div class="asset-footer">
+									<small>
+										{asset.name}
+										{#if asset.audioKind}
+											<span class="audio-kind-badge">
+												· {asset.audioKind === 'music'
+													? $appLocale === 'en'
+														? 'Music'
+														: 'Música'
+													: $appLocale === 'en'
+														? 'Sound effect'
+														: 'Efeito sonoro'}
+											</span>
+											<span class="audio-loop-badge">
+												{audioLoops(asset)
+													? $appLocale === 'en'
+														? '· loops'
+														: '· em loop'
+													: $appLocale === 'en'
+														? '· plays once'
+														: '· sem loop'}
+											</span>
+										{/if}
+									</small>
+									{#if isGM}
+										<div class="asset-actions">
+											{#if asset.type === 'audio'}
+												<label class="asset-audio-kind">
+													<select
+														aria-label={($appLocale === 'en'
+															? 'Audio type for '
+															: 'Tipo do áudio: ') + asset.name}
+														value={asset.audioKind ?? 'music'}
+														disabled={changingAudioKind === asset.path}
+														onchange={(event) =>
+															actions.changeAudioSettings(asset, {
+																kind: event.currentTarget.value as 'music' | 'effect'
+															})}
+													>
+														<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option
+														>
+														<option value="effect"
+															>{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option
+														>
+													</select>
+												</label>
+												<label class="asset-audio-loop">
+													<input
+														type="checkbox"
+														checked={audioLoops(asset)}
+														aria-label={($appLocale === 'en' ? 'Loop ' : 'Repetir em loop: ') +
+															asset.name}
+														disabled={changingAudioKind === asset.path}
+														onchange={(event) =>
+															actions.changeAudioSettings(asset, {
+																looping: event.currentTarget.checked
+															})}
+													/>
+													{$appLocale === 'en' ? 'Loop' : 'Loop'}
+												</label>
+											{/if}
+											<button
+												class="asset-delete"
+												aria-label={$appLocale === 'en'
+													? `Delete ${asset.name}`
+													: `Excluir ${asset.name}`}
+												title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
+												onclick={() => actions.delete(asset)}
+												disabled={deletingAsset === asset.path}>×</button
 											>
-												<option value="music">{$appLocale === 'en' ? 'Music' : 'Música'}</option>
-												<option value="effect"
-													>{$appLocale === 'en' ? 'Sound effect' : 'Efeito sonoro'}</option
+											<button
+												class="asset-present"
+												aria-label={$appLocale === 'en'
+													? `Manage access to ${asset.name}`
+													: `Gerenciar acesso a ${asset.name}`}
+												onclick={() => actions.manageAccess(asset)}
+												>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
+											>
+											{#if asset.type === 'image' || asset.type === 'map'}
+												<button
+													class="asset-present"
+													aria-label={$appLocale === 'en'
+														? `Show ${asset.name} to the table`
+														: `Exibir ${asset.name} para a mesa`}
+													onclick={() => actions.present(asset)}>👁</button
 												>
-											</select>
-										</label>
-										<label class="asset-audio-loop">
-											<input
-												type="checkbox"
-												checked={audioLoops(asset)}
-												aria-label={($appLocale === 'en' ? 'Loop ' : 'Repetir em loop: ') +
-													asset.name}
-												disabled={changingAudioKind === asset.path}
-												onchange={(event) =>
-													actions.changeAudioSettings(asset, {
-														looping: event.currentTarget.checked
-													})}
-											/>
-											{$appLocale === 'en' ? 'Loop' : 'Loop'}
-										</label>
-									{/if}
-									<button
-										class="asset-delete"
-										aria-label={$appLocale === 'en'
-											? `Delete ${asset.name}`
-											: `Excluir ${asset.name}`}
-										title={$appLocale === 'en' ? 'Delete media' : 'Excluir mídia'}
-										onclick={() => actions.delete(asset)}
-										disabled={deletingAsset === asset.path}>×</button
-									>
-									<button
-										class="asset-present"
-										aria-label={$appLocale === 'en'
-											? `Manage access to ${asset.name}`
-											: `Gerenciar acesso a ${asset.name}`}
-										onclick={() => actions.manageAccess(asset)}
-										>{$appLocale === 'en' ? 'Access' : 'Acesso'}</button
-									>
-									{#if asset.type === 'image' || asset.type === 'map'}
-										<button
-											class="asset-present"
-											aria-label={$appLocale === 'en'
-												? `Show ${asset.name} to the table`
-												: `Exibir ${asset.name} para a mesa`}
-											onclick={() => actions.present(asset)}>👁</button
-										>
+											{/if}
+										</div>
 									{/if}
 								</div>
-							{/if}
-						</div>
-					</article>
-				{/each}
-			</section>
+							</article>
+						{/each}
+					</div>
+				</section>
+			{/each}
 		{:else}
 			<p class="empty-filter">
 				{$appLocale === 'en'
@@ -268,7 +297,7 @@
 						: 'Adicione a primeira mídia.'
 					: $appLocale === 'en'
 						? 'The library is still empty.'
-						: 'A biblioteca ainda está vazia.'}
+						: 'Ainda não há mídias nesta mesa.'}
 			</strong>
 			<span
 				>{$appLocale === 'en'
@@ -384,28 +413,41 @@
 		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: 0.8rem;
 	}
+	.media-group {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 0.9rem;
+	}
+	.media-group h3 {
+		margin: 0;
+		color: #e0b86f;
+		font-size: 0.9rem;
+	}
 	.asset-grid.audio-list {
 		grid-template-columns: minmax(0, 1fr);
 	}
 	.asset-grid.audio-list article {
-		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-columns: auto minmax(150px, 0.8fr) minmax(240px, 1.7fr);
 		align-items: center;
-		gap: 0.65rem 1rem;
-		padding: 0.85rem 1rem;
+		gap: 0.4rem 0.75rem;
+		padding: 0.42rem 0.7rem;
 	}
-	.asset-grid.audio-list audio,
 	.asset-grid.audio-list .asset-footer {
-		grid-column: 1 / -1;
+		grid-column: 2 / -1;
 	}
 	.asset-grid.audio-list audio {
-		height: 42px;
+		grid-column: 3;
+		grid-row: 1;
+		width: 100%;
+		height: 34px;
 	}
 	.asset-grid.audio-list .asset-footer {
-		flex-wrap: wrap;
+		grid-row: 1;
+		flex-wrap: nowrap;
 	}
 	.asset-grid.audio-list small {
-		flex: 1 1 100%;
-		font-size: 0.82rem;
+		flex: 1 1 auto;
+		font-size: 0.76rem;
 		white-space: normal;
 	}
 	.asset-grid article {
@@ -526,6 +568,20 @@
 	.asset-grid audio {
 		width: 100%;
 		height: 30px;
+	}
+	@media (max-width: 600px) {
+		.asset-grid.audio-list article {
+			grid-template-columns: auto minmax(0, 1fr);
+		}
+		.asset-grid.audio-list audio {
+			grid-column: 1 / -1;
+			grid-row: auto;
+		}
+		.asset-grid.audio-list .asset-footer {
+			grid-column: 1 / -1;
+			grid-row: auto;
+			flex-wrap: wrap;
+		}
 	}
 	.document-mark {
 		display: grid;

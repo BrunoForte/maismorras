@@ -47,6 +47,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 	const publishChatUpdated = vi.fn();
 	const publishCombatUpdated = vi.fn();
 	const publishPresentationUpdated = vi.fn();
+	const savePresentation = vi.fn(async () => undefined);
 	const saveSpellDisplay = vi.fn(async () => ({
 		id: 'chat-1',
 		autor: 'Heroína',
@@ -109,7 +110,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		setInitiativeAdvantage: vi.fn(),
 		restCharacter,
 		castMySpell,
-		savePresentation: vi.fn(async () => undefined),
+		savePresentation,
 		saveSpellDisplay,
 		appendChat,
 		setDiceOverlay,
@@ -133,6 +134,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		publishChatUpdated,
 		publishCombatUpdated,
 		publishPresentationUpdated,
+		savePresentation,
 		saveSpellDisplay,
 		rollDice: dependencies.rollDice as typeof rollDice,
 		castMySpell,
@@ -320,6 +322,17 @@ describe('character combat actions', () => {
 
 		expect(test.saveSpellDisplay).toHaveBeenCalledOnce();
 		expect(test.appendChat).toHaveBeenCalledOnce();
+		expect(test.savePresentation).toHaveBeenCalledWith(
+			expect.anything(),
+			'scene-1',
+			expect.objectContaining({
+				assetPath: '',
+				title: 'Mísseis mágicos',
+				description: 'Descrição',
+				visible: true,
+				overlayVisible: false
+			})
+		);
 		expect(test.publishPresentationUpdated).toHaveBeenCalledOnce();
 		expect(test.setMessage).toHaveBeenCalledWith(
 			'Magia publicada no chat e destacada para a mesa.'

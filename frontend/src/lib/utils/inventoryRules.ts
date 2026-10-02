@@ -1,5 +1,11 @@
 import type { InventoryItem } from '$lib/services/characterApi';
-import { equipmentCategory, itemWeight, type InventoryCategory } from './characterEquipment';
+import {
+	equipmentCategory,
+	inventoryOptionGroup,
+	itemWeight,
+	type InventoryCategory,
+	type InventoryOptionGroup
+} from './characterEquipment';
 
 /**
  * Compendium data is JSON from the API but can be wrapped in Svelte reactive
@@ -30,4 +36,36 @@ export function filterItemEntries<
 		(entry) =>
 			entry.entryType === 'item' && (category === 'all' || equipmentCategory(entry) === category)
 	);
+}
+
+export type InventoryOptionGroupItems<T> = {
+	category: InventoryOptionGroup;
+	items: T[];
+};
+
+const inventoryOptionGroupOrder: InventoryOptionGroup[] = [
+	'weapon',
+	'armor',
+	'shield',
+	'equipment',
+	'tool',
+	'other'
+];
+
+/** Groups and locale-sorts compendium options without changing their IDs or source objects. */
+export function groupInventoryOptions<T extends { name: string; rules: Record<string, unknown> }>(
+	entries: readonly T[],
+	getDisplayName: (entry: T) => string,
+	locale: string
+): InventoryOptionGroupItems<T>[] {
+	const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true });
+	return inventoryOptionGroupOrder
+		.map((category) => ({
+			category,
+			items: entries
+				.filter((entry) => inventoryOptionGroup(entry) === category)
+				.slice()
+				.sort((left, right) => collator.compare(getDisplayName(left), getDisplayName(right)))
+		}))
+		.filter((group) => group.items.length > 0);
 }

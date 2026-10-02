@@ -52,7 +52,7 @@
 	const tabs: { id: WorkspaceTab; en: string; pt: string }[] = [
 		{ id: 'map', en: 'Table', pt: 'Mesa' },
 		{ id: 'sheets', en: 'Sheets', pt: 'Fichas' },
-		{ id: 'library', en: 'Library', pt: 'Biblioteca' },
+		{ id: 'library', en: 'Library', pt: 'Mídias' },
 		{ id: 'compendium', en: 'Compendium', pt: 'Compêndio' }
 	];
 </script>

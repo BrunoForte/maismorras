@@ -68,7 +68,7 @@ describe('CampaignWorkspaceHeader', () => {
 
 		expect(html).toContain('Jogador');
 		expect(html).toContain('Áreas da mesa');
-		expect(html).toContain('Biblioteca');
+		expect(html).toContain('Mídias');
 		expect(html).not.toContain('Bestiário');
 		expect(html).not.toContain('Campanha</button>');
 		expect(html).not.toContain('Criar cena');

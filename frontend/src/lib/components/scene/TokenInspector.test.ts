@@ -179,6 +179,9 @@ describe('TokenInspector', () => {
 		expect(body).toContain('Rolar iniciativa');
 		expect(body).toContain('Abrir ficha vinculada');
 		expect(body).toContain('Abrir ficha em nova janela');
+		expect(body).toMatch(
+			/<div class="sheet-actions(?:\s[^"]*)?">[\s\S]*class="open-sheet(?:\s[^"]*)?"[\s\S]*class="open-sheet-new-window(?:\s[^"]*)?"/
+		);
 		expect(body).toMatch(/<details class="token-settings(?:\s[^>]*)?">/);
 		expect(body).not.toMatch(/<details class="token-settings(?:\s[^>]*)?" open/);
 	});

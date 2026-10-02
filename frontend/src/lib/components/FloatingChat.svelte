@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { chatMensagens } from '$lib/stores/chatStore';
 	import {
@@ -16,6 +16,7 @@
 		type CampaignSocket
 	} from '$lib/services/campaignRealtime';
 	import { mergeCampaignMessages } from '$lib/utils/campaignChatState';
+	import { createDiceRollRevealer } from '$lib/utils/diceRollReveal';
 	import {
 		diceOverlay,
 		completedDiceRollNonces,
@@ -23,10 +24,10 @@
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import { appLocale } from '$lib/stores/locale';
-	import { resizablePanel } from '$lib/utils/resizablePanel';
+	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 
 	let { campaignId, session }: { campaignId: string; session: Session } = $props();
-	let open = $state(true);
+	let open = $state(!(resizablePanelPreference('campaign-chat')?.collapsed ?? false));
 	let docked = $state(false);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
@@ -41,25 +42,17 @@
 	let lastEventId = 0;
 	const knownMessageIds = new SvelteSet<string>();
 	const revealedRollIds = new SvelteSet<string>();
-	const revealTimers = new SvelteMap<string, ReturnType<typeof setTimeout>>();
-	function revealRoll(messageId: string) {
-		const timer = revealTimers.get(messageId);
-		if (timer) clearTimeout(timer);
-		revealTimers.delete(messageId);
+	const rollRevealer = createDiceRollRevealer((messageId) => {
 		revealedRollIds.add(messageId);
-	}
+	});
+	const revealRoll = (messageId: string) => rollRevealer.reveal(messageId);
 	const queueRollReveal = (messageId: string) => {
-		if (revealedRollIds.has(messageId) || revealTimers.has(messageId)) return;
+		if (rollRevealer.isRevealed(messageId)) return;
 		if ($completedDiceRollNonces.includes(messageId) || !Number.isSafeInteger(Number(messageId))) {
-			revealRoll(messageId);
+			rollRevealer.reveal(messageId);
 			return;
 		}
-		revealTimers.set(
-			messageId,
-			setTimeout(() => {
-				revealRoll(messageId);
-			}, 20_000)
-		);
+		rollRevealer.schedule(messageId);
 	};
 	let visibleMessages = $derived(
 		channel === 'all'
@@ -203,8 +196,7 @@
 			campaignSocket?.close();
 			campaignSocket = null;
 			if (fallbackTimer) window.clearInterval(fallbackTimer);
-			for (const timer of revealTimers.values()) clearTimeout(timer);
-			revealTimers.clear();
+			rollRevealer.cleanup();
 		};
 	});
 
@@ -230,7 +222,12 @@
 </script>
 
 <aside
-	use:resizablePanel={{ collapsed: !open, headerSelector: '.chat-titlebar', minWidth: 190 }}
+	use:resizablePanel={{
+		collapsed: !open,
+		headerSelector: '.chat-titlebar',
+		minWidth: 190,
+		storageKey: 'campaign-chat'
+	}}
 	class:closed={!open}
 	class:docked
 	class="floating-chat"

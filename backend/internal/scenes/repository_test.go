@@ -182,6 +182,30 @@ func TestPresentationRecipientAuthorization(t *testing.T) {
 	}
 }
 
+func TestTextOnlyPresentationIsVisibleAccordingToAudienceAndOverlayPolicy(t *testing.T) {
+	p := Presentation{
+		Title:              "Luz",
+		Description:        "Uma chama ilumina a sala.",
+		Visible:            true,
+		VisibleUserIDs:     []string{"player-a"},
+		AudienceRestricted: true,
+		OverlayVisible:     false,
+	}
+	if !presentationVisibleTo(p, "player", "player-a", false) {
+		t.Fatal("selected player should be allowed to receive a text-only presentation")
+	}
+	if presentationVisibleTo(p, "player", "player-b", false) {
+		t.Fatal("unselected player must not receive a text-only presentation")
+	}
+	if presentationVisibleTo(p, "gm", "gm-id", true) {
+		t.Fatal("text presentation must not reach overlay unless explicitly enabled")
+	}
+	p.OverlayVisible = true
+	if !presentationVisibleTo(p, "gm", "gm-id", true) {
+		t.Fatal("GM overlay should receive text-only presentation when explicitly enabled")
+	}
+}
+
 func TestApplyVisibilityRedactsPrivateFieldsForOtherPlayer(t *testing.T) {
 	owner := "owner-id"
 	token := Token{

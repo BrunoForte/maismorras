@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { resizablePanel } from '$lib/utils/resizablePanel';
+	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -143,6 +143,7 @@
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
+	const sheetPanelKey = $derived(`character-sheet:${campaignId}:${characterId ?? 'mine'}`);
 	let sheet = $state<Sheet>(createEmptySheet());
 	let sheetOwnerId = $state('');
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
@@ -157,6 +158,9 @@
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
 	let minimized = $state(false);
+	$effect(() => {
+		if (docked) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
+	});
 	let previousLevel = $state(1);
 	let levelChoiceOpen = $state(false);
 	let portraitPrompt = $state('');
@@ -948,7 +952,12 @@
 	}}
 >
 	<section
-		use:resizablePanel={{ collapsed: docked && minimized, headerSelector: 'header', minWidth: 300 }}
+		use:resizablePanel={{
+			collapsed: docked && minimized,
+			headerSelector: 'header',
+			minWidth: 300,
+			storageKey: sheetPanelKey
+		}}
 		class="sheet"
 		class:minimized
 		aria-label="Ficha de personagem D&D 2024"
