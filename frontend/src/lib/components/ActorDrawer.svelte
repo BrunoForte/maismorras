@@ -16,12 +16,14 @@
 		campaignId,
 		sceneId,
 		session,
+		sheetOpen = false,
 		onadded = async () => {},
 		oncompendium = () => {}
 	}: {
 		campaignId: string;
 		sceneId: string;
 		session: Session;
+		sheetOpen?: boolean;
 		onadded?: () => void | Promise<void>;
 		oncompendium?: () => void;
 	} = $props();
@@ -130,6 +132,7 @@
 		storageKey: 'scene-actors'
 	}}
 	class:closed={!open}
+	class:sheet-open={sheetOpen}
 	class="actor-drawer"
 	aria-label="Atores da cena"
 >
@@ -244,6 +247,11 @@
 			bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.35rem);
 			width: min(330px, calc(100% - 1.2rem));
 			height: min(420px, calc(100dvh - 7.5rem));
+		}
+		.actor-drawer.sheet-open:not(.closed) {
+			height: min(26dvh, 230px);
+			max-height: min(26dvh, 230px);
+			min-height: min(170px, 26dvh);
 		}
 	}
 	.hint,

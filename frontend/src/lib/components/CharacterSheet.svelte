@@ -2,6 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 	import { movablePanel } from '$lib/utils/movablePanel';
+	import { nextFloatingPanelLayer } from '$lib/utils/floatingPanelStack';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -170,16 +171,20 @@
 	let newSpellLevel = $state(0);
 	let minimized = $state(false);
 	let sheetPanelElement = $state<HTMLElement>();
-	let panelZIndex = $state(9);
+	let raisedPanelLayer = $state(0);
+	let panelZIndex = $derived(Math.max(raisedPanelLayer, docked ? 9 : 20));
 	$effect(() => {
 		if (!standalone) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
 	});
 	$effect(() => {
 		if (standalone || focusRequest === 0) return;
 		minimized = false;
-		panelZIndex = 30;
+		raisedPanelLayer = nextFloatingPanelLayer();
 		void tick().then(() => sheetPanelElement?.focus());
 	});
+	function bringToFront() {
+		raisedPanelLayer = nextFloatingPanelLayer();
+	}
 	let previousLevel = $state(1);
 	let levelChoiceOpen = $state(false);
 	let portraitPrompt = $state('');
@@ -968,6 +973,8 @@
 	class:standalone
 	class:hidden
 	style:z-index={panelZIndex}
+	onpointerdown={bringToFront}
+	onfocusin={bringToFront}
 	role="presentation"
 	onclick={(event) => {
 		if (event.currentTarget === event.target) onclose();
@@ -979,9 +986,14 @@
 			storageKey: sheetPanelKey,
 			handleSelector: 'header',
 			minTop: 56,
-			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs'],
-			avoidRightSelectors: docked && actorPanelVisible ? ['.actor-drawer'] : [],
-			avoidBottomSelectors: docked && actorPanelVisible ? ['.actor-drawer'] : [],
+			avoidSelectors: [
+				'.app-header',
+				'.game-header',
+				'.workspace-tabs',
+				...(standalone ? [] : ['.floating-chat.sheet-open'])
+			],
+			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
+			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
@@ -1014,6 +1026,12 @@
 				</div>
 			</div>
 			<div class="sheet-actions">
+				{#if !standalone}<button
+						type="button"
+						title={$appLocale === 'en' ? 'Bring sheet to front' : 'Trazer ficha à frente'}
+						aria-label={$appLocale === 'en' ? 'Bring sheet to front' : 'Trazer ficha à frente'}
+						onclick={bringToFront}>↟</button
+					>{/if}
 				{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
 						{docked
 							? $appLocale === 'en'
@@ -1356,7 +1374,7 @@
 		position: fixed;
 		top: var(--mm-panel-navigation-bottom, 6rem);
 		bottom: auto;
-		right: 1rem;
+		right: var(--mm-panel-right-inset, 1rem);
 		left: auto;
 		width: min(780px, calc(100vw - 2rem));
 		height: min(720px, var(--mm-panel-available-height, calc(100dvh - 10rem)));

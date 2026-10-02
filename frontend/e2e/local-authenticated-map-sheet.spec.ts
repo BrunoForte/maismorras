@@ -122,24 +122,182 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player restores chat and keeps the owned map sheet floating across tab switches', async ({
+	test('chat and sheet remain reachable together on desktop and narrow viewports', async ({
 		browser
 	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
-			await test.step('prepare the player sheet and map', async () => {
+			await test.step('open the player sheet with chat and actors visible on the GM map', async () => {
 				fixture = await createLocalAuthenticatedFixture(browser);
 				const character = await fixture.createCharacter(fixture.playerUserId, {
-					name: 'Painel jogador E2E',
-					hitPointsCurrent: 12,
-					hitPointsMax: 12
+					name: 'Painéis simultâneos E2E',
+					hitPointsCurrent: 11,
+					hitPointsMax: 11
 				});
 				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			});
+			const page = fixture!.gm;
+			const chat = page.locator('.floating-chat');
+			const actors = page.locator('.actor-drawer');
+			if (await chat.evaluate((node) => node.classList.contains('closed')))
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			const sheet = page.locator('.sheet-backdrop.docked .sheet');
+			await expect(sheet).toBeVisible();
+			await expect(chat).not.toHaveClass(/closed/);
+			await expect(actors).toBeVisible();
+			await test.step('keep titles, controls, navigation, actors, and footer accessible on desktop', async () => {
+				await assertPanelsDoNotOverlap(page, chat, sheet);
+				await assertPanelsDoNotOverlap(page, sheet, actors);
+				await assertPanelsDoNotOverlap(page, chat, actors);
+				await assertTitleReachable(page, chat, '.chat-titlebar');
+				await assertTitleReachable(page, sheet, 'header');
+				await assertAboveAudioFooter(page, chat);
+				await assertAboveAudioFooter(page, sheet);
+				await expect(actors.locator('.drawer-toggle')).toBeVisible();
+				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await expect(sheet).toBeVisible();
+				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(page.locator('canvas').first()).toBeVisible();
+				await expect(sheet).toBeVisible();
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('floating chat and sheet resize, move, minimize, restore and raise independently', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('open both panels on the authenticated GM map', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Painéis movíveis E2E'
+				});
+				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			});
+			const page = fixture!.gm;
+			const chat = page.locator('.floating-chat');
+			if (await chat.evaluate((node) => node.classList.contains('closed')))
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			const sheet = page.locator('.sheet-backdrop .sheet');
+			await expect(sheet).toBeVisible();
+			await test.step('float, resize, and move both panels inside the usable viewport', async () => {
+				await sheet.getByRole('button', { name: 'Destacar ficha' }).click();
+				await expect(page.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
+				await setExpandedSize(chat, 420, 160);
+				await setExpandedSize(sheet, 700, 160);
+				await dragPanel(page, chat.locator('.panel-grip'), 24, 18);
+				await assertAboveAudioFooter(page, chat);
+				await assertAboveAudioFooter(page, sheet);
+			});
+			await test.step('bring each panel forward and collapse/restore without losing its contents', async () => {
+				const sheetFront = sheet.getByRole('button', { name: 'Trazer ficha à frente' });
+				const chatFront = chat.getByRole('button', { name: 'Trazer chat à frente' });
+				await expect(sheetFront).toBeVisible();
+				await expect(chatFront).toBeVisible();
+				await chatFront.click();
+				const chatLayer = Number(await chat.evaluate((node) => getComputedStyle(node).zIndex));
+				await sheetFront.click();
+				const sheetLayer = Number(
+					await page.locator('.sheet-backdrop').evaluate((node) => getComputedStyle(node).zIndex)
+				);
+				expect(sheetLayer).toBeGreaterThan(chatLayer);
+				await collapseAndRestore(
+					chat,
+					page,
+					'Chat da mesa',
+					'Abrir chat',
+					'.chat-body',
+					'.chat-titlebar'
+				);
+				await sheet.getByRole('button', { name: 'Minimizar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
+				await page.getByRole('button', { name: 'Restaurar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toBeVisible();
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('chat, docked sheet, actors and audio footer fit a narrow viewport', async ({ browser }) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare a compact authenticated map with all three panels', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Painéis mobile E2E'
+				});
+				await fixture.createCharacterToken(character.id);
+				await fixture.gm.setViewportSize({ width: 390, height: 844 });
+				await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			});
+			const page = fixture!.gm;
+			const chat = page.locator('.floating-chat');
+			const actors = page.locator('.actor-drawer');
+			if (await chat.evaluate((node) => node.classList.contains('closed')))
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+			await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+			await page.getByLabel('Participante / personagem').selectOption(fixture!.playerUserId);
+			await page.getByRole('button', { name: 'Exibir ficha selecionada' }).click();
+			const sheet = page.locator('.sheet-backdrop.docked .sheet');
+			await expect(sheet).toBeVisible();
+			await page.getByRole('button', { name: 'Mesa', exact: true }).click();
+			await expect(page.locator('canvas').first()).toBeVisible();
+			await test.step('keep all titles, navigation, actors and audio footer reachable without overlap', async () => {
+				await assertPanelsDoNotOverlap(page, chat, sheet);
+				await assertPanelsDoNotOverlap(page, sheet, actors);
+				await assertPanelsDoNotOverlap(page, chat, actors);
+				await assertTitleReachable(page, chat, '.chat-titlebar');
+				await assertTitleReachable(page, sheet, 'header');
+				await assertAboveAudioFooter(page, chat);
+				await assertAboveAudioFooter(page, sheet);
+				const actorBox = (await actors.boundingBox())!;
+				const footerBox = (await page.locator('.audio-channels').boundingBox())!;
+				expect(actorBox.y + actorBox.height).toBeLessThanOrEqual(footerBox.y + 2);
+				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await expect(sheet).toBeVisible();
+				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(page.locator('canvas').first()).toBeVisible();
+				await expect(sheet).toBeVisible();
+			});
+			await test.step('minimize and restore both panels while the mobile map remains usable', async () => {
+				const chatToggle = chat.getByRole('button', { name: 'Chat da mesa' });
+				await assertControlReachable(page, chatToggle);
+				await chatToggle.click();
+				await expect(chat).toHaveClass(/closed/);
+				await expect(chat.locator('.chat-body')).toHaveCount(0);
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+				await expect(chat.locator('.chat-body')).toBeVisible();
+				await page.getByRole('button', { name: 'Minimizar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
+				await page.getByRole('button', { name: 'Restaurar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toBeVisible();
+				await assertAboveAudioFooter(page, sheet);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player restores chat across map tab switches', async ({ browser }) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare the authenticated player map', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
 				await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
 			});
 			const player = fixture!.player;
 			const chat = player.locator('.floating-chat');
-			await test.step('minimize chat, swap tabs, and restore its saved size as a real player', async () => {
+			await test.step('minimize chat, swap tabs, and restore its saved size', async () => {
 				await setExpandedSize(chat, 440, 340);
 				const expandedWidth = (await chat.boundingBox())!.width;
 				await player.getByRole('button', { name: 'Chat da mesa' }).click();
@@ -154,14 +312,34 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.poll(() => chat.evaluate((node) => node.getBoundingClientRect().width))
 					.toBeGreaterThan(expandedWidth - 10);
 			});
-			await test.step('minimize the owned sheet while changing tabs and restore its expanded size', async () => {
-				await selectTokenAtDefaultPosition(player);
-				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-				const sheet = player.locator('.sheet-backdrop.docked .sheet');
-				await expect(sheet).toBeVisible();
-				await setExpandedSize(sheet, 780, 500);
-				await assertAboveAudioFooter(player, sheet);
-				const expandedHeight = (await sheet.boundingBox())!.height;
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player sheet stays accessible and restores its size across map tabs', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare the authenticated player sheet and map', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Painel jogador E2E',
+					hitPointsCurrent: 12,
+					hitPointsMax: 12
+				});
+				await fixture.createCharacterToken(character.id);
+				await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+				await fixture.player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await fixture.player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+			});
+			const player = fixture!.player;
+			const sheet = player.locator('.sheet-backdrop.docked .sheet');
+			await expect(sheet).toBeVisible();
+			await expect(sheet.locator('header h2')).toHaveText('Painel jogador E2E');
+			const expandedHeight = (await sheet.boundingBox())!.height;
+			await test.step('minimize the sheet and preserve state while swapping tabs', async () => {
 				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
 				const headerHeight = await sheet
 					.locator('header')
@@ -171,26 +349,18 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.toBeLessThanOrEqual(headerHeight + 4);
 				await expect(sheet).toHaveCSS('resize', 'none');
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
-				await selectTokenAtDefaultPosition(player);
-				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-				await expect(sheet).not.toHaveClass(/minimized/);
-				await expect(sheet.locator('header h2')).toHaveText('Painel jogador E2E');
-				await sheet.getByRole('button', { name: 'Minimizar ficha' }).click();
-				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(sheet).toBeVisible();
 				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
-				const restoredSheet = player.locator('.sheet-backdrop.docked .sheet');
-				await expect(restoredSheet).toBeVisible();
-				await expect(restoredSheet).toHaveClass(/minimized/);
-				await expect(restoredSheet.locator('.sheet-body')).toHaveCount(0);
+				await expect(player.locator('canvas').first()).toBeVisible();
+				await expect(sheet).toBeVisible();
+				await expect(sheet).toHaveClass(/minimized/);
 				await player.getByRole('button', { name: 'Restaurar ficha' }).click();
-				await expect(restoredSheet.locator('.sheet-body')).toBeVisible();
+				await expect(sheet.locator('.sheet-body')).toBeVisible();
 				await expect
-					.poll(() => restoredSheet.evaluate((node) => node.getBoundingClientRect().height))
+					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().height))
 					.toBeGreaterThan(expandedHeight - 10);
-				await assertAboveAudioFooter(player, restoredSheet);
+				await assertAboveAudioFooter(player, sheet);
 			});
-			await test.step('GM-only actors drawer remains unavailable to a player', async () => {
+			await test.step('confirm the player never receives the GM actors panel', async () => {
 				await expect(player.locator('.actor-drawer')).toHaveCount(0);
 			});
 		} finally {
@@ -598,7 +768,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player sheet docks by default, floats explicitly, opens in a new tab, and quick dice stay usable', async ({
+	test('player sheet docks by default, floats explicitly, opens in a new tab, and survives map navigation', async ({
 		browser
 	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -690,26 +860,37 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			});
 			await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
 			await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(0);
-			await test.step('reject invalid quantities, then roll one, multiple, and one hundred server-authoritative dice', async () => {
-				await player.locator('.table-tools button[title="Dados"]').click();
-				const quantity = player.getByLabel('Quantidade de dados');
-				for (const invalid of ['0', '1.5', '101']) {
-					await quantity.fill(invalid);
-					await expect(player.getByRole('alert')).toContainText('número inteiro de 1 a 100');
-					await expect(player.getByRole('button', { name: `Rolar ${invalid}d6` })).toBeDisabled();
-				}
-				for (const [value, sides, expectedCount] of [
-					['1', 4, 1],
-					['3', 6, 3],
-					['100', 4, 100]
-				] as const) {
-					await quantity.fill(value);
-					const formula = `${value}d${sides}`;
-					const visualRoll =
-						value === '1'
-							? expect(player.locator('.dice-overlay').filter({ hasText: formula })).toBeVisible()
-							: null;
-					const responsePromise = player.waitForResponse((response) => {
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	for (const [role, quantity, sides] of [
+		['player', 1, 4],
+		['player', 3, 6],
+		['player', 100, 4],
+		['gm', 1, 20],
+		['gm', 3, 6],
+		['gm', 100, 6]
+	] as const) {
+		test(`${role} quick roll ${quantity}d${sides} matches authoritative chat and visual result`, async ({
+			browser
+		}) => {
+			let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+			try {
+				await test.step('prepare the authenticated local table', async () => {
+					fixture = await createLocalAuthenticatedFixture(browser);
+				});
+				const page = role === 'gm' ? fixture!.gm : fixture!.player;
+				const formula = `${quantity}d${sides}`;
+				let authoritativeResult: { expressao: string; dados: number[]; total: number } | null =
+					null;
+				let authoritativeEventId = '';
+				await test.step('submit the quick roll and verify the authoritative server result', async () => {
+					await openMap(page, fixture!.campaignId, fixture!.sceneId);
+					await page.locator('.table-tools button[title="Dados"]').click();
+					await page.getByLabel('Quantidade de dados').fill(String(quantity));
+					const responsePromise = page.waitForResponse((response) => {
 						const request = response.request();
 						return (
 							request.url().includes(`/api/v1/campaigns/${fixture!.campaignId}/events`) &&
@@ -717,59 +898,70 @@ test.describe('local authenticated map and character sheet E2E', () => {
 							request.postData()?.includes(`"expression":"${formula}"`) === true
 						);
 					});
-					await player.getByRole('button', { name: `Rolar ${formula}` }).click();
+					await page.getByRole('button', { name: `Rolar ${formula}` }).click();
 					const response = await responsePromise;
 					expect(response.ok()).toBeTruthy();
 					const event = (await response.json()) as {
+						id: string | number;
 						payload: { expressao: string; dados: number[]; total: number };
 					};
 					expect(event.payload.expressao).toBe(formula);
-					expect(event.payload.dados).toHaveLength(expectedCount);
-					if (visualRoll) await visualRoll;
-					await expect(
-						player.locator('.floating-chat [data-event-id]').filter({ hasText: formula }).last()
-					).toBeVisible();
-					if (value === '100') {
-						await player.getByRole('button', { name: 'Fichas', exact: true }).click();
-						await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
-						await expect(sheet).toBeVisible();
-						await expect(sheet.locator('.sheet-mode-status')).toHaveText('Flutuante');
-						await player.getByRole('button', { name: 'Mesa', exact: true }).click();
-						await expect(player.locator('canvas').first()).toBeVisible();
-					}
-				}
-			});
-			await test.step('GM also uses quantity one and the maximum without client-side face generation', async () => {
-				const gm = fixture!.gm;
-				await openMap(gm, fixture!.campaignId, fixture!.sceneId);
-				await gm.locator('.table-tools button[title="Dados"]').click();
-				const quantity = gm.getByLabel('Quantidade de dados');
-				for (const [value, formula] of [
-					['1', '1d20'],
-					['100', '100d6']
-				] as const) {
-					await quantity.fill(value);
-					const responsePromise = gm.waitForResponse((response) => {
-						const request = response.request();
-						return (
-							request.url().includes(`/api/v1/campaigns/${fixture!.campaignId}/events`) &&
-							request.method() === 'POST' &&
-							request.postData()?.includes(`"expression":"${formula}"`) === true
-						);
-					});
-					await gm.getByRole('button', { name: `Rolar ${formula}` }).click();
-					const response = await responsePromise;
-					expect(response.ok()).toBeTruthy();
-					const event = (await response.json()) as {
-						payload: { expressao: string; dados: number[] };
-					};
-					expect(event.payload.expressao).toBe(formula);
-					expect(event.payload.dados).toHaveLength(Number(value));
-					await expect(
-						gm.locator('.floating-chat [data-event-id]').filter({ hasText: formula }).last()
-					).toBeVisible();
-				}
-			});
+					expect(event.payload.dados).toHaveLength(quantity);
+					expect(event.payload.total).toBeGreaterThanOrEqual(quantity);
+					expect(event.payload.total).toBeLessThanOrEqual(quantity * sides);
+					for (const face of event.payload.dados) expect(face).toBeGreaterThanOrEqual(1);
+					for (const face of event.payload.dados) expect(face).toBeLessThanOrEqual(sides);
+					authoritativeResult = event.payload;
+					authoritativeEventId = String(event.id);
+				});
+				await test.step('wait for the real visual completion signal and match it to the server payload', async () => {
+					const visualCard = page.locator(
+						`.dice-overlay article[data-roll-id="${authoritativeEventId}"]`
+					);
+					await expect(visualCard).toBeVisible();
+					expect(authoritativeResult).not.toBeNull();
+					await expect(visualCard.locator('.result span')).toContainText(formula);
+					await expect(visualCard.locator('.result strong')).toHaveText(
+						String(authoritativeResult!.total)
+					);
+					await expect(visualCard.locator('.result small').last()).toHaveText(
+						`[${authoritativeResult!.dados.join(', ')}]`
+					);
+					if (quantity > 10) await expect(visualCard.locator('.die')).toHaveCount(1);
+					const chatRoll = page.locator(`.floating-chat [data-event-id="${authoritativeEventId}"]`);
+					await expect(chatRoll).toBeVisible();
+					await expect(chatRoll.locator('.roll small')).toContainText(formula);
+					await expect(chatRoll.locator('.roll b')).toHaveText(String(authoritativeResult!.total));
+					await expect(chatRoll.locator('.roll em')).toContainText(
+						authoritativeResult!.dados.join(', ')
+					);
+				});
+			} finally {
+				await fixture?.close();
+			}
+		});
+	}
+
+	test('quick dice quantity reports invalid values and keeps valid boundaries', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+			await fixture.player.locator('.table-tools button[title="Dados"]').click();
+			const quantity = fixture.player.getByLabel('Quantidade de dados');
+			for (const invalid of ['0', '1.5', '101']) {
+				await quantity.fill(invalid);
+				await expect(fixture.player.getByRole('alert')).toContainText('número inteiro de 1 a 100');
+				await expect(
+					fixture.player.getByRole('button', { name: `Rolar ${invalid}d6` })
+				).toBeDisabled();
+			}
+			await quantity.fill('1');
+			await expect(fixture.player.getByRole('button', { name: 'Rolar 1d6' })).toBeEnabled();
+			await quantity.fill('100');
+			await expect(fixture.player.getByRole('button', { name: 'Rolar 100d6' })).toBeEnabled();
 		} finally {
 			await fixture?.close();
 		}
@@ -903,6 +1095,65 @@ async function assertAboveAudioFooter(page: Page, panel: Locator) {
 	expect(panelBox!.x).toBeGreaterThanOrEqual(0);
 	expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
 	expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(footerBox!.y + 2);
+}
+
+async function assertTitleReachable(page: Page, panel: Locator, titleSelector: string) {
+	const title = panel.locator(titleSelector);
+	const titleBox = await title.boundingBox();
+	expect(titleBox).toBeTruthy();
+	const panelSelector = await panel.evaluate((node, selectorName) => {
+		const element = node as HTMLElement;
+		if (!element.id) element.id = `e2e-panel-${selectorName.replace(/\W/g, '-')}`;
+		return `#${CSS.escape(element.id)}`;
+	}, titleSelector);
+	const hitTest = await page.evaluate(
+		({ x, y, selector }) => {
+			const panelElement = document.querySelector(selector);
+			const topElement = document.elementFromPoint(x, y);
+			return {
+				receivesPointer: Boolean(panelElement && topElement && panelElement.contains(topElement)),
+				point: { x, y },
+				blocker: topElement
+					? `${topElement.tagName}.${String(topElement.className)}:${topElement.getAttribute('title') ?? topElement.textContent?.trim().slice(0, 50) ?? ''}`
+					: 'none',
+				blockerRect: topElement
+					? (() => {
+							const rect = topElement.getBoundingClientRect();
+							return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+						})()
+					: null
+			};
+		},
+		{
+			x: titleBox!.x + Math.min(titleBox!.width - 2, 20),
+			y: titleBox!.y + titleBox!.height / 2,
+			selector: panelSelector
+		}
+	);
+	expect(hitTest.receivesPointer, JSON.stringify(hitTest)).toBe(true);
+}
+
+async function assertControlReachable(page: Page, control: Locator) {
+	const box = await control.boundingBox();
+	expect(box).toBeTruthy();
+	const receivesPointer = await page.evaluate(
+		({ x, y, selector }) => {
+			const element = document.querySelector(selector);
+			const top = document.elementFromPoint(x, y);
+			return Boolean(element && top && (element === top || element.contains(top)));
+		},
+		{
+			x: box!.x + box!.width / 2,
+			y: box!.y + box!.height / 2,
+			selector: await control.evaluate((node) => {
+				const element = node as HTMLElement;
+				if (!element.id)
+					element.id = `e2e-control-${element.getAttribute('aria-label')?.replace(/\W/g, '-') ?? 'panel'}`;
+				return `#${CSS.escape(element.id)}`;
+			})
+		}
+	);
+	expect(receivesPointer).toBe(true);
 }
 
 async function assertPanelsDoNotOverlap(page: Page, first: Locator, second: Locator) {

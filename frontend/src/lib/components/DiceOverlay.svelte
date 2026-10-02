@@ -103,6 +103,7 @@
 {#if $activeDiceRolls.length && visible}
 	<div class="dice-overlay" aria-live="polite" aria-label="Rolagens recentes">
 		{#each $activeDiceRolls as result (result.nonce ?? `${result.expression}-${result.total}-${result.dice.join(',')}`)}<article
+				data-roll-id={result.nonce}
 			>
 				{#if $diceRendererEffective === '2d' || lightweightRolls}<div
 						class={`die d${sides(result.expression)}`}

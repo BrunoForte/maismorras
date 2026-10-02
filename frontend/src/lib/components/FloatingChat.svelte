@@ -26,10 +26,16 @@
 	import { appLocale } from '$lib/stores/locale';
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 	import { movablePanel } from '$lib/utils/movablePanel';
+	import { nextFloatingPanelLayer } from '$lib/utils/floatingPanelStack';
 
-	let { campaignId, session }: { campaignId: string; session: Session } = $props();
+	let {
+		campaignId,
+		session,
+		sheetOpen = false
+	}: { campaignId: string; session: Session; sheetOpen?: boolean } = $props();
 	let open = $state(!(resizablePanelPreference('campaign-chat')?.collapsed ?? false));
 	let docked = $state(false);
+	let panelZIndex = $state(8);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
@@ -55,6 +61,9 @@
 		}
 		rollRevealer.schedule(messageId);
 	};
+	function bringToFront() {
+		panelZIndex = nextFloatingPanelLayer();
+	}
 	let visibleMessages = $derived(
 		channel === 'all'
 			? $chatMensagens
@@ -226,7 +235,7 @@
 	use:movablePanel={{
 		storageKey: `campaign-chat:${campaignId}`,
 		handleSelector: '.chat-titlebar',
-		minTop: 56,
+		minTop: sheetOpen ? 96 : 56,
 		avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
 	}}
 	use:resizablePanel={{
@@ -237,8 +246,12 @@
 	}}
 	class:closed={!open}
 	class:docked
+	class:sheet-open={sheetOpen}
 	class="floating-chat"
 	aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}
+	style:z-index={panelZIndex}
+	onpointerdown={bringToFront}
+	onfocusin={bringToFront}
 >
 	<div
 		class="chat-titlebar"
@@ -260,7 +273,13 @@
 		</button>
 		{#if open}<button class="dock-toggle" onclick={() => (docked = !docked)} aria-pressed={docked}
 				>{docked ? 'Desacoplar' : 'Acoplar'}</button
-			>{/if}
+			>{/if}<button
+			class="front-toggle"
+			type="button"
+			title={$appLocale === 'en' ? 'Bring chat to front' : 'Trazer chat à frente'}
+			aria-label={$appLocale === 'en' ? 'Bring chat to front' : 'Trazer chat à frente'}
+			onclick={bringToFront}>↟</button
+		>
 	</div>
 	{#if open}
 		<div class="chat-body">
@@ -433,6 +452,28 @@
 	.floating-chat.closed .chat-body {
 		display: none;
 	}
+	.floating-chat.sheet-open:not(.docked) {
+		top: var(--mm-panel-navigation-bottom, 6rem);
+		bottom: auto;
+		left: 4rem;
+		height: min(360px, 40vh);
+		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
+	}
+	.floating-chat.docked.sheet-open {
+		top: var(--mm-panel-navigation-bottom, 6rem);
+		bottom: auto;
+		height: min(360px, 40vh);
+		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
+	}
+	.floating-chat.sheet-open.closed {
+		top: var(--mm-panel-navigation-bottom, 6rem);
+		bottom: auto;
+		left: 4rem;
+		max-height: none;
+	}
+	.floating-chat.docked.sheet-open.closed {
+		left: 0;
+	}
 	.chat-toggle {
 		display: flex;
 		align-items: center;
@@ -479,6 +520,15 @@
 		font:
 			600 0.67rem Georgia,
 			serif;
+		cursor: pointer;
+	}
+	.front-toggle {
+		flex: 0 0 auto;
+		border: 0;
+		padding: 0.45rem 0.55rem;
+		color: #e7d6b8;
+		background: rgba(35, 27, 30, 0.9);
+		font: inherit;
 		cursor: pointer;
 	}
 	.chat-body {
@@ -662,6 +712,26 @@
 			height: min(65vh, calc(100dvh - 10.5rem));
 			min-height: 160px;
 			max-height: var(--mm-panel-available-height, calc(100dvh - 10.5rem));
+		}
+		.floating-chat.sheet-open:not(.docked):not(.closed),
+		.floating-chat.docked.sheet-open:not(.closed) {
+			top: calc(var(--mm-panel-navigation-bottom, 5.8rem) + 3.7rem);
+			bottom: auto;
+			left: 4rem;
+			width: calc(100% - 4.6rem);
+			height: min(24dvh, 220px);
+			min-height: 150px;
+			max-height: min(24dvh, 220px);
+			border-radius: 12px;
+		}
+		.floating-chat.sheet-open.closed {
+			top: calc(var(--mm-panel-navigation-bottom, 5.8rem) + 3.7rem);
+			bottom: auto;
+			left: 0.6rem;
+			width: min(220px, calc(100% - 1.2rem));
+		}
+		.floating-chat.docked.sheet-open.closed {
+			left: 0;
 		}
 	}
 	.expand {

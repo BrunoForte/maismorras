@@ -750,6 +750,7 @@
 									campaignId={activeCampaign.id}
 									sceneId={activeScene.id}
 									{session}
+									{sheetOpen}
 									onadded={() => reloadActiveScene()}
 									oncompendium={() => (workspaceTab = 'compendium')}
 								/>{/if}
@@ -804,6 +805,7 @@
 		{#if activeCampaign && session && FloatingChatComponent}{#key activeCampaign.id}<FloatingChatComponent
 					campaignId={activeCampaign.id}
 					{session}
+					{sheetOpen}
 				/>{/key}{/if}
 		{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
 		{#if sheetOpen && !CharacterSheetComponent}<p
@@ -824,7 +826,7 @@
 					focusRequest={sheetFocusRequest}
 					onDockChange={updateSheetDocked}
 					onOpenNewWindow={openCharacterWindow}
-					actorPanelVisible={sheetDocked && workspaceTab === 'map' && activeCampaign.role === 'gm'}
+					actorPanelVisible={workspaceTab === 'map' && activeCampaign.role === 'gm'}
 					hidden={false}
 					standalone={false}
 					onclose={() => {
