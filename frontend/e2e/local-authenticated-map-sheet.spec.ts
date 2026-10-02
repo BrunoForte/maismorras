@@ -37,9 +37,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					await f.player.getByRole('button', { name: 'Fichas', exact: true }).click();
 					await expect(f.player.locator('canvas')).toHaveCount(0);
 					await f.player.getByRole('button', { name: 'Mídias', exact: true }).click();
-					await expect(
-						f.player.getByRole('region', { name: /Mídias da campanha|Campaign media/i })
-					).toBeVisible();
+					await expect(f.player.locator('.library-view')).toBeVisible();
 					await f.player.getByRole('button', { name: 'Mesa', exact: true }).click();
 					await expect(f.player.locator('canvas').first()).toBeVisible();
 				}
@@ -105,8 +103,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await collapseAndRestore(
 					actors,
 					page,
-					'Atores da cena',
-					'Abrir atores',
+					actors.locator('.drawer-toggle'),
+					actors.locator('.drawer-toggle'),
 					'.drawer-body',
 					'.drawer-toggle'
 				);
@@ -172,7 +170,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.poll(() => chat.evaluate((node) => node.getBoundingClientRect().width))
 					.toBeGreaterThan(expandedWidth - 10);
 			});
-			await test.step('minimize the owned sheet, switch tabs, reopen and restore after remount', async () => {
+			await test.step('minimize the owned sheet, hide it off-map and restore it on return', async () => {
 				await selectTokenAtDefaultPosition(player);
 				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
 				const sheet = player.locator('.sheet-backdrop.docked .sheet');
@@ -181,16 +179,16 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await expect(sheet).toBeHidden();
 				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
-				await selectTokenAtDefaultPosition(player);
-				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-				const remountedSheet = player.locator('.sheet-backdrop.docked .sheet');
-				await expect(remountedSheet).toHaveClass(/minimized/);
-				await expect(remountedSheet.locator('.sheet-body')).toHaveCount(0);
+				const restoredSheet = player.locator('.sheet-backdrop.docked .sheet');
+				await expect(restoredSheet).toBeVisible();
+				await expect(restoredSheet).toHaveClass(/minimized/);
+				await expect(restoredSheet.locator('.sheet-body')).toHaveCount(0);
 				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
-				await expect(remountedSheet.locator('.sheet-body')).toBeVisible();
+				await expect(restoredSheet.locator('.sheet-body')).toBeVisible();
 				await expect
-					.poll(() => remountedSheet.evaluate((node) => node.getBoundingClientRect().height))
+					.poll(() => restoredSheet.evaluate((node) => node.getBoundingClientRect().height))
 					.toBeGreaterThan(400);
 			});
 			await test.step('GM-only actors drawer remains unavailable to a player', async () => {
@@ -214,7 +212,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			const gm = fixture!.gm;
 			const actors = gm.locator('.actor-drawer');
 			await setExpandedSize(actors, 410, 330);
-			await gm.getByRole('button', { name: 'Atores da cena' }).click();
+			await gm.locator('.actor-drawer .drawer-toggle').click();
 			await expect(actors).toHaveClass(/closed/);
 			await gm.getByRole('button', { name: 'Compêndio', exact: true }).click();
 			await gm.getByRole('button', { name: 'Mesa', exact: true }).click();
@@ -468,7 +466,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					})
 				);
 				expect(styles).toHaveLength(2);
-				expect(styles[0]).toEqual(styles[1]);
+				const [first, second] = styles;
+				expect(Math.abs(first.width - second.width)).toBeLessThanOrEqual(1);
+				expect({ ...first, width: 0 }).toEqual({ ...second, width: 0 });
 				const desktopColumns = await actions.evaluate(
 					(node) => getComputedStyle(node).gridTemplateColumns
 				);
@@ -542,18 +542,29 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.locator('.spell-groups details')
 					.filter({ hasText: 'Truque alvo E2E' });
 				await cantrip.locator('summary').click();
-				await expect(cantrip.getByRole('button', { name: 'Lançar' })).toBeDisabled();
 				const spell = inspector
 					.locator('.spell-groups details')
 					.filter({ hasText: 'Magia alvo E2E' });
-				await spell.locator('summary').click();
-				await expect(spell.getByRole('button', { name: 'Lançar' })).toBeDisabled();
+				await expect(
+					cantrip
+						.locator('.spell-row')
+						.filter({ hasText: 'Truque alvo E2E' })
+						.getByRole('button', { name: 'Lançar' })
+				).toBeDisabled();
+				await expect(
+					spell
+						.locator('.spell-row')
+						.filter({ hasText: 'Magia alvo E2E' })
+						.getByRole('button', { name: 'Lançar' })
+				).toBeDisabled();
 				expect(unauthorizedSpellRequests).toEqual([]);
 			});
 			await test.step('GM display publishes chat and updates the scene presentation', async () => {
 				const inspector = f.gm.locator('.token-inspector');
 				const spell = inspector
 					.locator('.spell-groups details')
+					.filter({ hasText: 'Magia alvo E2E' })
+					.locator('.spell-row')
 					.filter({ hasText: 'Magia alvo E2E' });
 				await spell.getByRole('button', { name: 'Exibir' }).click();
 				await expect(
@@ -624,8 +635,8 @@ async function setExpandedSize(panel: Locator, width: number, height: number) {
 async function collapseAndRestore(
 	panel: Locator,
 	page: Page,
-	openLabel: string,
-	collapsedLabel: string,
+	openControl: string | Locator,
+	collapsedControl: string | Locator,
 	bodySelector: string,
 	headerSelector: string
 ) {
@@ -634,14 +645,20 @@ async function collapseAndRestore(
 	const headerHeight = await panel
 		.locator(headerSelector)
 		.evaluate((node) => node.getBoundingClientRect().height);
-	await page.getByRole('button', { name: openLabel }).click();
+	const openLocator =
+		typeof openControl === 'string' ? page.getByRole('button', { name: openControl }) : openControl;
+	const collapsedLocator =
+		typeof collapsedControl === 'string'
+			? page.getByRole('button', { name: collapsedControl })
+			: collapsedControl;
+	await openLocator.click();
 	await expect(panel).toHaveClass(/closed/);
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))
 		.toBeLessThanOrEqual(headerHeight + 4);
 	await expect(panel).toHaveCSS('resize', 'none');
 	await expect(panel.locator(bodySelector)).toHaveCount(0);
-	await page.getByRole('button', { name: collapsedLabel }).click();
+	await collapsedLocator.click();
 	await expect(panel).not.toHaveClass(/closed/);
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))

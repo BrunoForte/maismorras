@@ -128,6 +128,7 @@
 		characterId = null,
 		characterOwnerName = '',
 		docked = false,
+		hidden = false,
 		standalone = false,
 		onclose,
 		onTokenCreated
@@ -139,6 +140,7 @@
 		characterId?: string | null;
 		characterOwnerName?: string;
 		docked?: boolean;
+		hidden?: boolean;
 		standalone?: boolean;
 		onclose: () => void;
 		onTokenCreated: () => void;
@@ -946,6 +948,7 @@
 	class="sheet-backdrop"
 	class:docked
 	class:standalone
+	class:hidden
 	role="presentation"
 	onclick={(event) => {
 		if (event.currentTarget === event.target) onclose();
@@ -1242,6 +1245,9 @@
 		background: transparent;
 		backdrop-filter: none;
 		pointer-events: none;
+	}
+	.sheet-backdrop.hidden {
+		display: none;
 	}
 	.sheet-backdrop.docked .sheet {
 		position: fixed;

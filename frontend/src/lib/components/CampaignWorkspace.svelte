@@ -136,6 +136,7 @@
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
+	let sheetDocked = $state(false);
 	let workspaceTab = $state<WorkspaceTab>('map');
 	$effect(() => {
 		if (activeCampaign && !canAccessWorkspaceTab(workspaceTab, activeCampaign.role))
@@ -427,12 +428,14 @@
 			loadingScene = false;
 		}
 	}
-	function openMySheet() {
+	function openMySheet(docked = false) {
 		editingCharacter = null;
+		sheetDocked = docked;
 		sheetOpen = true;
 	}
-	function openCharacter(characterId: string, ownerName: string) {
+	function openCharacter(characterId: string, ownerName: string, docked = false) {
 		editingCharacter = { id: characterId, ownerName };
+		sheetDocked = docked;
 		sheetOpen = true;
 	}
 	function openCharacterWindow(characterId: string) {
@@ -708,7 +711,9 @@
 									isGM={activeCampaign.role === 'gm'}
 									campaignId={activeCampaign.id}
 									onopensheet={(actorId) =>
-										activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
+										activeCampaign?.role === 'gm'
+											? openCharacter(actorId, '', true)
+											: openMySheet(true)}
 									onopennewwindow={openCharacterWindow}
 								/>{:else}<p class="status-message" role="status" aria-live="polite">
 									Carregando mapa…
@@ -794,10 +799,12 @@
 				isGM={activeCampaign.role === 'gm'}
 				characterId={editingCharacter?.id}
 				characterOwnerName={editingCharacter?.ownerName ?? ''}
-				docked={workspaceTab === 'map'}
+				docked={sheetDocked}
+				hidden={sheetDocked && workspaceTab !== 'map'}
 				standalone={false}
 				onclose={() => {
 					sheetOpen = false;
+					sheetDocked = false;
 				}}
 				onTokenCreated={() => void reloadActiveScene()}
 			/>{/if}
