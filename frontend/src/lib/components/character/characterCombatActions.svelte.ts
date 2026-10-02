@@ -25,6 +25,8 @@ export type CharacterCombatContext = {
 	campaignId: string;
 	sceneId: string;
 	characterId: string | null;
+	/** Local selection identity; prevents a pending action surviving token selection changes. */
+	selectionKey?: string;
 	isGM: boolean;
 	session: Session;
 	locale: 'en' | 'pt-BR';
@@ -160,6 +162,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			context.campaignId,
 			context.sceneId,
 			context.characterId ?? '',
+			context.selectionKey ?? '',
 			context.isGM ? 'gm' : 'player',
 			context.session.user.id,
 			context.session.access_token

@@ -44,12 +44,9 @@
 		type SceneMapToolsActions,
 		type SceneMapToolsState
 	} from '$lib/utils/sceneMapTools';
-	import {
-		removeSceneCharacter,
-		toSceneCharacter,
-		upsertSceneCharacter
-	} from '$lib/utils/sceneTokenState';
+	import { removeSceneCharacter } from '$lib/utils/sceneTokenState';
 	import { createSceneTokenSyncController } from '$lib/components/scene/sceneTokenSyncController';
+	import { createSceneCharacterSummaryController } from '$lib/components/scene/sceneCharacterSummaryController.svelte.js';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -66,7 +63,6 @@
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import {
 		castMySpell,
-		createEmptySheet,
 		getCharacterForGM,
 		getMyCharacter,
 		restCharacter,
@@ -79,7 +75,6 @@
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 	import { savePresentation } from '$lib/services/presentationApi';
-	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
 	import {
 		deriveWeaponEffects,
 		selectedWeaponEffects,
@@ -92,7 +87,6 @@
 	import { weaponAbility, equipmentCategory } from '$lib/utils/characterEquipment';
 	import { deriveCharacterFeatures } from '$lib/utils/character/characterProgressionRules';
 	import { localizedSpellField } from '$lib/utils/character/characterSpellRules';
-	import { parseHitPointInput } from '$lib/utils/sceneCharacterSummary';
 	import { appLocale } from '$lib/stores/locale';
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 
@@ -125,20 +119,16 @@
 	$effect(() => {
 		if (tokenSelecionadoId !== null && !personagemSelecionado) tokenSelecionadoId = null;
 	});
-	let initiativeAdvantageByActor = $state<Record<string, boolean>>({});
-	let characterSummaryByActor = $state<Record<string, CharacterSheet>>({});
 	let characterCompendiumEntries = $state<CompendiumEntry[]>([]);
 	let characterCompendiumContext = '';
-	let characterSummaryContext = '';
-	$effect(() => {
-		const currentContext = `${session.user.id}:${campaignId}:${scene.id}:${isGM}`;
-		if (characterSummaryContext && characterSummaryContext !== currentContext) {
-			characterSummaryByActor = {};
-			initiativeAdvantageByActor = {};
-			tokenSelecionadoId = null;
-		}
-		characterSummaryContext = currentContext;
-	});
+	let atoresNPC = $state<NPC[]>([]);
+	let npcSelecionado = $derived(
+		personagemSelecionado?.actorId
+			? atoresNPC.find((npc) => npc.id === personagemSelecionado.actorId)
+			: undefined
+	);
+	let persistenceError = $state('');
+	let sceneSocket: SceneSocket | null = null;
 	$effect(() => {
 		const currentContext = `${session.user.id}:${campaignId}`;
 		if (characterCompendiumContext === currentContext) return;
@@ -154,59 +144,14 @@
 			});
 		return () => (cancelled = true);
 	});
-	$effect(() => {
-		const actorId = personagemSelecionado?.actorId;
-		if (
-			!actorId ||
-			npcSelecionado ||
-			(!isGM && !personagemSelecionado?.isOwned) ||
-			actorId in initiativeAdvantageByActor
-		)
-			return;
-		let cancelled = false;
-		const request = isGM
-			? getCharacterForGM(session, campaignId, actorId)
-			: getMyCharacter(session, campaignId);
-		void request
-			.then((character) => {
-				if (!cancelled) {
-					const { sheet } = character;
-					characterSummaryByActor = { ...characterSummaryByActor, [actorId]: sheet };
-					personagens.update((tokens) =>
-						tokens.map((token) =>
-							token.actorId === actorId ? { ...token, nome: sheet.name || token.nome } : token
-						)
-					);
-					initiativeAdvantageByActor = {
-						...initiativeAdvantageByActor,
-						[actorId]: character.sheet.initiativeAdvantage ?? false
-					};
-				}
-			})
-			.catch(() => {
-				if (!cancelled)
-					initiativeAdvantageByActor = { ...initiativeAdvantageByActor, [actorId]: false };
-			});
-		return () => (cancelled = true);
-	});
 	$effect(() => setDiceColor(personagemSelecionado?.cor));
-	let atoresNPC = $state<NPC[]>([]);
-	let npcSelecionado = $derived(
-		personagemSelecionado?.actorId
-			? atoresNPC.find((npc) => npc.id === personagemSelecionado.actorId)
-			: undefined
-	);
-	let persistenceError = $state('');
-	let hitPointsUpdating = $state(false);
-	let sceneSocket: SceneSocket | null = null;
 	const tokenController = new SceneTokenController({
 		session: () => session,
 		sceneId: () => scene.id,
 		isGM: () => isGM,
 		publish: (signal) => sceneSocket?.publishTokenUpdated(signal)
 	});
-	const mapSheet = () =>
-		characterSummaryByActor[personagemSelecionado?.actorId ?? ''] ?? createEmptySheet();
+	let mapSheet = () => summaryController.selectedSheet();
 	const normalizedEntryName = (value: string) =>
 		value
 			.normalize('NFD')
@@ -221,143 +166,152 @@
 					(candidate) => normalizedEntryName(candidate) === normalizedEntryName(name)
 				)
 		);
-	const mapCharacterActions = createCharacterCombatActions({
+	const summaryController = createSceneCharacterSummaryController({
 		getContext: () => ({
 			campaignId,
 			sceneId: scene.id,
-			characterId: personagemSelecionado?.actorId ?? null,
 			isGM,
 			session,
 			locale: $appLocale === 'en' ? 'en' : 'pt-BR',
+			selectedToken: personagemSelecionado,
+			selectedTokenIsNPC: Boolean(npcSelecionado),
 			onTokenCreated: () => void carregarTokens()
 		}),
-		getSheet: mapSheet,
-		getCanCastSelectedCharacter: () => Boolean(personagemSelecionado?.isOwned),
-		getCanDisplaySelectedCharacter: () => Boolean(isGM || personagemSelecionado?.isOwned),
-		setSheet: (next) => {
-			const actorId = personagemSelecionado?.actorId;
-			if (actorId) characterSummaryByActor = { ...characterSummaryByActor, [actorId]: next };
-		},
-		getResolvedCharacterId: () => personagemSelecionado?.actorId ?? null,
-		getInitiativeTokenId: () => personagemSelecionado?.persistedId ?? null,
-		getActiveConditions: () => personagemSelecionado?.status ?? [],
-		getAttackMode: () => resolveWeaponAttackMode('normal', personagemSelecionado?.status ?? []),
-		isWeapon: (item: InventoryItem) => equipmentCategory(item) === 'weapon',
-		getWeaponRollDetails: (item: InventoryItem, profile?: WeaponAttackProfile) => {
-			const sheet = mapSheet();
-			const classEntry = matchingCharacterEntry('class', sheet.class);
-			const subclassEntry = matchingCharacterEntry('subclass', sheet.subclass);
-			const baseProficiencies = Array.isArray(classEntry?.rules.weaponProficiencies)
-				? classEntry.rules.weaponProficiencies.map(String)
-				: [];
-			const subclassProficiencies = Array.isArray(subclassEntry?.rules.weaponProficiencies)
-				? subclassEntry.rules.weaponProficiencies.map(String)
-				: [];
-			const features = deriveCharacterFeatures(
-				classEntry,
-				subclassEntry,
-				characterCompendiumEntries,
-				sheet.class,
-				sheet.level,
-				sheet.subclass
-			);
-			const feats = sheet.feats
-				.split(/\n|,/)
-				.map((name) => name.trim())
-				.filter(Boolean)
-				.flatMap((name) => {
-					const entry = matchingCharacterEntry('feat', name);
-					return entry ? [{ id: entry.id, name: entry.name, rules: entry.rules }] : [];
-				});
-			const effects = selectedWeaponEffects(
-				item,
-				deriveWeaponEffects(item, features, feats, sheet.inventory)
-			);
-			const defaultAbility = weaponAbility(item);
-			const attackAbility = profile?.attackAbility ?? defaultAbility;
-			const abilityModifier = (ability: keyof CharacterSheet['abilityScores']) =>
-				Math.floor((sheet.abilityScores[ability] - 10) / 2);
-			const adjustment = abilityModifier(attackAbility) - abilityModifier(defaultAbility);
-			const proficient = weaponProficiencyStatus(
-				item,
-				baseProficiencies,
-				subclassProficiencies,
-				subclassEntry?.rules
-			);
-			return {
-				attackBonus:
-					weaponAttackBonusTotal(
-						item,
-						sheet.abilityScores,
-						proficient ? sheet.proficiencyBonus : 0,
-						effects
-					) +
-					adjustment +
-					(profile?.attackBonus ?? 0),
-				damageBonus:
-					weaponDamageBonusTotal(item, sheet.abilityScores, effects) +
-					adjustment +
-					(profile?.damageBonus ?? 0),
-				damageFormula: profile?.damage || String(item.rules.damage ?? ''),
-				stableWeaponKey: item.entryId || item.name,
-				profileKey: profile?.id ?? 'default',
-				damageType: String(item.rules.damageType ?? ''),
-				minimumDamageDie: profile?.greatWeaponFighting ? 3 : undefined
-			};
-		},
-		getAbilityModifier: (ability) => Math.floor((mapSheet().abilityScores[ability] - 10) / 2),
-		getPreviousLevel: () => mapSheet().level,
-		setPreviousLevel: () => {},
-		setLevelChoiceOpen: () => {},
-		getSpellPresentation: (spell: Spell) => {
-			const entry = spell.entryId
-				? characterCompendiumEntries.find((candidate) => candidate.id === spell.entryId)
-				: undefined;
-			const rules = entry?.rules ?? {};
-			const description = String(
-				rules.description ?? spell.description ?? entry?.summary ?? spell.notes
-			).trim();
-			const isEnglish = $appLocale === 'en';
-			return {
-				title:
-					!isEnglish && entry?.translations['pt-BR']?.trim()
-						? entry.translations['pt-BR']
-						: spell.name,
-				description: localizedSpellField(spell, entry, 'description', description, $appLocale)
-			};
-		},
-		setMessage: (message) => (persistenceError = message),
-		getSaving: () => false,
-		syncTokenSoon: () => void carregarTokens(),
-		syncProgression: () => {},
-		save: async () => undefined,
-		beginExternalSaving: () => null,
-		isRevisionCurrent: () => false,
-		finishExternalSaving: () => {},
-		rollMyCharacter,
-		rollDice,
-		rollTokenInitiative,
+		getCharacterForGM,
+		getMyCharacter,
+		updateHitPoints: (tokenId, update) => tokenController.updateHitPoints(tokenId, update),
 		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
-		restCharacter,
-		castMySpell,
-		saveSpellDisplay: (activeSession, activeCampaignId, characterName, spellName, description) =>
-			publishSpellToChat(activeSession, activeCampaignId, characterName, spellName, description),
-		savePresentation,
+		rollInitiative: rollTokenInitiative,
+		updateCharacters: (update) => personagens.update(update),
+		rememberToken: (token) => tokenController.remember(token),
+		clearSelection: () => (tokenSelecionadoId = null),
 		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),
 		setDiceOverlay: (result) => diceOverlay.set(result),
-		beginDiceBatch,
-		finishDiceBatch,
 		publishChatUpdated: () => sceneSocket?.publishChatUpdated(),
-		publishCombatUpdated: () => sceneSocket?.publishCombatUpdated(),
-		publishPresentationUpdated: (data) => sceneSocket?.publishPresentationUpdated(data)
+		publishRefresh: () => sceneSocket?.publishRefresh(),
+		setMessage: (message) => (persistenceError = message),
+		combat: {
+			getAttackMode: () => resolveWeaponAttackMode('normal', personagemSelecionado?.status ?? []),
+			isWeapon: (item: InventoryItem) => equipmentCategory(item) === 'weapon',
+			getWeaponRollDetails: (item: InventoryItem, profile?: WeaponAttackProfile) => {
+				const sheet = mapSheet();
+				const classEntry = matchingCharacterEntry('class', sheet.class);
+				const subclassEntry = matchingCharacterEntry('subclass', sheet.subclass);
+				const baseProficiencies = Array.isArray(classEntry?.rules.weaponProficiencies)
+					? classEntry.rules.weaponProficiencies.map(String)
+					: [];
+				const subclassProficiencies = Array.isArray(subclassEntry?.rules.weaponProficiencies)
+					? subclassEntry.rules.weaponProficiencies.map(String)
+					: [];
+				const features = deriveCharacterFeatures(
+					classEntry,
+					subclassEntry,
+					characterCompendiumEntries,
+					sheet.class,
+					sheet.level,
+					sheet.subclass
+				);
+				const feats = sheet.feats
+					.split(/\n|,/)
+					.map((name) => name.trim())
+					.filter(Boolean)
+					.flatMap((name) => {
+						const entry = matchingCharacterEntry('feat', name);
+						return entry ? [{ id: entry.id, name: entry.name, rules: entry.rules }] : [];
+					});
+				const effects = selectedWeaponEffects(
+					item,
+					deriveWeaponEffects(item, features, feats, sheet.inventory)
+				);
+				const defaultAbility = weaponAbility(item);
+				const attackAbility = profile?.attackAbility ?? defaultAbility;
+				const abilityModifier = (ability: keyof CharacterSheet['abilityScores']) =>
+					Math.floor((sheet.abilityScores[ability] - 10) / 2);
+				const adjustment = abilityModifier(attackAbility) - abilityModifier(defaultAbility);
+				const proficient = weaponProficiencyStatus(
+					item,
+					baseProficiencies,
+					subclassProficiencies,
+					subclassEntry?.rules
+				);
+				return {
+					attackBonus:
+						weaponAttackBonusTotal(
+							item,
+							sheet.abilityScores,
+							proficient ? sheet.proficiencyBonus : 0,
+							effects
+						) +
+						adjustment +
+						(profile?.attackBonus ?? 0),
+					damageBonus:
+						weaponDamageBonusTotal(item, sheet.abilityScores, effects) +
+						adjustment +
+						(profile?.damageBonus ?? 0),
+					damageFormula: profile?.damage || String(item.rules.damage ?? ''),
+					stableWeaponKey: item.entryId || item.name,
+					profileKey: profile?.id ?? 'default',
+					damageType: String(item.rules.damageType ?? ''),
+					minimumDamageDie: profile?.greatWeaponFighting ? 3 : undefined
+				};
+			},
+			getAbilityModifier: (ability) => Math.floor((mapSheet().abilityScores[ability] - 10) / 2),
+			getPreviousLevel: () => mapSheet().level,
+			setPreviousLevel: () => {},
+			setLevelChoiceOpen: () => {},
+			getSpellPresentation: (spell: Spell) => {
+				const entry = spell.entryId
+					? characterCompendiumEntries.find((candidate) => candidate.id === spell.entryId)
+					: undefined;
+				const rules = entry?.rules ?? {};
+				const description = String(
+					rules.description ?? spell.description ?? entry?.summary ?? spell.notes
+				).trim();
+				const isEnglish = $appLocale === 'en';
+				return {
+					title:
+						!isEnglish && entry?.translations['pt-BR']?.trim()
+							? entry.translations['pt-BR']
+							: spell.name,
+					description: localizedSpellField(spell, entry, 'description', description, $appLocale)
+				};
+			},
+			getSaving: () => false,
+			syncTokenSoon: () => void carregarTokens(),
+			syncProgression: () => {},
+			save: async () => undefined,
+			beginExternalSaving: () => null,
+			isRevisionCurrent: () => false,
+			finishExternalSaving: () => {},
+			rollMyCharacter,
+			rollDice,
+			restCharacter,
+			castMySpell,
+			saveSpellDisplay: (activeSession, activeCampaignId, characterName, spellName, description) =>
+				publishSpellToChat(activeSession, activeCampaignId, characterName, spellName, description),
+			savePresentation,
+			beginDiceBatch,
+			finishDiceBatch,
+			publishCombatUpdated: () => sceneSocket?.publishCombatUpdated(),
+			publishPresentationUpdated: (data) => sceneSocket?.publishPresentationUpdated(data)
+		}
 	});
+	const mapCharacterActions = summaryController.combatActions;
+	let characterSummaryByActor = $derived(summaryController.state.sheetsByActor);
+	let initiativeAdvantageByActor = $derived(summaryController.state.initiativeAdvantageByActor);
+	let hitPointsUpdating = $derived(summaryController.state.hitPointsUpdating);
 	$effect(() => {
-		void personagemSelecionado?.actorId;
-		void scene.id;
-		void campaignId;
-		void isGM;
+		void session.user.id;
 		void session.access_token;
-		mapCharacterActions.updateContext();
+		void campaignId;
+		void scene.id;
+		void isGM;
+		void personagemSelecionado?.id;
+		void personagemSelecionado?.actorId;
+		void personagemSelecionado?.isOwned;
+		void npcSelecionado?.id;
+		summaryController.syncContext();
+		void summaryController.loadSelectedCharacter();
 	});
 	let motor = $state<GameEngine | null>(null);
 	$effect(() => {
@@ -969,43 +923,18 @@
 			window.clearInterval(cameraPersistenceTimer);
 			if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
 			tokenSync.dispose();
+			summaryController.cleanup();
 			motor?.destroy();
 			motor = null;
 		};
 	});
 
-	async function salvarHp(update: { hpCurrent: number } | { delta: number }) {
-		const selected = personagemSelecionado;
-		if (!selected?.persistedId || (!isGM && !selected.isOwned) || hitPointsUpdating) return;
-		const operationSceneId = scene.id;
-		const operationUserId = session.user.id;
-		hitPointsUpdating = true;
-		persistenceError = '';
-		try {
-			const persisted = await tokenController.updateHitPoints(selected.persistedId, update);
-			if (scene.id !== operationSceneId || session.user.id !== operationUserId) return;
-			const updated = toSceneCharacter(persisted, selected.id, selected.fotoUrl);
-			tokenController.remember(updated);
-			personagens.update((items) => upsertSceneCharacter(items, updated));
-		} catch (error) {
-			persistenceError =
-				error instanceof Error
-					? error.message
-					: $appLocale === 'en'
-						? 'Could not update hit points.'
-						: 'Não foi possível atualizar os pontos de vida.';
-		} finally {
-			hitPointsUpdating = false;
-		}
-	}
-
 	function alterarHp(delta: number) {
-		void salvarHp({ delta });
+		summaryController.changeHitPoints(delta);
 	}
 
 	function definirHp(valor: string) {
-		const update = parseHitPointInput(valor);
-		if (update) void salvarHp(update);
+		summaryController.setHitPointsFromInput(valor);
 	}
 
 	function alterarVisibilidade(campo: keyof TokenVisibility, marcado: boolean) {
@@ -1037,68 +966,10 @@
 		}
 	}
 	async function rollSelectedInitiative() {
-		if (!personagemSelecionado?.persistedId || (!isGM && !personagemSelecionado.isOwned)) return;
-		try {
-			const result = await rollTokenInitiative(
-				session,
-				scene.id,
-				personagemSelecionado.persistedId
-			);
-			initiativeAdvantageByActor = {
-				...initiativeAdvantageByActor,
-				[personagemSelecionado.actorId ?? '']: false
-			};
-			personagens.update((tokens) =>
-				tokens.map((token) =>
-					token.persistedId === result.tokenId ? { ...token, iniciativa: result.initiative } : token
-				)
-			);
-			const rollMessageId = crypto.randomUUID();
-			$diceOverlay = {
-				expression: `${personagemSelecionado.nome} · iniciativa${result.advantage ? ' · vantagem' : ''}`,
-				notation: `${result.rolls?.length ?? 1}d20${result.bonus ? `${result.bonus >= 0 ? '+' : ''}${result.bonus}` : ''}`,
-				total: result.initiative,
-				dice: result.rolls?.length ? result.rolls : [result.roll],
-				nonce: rollMessageId
-			};
-			$chatMensagens = [
-				...$chatMensagens,
-				{
-					id: rollMessageId,
-					autor: personagemSelecionado.nome,
-					texto: `Iniciativa: ${result.roll} ${result.bonus >= 0 ? '+' : ''}${result.bonus} = ${result.initiative}`,
-					tipo: 'rolagem',
-					canal: 'combat',
-					detalhesRolagem: {
-						expressao: `1d20${result.bonus >= 0 ? '+' : ''}${result.bonus}`,
-						dados: [result.roll],
-						modificador: result.bonus,
-						total: result.initiative
-					}
-				}
-			];
-			sceneSocket?.publishChatUpdated();
-			sceneSocket?.publishRefresh();
-		} catch (error) {
-			persistenceError =
-				error instanceof Error ? error.message : 'Não foi possível rolar a iniciativa.';
-		}
+		await summaryController.rollSelectedInitiative();
 	}
 	async function toggleSelectedInitiativeAdvantage(enabled: boolean) {
-		const actorId = personagemSelecionado?.actorId;
-		if (!actorId || (!isGM && !personagemSelecionado?.isOwned)) return;
-		try {
-			const result = await setCharacterInitiativeAdvantage(session, campaignId, actorId, enabled);
-			initiativeAdvantageByActor = {
-				...initiativeAdvantageByActor,
-				[actorId]: result.enabled
-			};
-		} catch (error) {
-			persistenceError =
-				error instanceof Error
-					? error.message
-					: 'Não foi possível atualizar a vantagem da iniciativa.';
-		}
+		await summaryController.setSelectedInitiativeAdvantage(enabled);
 	}
 	async function rolarAcaoDeNPC(action: NPC['sheet']['actions'][number]) {
 		if (!isGM || !npcSelecionado || action.toHit === undefined) return;
