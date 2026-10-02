@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
+	import { movablePanel } from '$lib/utils/movablePanel';
 	import { createThumbnail, optimizeImage } from '$lib/services/imageProcessing';
 	import type { Session } from '@supabase/supabase-js';
 	import {
@@ -130,6 +131,7 @@
 		docked = false,
 		hidden = false,
 		standalone = false,
+		focusRequest = 0,
 		onclose,
 		onTokenCreated
 	}: {
@@ -142,6 +144,7 @@
 		docked?: boolean;
 		hidden?: boolean;
 		standalone?: boolean;
+		focusRequest?: number;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -160,8 +163,16 @@
 	let newSpellName = $state('');
 	let newSpellLevel = $state(0);
 	let minimized = $state(false);
+	let sheetPanelElement = $state<HTMLElement>();
+	let panelZIndex = $state(9);
 	$effect(() => {
 		if (docked) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
+	});
+	$effect(() => {
+		if (!docked || focusRequest === 0) return;
+		minimized = false;
+		panelZIndex = 30;
+		void tick().then(() => sheetPanelElement?.focus());
 	});
 	let previousLevel = $state(1);
 	let levelChoiceOpen = $state(false);
@@ -949,12 +960,20 @@
 	class:docked
 	class:standalone
 	class:hidden
+	style:z-index={panelZIndex}
 	role="presentation"
 	onclick={(event) => {
 		if (event.currentTarget === event.target) onclose();
 	}}
 >
 	<section
+		bind:this={sheetPanelElement}
+		use:movablePanel={{
+			storageKey: sheetPanelKey,
+			handleSelector: 'header',
+			minTop: 56,
+			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
+		}}
 		use:resizablePanel={{
 			collapsed: docked && minimized,
 			headerSelector: 'header',
@@ -963,9 +982,16 @@
 		}}
 		class="sheet"
 		class:minimized
+		tabindex="-1"
 		aria-label="Ficha de personagem D&D 2024"
 	>
-		<header>
+		<header
+			role="toolbar"
+			tabindex="0"
+			aria-label={$appLocale === 'en'
+				? 'Move character sheet with pointer or arrow keys'
+				: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
+		>
 			<div class="sheet-heading">
 				<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
 				<div>
@@ -1251,14 +1277,18 @@
 	}
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
-		top: 5.8rem;
+		top: var(--mm-panel-navigation-bottom, 5.8rem);
 		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.55rem);
-		left: 1rem;
+		right: 1rem;
+		left: auto;
 		width: min(780px, calc(100vw - 2rem));
 		min-width: min(640px, calc(100vw - 2rem));
 		max-width: calc(100vw - 1rem);
-		min-height: 320px;
-		max-height: calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 4.25rem));
+		min-height: min(320px, var(--mm-panel-available-height, 320px));
+		max-height: var(
+			--mm-panel-available-height,
+			calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 4.25rem))
+		);
 		resize: both;
 		overflow: auto;
 		pointer-events: auto;
@@ -1311,6 +1341,18 @@
 		justify-content: space-between;
 		padding: 1rem 1.25rem;
 		border-bottom: 1px solid #403536;
+	}
+	.sheet > header {
+		cursor: move;
+		touch-action: none;
+	}
+	.sheet > header button {
+		cursor: pointer;
+		touch-action: manipulation;
+	}
+	.sheet > header:focus-visible {
+		outline: 2px solid #e0b86f;
+		outline-offset: -2px;
 	}
 	.sheet > footer {
 		position: relative;
@@ -1479,7 +1521,14 @@
 		.sheet-backdrop.docked .sheet {
 			bottom: calc(var(--mm-audio-footer-offset, 6.5rem) + 0.55rem);
 			height: auto;
-			max-height: calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 6.5rem));
+			max-height: var(
+				--mm-panel-available-height,
+				calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 6.5rem))
+			);
+			min-height: min(320px, var(--mm-panel-available-height, 320px));
+			left: 0;
+			right: 0;
+			max-width: 100vw;
 		}
 	}
 </style>

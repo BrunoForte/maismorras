@@ -25,6 +25,7 @@
 	} from '$lib/stores/diceOverlayStore';
 	import { appLocale } from '$lib/stores/locale';
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
+	import { movablePanel } from '$lib/utils/movablePanel';
 
 	let { campaignId, session }: { campaignId: string; session: Session } = $props();
 	let open = $state(!(resizablePanelPreference('campaign-chat')?.collapsed ?? false));
@@ -222,18 +223,32 @@
 </script>
 
 <aside
+	use:movablePanel={{
+		storageKey: `campaign-chat:${campaignId}`,
+		handleSelector: '.chat-titlebar',
+		minTop: 56,
+		avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
+	}}
 	use:resizablePanel={{
 		collapsed: !open,
 		headerSelector: '.chat-titlebar',
 		minWidth: 190,
-		storageKey: 'campaign-chat'
+		storageKey: `campaign-chat:${campaignId}`
 	}}
 	class:closed={!open}
 	class:docked
 	class="floating-chat"
 	aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}
 >
-	<div class="chat-titlebar">
+	<div
+		class="chat-titlebar"
+		role="toolbar"
+		tabindex="0"
+		aria-label={$appLocale === 'en'
+			? 'Move chat with pointer or arrow keys'
+			: 'Mova o chat pelo cabeçalho ou pelas setas do teclado'}
+	>
+		<span class="panel-grip" aria-hidden="true">⠿</span>
 		<button class="chat-toggle" onclick={() => (open = !open)} aria-expanded={open}>
 			<span>◌</span>{open
 				? $appLocale === 'en'
@@ -392,7 +407,7 @@
 		width: min(350px, 82vw);
 		height: min(70vh, calc(100dvh - 10.75rem));
 		min-height: 170px;
-		max-height: calc(100dvh - 10.75rem);
+		max-height: var(--mm-panel-available-height, calc(100dvh - 10.75rem));
 		max-width: calc(100vw - 1rem);
 		resize: both;
 		border-radius: 0 12px 12px 0;
@@ -438,9 +453,23 @@
 		font-size: 1rem;
 	}
 	.chat-titlebar {
+		cursor: move;
+		touch-action: none;
 		display: flex;
 		align-items: stretch;
 		min-width: 0;
+	}
+	.chat-titlebar:focus-visible {
+		outline: 2px solid #e0b86f;
+		outline-offset: -2px;
+	}
+	.panel-grip {
+		display: grid;
+		place-items: center;
+		flex: 0 0 1.35rem;
+		color: #a99c91;
+		font-size: 0.9rem;
+		cursor: move;
 	}
 	.dock-toggle {
 		border: 0;
@@ -632,7 +661,7 @@
 			width: min(88vw, 350px);
 			height: min(65vh, calc(100dvh - 10.5rem));
 			min-height: 160px;
-			max-height: calc(100dvh - 10.5rem);
+			max-height: var(--mm-panel-available-height, calc(100dvh - 10.5rem));
 		}
 	}
 	.expand {

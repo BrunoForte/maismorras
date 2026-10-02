@@ -13,6 +13,15 @@ export type DiceOverlayResult = {
 	color?: string;
 	slot?: string;
 };
+export const MAX_PHYSICS_DICE_PER_ROLL = 10;
+
+/** Large authoritative results stay visible without creating an expensive physics pile. */
+export function requiresLightweightDice(
+	rolls: readonly Pick<DiceOverlayResult, 'dice'>[]
+): boolean {
+	return rolls.some((roll) => roll.dice.length > MAX_PHYSICS_DICE_PER_ROLL);
+}
+
 const state = writable<DiceOverlayResult | null>(null);
 export const activeDiceRolls = writable<DiceOverlayResult[]>([]);
 export const completedDiceRollNonces = writable<string[]>([]);

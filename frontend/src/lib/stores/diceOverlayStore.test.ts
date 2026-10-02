@@ -13,7 +13,8 @@ import {
 	setDiceRendererMode,
 	setDiceColor,
 	diceResultDisplayDuration,
-	reportDiceRendererFailure
+	reportDiceRendererFailure,
+	requiresLightweightDice
 } from './diceOverlayStore';
 
 describe('dice renderer preferences', () => {
@@ -72,5 +73,13 @@ describe('dice renderer preferences', () => {
 		expect(diceResultDisplayDuration(1)).toBe(5000);
 		expect(diceResultDisplayDuration(10)).toBe(14000);
 		expect(diceResultDisplayDuration(20)).toBe(14000);
+	});
+
+	it('uses lightweight visuals above ten dice without changing their authoritative result data', () => {
+		const maximumPhysicsRoll = { dice: Array(10).fill(4) };
+		const largeRoll = { dice: Array(100).fill(6) };
+		expect(requiresLightweightDice([maximumPhysicsRoll])).toBe(false);
+		expect(requiresLightweightDice([largeRoll])).toBe(true);
+		expect(largeRoll.dice).toHaveLength(100);
 	});
 });

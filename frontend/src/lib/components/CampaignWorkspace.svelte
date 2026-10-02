@@ -136,7 +136,8 @@
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
-	let sheetDocked = $state(false);
+	let sheetDocked = $state(true);
+	let sheetFocusRequest = $state(0);
 	let workspaceTab = $state<WorkspaceTab>('map');
 	$effect(() => {
 		if (activeCampaign && !canAccessWorkspaceTab(workspaceTab, activeCampaign.role))
@@ -428,15 +429,17 @@
 			loadingScene = false;
 		}
 	}
-	function openMySheet(docked = false) {
+	function openMySheet(docked = true) {
 		editingCharacter = null;
 		sheetDocked = docked;
 		sheetOpen = true;
+		sheetFocusRequest += 1;
 	}
-	function openCharacter(characterId: string, ownerName: string, docked = false) {
+	function openCharacter(characterId: string, ownerName: string, docked = true) {
 		editingCharacter = { id: characterId, ownerName };
 		sheetDocked = docked;
 		sheetOpen = true;
+		sheetFocusRequest += 1;
 	}
 	function openCharacterWindow(characterId: string) {
 		if (!activeCampaign) return;
@@ -792,22 +795,23 @@
 			>
 				{$appLocale === 'en' ? 'Loading character sheet…' : 'Carregando ficha…'}
 			</p>{/if}
-		{#if sheetOpen && CharacterSheetComponent && activeCampaign && (activeScene || !editingCharacter)}<CharacterSheetComponent
-				campaignId={activeCampaign.id}
-				sceneId={activeScene?.id ?? ''}
-				{session}
-				isGM={activeCampaign.role === 'gm'}
-				characterId={editingCharacter?.id}
-				characterOwnerName={editingCharacter?.ownerName ?? ''}
-				docked={sheetDocked}
-				hidden={sheetDocked && workspaceTab !== 'map'}
-				standalone={false}
-				onclose={() => {
-					sheetOpen = false;
-					sheetDocked = false;
-				}}
-				onTokenCreated={() => void reloadActiveScene()}
-			/>{/if}
+		{#if sheetOpen && CharacterSheetComponent && activeCampaign && (activeScene || !editingCharacter)}{#key `${activeCampaign.id}:${editingCharacter?.id ?? 'mine'}`}<CharacterSheetComponent
+					campaignId={activeCampaign.id}
+					sceneId={activeScene?.id ?? ''}
+					{session}
+					isGM={activeCampaign.role === 'gm'}
+					characterId={editingCharacter?.id}
+					characterOwnerName={editingCharacter?.ownerName ?? ''}
+					docked={sheetDocked}
+					focusRequest={sheetFocusRequest}
+					hidden={false}
+					standalone={false}
+					onclose={() => {
+						sheetOpen = false;
+						sheetDocked = false;
+					}}
+					onTokenCreated={() => void reloadActiveScene()}
+				/>{/key}{/if}
 		{#if participantsOpen && ParticipantsPanelComponent && activeScene}<ParticipantsPanelComponent
 				campaignId={activeCampaign.id}
 				sceneId={activeScene.id}

@@ -10,13 +10,15 @@
 		diceResultDisplayDuration,
 		reportDiceAnimationComplete,
 		restoreDicePreference,
-		setDiceRendererMode
+		setDiceRendererMode,
+		requiresLightweightDice
 	} from '$lib/stores/diceOverlayStore';
 	let { viewport = false }: { viewport?: boolean } = $props();
 	type DiceBoxComponent = typeof import('./DiceBox3D.svelte').default;
 	let DiceBox3DComponent = $state<DiceBoxComponent | null>(null);
 	let visible = $state(false);
 	let retrying = $state(false);
+	let lightweightRolls = $derived(requiresLightweightDice($activeDiceRolls));
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -24,7 +26,13 @@
 	void $diceRendererEffective;
 	restoreDicePreference();
 	$effect(() => {
-		if ($diceRendererEffective === '2d' || !$activeDiceRolls.length || DiceBox3DComponent) return;
+		if (
+			$diceRendererEffective === '2d' ||
+			lightweightRolls ||
+			!$activeDiceRolls.length ||
+			DiceBox3DComponent
+		)
+			return;
 		void import('./DiceBox3D.svelte').then((module) => {
 			DiceBox3DComponent = module.default;
 		});
@@ -37,7 +45,7 @@
 		visible = false;
 		if (timer) clearTimeout(timer);
 		if (fallbackTimer) clearTimeout(fallbackTimer);
-		if ($diceRendererEffective === '2d') {
+		if ($diceRendererEffective === '2d' || lightweightRolls) {
 			// The lightweight visual is a short animation; do not block indefinitely.
 			fallbackTimer = setTimeout(() => {
 				reportDiceAnimationComplete(
@@ -79,9 +87,9 @@
 	}
 </script>
 
-{#if $diceRendererEffective !== '2d' && DiceBox3DComponent}
+{#if $diceRendererEffective !== '2d' && !lightweightRolls && DiceBox3DComponent}
 	<DiceBox3DComponent {viewport} />
-{:else if $diceRendererEffective !== '2d' && $activeDiceRolls.length}
+{:else if $diceRendererEffective !== '2d' && !lightweightRolls && $activeDiceRolls.length}
 	<div class="dice-loading" role="status" aria-live="polite">Carregando dados 3D…</div>
 {/if}
 {#if $diceRendererError}
@@ -96,7 +104,9 @@
 	<div class="dice-overlay" aria-live="polite" aria-label="Rolagens recentes">
 		{#each $activeDiceRolls as result (result.nonce ?? `${result.expression}-${result.total}-${result.dice.join(',')}`)}<article
 			>
-				{#if $diceRendererEffective === '2d'}<div class={`die d${sides(result.expression)}`}>
+				{#if $diceRendererEffective === '2d' || lightweightRolls}<div
+						class={`die d${sides(result.expression)}`}
+					>
 						d{sides(result.expression)}
 					</div>{/if}
 				<div class="result">

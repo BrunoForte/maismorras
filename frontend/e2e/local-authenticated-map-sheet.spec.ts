@@ -85,6 +85,11 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			const chat = page.locator('.floating-chat');
 			await test.step('resize, minimize and restore table chat', async () => {
 				await setExpandedSize(chat, 480, 390);
+				const beforeMove = (await chat.boundingBox())!;
+				await dragPanel(page, chat.locator('.panel-grip'), 42, 28);
+				await expect
+					.poll(() => chat.evaluate((node) => node.getBoundingClientRect().left))
+					.toBeGreaterThan(beforeMove.x + 25);
 				await assertAboveAudioFooter(page, chat);
 				await collapseAndRestore(
 					chat,
@@ -101,7 +106,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player restores chat and owned map sheet after tab switches; GM actors restore after remount', async ({
+	test('player restores chat and keeps the owned map sheet floating across tab switches', async ({
 		browser
 	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -133,7 +138,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.poll(() => chat.evaluate((node) => node.getBoundingClientRect().width))
 					.toBeGreaterThan(expandedWidth - 10);
 			});
-			await test.step('minimize the owned sheet, hide it off-map and restore it on return', async () => {
+			await test.step('minimize the owned sheet while changing tabs and restore its expanded size', async () => {
 				await selectTokenAtDefaultPosition(player);
 				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
 				const sheet = player.locator('.sheet-backdrop.docked .sheet');
@@ -151,7 +156,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await expect(sheet).toHaveCSS('resize', 'none');
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(sheet).toBeHidden();
+				await expect(sheet).toBeVisible();
 				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
 				const restoredSheet = player.locator('.sheet-backdrop.docked .sheet');
 				await expect(restoredSheet).toBeVisible();
@@ -571,6 +576,205 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await fixture?.close();
 		}
 	});
+
+	test('player sheet from Sheets remains movable and non-blocking; quick dice validate quantities and stay usable', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare a saved player sheet and open it from the Sheets tab', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: 'Ficha flutuante E2E',
+					hitPointsCurrent: 10,
+					hitPointsMax: 10
+				});
+				await fixture.createCharacterToken(character.id);
+				await fixture.player.goto(`/?campaign=${fixture.campaignId}&scene=${fixture.sceneId}`);
+				await fixture.player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await fixture.player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				const sheet = fixture.player.locator('.sheet-backdrop.docked .sheet');
+				await expect(sheet).toBeVisible({ timeout: 20_000 });
+				await fixture.player.getByPlaceholder('Nome do personagem').fill('Ficha persistida E2E');
+				await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+				await expect
+					.poll(async () => {
+						const response = await fixture!.playerApi.get(
+							`/api/v1/campaigns/${fixture!.campaignId}/character`
+						);
+						return ((await response.json()) as { sheet: { name: string } }).sheet.name;
+					})
+					.toBe('Ficha persistida E2E');
+			});
+			const player = fixture!.player;
+			const sheet = player.locator('.sheet-backdrop.docked .sheet');
+			await test.step('move the panel by its title bar and navigate without dismissing it', async () => {
+				const before = (await sheet.boundingBox())!;
+				const title = (await sheet.locator('header').boundingBox())!;
+				await player.mouse.move(title.x + title.width * 0.45, title.y + title.height / 2);
+				await player.mouse.down();
+				await player.mouse.move(title.x + title.width * 0.45 - 45, title.y + title.height / 2 + 32);
+				await player.mouse.up();
+				await expect
+					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().top))
+					.toBeGreaterThan(before.y + 15);
+				const beforeResize = (await sheet.boundingBox())!;
+				await player.mouse.move(
+					beforeResize.x + beforeResize.width - 4,
+					beforeResize.y + beforeResize.height - 4
+				);
+				await player.mouse.down();
+				await player.mouse.move(
+					beforeResize.x + beforeResize.width + 32,
+					beforeResize.y + beforeResize.height + 24,
+					{ steps: 4 }
+				);
+				await player.mouse.up();
+				await expect
+					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
+					.toBeGreaterThan(beforeResize.width + 15);
+				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(player.locator('canvas').first()).toBeVisible();
+				await expect(sheet).toBeVisible();
+				await expect
+					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
+					.toBeGreaterThan(beforeResize.width + 15);
+				await assertAboveAudioFooter(player, sheet);
+			});
+			await test.step('reject invalid quantities, then roll one, multiple, and one hundred server-authoritative dice', async () => {
+				await player.locator('.table-tools button[title="Dados"]').click();
+				const quantity = player.getByLabel('Quantidade de dados');
+				for (const invalid of ['0', '1.5', '101']) {
+					await quantity.fill(invalid);
+					await expect(player.getByRole('alert')).toContainText('número inteiro de 1 a 100');
+					await expect(player.getByRole('button', { name: `Rolar ${invalid}d6` })).toBeDisabled();
+				}
+				for (const [value, sides, expectedCount] of [
+					['1', 4, 1],
+					['3', 6, 3],
+					['100', 4, 100]
+				] as const) {
+					await quantity.fill(value);
+					const formula = `${value}d${sides}`;
+					const responsePromise = player.waitForResponse((response) => {
+						const request = response.request();
+						return (
+							request.url().includes(`/api/v1/campaigns/${fixture!.campaignId}/events`) &&
+							request.method() === 'POST' &&
+							request.postData()?.includes(`"expression":"${formula}"`) === true
+						);
+					});
+					await player.getByRole('button', { name: `Rolar ${formula}` }).click();
+					const response = await responsePromise;
+					expect(response.ok()).toBeTruthy();
+					const event = (await response.json()) as {
+						payload: { expressao: string; dados: number[]; total: number };
+					};
+					expect(event.payload.expressao).toBe(formula);
+					expect(event.payload.dados).toHaveLength(expectedCount);
+					await expect(
+						player.locator('.floating-chat [data-event-id]').filter({ hasText: formula }).last()
+					).toBeVisible();
+					await expect(player.locator('.dice-overlay').filter({ hasText: formula })).toBeVisible();
+					if (value === '100') {
+						await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+						await expect(sheet).toBeVisible();
+						await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+						await expect(player.locator('canvas').first()).toBeVisible();
+						await player.getByRole('button', { name: 'Minimizar ficha' }).click();
+						const viewport = player.viewportSize()!;
+						await dragPanelTo(player, sheet, sheet.locator('header'), 16, viewport.height - 150);
+						await selectTokenAtDefaultPosition(player);
+						await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+						await expect(sheet).not.toHaveClass(/minimized/);
+						await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
+						await expect(player.locator('.sheet-backdrop.docked .sheet')).toHaveCount(1);
+						await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
+						await expect(player.locator('.sheet-backdrop.docked .sheet')).toHaveCount(0);
+						await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+						await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+						await expect(player.locator('.sheet-backdrop.docked .sheet header h2')).toHaveText(
+							'Ficha persistida E2E'
+						);
+					}
+				}
+			});
+			await test.step('GM also uses quantity one and the maximum without client-side face generation', async () => {
+				const gm = fixture!.gm;
+				await openMap(gm, fixture!.campaignId, fixture!.sceneId);
+				await gm.locator('.table-tools button[title="Dados"]').click();
+				const quantity = gm.getByLabel('Quantidade de dados');
+				for (const [value, formula] of [
+					['1', '1d20'],
+					['100', '100d6']
+				] as const) {
+					await quantity.fill(value);
+					const responsePromise = gm.waitForResponse((response) => {
+						const request = response.request();
+						return (
+							request.url().includes(`/api/v1/campaigns/${fixture!.campaignId}/events`) &&
+							request.method() === 'POST' &&
+							request.postData()?.includes(`"expression":"${formula}"`) === true
+						);
+					});
+					await gm.getByRole('button', { name: `Rolar ${formula}` }).click();
+					const response = await responsePromise;
+					expect(response.ok()).toBeTruthy();
+					const event = (await response.json()) as {
+						payload: { expressao: string; dados: number[] };
+					};
+					expect(event.payload.expressao).toBe(formula);
+					expect(event.payload.dados).toHaveLength(Number(value));
+					await expect(
+						gm.locator('.floating-chat [data-event-id]').filter({ hasText: formula }).last()
+					).toBeVisible();
+				}
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('GM can replace an open floating sheet with the different requested character', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare two authorized sheets and open the first from the campaign roster', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				await fixture.createCharacter(fixture.playerUserId, { name: 'Ficha alvo jogador E2E' });
+				await fixture.createCharacter(fixture.gmUserId, { name: 'Ficha alvo narrador E2E' });
+				await fixture.gm.goto(`/?campaign=${fixture.campaignId}&scene=${fixture.sceneId}`);
+				await fixture.gm.getByRole('button', { name: 'Fichas', exact: true }).click();
+				const playerCard = fixture.gm
+					.locator('.sheet-grid article')
+					.filter({ hasText: 'Ficha alvo jogador E2E' });
+				await playerCard.getByRole('button', { name: 'Abrir e editar' }).click();
+				await expect(fixture.gm.locator('.sheet-backdrop.docked .sheet header h2')).toHaveText(
+					'Ficha alvo jogador E2E'
+				);
+			});
+			const gm = fixture!.gm;
+			const sheet = gm.locator('.sheet-backdrop.docked .sheet');
+			await test.step('move the minimized panel away from the roster and request a different sheet', async () => {
+				await gm.getByRole('button', { name: 'Minimizar ficha' }).click();
+				const header = (await sheet.locator('header').boundingBox())!;
+				await gm.mouse.move(header.x + header.width / 2, header.y + header.height / 2);
+				await gm.mouse.down();
+				await gm.mouse.move(16, gm.viewportSize()!.height - 100, { steps: 5 });
+				await gm.mouse.up();
+				const narratorCard = gm
+					.locator('.sheet-grid article')
+					.filter({ hasText: 'Ficha alvo narrador E2E' });
+				await narratorCard.getByRole('button', { name: 'Abrir e editar' }).click();
+				await expect(sheet.locator('header h2')).toHaveText('Ficha alvo narrador E2E');
+				await expect(gm.locator('.sheet-backdrop.docked .sheet')).toHaveCount(1);
+				await expect(sheet).not.toHaveClass(/minimized/);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
 });
 
 async function openMap(page: Page, campaignId: string, sceneId: string) {
@@ -608,6 +812,21 @@ async function setExpandedSize(panel: Locator, width: number, height: number) {
 	await expect
 		.poll(() => panel.evaluate((node) => node.getBoundingClientRect().height))
 		.toBeGreaterThan(height - 10);
+}
+
+async function dragPanel(page: Page, handle: Locator, deltaX: number, deltaY: number) {
+	const handleBox = (await handle.boundingBox())!;
+	const startX = handleBox.x + handleBox.width / 2;
+	const startY = handleBox.y + handleBox.height / 2;
+	await page.mouse.move(startX, startY);
+	await page.mouse.down();
+	await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 4 });
+	await page.mouse.up();
+}
+
+async function dragPanelTo(page: Page, panel: Locator, handle: Locator, left: number, top: number) {
+	const box = (await panel.boundingBox())!;
+	await dragPanel(page, handle, left - box.x, top - box.y);
 }
 
 async function collapseAndRestore(

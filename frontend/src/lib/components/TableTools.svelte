@@ -15,6 +15,7 @@
 	import { connectSceneSocket, type SceneSocket } from '$lib/services/sceneRealtime';
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 	import { appLocale } from '$lib/stores/locale';
+	import { QUICK_DICE_SIDES, quickDiceExpression } from '$lib/utils/quickDice';
 
 	let {
 		campaignId,
@@ -26,10 +27,21 @@
 	let toolsOpen = $state(false);
 	let diceOpen = $state(false);
 	let rolling = $state(false);
+	let diceQuantity = $state('1');
 	let activeTokenId = $state<string | null>(null);
 	let rollingInitiative = $state(false);
 	let sceneSocket: SceneSocket | null = null;
 	let combatants = $derived([...$personagens].sort((a, b) => b.iniciativa - a.iniciativa));
+	let parsedDiceQuantity = $derived(
+		quickDiceExpression(4, diceQuantity) ? Number(diceQuantity) : null
+	);
+	let diceQuantityError = $derived(
+		parsedDiceQuantity === null
+			? $appLocale === 'en'
+				? 'Enter a whole number from 1 to 100.'
+				: 'Informe um número inteiro de 1 a 100.'
+			: ''
+	);
 	async function syncCombat() {
 		try {
 			const combat = await getCombat(session, sceneId);
@@ -99,6 +111,11 @@
 		} finally {
 			rolling = false;
 		}
+	}
+	function rollQuickDie(sides: (typeof QUICK_DICE_SIDES)[number]) {
+		const expression = quickDiceExpression(sides, diceQuantity);
+		if (!expression) return;
+		void roll(expression);
 	}
 	async function nextTurn() {
 		if (!combatants.length) return;
@@ -262,14 +279,34 @@
 		</section>{/if}
 	{#if diceOpen}<section class="dice-popover">
 			<strong>{$appLocale === 'en' ? 'Dice' : 'Dados'}</strong>
+			<label class="dice-quantity" for="quick-dice-quantity">
+				{$appLocale === 'en' ? 'Quantity' : 'Quantidade'}
+				<input
+					id="quick-dice-quantity"
+					aria-label={$appLocale === 'en' ? 'Number of dice' : 'Quantidade de dados'}
+					aria-invalid={diceQuantityError ? 'true' : 'false'}
+					aria-describedby="quick-dice-quantity-error"
+					type="number"
+					inputmode="numeric"
+					min="1"
+					max="100"
+					step="1"
+					bind:value={diceQuantity}
+				/>
+			</label>
+			{#if diceQuantityError}<small
+					id="quick-dice-quantity-error"
+					class="dice-quantity-error"
+					role="alert">{diceQuantityError}</small
+				>{/if}
 			<div class="quick-dice">
-				<button onclick={() => void roll('1d4')}>d4</button><button onclick={() => void roll('1d6')}
-					>d6</button
-				><button onclick={() => void roll('1d8')}>d8</button><button
-					onclick={() => void roll('1d10')}>d10</button
-				><button onclick={() => void roll('1d12')}>d12</button><button
-					onclick={() => void roll('1d20')}>d20</button
-				>
+				{#each QUICK_DICE_SIDES as sides (sides)}
+					<button
+						disabled={Boolean(diceQuantityError) || rolling}
+						aria-label={`${$appLocale === 'en' ? 'Roll' : 'Rolar'} ${diceQuantity}d${sides}`}
+						onclick={() => rollQuickDie(sides)}>d{sides}</button
+					>
+				{/each}
 			</div>
 			<small
 				>{$appLocale === 'en'
@@ -390,6 +427,29 @@
 			600 1rem Georgia,
 			serif;
 	}
+	.dice-quantity {
+		display: grid;
+		grid-template-columns: 1fr 5.5rem;
+		align-items: center;
+		gap: 0.6rem;
+		color: #e8d2aa;
+		font-size: 0.75rem;
+	}
+	.dice-quantity input {
+		min-width: 0;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.4rem 0.5rem;
+		color: #f0cb85;
+		background: #171216;
+		font: inherit;
+	}
+	.dice-quantity input[aria-invalid='true'] {
+		border-color: #d47468;
+	}
+	.dice-popover .dice-quantity-error {
+		color: #ffb2aa;
+	}
 	.dice-popover small {
 		color: #bcae9f;
 		font-size: 0.7rem;
@@ -452,6 +512,10 @@
 	.quick-dice button:hover,
 	.initiative-popover header button:hover {
 		background: #513321;
+	}
+	.quick-dice button:disabled {
+		cursor: not-allowed;
+		opacity: 0.48;
 	}
 	.initiative-popover {
 		max-height: min(62vh, 520px);
