@@ -154,30 +154,42 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 	});
 	let generation = 0;
 	let contextKey = keyFor(deps.getContext());
+	let structuralContextKey = structuralKeyFor(deps.getContext());
 	let lastCriticalWeapon: string | null = null;
 	let lastCriticalAttack: number | null = null;
 
-	function keyFor(context: CharacterCombatContext) {
+	function structuralKeyFor(context: CharacterCombatContext) {
 		return [
 			context.campaignId,
 			context.sceneId,
 			context.characterId ?? '',
 			context.selectionKey ?? '',
 			context.isGM ? 'gm' : 'player',
-			context.session.user.id,
-			context.session.access_token
+			context.session.user.id
 		].join('|');
 	}
 
+	function keyFor(context: CharacterCombatContext) {
+		return `${structuralKeyFor(context)}|${context.session.access_token}`;
+	}
+
 	function updateContext() {
-		const nextKey = keyFor(deps.getContext());
+		const nextContext = deps.getContext();
+		const nextKey = keyFor(nextContext);
 		if (contextKey === nextKey) return;
+		const nextStructuralKey = structuralKeyFor(nextContext);
+		const structuralContextChanged = structuralContextKey !== nextStructuralKey;
 		contextKey = nextKey;
+		structuralContextKey = nextStructuralKey;
 		generation += 1;
+		// A refreshed access token invalidates in-flight work, but does not make
+		// cached sheet choices stale. Only discard transient progress indicators
+		// for requests that can no longer complete in the current session.
 		state.rollingWeaponAction = null;
 		state.rollingAttack = null;
 		state.rollingAttackAction = null;
 		state.castingSpell = null;
+		if (!structuralContextChanged) return;
 		state.spellSlotChoice = {};
 		lastCriticalWeapon = null;
 		lastCriticalAttack = null;

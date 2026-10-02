@@ -109,6 +109,22 @@ describe('scene realtime lifecycle controller', () => {
 		expect(state.connections[1].context).toEqual(nextContext());
 	});
 
+	it('reconnects exactly once with a refreshed access token while keeping scene identity', () => {
+		const state = setup();
+		state.controller.syncContext();
+		const refreshed = makeContext({ accessToken: 'token-b' });
+
+		state.setContext(refreshed);
+		state.controller.syncContext();
+		state.controller.syncContext();
+
+		expect(state.connections).toHaveLength(2);
+		expect(state.connections[0].socket.close).toHaveBeenCalledOnce();
+		expect(state.connections[1].context.session.access_token).toBe('token-b');
+		expect(state.connections[1].context.campaignId).toBe('campaign-a');
+		expect(state.connections[1].context.sceneId).toBe('scene-a');
+	});
+
 	it('ignores messages from a prior scene after context changes', () => {
 		const state = setup();
 		state.controller.syncContext();

@@ -81,7 +81,7 @@ export type SceneCharacterSummaryOperation = {
 /**
  * Owns the selected-token sheet projection and its map actions. Data access is
  * always scoped to the live selection/session; stale loads and actions cannot
- * update a different token after a scene, role, session or selection change.
+ * update a different token after a structural context, session or selection change.
  */
 export function createSceneCharacterSummaryController(
 	dependencies: SceneCharacterSummaryDependencies
@@ -93,6 +93,7 @@ export function createSceneCharacterSummaryController(
 	});
 	let generation = 0;
 	let contextKey = '';
+	let sessionToken = '';
 	let selectionKey = '';
 	let disposed = false;
 
@@ -103,7 +104,6 @@ export function createSceneCharacterSummaryController(
 	function contextIdentity(value: SceneCharacterSummaryContext) {
 		return [
 			value.session.user.id,
-			value.session.access_token,
 			value.campaignId,
 			value.sceneId,
 			value.isGM ? 'gm' : 'player'
@@ -125,18 +125,22 @@ export function createSceneCharacterSummaryController(
 		if (disposed) return;
 		const current = context();
 		const nextContextKey = contextIdentity(current);
+		const nextSessionToken = current.session.access_token;
 		const nextSelectionKey = selectionIdentity(current);
-		if (contextKey && contextKey !== nextContextKey) {
+		const structuralContextChanged = Boolean(contextKey && contextKey !== nextContextKey);
+		const sessionTokenChanged = sessionToken !== nextSessionToken;
+		if (structuralContextChanged) {
 			state.sheetsByActor = {};
 			state.initiativeAdvantageByActor = {};
 			state.hitPointsUpdating = false;
 			dependencies.clearSelection();
 		}
-		if (contextKey !== nextContextKey || selectionKey !== nextSelectionKey) {
+		if (structuralContextChanged || sessionTokenChanged || selectionKey !== nextSelectionKey) {
 			generation += 1;
 			state.hitPointsUpdating = false;
 		}
 		contextKey = nextContextKey;
+		sessionToken = nextSessionToken;
 		selectionKey = nextSelectionKey;
 		combatActions.updateContext();
 	}

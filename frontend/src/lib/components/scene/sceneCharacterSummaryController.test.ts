@@ -96,10 +96,10 @@ function setup(initial: Partial<SceneCharacterSummaryContext> = {}) {
 		ownerId: 'user-a',
 		sheet: gmSheet
 	}));
-	const getMine = vi.fn(async () => ({
+	const getMine = vi.fn(async (session: Session, campaignId: string) => ({
 		id: 'actor-a',
-		campaignId: 'campaign-a',
-		ownerId: 'user-a',
+		campaignId,
+		ownerId: session.user.id,
 		sheet: playerSheet
 	}));
 	const messages = vi.fn();
@@ -229,6 +229,76 @@ describe('scene character summary controller', () => {
 		expect(gm.controller.canViewSelectedCharacter()).toBe(true);
 		expect(gm.controller.canCastSelectedCharacter()).toBe(false);
 	});
+
+	it('preserves the selected token, cached sheet and initiative state when only the access token refreshes', async () => {
+		const test = setup();
+		await test.controller.loadSelectedCharacter();
+		test.controller.state.initiativeAdvantageByActor['actor-a'] = true;
+		const selected = test.deps.getContext().selectedToken;
+		const cachedSheet = test.controller.state.sheetsByActor['actor-a'];
+		const refreshedSession = {
+			user: { id: 'user-a' },
+			access_token: 'session-b'
+		} as Session;
+
+		test.setContext({ session: refreshedSession });
+
+		expect(test.deps.getContext().selectedToken).toBe(selected);
+		expect(test.deps.clearSelection).not.toHaveBeenCalled();
+		expect(test.controller.state.sheetsByActor['actor-a']).toBe(cachedSheet);
+		expect(test.controller.state.initiativeAdvantageByActor['actor-a']).toBe(true);
+
+		await test.controller.loadSelectedCharacter();
+		expect(test.getMine).toHaveBeenCalledOnce();
+		await test.controller.combatActions.castSpell(spell(1), 1);
+		expect(test.cast).toHaveBeenCalledWith(refreshedSession, 'campaign-a', 1, 1);
+	});
+
+	it('ignores a sheet response started with the old token after a session refresh', async () => {
+		const request = deferred<{
+			id: string;
+			campaignId: string;
+			ownerId: string;
+			sheet: CharacterSheet;
+		}>();
+		const test = setup();
+		vi.mocked(test.deps.getMyCharacter).mockReturnValueOnce(request.promise);
+		const staleSession = test.deps.getContext().session;
+		const pending = test.controller.loadSelectedCharacter();
+
+		test.setContext({
+			session: { user: { id: 'user-a' }, access_token: 'session-b' } as Session
+		});
+		request.resolve({ id: 'actor-a', campaignId: 'campaign-a', ownerId: 'user-a', sheet: sheet() });
+		await pending;
+
+		expect(test.controller.state.sheetsByActor['actor-a']).toBeUndefined();
+		expect(test.updateCharacters).not.toHaveBeenCalled();
+		await test.controller.loadSelectedCharacter();
+		expect(test.getMine).toHaveBeenLastCalledWith(test.deps.getContext().session, 'campaign-a');
+		expect(test.getMine.mock.calls[0][0]).toBe(staleSession);
+	});
+
+	it.each([
+		['user', { session: { user: { id: 'user-b' }, access_token: 'session-a' } as Session }],
+		['campaign', { campaignId: 'campaign-b' }],
+		['scene', { sceneId: 'scene-b' }],
+		['role', { isGM: true }]
+	] as const)(
+		'clears cached sheets and selection when the structural %s changes',
+		async (_label, patch) => {
+			const test = setup();
+			test.controller.syncContext();
+			test.controller.state.sheetsByActor['actor-a'] = sheet();
+			test.controller.state.initiativeAdvantageByActor['actor-a'] = true;
+
+			test.setContext(patch);
+
+			expect(test.controller.state.sheetsByActor).toEqual({});
+			expect(test.controller.state.initiativeAdvantageByActor).toEqual({});
+			expect(test.deps.clearSelection).toHaveBeenCalledOnce();
+		}
+	);
 
 	it.each([spell(0), spell(1)])(
 		'does not let a GM cast a third-party spell via the own-sheet route',
