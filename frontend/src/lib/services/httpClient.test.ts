@@ -202,4 +202,52 @@ describe('request timeout', () => {
 		expect(onError.mock.calls[0][0].detail.message).not.toContain('private error');
 		browserWindow.removeEventListener('maismorras:request-error', onError);
 	});
+
+	it.each([
+		{
+			status: 503,
+			code: 'TRANSLATION_NOT_CONFIGURED',
+			message: 'A tradução por IA não está configurada no servidor.'
+		},
+		{
+			status: 503,
+			code: 'TRANSLATION_UNAVAILABLE',
+			message: 'O serviço de tradução está temporariamente indisponível.'
+		},
+		{
+			status: 504,
+			code: 'TRANSLATION_TIMEOUT',
+			message: 'A tradução demorou mais que o esperado.'
+		},
+		{
+			status: 429,
+			code: 'TRANSLATION_RATE_LIMITED',
+			message: 'O serviço de tradução recebeu muitas solicitações.'
+		}
+	])(
+		'explains translation failure $code without provider details',
+		async ({ status, code, message }) => {
+			const onError = vi.fn();
+			const browserWindow = new EventTarget();
+			vi.stubGlobal('window', browserWindow);
+			browserWindow.addEventListener('maismorras:request-error', onError);
+			vi.stubGlobal(
+				'fetch',
+				vi
+					.fn()
+					.mockResolvedValue(
+						new Response(
+							JSON.stringify({ error: { code, message: 'private secret stack at provider.go:7' } }),
+							{ status, headers: { 'Content-Type': 'application/json' } }
+						)
+					)
+			);
+			await expect(
+				request({ access_token: 'token', user: { id: 'user-1' } } as Session, '/translate')
+			).rejects.toMatchObject({ status, message: expect.stringContaining(message) });
+			expect(onError.mock.calls[0][0].detail.message).toContain(message);
+			expect(onError.mock.calls[0][0].detail.message).not.toContain('provider.go');
+			browserWindow.removeEventListener('maismorras:request-error', onError);
+		}
+	);
 });

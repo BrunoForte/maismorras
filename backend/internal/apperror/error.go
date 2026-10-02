@@ -57,6 +57,22 @@ func TranslationProvider(err error) *Error {
 	return &Error{Status: http.StatusBadGateway, Code: "TRANSLATION_PROVIDER_ERROR", Message: "Não foi possível gerar a tradução no provedor externo.", Err: err}
 }
 
+func TranslationNotConfigured() *Error {
+	return &Error{Status: http.StatusServiceUnavailable, Code: "TRANSLATION_NOT_CONFIGURED", Message: "A tradução por IA não está configurada no servidor. Peça ao administrador para conferir as credenciais do provedor."}
+}
+
+func TranslationUnavailable(err error) *Error {
+	return &Error{Status: http.StatusServiceUnavailable, Code: "TRANSLATION_UNAVAILABLE", Message: "O serviço de tradução está temporariamente indisponível. As traduções já salvas foram preservadas; tente novamente mais tarde.", Err: err}
+}
+
+func TranslationTimedOut(err error) *Error {
+	return &Error{Status: http.StatusGatewayTimeout, Code: "TRANSLATION_TIMEOUT", Message: "A tradução demorou mais que o esperado. As traduções já salvas foram preservadas; tente novamente.", Err: err}
+}
+
+func TranslationRateLimited() *Error {
+	return &Error{Status: http.StatusTooManyRequests, Code: "TRANSLATION_RATE_LIMITED", Message: "O serviço de tradução recebeu muitas solicitações. Aguarde um instante antes de tentar novamente."}
+}
+
 func TranslationQuotaExceeded() *Error {
 	return &Error{Status: http.StatusServiceUnavailable, Code: "TRANSLATION_QUOTA_EXCEEDED", Message: "A cota mensal gratuita do serviço de tradução foi atingida."}
 }

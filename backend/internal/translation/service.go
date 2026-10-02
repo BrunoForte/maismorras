@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +25,8 @@ func NewService(client *http.Client, url, apiKey, model string) *Service {
 }
 
 func (s *Service) Enabled() bool { return s.url != "" && s.apiKey != "" && s.model != "" }
+
+func (s *Service) ProviderName() string { return "pollinations_text" }
 
 func (s *Service) Translate(ctx context.Context, fields map[string]string) (map[string]string, error) {
 	if !s.Enabled() {
@@ -58,10 +61,22 @@ func (s *Service) Translate(ctx context.Context, fields map[string]string) (map[
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MaisMorras/1.0)")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("translation provider request: %w", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: %v", ErrTimeout, err)
+		}
+		return nil, fmt.Errorf("%w: %v", ErrProviderUnavailable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode == http.StatusPaymentRequired || resp.StatusCode == 456 {
+			return nil, ErrQuotaExceeded
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, ErrRateLimited
+		}
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, ErrProviderUnavailable
+		}
 		return nil, fmt.Errorf("translation provider returned status %d", resp.StatusCode)
 	}
 	var decoded struct {
@@ -85,17 +100,14 @@ func (s *Service) Translate(ctx context.Context, fields map[string]string) (map[
 	if err = json.Unmarshal([]byte(decoded.Choices[0].Message.Content), &translated); err != nil {
 		return nil, fmt.Errorf("translation provider returned invalid JSON: %w", err)
 	}
-	if len(translated) != len(fields) {
-		return nil, fmt.Errorf("translation provider returned an incomplete field set")
-	}
 	for key := range fields {
 		// PostgreSQL JSONB cannot store U+0000. Some translation responses
 		// occasionally include it in generated text; remove it before the
 		// repository serializes the translation for persistence.
 		translated[key] = strings.ReplaceAll(translated[key], "\x00", "")
-		if strings.TrimSpace(translated[key]) == "" {
-			return nil, fmt.Errorf("translation provider returned an empty translation for %q", key)
-		}
+	}
+	if err := ValidateTranslatedFields(fields, translated); err != nil {
+		return nil, err
 	}
 	return translated, nil
 }

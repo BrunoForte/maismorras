@@ -24,6 +24,7 @@ afterEach(() => {
 	srdTranslationQueue.set({
 		campaignId: null,
 		status: 'idle',
+		retryable: true,
 		total: 0,
 		completed: 0,
 		processed: 0,
@@ -120,5 +121,40 @@ describe('SRD translation queue', () => {
 		expect(snapshot.status).toBe('failed');
 		expect(snapshot.completed).toBe(1);
 		expect(snapshot.error).toBe('provider down');
+	});
+
+	it('does not retry a missing-provider configuration error', async () => {
+		let attempts = 0;
+		const err = new ApiError(503, 'A tradução por IA não está configurada.', {
+			error: { code: 'TRANSLATION_NOT_CONFIGURED', message: 'safe message' }
+		});
+		await startSrdTranslationQueue(
+			'campaign-config',
+			[entry('spell-1')],
+			async () => {
+				attempts += 1;
+				throw err;
+			},
+			(item) => item.name
+		);
+		expect(attempts).toBe(1);
+		expect(get(srdTranslationQueue)).toMatchObject({ status: 'failed', processed: 1 });
+	});
+
+	it('does not retry quota exhaustion as a transient provider outage', async () => {
+		let attempts = 0;
+		await startSrdTranslationQueue(
+			'campaign-quota',
+			[entry('spell-1')],
+			async () => {
+				attempts += 1;
+				throw new ApiError(503, 'Cota encerrada.', {
+					error: { code: 'TRANSLATION_QUOTA_EXCEEDED', message: 'safe message' }
+				});
+			},
+			(item) => item.name
+		);
+		expect(attempts).toBe(1);
+		expect(get(srdTranslationQueue).failedEntries).toEqual(['spell-1']);
 	});
 });

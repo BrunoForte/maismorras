@@ -27,6 +27,7 @@
 		compendiumRulesFromEditor,
 		editorModelFromEntry,
 		emptyCompendiumEditorModel,
+		compendiumEntryTranslationStatus,
 		hasPendingCompendiumTranslation,
 		isCompendiumTranslationPending,
 		translatedCompendiumText,
@@ -64,6 +65,7 @@
 	let placing = $state<string | null>(null);
 	let translating = $state<string | null>(null);
 	let batchTranslating = $state(false);
+	let batchRetryable = $state(true);
 	let batchProgress = $state('');
 	let message = $state('');
 	let selectedEntryId = $state<string | null>(null);
@@ -174,7 +176,10 @@
 		message = '';
 		try {
 			const payload = {
-				...compendiumDraftFromEditor(draft),
+				...compendiumDraftFromEditor(
+					draft,
+					editingEntryId ? entries.find((item) => item.id === editingEntryId) : undefined
+				),
 				sourceId: draft.sourceId,
 				entryType: draft.entryType
 			};
@@ -369,6 +374,7 @@
 		}
 	}
 	async function translate(entry: CompendiumEntry) {
+		if (!isGM || !hasPendingCompendiumTranslation(entry)) return;
 		translating = entry.id;
 		message = '';
 		try {
@@ -390,7 +396,7 @@
 		}
 	}
 	async function translateSRDPending() {
-		if ($appLocale !== 'pt-BR' || batchTranslating) return;
+		if (!isGM || $appLocale !== 'pt-BR' || batchTranslating) return;
 		const pending = entries.filter(
 			(entry) =>
 				sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' &&
@@ -423,7 +429,8 @@
 						sources.find((source) => source.id === selectedEntry.sourceId)?.readOnly ?? false,
 					hasPrivateSource: privateSources().length > 0,
 					isGM,
-					canTranslate: $appLocale === 'pt-BR',
+					canTranslate: $appLocale === 'pt-BR' && hasPendingCompendiumTranslation(selectedEntry),
+					translationStatus: compendiumEntryTranslationStatus(selectedEntry),
 					canPlace: Boolean(sceneId),
 					translating: translating === selectedEntry.id,
 					placing: placing === selectedEntry.id
@@ -431,6 +438,13 @@
 			: null
 	);
 	const editorBusy = $derived({ saving, importing, uploadingArt: uploadingMonsterArt });
+	const pendingSrdCount = $derived(
+		entries.filter(
+			(entry) =>
+				sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' &&
+				hasPendingCompendiumTranslation(entry)
+		).length
+	);
 	const editorActions = {
 		save: () => void create(),
 		cancel: () => {
@@ -457,6 +471,7 @@
 		return srdTranslationQueue.subscribe((state) => {
 			if (state.campaignId !== campaignId) return;
 			batchTranslating = state.status === 'running';
+			batchRetryable = state.retryable;
 			batchProgress =
 				state.status === 'running'
 					? `${Math.min(state.processed + 1, state.total)}/${state.total} · ${state.currentName}`
@@ -472,7 +487,10 @@
 				const remaining = state.failedEntries.length - 3;
 				const batchStatus =
 					state.processed >= state.total ? 'Lote finalizado com pendências' : 'Lote pausado';
-				message = `${batchStatus} após ${state.completed}/${state.total} traduções salvas. ${state.failedEntries.length} entrada(s) pendente(s): “${failedNames}”${remaining > 0 ? ` e mais ${remaining}` : ''}. Clique novamente para tentar apenas as pendentes. ${state.error}`;
+				const retryText = state.retryable
+					? 'Clique novamente para tentar apenas as pendentes.'
+					: 'As traduções salvas foram preservadas; corrija a configuração ou aguarde a disponibilidade da cota para continuar.';
+				message = `${batchStatus} após ${state.completed}/${state.total} traduções salvas. ${state.failedEntries.length} entrada(s) pendente(s): “${failedNames}”${remaining > 0 ? ` e mais ${remaining}` : ''}. ${retryText} ${state.error}`;
 			}
 		});
 	});
@@ -492,8 +510,12 @@
 		<div class="header-actions">
 			{#if isGM && $appLocale === 'pt-BR'}<button
 					onclick={() => void translateSRDPending()}
-					disabled={batchTranslating}
-					>{batchTranslating ? `Traduzindo ${batchProgress}…` : 'Traduzir SRD pendente'}</button
+					disabled={batchTranslating || pendingSrdCount === 0 || !batchRetryable}
+					>{batchTranslating
+						? `Traduzindo ${batchProgress}…`
+						: !batchRetryable
+							? 'Tradução pausada'
+							: `Traduzir SRD pendente (${pendingSrdCount})`}</button
 				>{/if}
 			{#if isGM}<button onclick={load} disabled={loading}
 					>{$appLocale === 'en' ? 'Refresh' : 'Atualizar'}</button

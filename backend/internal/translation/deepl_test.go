@@ -106,3 +106,14 @@ func TestDeepLTranslateReturnsQuotaSentinelWithoutProviderPayload(t *testing.T) 
 		t.Fatalf("error=%v, want ErrQuotaExceeded", err)
 	}
 }
+
+func TestDeepLRejectsChangedDiceFormula(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"translations":[{"text":"Role 1d20+5."}]}`))
+	}))
+	defer server.Close()
+	_, err := NewDeepLService(server.Client(), server.URL, "key").Translate(context.Background(), map[string]string{"field": "Roll 1d20+4."})
+	if err == nil {
+		t.Fatal("expected changed dice modifier to be rejected")
+	}
+}

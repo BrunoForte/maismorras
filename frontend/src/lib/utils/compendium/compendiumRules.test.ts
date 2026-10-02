@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompendiumEntry, CompendiumSource } from '$lib/services/compendiumApi';
 import {
 	compendiumDraftFromEditor,
+	compendiumEntryTranslationStatus,
 	compendiumRulesFromEditor,
 	editorModelFromEntry,
 	emptyCompendiumEditorModel,
@@ -98,6 +99,44 @@ describe('compendium rules', () => {
 		expect(hasPendingCompendiumTranslation(pending)).toBe(false);
 	});
 
+	it('ignores mechanical fields, empty prose and preserves official, manual and AI provenance', () => {
+		const item = entry('1', 'Fireball', 'spell');
+		item.summary = '';
+		item.rules = {
+			id: 'spell-fireball',
+			damage: '8d6 fire damage',
+			range: '150 feet',
+			name: 'Fireball',
+			description: 'A bright streak deals 8d6 damage.'
+		};
+		item.translations = {
+			'pt-BR': 'Fireball',
+			'pt-BR.source': 'ai',
+			'pt-BR.rules.name': 'Fireball',
+			'pt-BR.rules.name.source': 'ai',
+			'pt-BR.rules.description': 'Um raio brilhante causa 8d6 de dano.',
+			'pt-BR.rules.description.source': 'official'
+		};
+		expect(hasPendingCompendiumTranslation(item)).toBe(false);
+		expect(compendiumEntryTranslationStatus(item)).toBe('official');
+		item.translations['pt-BR.source'] = 'manual';
+		item.translations['pt-BR.rules.description.source'] = 'manual';
+		expect(hasPendingCompendiumTranslation(item)).toBe(false);
+		expect(compendiumEntryTranslationStatus(item)).toBe('manual');
+		delete item.translations['pt-BR.rules.description.source'];
+		item.translations['pt-BR.source'] = 'ai';
+		expect(compendiumEntryTranslationStatus(item)).toBe('ai');
+	});
+
+	it('does not queue numeric mechanics as pending translation and exposes only missing prose', () => {
+		const item = entry('1', 'Fireball', 'spell');
+		item.rules = { damage: '8d6 fire damage', range: '150 feet', description: 'A flame erupts.' };
+		expect(hasPendingCompendiumTranslation(item)).toBe(true);
+		item.translations = { 'pt-BR': 'Bola de fogo', 'pt-BR.summary': 'Resumo' };
+		item.translations['pt-BR.rules.description'] = 'Uma chama irrompe.';
+		expect(hasPendingCompendiumTranslation(item)).toBe(false);
+	});
+
 	it('prepares edit fields and rules for each supported domain type', () => {
 		const source = entry('spell', 'Shield', 'spell', 'home');
 		source.rules = { level: 1, classes: ['wizard', 'sorcerer'] };
@@ -167,5 +206,20 @@ describe('compendium rules', () => {
 		expect(draft.rules).toMatchObject({ hpMax: 35, extra: { preserved: true } });
 		expect(draft.translations).toMatchObject(original.translations);
 		expect(original.rules.hpMax).toBe(30);
+	});
+
+	it('marks an edited Portuguese name as manually reviewed without replacing official provenance', () => {
+		const original = entry('manual', 'Wizard', 'class', 'home');
+		const draft = editorModelFromEntry(original);
+		draft.portugueseName = 'Mago';
+		expect(compendiumDraftFromEditor(draft, original).translations).toMatchObject({
+			'pt-BR': 'Mago',
+			'pt-BR.source': 'manual'
+		});
+		original.translations = { 'pt-BR': 'Mago', 'pt-BR.source': 'official' };
+		draft.portugueseName = 'Mago';
+		expect(compendiumDraftFromEditor(draft, original).translations['pt-BR.source']).toBe(
+			'official'
+		);
 	});
 });

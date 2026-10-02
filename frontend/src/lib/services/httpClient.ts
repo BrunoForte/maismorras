@@ -58,8 +58,6 @@ function userFacingMessage(status: number, body: unknown, fallback: string): str
 	if (status === 403) return 'Você não tem permissão para fazer isso nesta mesa.';
 	if (status === 404) return 'O item solicitado não foi encontrado ou não está mais disponível.';
 	if (status === 408) return 'A operação demorou mais que o esperado. Tente novamente.';
-	if (status === 429)
-		return 'Muitas tentativas em pouco tempo. Aguarde um instante e tente novamente.';
 	const errorCode =
 		typeof body === 'object' &&
 		body !== null &&
@@ -69,10 +67,20 @@ function userFacingMessage(status: number, body: unknown, fallback: string): str
 		'code' in body.error
 			? String(body.error.code)
 			: '';
+	if (errorCode === 'TRANSLATION_NOT_CONFIGURED')
+		return 'A tradução por IA não está configurada no servidor. Peça ao administrador para conferir as credenciais do provedor.';
+	if (errorCode === 'TRANSLATION_RATE_LIMITED')
+		return 'O serviço de tradução recebeu muitas solicitações. Aguarde um instante antes de tentar novamente.';
+	if (errorCode === 'TRANSLATION_TIMEOUT')
+		return 'A tradução demorou mais que o esperado. As traduções já salvas foram preservadas; tente novamente.';
+	if (errorCode === 'TRANSLATION_UNAVAILABLE')
+		return 'O serviço de tradução está temporariamente indisponível. As traduções já salvas foram preservadas; tente novamente mais tarde.';
 	if (status === 502 && errorCode === 'TRANSLATION_PROVIDER_ERROR')
 		return 'O serviço externo de tradução falhou temporariamente. As traduções já salvas foram preservadas; tente novamente para continuar pelas pendentes.';
 	if (status === 503 && errorCode === 'TRANSLATION_QUOTA_EXCEEDED')
 		return 'A cota mensal gratuita de tradução terminou. As traduções salvas foram preservadas; tente novamente quando a cota renovar.';
+	if (status === 429)
+		return 'Muitas tentativas em pouco tempo. Aguarde um instante e tente novamente.';
 	if (status >= 500)
 		return 'O serviço encontrou um erro. Tente novamente; se persistir, informe o horário da tentativa.';
 	const candidate =

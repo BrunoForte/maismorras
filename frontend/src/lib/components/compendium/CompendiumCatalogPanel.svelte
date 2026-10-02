@@ -3,6 +3,7 @@
 	import type { CompendiumEntry, CompendiumSource } from '$lib/services/compendiumApi';
 	import {
 		COMPENDIUM_ENTRY_TYPES,
+		compendiumEntryTranslationStatus,
 		filterAndSortCompendiumEntries,
 		type CompendiumCatalogFilters
 	} from '$lib/utils/compendium/compendiumRules';
@@ -43,6 +44,15 @@
 		})).filter((group) => group.entries.length)
 	);
 	const rules = (entry: CompendiumEntry) => entry.rules ?? {};
+	const translationLabel = (entry: CompendiumEntry) => {
+		if ($appLocale !== 'pt-BR') return '';
+		const status = compendiumEntryTranslationStatus(entry);
+		if (status === 'pending') return 'Pendente';
+		if (status === 'ai') return 'Tradução IA';
+		if (status === 'official') return 'Oficial';
+		if (status === 'manual') return 'Revisada';
+		return '';
+	};
 	const entryCount = (sourceId: string) =>
 		entries.filter((entry) => entry.sourceId === sourceId).length;
 	const selectFilter = (value: string) => {
@@ -116,6 +126,9 @@
 										onclick={() => onselect(entry.id)}
 									>
 										<span>{typeName(entry.entryType)}</span><strong>{displayName(entry)}</strong>
+										{#if translationLabel(entry)}<small class="translation-status"
+												>{translationLabel(entry)}</small
+											>{/if}
 										{#if isMonster(entry) && hasMonsterSheet(entry)}<small
 												>{$appLocale === 'en' ? 'CR' : 'ND'}
 												{String(rules(entry).challenge ?? '—')} · {$appLocale === 'en'
@@ -136,6 +149,9 @@
 								onclick={() => onselect(entry.id)}
 							>
 								<span>{typeName(entry.entryType)}</span><strong>{displayName(entry)}</strong>
+								{#if translationLabel(entry)}<small class="translation-status"
+										>{translationLabel(entry)}</small
+									>{/if}
 								{#if isMonster(entry) && hasMonsterSheet(entry)}<small
 										>{$appLocale === 'en' ? 'CR' : 'ND'}
 										{String(rules(entry).challenge ?? '—')} · {$appLocale === 'en' ? 'HP' : 'PV'}
@@ -273,6 +289,14 @@
 		font:
 			600 0.82rem Georgia,
 			serif;
+	}
+	.entry-grid .translation-status {
+		justify-self: start;
+		border: 1px solid #59483b;
+		border-radius: 999px;
+		padding: 0.12rem 0.38rem;
+		color: #d8c5a1;
+		font-size: 0.62rem;
 	}
 	.entry-grid button small {
 		color: #a99c91;

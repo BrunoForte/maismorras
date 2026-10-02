@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,6 +26,8 @@ func NewDeepLService(client *http.Client, endpoint, apiKey string) *DeepLService
 }
 
 func (s *DeepLService) Enabled() bool { return s.url != "" && s.apiKey != "" }
+
+func (s *DeepLService) ProviderName() string { return "deepl" }
 
 type deepLRequest struct {
 	Text               []string `json:"text"`
@@ -93,6 +96,9 @@ func (s *DeepLService) Translate(ctx context.Context, fields map[string]string) 
 		}
 		start = end
 	}
+	if err := ValidateTranslatedFields(fields, translated); err != nil {
+		return nil, err
+	}
 	return translated, nil
 }
 
@@ -109,13 +115,22 @@ func (s *DeepLService) translateBatch(ctx context.Context, texts []string) ([]st
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("DeepL request failed: %w", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: %v", ErrTimeout, err)
+		}
+		return nil, fmt.Errorf("%w: %v", ErrProviderUnavailable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 456 {
 		return nil, ErrQuotaExceeded
 	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, ErrProviderUnavailable
+		}
 		return nil, fmt.Errorf("DeepL returned status %d", resp.StatusCode)
 	}
 	var decoded deepLResponse

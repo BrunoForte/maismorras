@@ -18,6 +18,10 @@ type Translator interface {
 	Translate(context.Context, map[string]string) (map[string]string, error)
 }
 
+type namedTranslator interface {
+	ProviderName() string
+}
+
 type Handler struct {
 	repo       *Repository
 	translator Translator
@@ -113,9 +117,6 @@ func (h *Handler) ImportEntries(w http.ResponseWriter, r *http.Request) error {
 // TranslateMissing translates only fields that have no Portuguese version. It
 // preserves canonical SRD text and records an explicit AI provenance marker.
 func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error {
-	if h.translator == nil || !h.translator.Enabled() {
-		return apperror.ServiceUnavailable("A tradução por IA ainda não está configurada no servidor.")
-	}
 	p, _ := auth.FromContext(r.Context())
 	fields, err := h.repo.TranslationFields(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID)
 	if err != nil {
@@ -128,20 +129,53 @@ func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error
 		}
 		return write(w, http.StatusOK, entry)
 	}
+	if h.translator == nil || !h.translator.Enabled() {
+		provider := h.translationProviderName()
+		slog.Warn("compendium translation unavailable", translationFailureAttrs(r, provider, translation.ErrNotConfigured)...)
+		return apperror.TranslationNotConfigured()
+	}
 	translated, err := h.translator.Translate(r.Context(), fields)
 	if err != nil {
-		attrs := []any{"event", "compendium.translation_failed", "request_id", r.Header.Get("X-Request-ID"), "campaign_id", observability.SafeUUID(r.PathValue("campaignID")), "entry_id", observability.SafeUUID(r.PathValue("entryID"))}
-		slog.Error("compendium translation provider failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
+		provider := h.translationProviderName()
+		slog.Error("compendium translation provider failed", translationFailureAttrs(r, provider, err)...)
 		if errors.Is(err, translation.ErrQuotaExceeded) {
 			return apperror.TranslationQuotaExceeded()
 		}
+		if errors.Is(err, translation.ErrTimeout) {
+			return apperror.TranslationTimedOut(err)
+		}
+		if errors.Is(err, translation.ErrRateLimited) {
+			return apperror.TranslationRateLimited()
+		}
+		if errors.Is(err, translation.ErrProviderUnavailable) {
+			return apperror.TranslationUnavailable(err)
+		}
 		return apperror.TranslationProvider(err)
 	}
-	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, translated)
+	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, fields, translated)
 	if err != nil {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, entry)
+}
+
+func translationFailureAttrs(r *http.Request, provider string, err error) []any {
+	attrs := []any{
+		"event", "compendium.translation_failed",
+		"request_id", observability.SafeUUID(r.Header.Get("X-Request-ID")),
+		"campaign_id", observability.SafeUUID(r.PathValue("campaignID")),
+		"entry_id", observability.SafeUUID(r.PathValue("entryID")),
+		"provider", provider,
+		"failure_category", translation.FailureCategory(err),
+	}
+	return append(attrs, observability.SafeErrorAttrs(err)...)
+}
+
+func (h *Handler) translationProviderName() string {
+	if named, ok := h.translator.(namedTranslator); ok {
+		return named.ProviderName()
+	}
+	return "unknown"
 }
 
 func normalizeEntry(item *Entry) error {

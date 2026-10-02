@@ -178,14 +178,33 @@ export function compendiumRulesFromEditor(model: CompendiumEditorModel): Record<
 	return {};
 }
 
-export function compendiumDraftFromEditor(model: CompendiumEditorModel): CompendiumDraft {
+export function compendiumDraftFromEditor(
+	model: CompendiumEditorModel,
+	previousEntry?: CompendiumEntry
+): CompendiumDraft {
+	const translations: Record<string, string> = model.portugueseName.trim()
+		? { ...model.extraTranslations, 'pt-BR': model.portugueseName.trim() }
+		: { ...model.extraTranslations };
+	const previousPortugueseName = previousEntry?.translations?.['pt-BR']?.trim() ?? '';
+	const currentPortugueseName = translations['pt-BR']?.trim() ?? '';
+	const currentNameSource =
+		translations['pt-BR.source']?.toLowerCase() ??
+		previousEntry?.translations?.['pt-BR.source']?.toLowerCase();
+	if (currentNameSource === 'official' && currentPortugueseName) {
+		translations['pt-BR.source'] = 'official';
+	}
+	if (
+		currentPortugueseName &&
+		currentPortugueseName !== previousPortugueseName &&
+		!['official', 'manual', 'reviewed', 'human', 'user'].includes(currentNameSource ?? '')
+	) {
+		translations['pt-BR.source'] = 'manual';
+	}
 	return {
 		name: model.name.trim(),
 		summary: model.summary.trim(),
 		rules: compendiumRulesFromEditor(model),
-		translations: model.portugueseName.trim()
-			? { ...model.extraTranslations, 'pt-BR': model.portugueseName.trim() }
-			: { ...model.extraTranslations },
+		translations,
 		isPublished: model.published
 	};
 }
@@ -237,20 +256,110 @@ export function compendiumTranslationHasAI(entry: CompendiumEntry, locale = 'pt-
 }
 
 export function hasPendingCompendiumTranslation(entry: CompendiumEntry): boolean {
-	if (isCompendiumTranslationPending(entry.name, entry.translations?.['pt-BR'])) return true;
-	if (isCompendiumTranslationPending(entry.summary, entry.translations?.['pt-BR.summary']))
-		return true;
+	if (isPendingField(entry, 'pt-BR', entry.name)) return true;
+	if (isPendingField(entry, 'pt-BR.summary', entry.summary)) return true;
 	const visit = (value: unknown, key: string): boolean => {
-		if (typeof value === 'string')
-			return isCompendiumTranslationPending(value, entry.translations?.[`pt-BR.rules.${key}`]);
+		if (typeof value === 'string') {
+			const fieldName = key.split('.').at(-1) ?? '';
+			return (
+				['name', 'description', 'summary', 'text', 'benefit', 'benefits', 'notes'].includes(
+					fieldName
+				) && isPendingField(entry, `pt-BR.rules.${key}`, value)
+			);
+		}
 		if (Array.isArray(value)) return value.some((child, index) => visit(child, `${key}.${index}`));
 		if (value && typeof value === 'object')
-			return Object.entries(value).some(([childKey, child]) =>
-				visit(child, key ? `${key}.${childKey}` : childKey)
+			return Object.entries(value).some(
+				([childKey, child]) =>
+					!NON_TRANSLATABLE_COMPENDIUM_RULE_KEYS.has(childKey) &&
+					visit(child, key ? `${key}.${childKey}` : childKey)
 			);
 		return false;
 	};
 	return visit(entry.rules ?? {}, '');
+}
+
+const NON_TRANSLATABLE_COMPENDIUM_RULE_KEYS = new Set([
+	'catalog',
+	'source',
+	'id',
+	'abilityScoreIncreases',
+	'armorProficiencies',
+	'startingEquipment',
+	'skillProficiencies',
+	'toolProficiency',
+	'toolProficiencies',
+	'weaponProficiencies',
+	'savingThrows',
+	'classes',
+	'spellIds',
+	'languages',
+	'abilities',
+	'speed',
+	'hpMax',
+	'armorClass',
+	'initiative',
+	'challenge',
+	'size',
+	'damage',
+	'damageType',
+	'toHit',
+	'range',
+	'cost',
+	'weight',
+	'level',
+	'hitDie',
+	'spellSlotProgression',
+	'preparedFormula',
+	'dice',
+	'ability',
+	'abilityBonuses',
+	'primaryAbility',
+	'components',
+	'duration',
+	'castingTime',
+	'concentration',
+	'ritual',
+	'ritualCasting',
+	'material',
+	'verbal',
+	'somatic',
+	'strength',
+	'dexterity',
+	'constitution',
+	'intelligence',
+	'wisdom',
+	'charisma',
+	'immunities',
+	'resistances',
+	'senses'
+]);
+
+export type CompendiumTranslationStatus = 'pending' | 'ai' | 'official' | 'manual' | 'complete';
+
+function isPendingField(entry: CompendiumEntry, key: string, source: unknown): boolean {
+	const text = String(source ?? '').trim();
+	if (!text) return false;
+	const provenance = String(entry.translations?.[`${key}.source`] ?? '').toLowerCase();
+	if (['ai', 'official', 'manual', 'reviewed', 'human', 'user'].includes(provenance)) return false;
+	return isCompendiumTranslationPending(text, entry.translations?.[key]);
+}
+
+export function compendiumEntryTranslationStatus(
+	entry: CompendiumEntry
+): CompendiumTranslationStatus {
+	if (hasPendingCompendiumTranslation(entry)) return 'pending';
+	const provenance = Object.entries(entry.translations ?? {})
+		.filter(([key]) => key.startsWith('pt-BR') && key.endsWith('.source'))
+		.map(([, value]) => String(value).toLowerCase());
+	if (provenance.includes('official')) return 'official';
+	if (provenance.some((value) => ['manual', 'reviewed', 'human', 'user'].includes(value)))
+		return 'manual';
+	if (provenance.includes('ai')) return 'ai';
+	const localized = Object.entries(entry.translations ?? {}).some(
+		([key, value]) => key.startsWith('pt-BR') && !key.endsWith('.source') && Boolean(value?.trim())
+	);
+	return localized ? 'manual' : 'complete';
 }
 
 export function filterAndSortCompendiumEntries(

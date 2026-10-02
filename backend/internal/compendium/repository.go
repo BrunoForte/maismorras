@@ -261,10 +261,10 @@ func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID,
 	translations := map[string]string{}
 	_ = json.Unmarshal(item.Translations, &translations)
 	fields := map[string]string{}
-	if isUntranslated(item.Name, translations["pt-BR"]) {
+	if isTranslationPending(item.Name, translations, "pt-BR") {
 		fields["pt-BR"] = item.Name
 	}
-	if strings.TrimSpace(item.Summary) != "" && isUntranslated(item.Summary, translations["pt-BR.summary"]) {
+	if isTranslationPending(item.Summary, translations, "pt-BR.summary") {
 		fields["pt-BR.summary"] = item.Summary
 	}
 	var ruleData any
@@ -274,39 +274,68 @@ func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID,
 	return fields, nil
 }
 
-func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID, userID string, translated map[string]string) (Entry, error) {
-	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
-		return Entry{}, err
-	}
-	item, err := r.entryForGM(ctx, campaignID, entryID)
+func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID, userID string, sourceFields, translated map[string]string) (Entry, error) {
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return Entry{}, err
 	}
-	translations := map[string]string{}
-	_ = json.Unmarshal(item.Translations, &translations)
-	allowed, err := r.TranslationFields(ctx, campaignID, entryID, userID)
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var role string
+	err = tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && role != "gm") {
+		return Entry{}, ErrForbidden
+	}
 	if err != nil {
 		return Entry{}, err
 	}
-	for key := range allowed {
-		if value := strings.TrimSpace(translated[key]); value != "" {
-			translations[key] = value
-			if key == "pt-BR" {
-				translations["pt-BR.source"] = "ai"
-			} else {
-				translations[key+".source"] = "ai"
-			}
-		}
-	}
-	encoded, err := json.Marshal(translations)
-	if err != nil {
-		return Entry{}, fmt.Errorf("encode translations: %w", err)
-	}
-	err = r.pool.QueryRow(ctx, `update compendium_entries set translations=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+
+	var item Entry
+	err = tx.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2 for update`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Entry{}, ErrNotFound
 	}
-	return item, err
+	if err != nil {
+		return Entry{}, err
+	}
+
+	translations := decodeTranslations(item.Translations)
+	currentSources := map[string]string{}
+	if isTranslationPending(item.Name, translations, "pt-BR") {
+		currentSources["pt-BR"] = item.Name
+	}
+	if isTranslationPending(item.Summary, translations, "pt-BR.summary") {
+		currentSources["pt-BR.summary"] = item.Summary
+	}
+	var ruleData any
+	if json.Unmarshal(item.Rules, &ruleData) == nil {
+		collectMissingTranslationFields(currentSources, translations, "pt-BR.rules", ruleData)
+	}
+	changed := false
+	for key, original := range sourceFields {
+		current, stillPending := currentSources[key]
+		value := strings.TrimSpace(translated[key])
+		if !stillPending || current != original || value == "" {
+			continue
+		}
+		translations[key] = value
+		translations[key+".source"] = "ai"
+		changed = true
+	}
+	if changed {
+		encoded, marshalErr := json.Marshal(translations)
+		if marshalErr != nil {
+			return Entry{}, fmt.Errorf("encode translations: %w", marshalErr)
+		}
+		err = tx.QueryRow(ctx, `update compendium_entries set translations=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+		if err != nil {
+			return Entry{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Entry{}, err
+	}
+	return item, nil
 }
 
 func (r *Repository) requireGM(ctx context.Context, campaignID, userID string) (string, error) {
@@ -329,14 +358,38 @@ func (r *Repository) entryForGM(ctx context.Context, campaignID, entryID string)
 	return item, err
 }
 
+var translatableRuleFields = map[string]struct{}{
+	"name": {}, "description": {}, "summary": {}, "text": {}, "benefit": {}, "benefits": {}, "notes": {},
+}
+
+var nonTranslatableRulePaths = map[string]struct{}{
+	"catalog": {}, "source": {}, "id": {}, "abilityScoreIncreases": {}, "armorProficiencies": {},
+	"startingEquipment": {}, "skillProficiencies": {}, "toolProficiency": {}, "toolProficiencies": {},
+	"weaponProficiencies": {}, "savingThrows": {}, "classes": {}, "spellIds": {}, "languages": {},
+	"abilities": {}, "speed": {}, "hpMax": {}, "armorClass": {}, "initiative": {}, "challenge": {},
+	"size": {}, "damage": {}, "damageType": {}, "toHit": {}, "range": {}, "cost": {}, "weight": {},
+	"level": {}, "hitDie": {}, "spellSlotProgression": {}, "preparedFormula": {}, "dice": {},
+	"ability": {}, "abilityBonuses": {}, "primaryAbility": {}, "components": {}, "duration": {},
+	"castingTime": {}, "concentration": {}, "ritual": {}, "ritualCasting": {}, "material": {},
+	"verbal": {}, "somatic": {}, "strength": {}, "dexterity": {}, "constitution": {}, "intelligence": {},
+	"wisdom": {}, "charisma": {}, "immunities": {}, "resistances": {}, "senses": {},
+}
+
 func collectMissingTranslationFields(result, translations map[string]string, key string, value any) {
 	switch current := value.(type) {
 	case string:
-		if isUntranslated(current, translations[key]) {
+		leaf := key
+		if dot := strings.LastIndexByte(key, '.'); dot >= 0 {
+			leaf = key[dot+1:]
+		}
+		if _, prose := translatableRuleFields[leaf]; prose && isTranslationPending(current, translations, key) {
 			result[key] = current
 		}
 	case map[string]any:
 		for childKey, child := range current {
+			if _, blocked := nonTranslatableRulePaths[childKey]; blocked {
+				continue
+			}
 			collectMissingTranslationFields(result, translations, key+"."+childKey, child)
 		}
 	case []any:
@@ -344,6 +397,29 @@ func collectMissingTranslationFields(result, translations map[string]string, key
 			collectMissingTranslationFields(result, translations, fmt.Sprintf("%s.%d", key, index), child)
 		}
 	}
+}
+
+func decodeTranslations(raw json.RawMessage) map[string]string {
+	translations := map[string]string{}
+	_ = json.Unmarshal(raw, &translations)
+	return translations
+}
+
+func translationSourceIsProtected(translations map[string]string, key string) bool {
+	source := strings.ToLower(strings.TrimSpace(translations[key+".source"]))
+	switch source {
+	case "official", "manual", "reviewed", "human", "user":
+		return true
+	default:
+		return false
+	}
+}
+
+func isTranslationPending(source string, translations map[string]string, key string) bool {
+	if translationSourceIsProtected(translations, key) || strings.EqualFold(strings.TrimSpace(translations[key+".source"]), "ai") {
+		return false
+	}
+	return isUntranslated(source, translations[key])
 }
 
 func isUntranslated(source, translated string) bool {

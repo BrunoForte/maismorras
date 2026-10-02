@@ -58,12 +58,26 @@
 	{#if $appLocale === 'pt-BR' && entry.translations?.['pt-BR']}<small class="canonical"
 			>{entry.name}</small
 		>{/if}
-	{#if compendiumTranslationIsOfficial(entry, 'summary', locale)}<small class="official-translation"
+	{#if view.translationStatus === 'official' || compendiumTranslationIsOfficial(entry, 'summary', locale)}<small
+			class="official-translation"
 			>{$appLocale === 'en' ? 'Official translation' : 'Tradução oficial'}</small
 		>{/if}
 	{#if compendiumTranslationHasAI(entry, locale)}<small class="ai-translation"
 			>{$appLocale === 'en' ? 'Free AI translation' : 'Tradução livre (IA)'}</small
 		>{/if}
+	{#if view.translationStatus === 'pending'}
+		<small class="pending-translation">
+			{$appLocale === 'en' ? 'Portuguese fields pending' : 'Há campos em português pendentes'}
+		</small>
+	{:else if view.translationStatus === 'manual'}
+		<small class="manual-translation">
+			{$appLocale === 'en' ? 'Reviewed translation' : 'Tradução revisada'}
+		</small>
+	{:else if view.translationStatus === 'complete' && !compendiumTranslationHasAI(entry, locale) && !compendiumTranslationIsOfficial(entry, 'summary', locale)}
+		<small class="complete-translation">
+			{$appLocale === 'en' ? 'Translation available' : 'Tradução disponível'}
+		</small>
+	{/if}
 	<p>
 		{view.displaySummary ||
 			($appLocale === 'en'
@@ -74,9 +88,9 @@
 		<button class="translate" onclick={() => actions.translate(entry)} disabled={view.translating}>
 			{view.translating
 				? 'Traduzindo…'
-				: entry.translations?.['pt-BR.summary']
-					? 'Completar tradução com IA'
-					: 'Traduzir com IA'}
+				: $appLocale === 'en'
+					? 'Translate pending fields'
+					: 'Traduzir campos pendentes'}
 		</button>
 	{/if}
 	{#if view.isMonster}
@@ -291,6 +305,13 @@
 		border-color: #6378a1;
 		color: #cbd9ff !important;
 		background: #202c47;
+	}
+	.pending-translation {
+		color: #fbbf24 !important;
+	}
+	.manual-translation,
+	.complete-translation {
+		color: #bce8c8 !important;
 	}
 	.translate {
 		justify-self: start;

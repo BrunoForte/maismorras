@@ -12,6 +12,7 @@ export type CompendiumDetailsView = {
 	hasPrivateSource: boolean;
 	isGM: boolean;
 	canTranslate: boolean;
+	translationStatus: 'pending' | 'ai' | 'official' | 'manual' | 'complete';
 	canPlace: boolean;
 	translating: boolean;
 	placing: boolean;

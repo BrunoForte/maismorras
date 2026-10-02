@@ -5,6 +5,7 @@ import { ApiError, notifyUserRequestError } from './httpClient';
 export type TranslationQueueState = {
 	campaignId: string | null;
 	status: 'idle' | 'running' | 'completed' | 'failed';
+	retryable: boolean;
 	total: number;
 	completed: number;
 	processed: number;
@@ -17,6 +18,7 @@ export type TranslationQueueState = {
 const initialState: TranslationQueueState = {
 	campaignId: null,
 	status: 'idle',
+	retryable: true,
 	total: 0,
 	completed: 0,
 	processed: 0,
@@ -31,16 +33,30 @@ let activeCampaignId: string | null = null;
 let activeTask: Promise<void> | null = null;
 
 const MAX_TRANSIENT_RETRIES = 2;
-const RETRYABLE_HTTP_STATUSES = new Set([429, 502, 503, 504]);
-const DEFERRED_HTTP_STATUSES = new Set([502, 503, 504]);
+const RETRYABLE_HTTP_STATUSES = new Set([0, 408, 429, 502, 503, 504]);
+const DEFERRED_HTTP_STATUSES = new Set([0, 408, 502, 503, 504]);
+
+function translationErrorCode(error: unknown): string {
+	if (!(error instanceof ApiError) || typeof error.body !== 'object' || !error.body) return '';
+	const outer = error.body as { error?: { code?: unknown } };
+	return String(outer.error?.code ?? '');
+}
+
+function isNonRetryableTranslationSetupError(error: unknown): boolean {
+	return ['TRANSLATION_NOT_CONFIGURED', 'TRANSLATION_QUOTA_EXCEEDED'].includes(
+		translationErrorCode(error)
+	);
+}
 
 function isTransientTranslationError(error: unknown): boolean {
+	if (isNonRetryableTranslationSetupError(error)) return false;
 	if (error instanceof ApiError)
 		return error.status === 0 || RETRYABLE_HTTP_STATUSES.has(error.status);
 	return false;
 }
 
 function canDeferTranslationError(error: unknown): boolean {
+	if (isNonRetryableTranslationSetupError(error)) return false;
 	return (
 		error instanceof ApiError && (error.status === 0 || DEFERRED_HTTP_STATUSES.has(error.status))
 	);
@@ -69,6 +85,7 @@ export function startSrdTranslationQueue(
 	srdTranslationQueue.set({
 		campaignId,
 		status: 'running',
+		retryable: true,
 		total: entries.length,
 		completed: 0,
 		processed: 0,
@@ -83,7 +100,7 @@ export function startSrdTranslationQueue(
 		let processed = 0;
 		let consecutiveDeferredFailures = 0;
 		const failedEntries: string[] = [];
-		for (const entry of entries) {
+		for (const [entryIndex, entry] of entries.entries()) {
 			srdTranslationQueue.update((state) => ({
 				...state,
 				currentName: getName(entry),
@@ -126,12 +143,15 @@ export function startSrdTranslationQueue(
 						}));
 						continue;
 					}
+					failedEntries.push(...entries.slice(entryIndex + 1).map(getName));
+				} else {
+					failedEntries.push(getName(entry), ...entries.slice(entryIndex + 1).map(getName));
 				}
-				failedEntries.push(...(canDeferTranslationError(error) ? [] : [getName(entry)]));
 				notifyUserRequestError(failureMessage);
 				srdTranslationQueue.update((state) => ({
 					...state,
 					status: 'failed',
+					retryable: canDeferTranslationError(error),
 					processed,
 					failedEntries,
 					error:
@@ -151,6 +171,7 @@ export function startSrdTranslationQueue(
 			srdTranslationQueue.update((state) => ({
 				...state,
 				status: 'failed',
+				retryable: true,
 				processed,
 				failedEntries,
 				currentName: failedEntries[0],
