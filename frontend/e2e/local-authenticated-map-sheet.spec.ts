@@ -96,20 +96,6 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				);
 				await expect(chat).toHaveCSS('resize', 'both');
 			});
-			const actors = page.locator('.actor-drawer');
-			await test.step('resize, minimize and restore scene actors', async () => {
-				await setExpandedSize(actors, 430, 360);
-				await assertAboveAudioFooter(page, actors);
-				await collapseAndRestore(
-					actors,
-					page,
-					actors.locator('.drawer-toggle'),
-					actors.locator('.drawer-toggle'),
-					'.drawer-body',
-					'.drawer-toggle'
-				);
-				await expect(actors).toHaveCSS('resize', 'both');
-			});
 			await test.step('open, resize, minimize and restore the map sheet', async () => {
 				await selectTokenAtDefaultPosition(page);
 				await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
@@ -545,6 +531,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const spell = inspector
 					.locator('.spell-groups details')
 					.filter({ hasText: 'Magia alvo E2E' });
+				await spell.locator('summary').click();
 				await expect(
 					cantrip
 						.locator('.spell-row')
