@@ -96,29 +96,6 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				);
 				await expect(chat).toHaveCSS('resize', 'both');
 			});
-			await test.step('open, resize, minimize and restore the map sheet', async () => {
-				await selectTokenAtDefaultPosition(page);
-				await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-				const sheet = page.locator('.sheet-backdrop.docked .sheet');
-				await expect(sheet).toBeVisible();
-				await setExpandedSize(sheet, 850, 520);
-				await assertAboveAudioFooter(page, sheet);
-				await page.getByRole('button', { name: 'Minimizar ficha' }).click();
-				const minimizedHeaderHeight = await sheet
-					.locator('header')
-					.evaluate((node) => node.getBoundingClientRect().height);
-				await expect
-					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().height))
-					.toBeLessThanOrEqual(minimizedHeaderHeight + 4);
-				await expect(sheet).toHaveClass(/minimized/);
-				await expect(sheet).toHaveCSS('resize', 'none');
-				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
-				await page.getByRole('button', { name: 'Minimizar ficha' }).click();
-				await expect
-					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().height))
-					.toBeGreaterThan(500);
-				await assertAboveAudioFooter(page, sheet);
-			});
 		} finally {
 			await fixture?.close();
 		}
@@ -162,7 +139,16 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const sheet = player.locator('.sheet-backdrop.docked .sheet');
 				await expect(sheet).toBeVisible();
 				await setExpandedSize(sheet, 780, 500);
+				await assertAboveAudioFooter(player, sheet);
+				const expandedHeight = (await sheet.boundingBox())!.height;
 				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
+				const headerHeight = await sheet
+					.locator('header')
+					.evaluate((node) => node.getBoundingClientRect().height);
+				await expect
+					.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().height))
+					.toBeLessThanOrEqual(headerHeight + 4);
+				await expect(sheet).toHaveCSS('resize', 'none');
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
 				await expect(sheet).toBeHidden();
@@ -175,7 +161,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await expect(restoredSheet.locator('.sheet-body')).toBeVisible();
 				await expect
 					.poll(() => restoredSheet.evaluate((node) => node.getBoundingClientRect().height))
-					.toBeGreaterThan(400);
+					.toBeGreaterThan(expandedHeight - 10);
+				await assertAboveAudioFooter(player, restoredSheet);
 			});
 			await test.step('GM-only actors drawer remains unavailable to a player', async () => {
 				await expect(player.locator('.actor-drawer')).toHaveCount(0);
@@ -548,12 +535,16 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			});
 			await test.step('GM display publishes chat and updates the scene presentation', async () => {
 				const inspector = f.gm.locator('.token-inspector');
-				const spell = inspector
+				const spellGroup = inspector
 					.locator('.spell-groups details')
-					.filter({ hasText: 'Magia alvo E2E' })
-					.locator('.spell-row')
 					.filter({ hasText: 'Magia alvo E2E' });
-				await spell.getByRole('button', { name: 'Exibir' }).click();
+				if (!(await spellGroup.evaluate((node) => (node as HTMLDetailsElement).open))) {
+					await spellGroup.locator('summary').click();
+				}
+				const spell = spellGroup.locator('.spell-row').filter({ hasText: 'Magia alvo E2E' });
+				const displayAction = spell.getByRole('button', { name: 'Exibir' });
+				await displayAction.scrollIntoViewIfNeeded();
+				await displayAction.click();
 				await expect(
 					f.gm.locator('.floating-chat [data-event-id]').filter({ hasText: 'Magia alvo E2E' })
 				).toBeVisible();
