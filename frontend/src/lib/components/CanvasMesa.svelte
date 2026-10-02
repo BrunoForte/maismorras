@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { GameEngine } from '$lib/engine/GameEngine';
 	import {
@@ -33,7 +32,6 @@
 	import { SceneTokenController } from '$lib/services/sceneTokenController';
 	import SceneMapTools from '$lib/components/scene/SceneMapTools.svelte';
 	import TokenInspector from '$lib/components/scene/TokenInspector.svelte';
-	import { ApiError } from '$lib/services/httpClient';
 	import {
 		applySceneDelta,
 		fogBrushCells,
@@ -48,10 +46,10 @@
 	} from '$lib/utils/sceneMapTools';
 	import {
 		removeSceneCharacter,
-		normalizeSceneCharacters,
 		toSceneCharacter,
 		upsertSceneCharacter
 	} from '$lib/utils/sceneTokenState';
+	import { createSceneTokenSyncController } from '$lib/components/scene/sceneTokenSyncController';
 	import {
 		connectSceneSocket,
 		type RealtimeStatus,
@@ -96,11 +94,7 @@
 	import { localizedSpellField } from '$lib/utils/character/characterSpellRules';
 	import { parseHitPointInput } from '$lib/utils/sceneCharacterSummary';
 	import { appLocale } from '$lib/stores/locale';
-	import {
-		campaignAssetPath,
-		clearSignedAssetCache,
-		getSignedAssetUrl
-	} from '$lib/services/assetApi';
+	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 
 	let {
 		scene,
@@ -405,18 +399,6 @@
 		areasVisible
 	});
 	let tokenRefreshTimer: number | undefined;
-	const personagemIdByToken = new SvelteMap<string, number>();
-	function personagemIdFor(tokenId: string, fallback: number) {
-		const existing = personagemIdByToken.get(tokenId);
-		if (existing !== undefined) return existing;
-		personagemIdByToken.set(tokenId, fallback);
-		return fallback;
-	}
-	const tokenImageCache = new SvelteMap<
-		string,
-		{ path: string | null; url: string | null; expiresAt: number }
-	>();
-	const tokenImageRetries = new SvelteMap<string, number>();
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -514,7 +496,7 @@
 		try {
 			await tokenController.remove(persistedId);
 			personagens.update((lista) => removeSceneCharacter(lista, persistedId));
-			personagemIdByToken.delete(persistedId);
+			tokenSync.forgetToken(persistedId);
 			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== persistedId);
 			tokenSelecionadoId = null;
 			persistenceError = '';
@@ -528,11 +510,52 @@
 		}
 	}
 
+	const tokenSync = createSceneTokenSyncController({
+		getContext: () => ({
+			session,
+			sceneId: scene.id,
+			campaignId: scene.campaignId,
+			workspaceCampaignId: campaignId,
+			isGM
+		}),
+		getCharacters: () => $personagens,
+		updateCharacters: (update) => personagens.update(update),
+		getSelectedLocalId: () => tokenSelecionadoId,
+		clearSelection: () => (tokenSelecionadoId = null),
+		removeEffectsForToken: (tokenId) => {
+			efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== tokenId);
+		},
+		clearPersistenceError: () => (persistenceError = ''),
+		setPersistenceError: (message) => (persistenceError = message),
+		getSceneToken,
+		resolveSignedAsset: getSignedAssetUrl,
+		clearSignedAssetCache,
+		clearSnapshots: () => tokenController.clearSnapshots(),
+		rememberToken: (token) => tokenController.remember(token),
+		forgetToken: (tokenId) => tokenController.forget(tokenId),
+		setWarning: (message, error) => console.warn(message, error)
+	});
+	$effect(() => {
+		void session.user.id;
+		void session.access_token;
+		void scene.id;
+		void scene.campaignId;
+		void campaignId;
+		void isGM;
+		tokenSync.syncContext();
+	});
+
 	async function carregarTokens() {
+		const operation = tokenSync.beginOperation();
+		const requestSession = session;
+		const requestSceneId = scene.id;
 		try {
-			const response = await loadScene(session, scene.id);
+			const response = await loadScene(requestSession, requestSceneId);
+			if (!tokenSync.isCurrent(operation)) return;
+			const backgroundUrl = await resolverImagemDeFundo(response.scene.backgroundUrl);
+			if (!tokenSync.isCurrent(operation)) return;
 			Object.assign(scene, response.scene);
-			urlMapa.set(await resolverImagemDeFundo(response.scene.backgroundUrl));
+			urlMapa.set(backgroundUrl);
 			motor?.setFog(
 				response.scene.fogEnabled,
 				isGM,
@@ -546,118 +569,20 @@
 			walls = normalizeSceneItemsById(response.walls);
 			motor?.setWalls(walls);
 			motor?.setWallsVisible(wallsVisible);
-			const carregados = await Promise.all(
-				normalizeSceneItemsById(response.tokens).map(async (token, index) => {
-					const assetPath = token.imageUrl
-						? (campaignAssetPath(token.imageUrl) ?? token.imageUrl)
-						: null;
-					const cached = tokenImageCache.get(token.id);
-					const imageUrl =
-						cached?.path === assetPath && cached.expiresAt > Date.now()
-							? (cached.url ?? undefined)
-							: await resolverImagemToken(token.imageUrl);
-					tokenImageCache.set(token.id, {
-						path: assetPath,
-						url: imageUrl ?? null,
-						expiresAt: Date.now() + 45 * 60 * 1000
-					});
-					return toSceneCharacter(token, personagemIdFor(token.id, index + 1), imageUrl);
-				})
-			);
-			tokenController.clearSnapshots();
-			carregados.forEach((personagem) => {
-				tokenController.remember(personagem);
-			});
-			const tokensNormalizados = normalizeSceneCharacters(carregados);
-			personagens.set(tokensNormalizados);
-			if (
-				tokenSelecionadoId !== null &&
-				!tokensNormalizados.some((token) => token.id === tokenSelecionadoId)
-			)
-				tokenSelecionadoId = null;
+			await tokenSync.loadTokens(response.tokens, operation);
 		} catch (error) {
-			persistenceError =
-				error instanceof Error ? error.message : 'Não foi possível carregar os tokens.';
+			if (tokenSync.isCurrent(operation))
+				persistenceError =
+					error instanceof Error ? error.message : 'Não foi possível carregar os tokens.';
 		}
 	}
 	async function atualizarTokenRecebido(signal?: { tokenId: string; deleted?: boolean }) {
-		if (!signal?.tokenId) return;
-		try {
-			const token = await getSceneToken(session, scene.id, signal.tokenId);
-			const assetPath = token.imageUrl
-				? (campaignAssetPath(token.imageUrl) ?? token.imageUrl)
-				: null;
-			const cached = tokenImageCache.get(token.id);
-			const imageUrl =
-				cached?.path === assetPath && cached.expiresAt > Date.now()
-					? (cached.url ?? undefined)
-					: await resolverImagemToken(token.imageUrl);
-			tokenImageCache.set(token.id, {
-				path: assetPath,
-				url: imageUrl ?? null,
-				expiresAt: Date.now() + 45 * 60 * 1000
-			});
-			personagens.update((lista) => {
-				const existing = lista.find((item) => item.persistedId === token.id);
-				const updated = toSceneCharacter(
-					token,
-					personagemIdFor(token.id, existing?.id ?? Math.max(0, ...lista.map((p) => p.id)) + 1),
-					imageUrl
-				);
-				// Mark the server snapshot before notifying the reactive store. Otherwise
-				// the GM persistence subscriber may write a stale local token back.
-				tokenController.remember(updated);
-				return upsertSceneCharacter(lista, updated);
-			});
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 404) {
-				personagens.update((lista) => removeSceneCharacter(lista, signal.tokenId));
-				if (personagemSelecionado?.persistedId === signal.tokenId) tokenSelecionadoId = null;
-				personagemIdByToken.delete(signal.tokenId);
-				efeitosAtivos = efeitosAtivos.filter((item) => item.tokenId !== signal.tokenId);
-				tokenController.forget(signal.tokenId);
-				return;
-			}
-			console.warn('Não foi possível sincronizar o token recebido.', error);
-		}
+		await tokenSync.updateToken(signal?.tokenId);
 	}
 	async function atualizarImagemTokenComFalha(tokenId: number) {
-		const character = $personagens.find((item) => item.id === tokenId);
-		const persistedId = character?.persistedId;
-		if (!character || !persistedId) return;
-		const cached = tokenImageCache.get(persistedId);
-		if (!cached?.path) return;
-		const retries = tokenImageRetries.get(persistedId) ?? 0;
-		if (retries >= 1) {
-			tokenImageCache.set(persistedId, {
-				path: cached.path,
-				url: null,
-				expiresAt: Date.now() + 5 * 60 * 1000
-			});
-			personagens.update((items) =>
-				items.map((item) => (item.id === tokenId ? { ...item, fotoUrl: undefined } : item))
-			);
-			return;
-		}
-		tokenImageRetries.set(persistedId, retries + 1);
-		clearSignedAssetCache(scene.campaignId, cached.path);
-		const freshUrl = await resolverImagemToken(cached.path);
-		tokenImageCache.set(persistedId, {
-			path: cached.path,
-			url: freshUrl ?? null,
-			expiresAt: Date.now() + (freshUrl ? 45 * 60 * 1000 : 5 * 60 * 1000)
-		});
-		personagens.update((items) =>
-			items.map((item) =>
-				item.id === tokenId ? { ...item, fotoUrl: freshUrl ?? undefined } : item
-			)
-		);
+		await tokenSync.refreshFailedImage(tokenId);
 	}
 	async function resolverImagemDeFundo(value: string | null) {
-		if (!value) return null;
-		return resolverAssetAssinado(value);
-	}
-	async function resolverImagemToken(value: string | null) {
 		if (!value) return null;
 		return resolverAssetAssinado(value);
 	}
@@ -1043,6 +968,7 @@
 			observer.disconnect();
 			window.clearInterval(cameraPersistenceTimer);
 			if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
+			tokenSync.dispose();
 			motor?.destroy();
 			motor = null;
 		};
