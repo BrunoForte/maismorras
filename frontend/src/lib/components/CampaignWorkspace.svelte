@@ -30,6 +30,11 @@
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { createOverlayPairing, revokeOverlayAccess } from '$lib/services/overlayPairingApi';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
+	import {
+		readSheetPanelMode,
+		sheetPanelModeKey,
+		writeSheetPanelMode
+	} from '$lib/utils/sheetPanelMode';
 
 	type InstallPromptEvent = Event & {
 		prompt: () => Promise<void>;
@@ -429,16 +434,33 @@
 			loadingScene = false;
 		}
 	}
-	function openMySheet(docked = true) {
+	function storedSheetMode(characterId: string | null) {
+		const storage = typeof localStorage === 'undefined' ? null : localStorage;
+		return readSheetPanelMode(storage, sheetPanelModeKey(activeCampaign?.id ?? '', characterId));
+	}
+	function openMySheet() {
+		const sameSheetAlreadyOpen = sheetOpen && editingCharacter === null;
 		editingCharacter = null;
-		sheetDocked = docked;
+		if (!sameSheetAlreadyOpen) sheetDocked = storedSheetMode(null) === 'docked';
 		sheetOpen = true;
 		sheetFocusRequest += 1;
 	}
-	function openCharacter(characterId: string, ownerName: string, docked = true) {
+	function openCharacter(characterId: string, ownerName: string) {
+		const sameSheetAlreadyOpen = sheetOpen && editingCharacter?.id === characterId;
 		editingCharacter = { id: characterId, ownerName };
-		sheetDocked = docked;
+		if (!sameSheetAlreadyOpen) sheetDocked = storedSheetMode(characterId) === 'docked';
 		sheetOpen = true;
+		sheetFocusRequest += 1;
+	}
+	function updateSheetDocked(docked: boolean) {
+		if (!activeCampaign) return;
+		sheetDocked = docked;
+		const storage = typeof localStorage === 'undefined' ? null : localStorage;
+		writeSheetPanelMode(
+			storage,
+			sheetPanelModeKey(activeCampaign.id, editingCharacter?.id),
+			docked ? 'docked' : 'floating'
+		);
 		sheetFocusRequest += 1;
 	}
 	function openCharacterWindow(characterId: string) {
@@ -446,13 +468,11 @@
 		const url = new URL('/sheet', window.location.origin);
 		url.searchParams.set('campaign', activeCampaign.id);
 		url.searchParams.set('character', characterId);
-		const popup = window.open(
-			url,
-			`maismorras-sheet-${characterId}`,
-			'popup,width=1400,height=900,resizable=yes,scrollbars=no'
-		);
-		if (popup) popup.focus();
-		else
+		const newTab = window.open(url, '_blank');
+		if (newTab) {
+			newTab.opener = null;
+			newTab.focus();
+		} else
 			showInviteStatus(
 				$appLocale === 'en'
 					? 'The browser blocked the new window. Allow pop-ups for MaisMorras and try again.'
@@ -714,9 +734,7 @@
 									isGM={activeCampaign.role === 'gm'}
 									campaignId={activeCampaign.id}
 									onopensheet={(actorId) =>
-										activeCampaign?.role === 'gm'
-											? openCharacter(actorId, '', true)
-											: openMySheet(true)}
+										activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
 									onopennewwindow={openCharacterWindow}
 								/>{:else}<p class="status-message" role="status" aria-live="polite">
 									Carregando mapa…
@@ -804,6 +822,9 @@
 					characterOwnerName={editingCharacter?.ownerName ?? ''}
 					docked={sheetDocked}
 					focusRequest={sheetFocusRequest}
+					onDockChange={updateSheetDocked}
+					onOpenNewWindow={openCharacterWindow}
+					actorPanelVisible={sheetDocked && workspaceTab === 'map' && activeCampaign.role === 'gm'}
 					hidden={false}
 					standalone={false}
 					onclose={() => {

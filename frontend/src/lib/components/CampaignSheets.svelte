@@ -26,6 +26,10 @@
 	let loading = $state(true);
 	let message = $state('');
 	let creatingFor = $state<string | null>(null);
+	let selectedParticipantUserId = $state('');
+	let selectedParticipant = $derived(
+		participants.find((participant) => participant.userId === selectedParticipantUserId) ?? null
+	);
 
 	onMount(async () => {
 		if (!isGM) {
@@ -34,6 +38,10 @@
 		}
 		try {
 			participants = (await listParticipants(session, campaignId)).participants;
+			selectedParticipantUserId =
+				participants.find((participant) => participant.character)?.userId ??
+				participants[0]?.userId ??
+				'';
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -61,6 +69,14 @@
 		} finally {
 			creatingFor = null;
 		}
+	}
+	function showSelectedSheet() {
+		if (!selectedParticipant) return;
+		if (selectedParticipant.character) {
+			onopencharacter(selectedParticipant.character.id, selectedParticipant.displayName);
+			return;
+		}
+		void createSheet(selectedParticipant);
 	}
 </script>
 
@@ -117,6 +133,44 @@
 	{:else if message}<p class="status error">{message}</p>
 	{:else}
 		<div class="sheet-grid">
+			<section
+				class="sheet-picker"
+				aria-label={$appLocale === 'en'
+					? 'Choose sheet for the panel'
+					: 'Escolher ficha para o painel'}
+			>
+				<label for="campaign-sheet-picker">
+					{$appLocale === 'en' ? 'Participant / character' : 'Participante / personagem'}
+					<select id="campaign-sheet-picker" bind:value={selectedParticipantUserId}>
+						{#each participants as participant (participant.userId)}
+							<option value={participant.userId}>
+								{participant.displayName} · {participant.character?.sheet.name ??
+									($appLocale === 'en' ? 'No sheet yet' : 'Sem ficha')}
+							</option>
+						{/each}
+					</select>
+				</label>
+				{#if selectedParticipant}
+					<button
+						type="button"
+						class:create={!selectedParticipant.character}
+						onclick={showSelectedSheet}
+						disabled={creatingFor === selectedParticipant.userId}
+					>
+						{creatingFor === selectedParticipant.userId
+							? $appLocale === 'en'
+								? 'Creating…'
+								: 'Criando…'
+							: selectedParticipant.character
+								? $appLocale === 'en'
+									? 'Show selected sheet'
+									: 'Exibir ficha selecionada'
+								: $appLocale === 'en'
+									? 'Create and show sheet'
+									: 'Criar e exibir ficha'}
+					</button>
+				{/if}
+			</section>
 			{#each participants as participant (participant.userId)}
 				<article class:unready={!participant.character}>
 					<div class="avatar">{participant.displayName.slice(0, 1).toUpperCase()}</div>
@@ -260,6 +314,34 @@
 		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 		gap: 0.8rem;
 	}
+	.sheet-picker {
+		grid-column: 1 / -1;
+		position: relative;
+		z-index: 40;
+		display: flex;
+		align-items: end;
+		gap: 0.75rem;
+		padding: 1rem;
+		border: 1px solid #5e4931;
+		border-radius: 10px;
+		background: #201b1e;
+	}
+	.sheet-picker label {
+		display: grid;
+		flex: 1;
+		gap: 0.35rem;
+		color: #cbb9a7;
+		font-size: 0.75rem;
+	}
+	.sheet-picker select {
+		min-height: 2.6rem;
+		border: 1px solid #79603e;
+		border-radius: 8px;
+		padding: 0.55rem 0.7rem;
+		color: #eee4d6;
+		background: #171315;
+		font: inherit;
+	}
 	.sheet-grid article {
 		display: flex;
 		align-items: center;
@@ -313,11 +395,13 @@
 	}
 	@media (max-width: 650px) {
 		.view-heading,
-		.player-sheet-card {
+		.player-sheet-card,
+		.sheet-picker {
 			align-items: flex-start;
 			flex-direction: column;
 		}
-		.player-sheet-card button {
+		.player-sheet-card button,
+		.sheet-picker button {
 			width: 100%;
 		}
 	}

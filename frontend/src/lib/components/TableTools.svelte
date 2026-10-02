@@ -371,7 +371,7 @@
 <style>
 	.table-tools {
 		position: absolute;
-		z-index: 8;
+		z-index: 16;
 		top: 0.8rem;
 		left: 0.9rem;
 	}

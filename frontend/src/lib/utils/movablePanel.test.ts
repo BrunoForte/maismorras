@@ -66,6 +66,8 @@ function makeHarness(
 			return {
 				left: Number.parseFloat(nodeStyle.left ?? '') || 100,
 				top: Number.parseFloat(nodeStyle.top ?? '') || 100,
+				right: (Number.parseFloat(nodeStyle.left ?? '') || 100) + size.width,
+				bottom: (Number.parseFloat(nodeStyle.top ?? '') || 100) + size.height,
 				width: size.width,
 				height: size.height
 			};
@@ -180,7 +182,65 @@ describe('movablePanel', () => {
 		const style = (h.node as unknown as { style: Record<string, string> }).style;
 		expect(style.top).toBe('198px');
 		expect(style['--mm-panel-navigation-bottom']).toBe('198px');
-		expect(style['--mm-panel-available-height']).toBe('618px');
+		expect(style['--mm-panel-available-height']).toBe('610px');
+		action.destroy();
+	});
+
+	it('converts inherited rem audio offsets before constraining panels above the footer', () => {
+		const h = makeHarness();
+		installGlobal('getComputedStyle', (element: HTMLElement) =>
+			element ===
+			(globalThis.document as unknown as { documentElement: HTMLElement }).documentElement
+				? { fontSize: '16px' }
+				: { getPropertyValue: () => '4.1rem', fontSize: '16px' }
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'rem-footer-offset',
+			handleSelector: '.titlebar',
+			enabled: false
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-bottom-offset']).toBe('73.6px');
+		action.destroy();
+	});
+
+	it('reserves the actor panel only when the docked sheet would overlap it and can be enabled for floating mode', () => {
+		const h = makeHarness(
+			{ width: 320, height: 260 },
+			{
+				'.actor-drawer': { left: 800, top: 450, right: 1180, bottom: 850, width: 380, height: 400 }
+			}
+		);
+		const options = {
+			storageKey: 'docked-sheet',
+			handleSelector: '.titlebar',
+			avoidRightSelectors: ['.actor-drawer'],
+			avoidBottomSelectors: ['.actor-drawer'],
+			enabled: false
+		};
+		const action = movablePanel(h.node, options);
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-right-inset']).toBe('412px');
+		expect(style['--mm-panel-bottom-offset']).toBe('76px');
+		const target = new (globalThis.Element as unknown as { new (): Element })();
+		h.nodeListeners.get('pointerdown')?.({
+			button: 0,
+			pointerId: 8,
+			target,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		expect(h.documentListeners.has('pointermove')).toBe(false);
+
+		action.update({ ...options, enabled: true, avoidRightSelectors: [], avoidBottomSelectors: [] });
+		h.nodeListeners.get('pointerdown')?.({
+			button: 0,
+			pointerId: 9,
+			clientX: 100,
+			clientY: 100,
+			target,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		expect(h.documentListeners.has('pointermove')).toBe(true);
 		action.destroy();
 	});
 

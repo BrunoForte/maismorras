@@ -132,6 +132,9 @@
 		hidden = false,
 		standalone = false,
 		focusRequest = 0,
+		actorPanelVisible = false,
+		onDockChange = () => {},
+		onOpenNewWindow = () => {},
 		onclose,
 		onTokenCreated
 	}: {
@@ -145,6 +148,9 @@
 		hidden?: boolean;
 		standalone?: boolean;
 		focusRequest?: number;
+		actorPanelVisible?: boolean;
+		onDockChange?: (docked: boolean) => void;
+		onOpenNewWindow?: (characterId: string) => void;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -166,10 +172,10 @@
 	let sheetPanelElement = $state<HTMLElement>();
 	let panelZIndex = $state(9);
 	$effect(() => {
-		if (docked) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
+		if (!standalone) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
 	});
 	$effect(() => {
-		if (!docked || focusRequest === 0) return;
+		if (standalone || focusRequest === 0) return;
 		minimized = false;
 		panelZIndex = 30;
 		void tick().then(() => sheetPanelElement?.focus());
@@ -958,6 +964,7 @@
 <div
 	class="sheet-backdrop"
 	class:docked
+	class:floating={!docked && !standalone}
 	class:standalone
 	class:hidden
 	style:z-index={panelZIndex}
@@ -972,10 +979,13 @@
 			storageKey: sheetPanelKey,
 			handleSelector: 'header',
 			minTop: 56,
-			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
+			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs'],
+			avoidRightSelectors: docked && actorPanelVisible ? ['.actor-drawer'] : [],
+			avoidBottomSelectors: docked && actorPanelVisible ? ['.actor-drawer'] : [],
+			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
-			collapsed: docked && minimized,
+			collapsed: !standalone && minimized,
 			headerSelector: 'header',
 			minWidth: 300,
 			storageKey: sheetPanelKey
@@ -1004,11 +1014,50 @@
 				</div>
 			</div>
 			<div class="sheet-actions">
-				{#if docked}<button
+				{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
+						{docked
+							? $appLocale === 'en'
+								? 'Docked'
+								: 'Acoplada'
+							: $appLocale === 'en'
+								? 'Floating'
+								: 'Flutuante'}
+					</span><button
+						type="button"
+						onclick={() => onDockChange(!docked)}
+						aria-label={docked
+							? $appLocale === 'en'
+								? 'Float character sheet'
+								: 'Destacar ficha'
+							: $appLocale === 'en'
+								? 'Dock character sheet'
+								: 'Fixar ficha'}
+						>{docked
+							? $appLocale === 'en'
+								? 'Float'
+								: 'Destacar'
+							: $appLocale === 'en'
+								? 'Dock'
+								: 'Fixar'}</button
+					><button
+						type="button"
+						onclick={() =>
+							onOpenNewWindow(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
+						disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+						aria-label={$appLocale === 'en' ? 'Open sheet in a new tab' : 'Abrir ficha em nova aba'}
+						>{$appLocale === 'en' ? 'New tab' : 'Nova aba'}</button
+					><button
+						type="button"
 						onclick={() => (minimized = !minimized)}
-						aria-label={$appLocale === 'en' ? 'Minimize character sheet' : 'Minimizar ficha'}
-						>{minimized ? '▸' : '▾'}</button
+						aria-label={minimized
+							? $appLocale === 'en'
+								? 'Restore character sheet'
+								: 'Restaurar ficha'
+							: $appLocale === 'en'
+								? 'Minimize character sheet'
+								: 'Minimizar ficha'}>{minimized ? '▸' : '−'}</button
 					>{/if}<button
+					type="button"
 					onclick={onclose}
 					aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button
 				>
@@ -1272,27 +1321,61 @@
 		backdrop-filter: none;
 		pointer-events: none;
 	}
+	.sheet-backdrop.floating {
+		z-index: 20;
+		inset: 0 0 var(--mm-audio-footer-offset, 4.25rem);
+		display: block;
+		padding: 0;
+		background: transparent;
+		backdrop-filter: none;
+		pointer-events: none;
+	}
 	.sheet-backdrop.hidden {
 		display: none;
 	}
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
-		top: var(--mm-panel-navigation-bottom, 5.8rem);
-		bottom: calc(var(--mm-audio-footer-offset, 4.25rem) + 0.55rem);
-		right: 1rem;
-		left: auto;
-		width: min(780px, calc(100vw - 2rem));
-		min-width: min(640px, calc(100vw - 2rem));
-		max-width: calc(100vw - 1rem);
+		top: auto;
+		bottom: var(--mm-panel-bottom-offset, calc(var(--mm-audio-footer-offset, 4.25rem) + 0.55rem));
+		left: 1rem;
+		right: var(--mm-panel-right-inset, 1rem);
+		width: min(780px, calc(100vw - var(--mm-panel-right-inset, 1rem) - 2rem));
+		min-width: min(640px, calc(100vw - var(--mm-panel-right-inset, 1rem) - 2rem));
+		max-width: calc(100vw - var(--mm-panel-right-inset, 1rem) - 1rem);
 		min-height: min(320px, var(--mm-panel-available-height, 320px));
 		max-height: var(
 			--mm-panel-available-height,
 			calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 4.25rem))
 		);
-		resize: both;
+		resize: none;
 		overflow: auto;
 		pointer-events: auto;
 		box-shadow: 0 18px 48px #000a;
+	}
+	.sheet-backdrop.floating .sheet {
+		position: fixed;
+		top: var(--mm-panel-navigation-bottom, 6rem);
+		bottom: auto;
+		right: 1rem;
+		left: auto;
+		width: min(780px, calc(100vw - 2rem));
+		height: min(720px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
+		min-width: min(480px, calc(100vw - 2rem));
+		max-width: calc(100vw - 1rem);
+		min-height: min(320px, var(--mm-panel-available-height, 320px));
+		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
+		resize: both;
+		overflow: auto;
+		pointer-events: auto;
+	}
+	@media (max-width: 1050px) {
+		.sheet-backdrop.docked .sheet {
+			left: 0;
+			right: 0;
+			width: 100vw;
+			min-width: min(320px, 100vw);
+			max-width: 100vw;
+		}
 	}
 	.sheet-backdrop.standalone {
 		inset: 0;
@@ -1314,13 +1397,32 @@
 	}
 	.sheet-actions {
 		display: flex;
+		align-items: center;
 		gap: 0.45rem;
 	}
 	.sheet-actions button {
-		border: 0;
-		color: #cbb9a7;
-		background: transparent;
-		font-size: 1.35rem;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.35rem 0.55rem;
+		color: #e7d1ae;
+		background: #2b211e;
+		font: inherit;
+		font-size: 0.72rem;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.sheet-actions button:hover:not(:disabled) {
+		border-color: #d8ad67;
+		background: #3a2920;
+	}
+	.sheet-actions button:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.sheet-mode-status {
+		color: #bbaea1;
+		font-size: 0.65rem;
+		white-space: nowrap;
 	}
 	.sheet {
 		width: min(100%, 940px);
@@ -1519,7 +1621,8 @@
 	}
 	@media (max-width: 700px) {
 		.sheet-backdrop.docked .sheet {
-			bottom: calc(var(--mm-audio-footer-offset, 6.5rem) + 0.55rem);
+			bottom: var(--mm-panel-bottom-offset, calc(var(--mm-audio-footer-offset, 6.5rem) + 0.55rem));
+			top: auto;
 			height: auto;
 			max-height: var(
 				--mm-panel-available-height,
@@ -1529,6 +1632,24 @@
 			left: 0;
 			right: 0;
 			max-width: 100vw;
+		}
+		.sheet-backdrop.floating .sheet {
+			top: var(--mm-panel-navigation-bottom, 6rem);
+			bottom: auto;
+			left: 0;
+			right: 0;
+			width: 100vw;
+			height: auto;
+			max-width: 100vw;
+			max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
+			resize: both;
+		}
+		.sheet-actions {
+			gap: 0.25rem;
+		}
+		.sheet-actions button {
+			padding: 0.3rem;
+			font-size: 0.62rem;
 		}
 	}
 </style>
