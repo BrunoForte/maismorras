@@ -47,12 +47,8 @@
 	import { removeSceneCharacter } from '$lib/utils/sceneTokenState';
 	import { createSceneTokenSyncController } from '$lib/components/scene/sceneTokenSyncController';
 	import { createSceneCharacterSummaryController } from '$lib/components/scene/sceneCharacterSummaryController.svelte.js';
-	import {
-		connectSceneSocket,
-		type RealtimeStatus,
-		type SceneSocket,
-		type SceneDelta
-	} from '$lib/services/sceneRealtime';
+	import { createSceneRealtimeLifecycleController } from '$lib/components/scene/sceneRealtimeLifecycleController';
+	import { type SceneSocket, type SceneDelta } from '$lib/services/sceneRealtime';
 	import {
 		beginDiceBatch,
 		diceOverlay,
@@ -129,6 +125,28 @@
 	);
 	let persistenceError = $state('');
 	let sceneSocket: SceneSocket | null = null;
+	const realtimeLifecycle = createSceneRealtimeLifecycleController({
+		getContext: () => ({ session, campaignId, sceneId: scene.id, isGM }),
+		handlers: {
+			onRefresh: () => {
+				void carregarTokens();
+				void carregarEfeitos();
+			},
+			onPing: (ping) => motor?.showPing(ping.x, ping.y, ping.color),
+			onTokens: (signal) => void atualizarTokenRecebido(signal),
+			onSceneDelta: (delta) => aplicarDeltaCena(delta)
+		},
+		setSocket: (socket) => (sceneSocket = socket),
+		onFallbackRefresh: () => void carregarTokens()
+	});
+	$effect(() => {
+		void session.user.id;
+		void session.access_token;
+		void campaignId;
+		void scene.id;
+		void isGM;
+		realtimeLifecycle.syncContext();
+	});
 	$effect(() => {
 		const currentContext = `${session.user.id}:${campaignId}`;
 		if (characterCompendiumContext === currentContext) return;
@@ -352,7 +370,6 @@
 		wallsVisible,
 		areasVisible
 	});
-	let tokenRefreshTimer: number | undefined;
 	let efeitoSelecionado = $derived(
 		definicoesDeEfeito.find((item) => item.slug === definicaoSelecionada)
 	);
@@ -860,33 +877,6 @@
 			await carregarNPCs();
 		});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
-		const updateTokenFallback = (status: RealtimeStatus) => {
-			if (status === 'connected') {
-				if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
-				tokenRefreshTimer = undefined;
-				return;
-			}
-			if (!tokenRefreshTimer)
-				tokenRefreshTimer = window.setInterval(() => void carregarTokens(), 60_000);
-		};
-		sceneSocket = connectSceneSocket(
-			session,
-			scene.id,
-			() => {
-				void carregarTokens();
-				void carregarEfeitos();
-			},
-			(ping) => motor?.showPing(ping.x, ping.y, ping.color),
-			updateTokenFallback,
-			undefined,
-			undefined,
-			undefined,
-			(signal) => void atualizarTokenRecebido(signal),
-			undefined,
-			undefined,
-			(delta) => aplicarDeltaCena(delta)
-		);
-
 		const unsubscribe = personagens.subscribe((lista) => {
 			if (!isGM) return;
 			for (const personagem of lista) {
@@ -916,12 +906,10 @@
 		return () => {
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);
-			sceneSocket?.close();
-			sceneSocket = null;
+			realtimeLifecycle.cleanup();
 			unsubscribe();
 			observer.disconnect();
 			window.clearInterval(cameraPersistenceTimer);
-			if (tokenRefreshTimer) window.clearInterval(tokenRefreshTimer);
 			tokenSync.dispose();
 			summaryController.cleanup();
 			motor?.destroy();
