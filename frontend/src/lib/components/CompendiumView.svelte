@@ -17,7 +17,11 @@
 	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale } from '$lib/stores/locale';
-	import { srdTranslationQueue, startSrdTranslationQueue } from '$lib/services/srdTranslationQueue';
+	import {
+		canResumeTranslationQueue,
+		srdTranslationQueue,
+		startSrdTranslationQueue
+	} from '$lib/services/srdTranslationQueue';
 	import CompendiumCatalogPanel from '$lib/components/compendium/CompendiumCatalogPanel.svelte';
 	import CompendiumEntryEditor from '$lib/components/compendium/CompendiumEntryEditor.svelte';
 	import CompendiumEntryDetails from '$lib/components/compendium/CompendiumEntryDetails.svelte';
@@ -65,7 +69,7 @@
 	let placing = $state<string | null>(null);
 	let translating = $state<string | null>(null);
 	let batchTranslating = $state(false);
-	let batchRetryable = $state(true);
+	let batchPaused = $state(false);
 	let batchProgress = $state('');
 	let message = $state('');
 	let selectedEntryId = $state<string | null>(null);
@@ -471,7 +475,7 @@
 		return srdTranslationQueue.subscribe((state) => {
 			if (state.campaignId !== campaignId) return;
 			batchTranslating = state.status === 'running';
-			batchRetryable = state.retryable;
+			batchPaused = state.status === 'paused';
 			batchProgress =
 				state.status === 'running'
 					? `${Math.min(state.processed + 1, state.total)}/${state.total} · ${state.currentName}`
@@ -482,15 +486,20 @@
 				);
 			if (state.status === 'completed')
 				message = `Tradução concluída para ${state.completed} entrada(s) SRD.`;
-			else if (state.status === 'failed') {
+			else if (state.status === 'paused') {
 				const failedNames = state.failedEntries.slice(0, 3).join('”, “');
 				const remaining = state.failedEntries.length - 3;
-				const batchStatus =
-					state.processed >= state.total ? 'Lote finalizado com pendências' : 'Lote pausado';
-				const retryText = state.retryable
-					? 'Clique novamente para tentar apenas as pendentes.'
-					: 'As traduções salvas foram preservadas; corrija a configuração ou aguarde a disponibilidade da cota para continuar.';
-				message = `${batchStatus} após ${state.completed}/${state.total} traduções salvas. ${state.failedEntries.length} entrada(s) pendente(s): “${failedNames}”${remaining > 0 ? ` e mais ${remaining}` : ''}. ${retryText} ${state.error}`;
+				const resumeText = {
+					configuration:
+						'Corrija a configuração do provedor e clique novamente para continuar apenas pelas pendentes.',
+					quota:
+						'Quando a cota estiver disponível novamente, clique para continuar apenas pelas pendentes.',
+					rate_limited:
+						'Aguarde antes de tentar novamente; a retomada processará apenas as pendentes.',
+					provider:
+						'As traduções salvas foram preservadas. Clique novamente para tentar apenas as pendentes.'
+				}[state.pauseReason ?? 'provider'];
+				message = `Lote pausado após ${state.completed}/${state.total} traduções salvas. ${state.failedEntries.length} entrada(s) pendente(s): “${failedNames}”${remaining > 0 ? ` e mais ${remaining}` : ''}. ${resumeText} ${state.error}`;
 			}
 		});
 	});
@@ -510,11 +519,16 @@
 		<div class="header-actions">
 			{#if isGM && $appLocale === 'pt-BR'}<button
 					onclick={() => void translateSRDPending()}
-					disabled={batchTranslating || pendingSrdCount === 0 || !batchRetryable}
+					disabled={!canResumeTranslationQueue({
+						isGM,
+						locale: $appLocale,
+						isRunning: batchTranslating,
+						pendingCount: pendingSrdCount
+					})}
 					>{batchTranslating
 						? `Traduzindo ${batchProgress}…`
-						: !batchRetryable
-							? 'Tradução pausada'
+						: batchPaused
+							? `Retomar tradução (${pendingSrdCount})`
 							: `Traduzir SRD pendente (${pendingSrdCount})`}</button
 				>{/if}
 			{#if isGM}<button onclick={load} disabled={loading}

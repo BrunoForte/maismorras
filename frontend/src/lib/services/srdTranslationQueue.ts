@@ -1,11 +1,14 @@
 import { writable } from 'svelte/store';
 import type { CompendiumEntry } from './compendiumApi';
 import { ApiError, notifyUserRequestError } from './httpClient';
+import { hasPendingCompendiumTranslation } from '$lib/utils/compendium/compendiumRules';
+
+export type TranslationPauseReason = 'rate_limited' | 'quota' | 'configuration' | 'provider';
 
 export type TranslationQueueState = {
 	campaignId: string | null;
-	status: 'idle' | 'running' | 'completed' | 'failed';
-	retryable: boolean;
+	status: 'idle' | 'running' | 'completed' | 'paused';
+	pauseReason: TranslationPauseReason | null;
 	total: number;
 	completed: number;
 	processed: number;
@@ -18,7 +21,7 @@ export type TranslationQueueState = {
 const initialState: TranslationQueueState = {
 	campaignId: null,
 	status: 'idle',
-	retryable: true,
+	pauseReason: null,
 	total: 0,
 	completed: 0,
 	processed: 0,
@@ -33,6 +36,7 @@ let activeCampaignId: string | null = null;
 let activeTask: Promise<void> | null = null;
 
 const MAX_TRANSIENT_RETRIES = 2;
+const MAX_RATE_LIMIT_WAIT_MS = 30_000;
 const RETRYABLE_HTTP_STATUSES = new Set([0, 408, 429, 502, 503, 504]);
 const DEFERRED_HTTP_STATUSES = new Set([0, 408, 502, 503, 504]);
 
@@ -46,6 +50,14 @@ function isNonRetryableTranslationSetupError(error: unknown): boolean {
 	return ['TRANSLATION_NOT_CONFIGURED', 'TRANSLATION_QUOTA_EXCEEDED'].includes(
 		translationErrorCode(error)
 	);
+}
+
+function pauseReasonFor(error: unknown): TranslationPauseReason {
+	const code = translationErrorCode(error);
+	if (code === 'TRANSLATION_NOT_CONFIGURED') return 'configuration';
+	if (code === 'TRANSLATION_QUOTA_EXCEEDED') return 'quota';
+	if (error instanceof ApiError && error.status === 429) return 'rate_limited';
+	return 'provider';
 }
 
 function isTransientTranslationError(error: unknown): boolean {
@@ -62,9 +74,17 @@ function canDeferTranslationError(error: unknown): boolean {
 	);
 }
 
-function waitBeforeRetry(attempt: number): Promise<void> {
-	const delayMs = 800 * 2 ** (attempt - 1);
+function waitBeforeRetry(delayMs: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+export function canResumeTranslationQueue(input: {
+	isGM: boolean;
+	locale: string;
+	isRunning: boolean;
+	pendingCount: number;
+}): boolean {
+	return input.isGM && input.locale === 'pt-BR' && !input.isRunning && input.pendingCount > 0;
 }
 
 /**
@@ -80,13 +100,26 @@ export function startSrdTranslationQueue(
 ): Promise<void> {
 	if (activeTask && activeCampaignId === campaignId) return activeTask;
 	if (activeTask) return activeTask;
+	const pendingEntries = Array.from(
+		new Map(
+			entries.filter(hasPendingCompendiumTranslation).map((entry) => [entry.id, entry] as const)
+		).values()
+	);
+	if (pendingEntries.length === 0) {
+		srdTranslationQueue.set({
+			...initialState,
+			campaignId,
+			status: 'completed'
+		});
+		return Promise.resolve();
+	}
 
 	activeCampaignId = campaignId;
 	srdTranslationQueue.set({
 		campaignId,
 		status: 'running',
-		retryable: true,
-		total: entries.length,
+		pauseReason: null,
+		total: pendingEntries.length,
 		completed: 0,
 		processed: 0,
 		currentName: '',
@@ -100,7 +133,7 @@ export function startSrdTranslationQueue(
 		let processed = 0;
 		let consecutiveDeferredFailures = 0;
 		const failedEntries: string[] = [];
-		for (const [entryIndex, entry] of entries.entries()) {
+		for (const [entryIndex, entry] of pendingEntries.entries()) {
 			srdTranslationQueue.update((state) => ({
 				...state,
 				currentName: getName(entry),
@@ -113,9 +146,22 @@ export function startSrdTranslationQueue(
 						updatedEntry = await translateOne(entry);
 						break;
 					} catch (error) {
+						if (error instanceof ApiError && error.status === 429) {
+							const waitMs = error.retryAfterMs;
+							if (
+								attempt === 0 &&
+								waitMs !== undefined &&
+								waitMs > 0 &&
+								waitMs <= MAX_RATE_LIMIT_WAIT_MS
+							) {
+								await waitBeforeRetry(waitMs);
+								continue;
+							}
+							throw error;
+						}
 						if (attempt >= MAX_TRANSIENT_RETRIES || !isTransientTranslationError(error))
 							throw error;
-						await waitBeforeRetry(attempt + 1);
+						await waitBeforeRetry(800 * 2 ** attempt);
 					}
 				}
 				if (!updatedEntry) throw new Error('O serviço não retornou a entrada traduzida.');
@@ -143,15 +189,15 @@ export function startSrdTranslationQueue(
 						}));
 						continue;
 					}
-					failedEntries.push(...entries.slice(entryIndex + 1).map(getName));
+					failedEntries.push(...pendingEntries.slice(entryIndex + 1).map(getName));
 				} else {
-					failedEntries.push(getName(entry), ...entries.slice(entryIndex + 1).map(getName));
+					failedEntries.push(getName(entry), ...pendingEntries.slice(entryIndex + 1).map(getName));
 				}
 				notifyUserRequestError(failureMessage);
 				srdTranslationQueue.update((state) => ({
 					...state,
-					status: 'failed',
-					retryable: canDeferTranslationError(error),
+					status: 'paused',
+					pauseReason: pauseReasonFor(error),
 					processed,
 					failedEntries,
 					error:
@@ -170,8 +216,8 @@ export function startSrdTranslationQueue(
 			notifyUserRequestError(message);
 			srdTranslationQueue.update((state) => ({
 				...state,
-				status: 'failed',
-				retryable: true,
+				status: 'paused',
+				pauseReason: 'provider',
 				processed,
 				failedEntries,
 				currentName: failedEntries[0],

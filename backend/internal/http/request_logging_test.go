@@ -109,8 +109,8 @@ func TestCORSAllowsAndExposesRequestID(t *testing.T) {
 	if got := response.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(got, "X-Request-ID") {
 		t.Fatalf("request ID is not allowed by CORS: %q", got)
 	}
-	if got := response.Header().Get("Access-Control-Expose-Headers"); got != "X-Request-ID" {
-		t.Fatalf("request ID response header is not exposed by CORS: %q", got)
+	if got := response.Header().Get("Access-Control-Expose-Headers"); got != "X-Request-ID, Retry-After" {
+		t.Fatalf("request ID and retry delay response headers are not exposed by CORS: %q", got)
 	}
 }
 

@@ -6,12 +6,22 @@ vi.mock('./supabase', () => ({
 	getSupabaseClient: vi.fn(async () => ({ auth: { refreshSession: mockRefreshSession } }))
 }));
 
-import { fetchAuthenticated, request } from './httpClient';
+import { fetchAuthenticated, parseRetryAfterHeader, request } from './httpClient';
 
 afterEach(() => {
 	vi.unstubAllGlobals();
 	vi.clearAllMocks();
 	vi.useRealTimers();
+});
+
+describe('Retry-After parsing', () => {
+	it('parses delta-seconds and HTTP-date values', () => {
+		const now = Date.parse('2026-10-02T12:00:00Z');
+		expect(parseRetryAfterHeader('2', now)).toBe(2_000);
+		expect(parseRetryAfterHeader('2026-10-02T12:00:03Z', now)).toBe(3_000);
+		expect(parseRetryAfterHeader('2026-10-02T11:59:59Z', now)).toBe(0);
+		expect(parseRetryAfterHeader('bad-value', now)).toBeUndefined();
+	});
 });
 
 describe('fetchAuthenticated', () => {
@@ -82,6 +92,22 @@ describe('fetchAuthenticated', () => {
 });
 
 describe('request timeout', () => {
+	it('keeps an exposed Retry-After delay on rate-limit errors', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(
+				new Response(JSON.stringify({ error: { code: 'TRANSLATION_RATE_LIMITED' } }), {
+					status: 429,
+					headers: { 'Content-Type': 'application/json', 'Retry-After': '3' }
+				})
+			)
+		);
+
+		await expect(
+			request({ access_token: 'token', user: { id: 'user-1' } } as Session, '/translate')
+		).rejects.toMatchObject({ status: 429, retryAfterMs: 3_000 });
+	});
+
 	it('reports a useful timeout error instead of exposing the raw abort message', async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi.fn(

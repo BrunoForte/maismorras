@@ -46,11 +46,20 @@ export class ApiError extends Error {
 	constructor(
 		public readonly status: number,
 		message: string,
-		public readonly body: unknown = null
+		public readonly body: unknown = null,
+		public readonly retryAfterMs?: number
 	) {
 		super(message);
 		this.name = 'ApiError';
 	}
+}
+
+export function parseRetryAfterHeader(value: string | null, now = Date.now()): number | undefined {
+	if (!value?.trim()) return undefined;
+	const seconds = Number(value);
+	if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+	const date = Date.parse(value);
+	return Number.isFinite(date) ? Math.max(0, date - now) : undefined;
 }
 
 function userFacingMessage(status: number, body: unknown, fallback: string): string {
@@ -172,7 +181,12 @@ export async function request<T>(
 	if (!response.ok) {
 		const message = userFacingMessage(response.status, body, fallback);
 		if (notifyErrors) reportRequestError(message);
-		throw new ApiError(response.status, message, body);
+		throw new ApiError(
+			response.status,
+			message,
+			body,
+			parseRetryAfterHeader(response.headers.get('Retry-After'))
+		);
 	}
 	return (body === null ? undefined : body) as T;
 }

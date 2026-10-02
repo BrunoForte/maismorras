@@ -5,6 +5,7 @@ import { ApiError } from './httpClient';
 import {
 	srdTranslationQueue,
 	startSrdTranslationQueue,
+	canResumeTranslationQueue,
 	type TranslationQueueState
 } from './srdTranslationQueue';
 
@@ -24,7 +25,7 @@ afterEach(() => {
 	srdTranslationQueue.set({
 		campaignId: null,
 		status: 'idle',
-		retryable: true,
+		pauseReason: null,
 		total: 0,
 		completed: 0,
 		processed: 0,
@@ -55,7 +56,7 @@ describe('SRD translation queue', () => {
 
 		expect(calls).toEqual(['spell-unstable', 'spell-unstable', 'spell-unstable', 'spell-next']);
 		expect(get(srdTranslationQueue)).toMatchObject({
-			status: 'failed',
+			status: 'paused',
 			completed: 1,
 			processed: 2,
 			failedEntries: ['spell-unstable']
@@ -106,6 +107,10 @@ describe('SRD translation queue', () => {
 
 	it('pauses after a failed entry without discarding completed entries', async () => {
 		const first = entry('spell-1');
+		const savedEntries: CompendiumEntry[] = [];
+		const unsubscribe = srdTranslationQueue.subscribe((state) => {
+			if (state.updatedEntry) savedEntries.push(state.updatedEntry);
+		});
 		await startSrdTranslationQueue(
 			'campaign-1',
 			[first, entry('spell-2')],
@@ -115,12 +120,14 @@ describe('SRD translation queue', () => {
 			},
 			(item) => item.name
 		);
-		let snapshot!: TranslationQueueState;
-		const unsubscribe = srdTranslationQueue.subscribe((state) => (snapshot = state));
 		unsubscribe();
-		expect(snapshot.status).toBe('failed');
+		let snapshot!: TranslationQueueState;
+		srdTranslationQueue.subscribe((state) => (snapshot = state))();
+		expect(snapshot.status).toBe('paused');
 		expect(snapshot.completed).toBe(1);
 		expect(snapshot.error).toBe('provider down');
+		expect(savedEntries).toHaveLength(1);
+		expect(savedEntries[0].translations['pt-BR']).toBe('salvo');
 	});
 
 	it('does not retry a missing-provider configuration error', async () => {
@@ -138,7 +145,11 @@ describe('SRD translation queue', () => {
 			(item) => item.name
 		);
 		expect(attempts).toBe(1);
-		expect(get(srdTranslationQueue)).toMatchObject({ status: 'failed', processed: 1 });
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'configuration',
+			processed: 1
+		});
 	});
 
 	it('does not retry quota exhaustion as a transient provider outage', async () => {
@@ -155,6 +166,205 @@ describe('SRD translation queue', () => {
 			(item) => item.name
 		);
 		expect(attempts).toBe(1);
-		expect(get(srdTranslationQueue).failedEntries).toEqual(['spell-1']);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'quota',
+			failedEntries: ['spell-1']
+		});
+	});
+
+	it('pauses on 429 without Retry-After and keeps manual resume available', async () => {
+		let attempts = 0;
+		await startSrdTranslationQueue(
+			'campaign-429-manual',
+			[entry('spell-1'), entry('spell-2')],
+			async () => {
+				attempts += 1;
+				throw new ApiError(429, 'Aguarde antes de tentar novamente.');
+			},
+			(item) => item.name
+		);
+
+		expect(attempts).toBe(1);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'rate_limited',
+			failedEntries: ['spell-1', 'spell-2'],
+			error: 'Aguarde antes de tentar novamente.'
+		});
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'pt-BR', isRunning: false, pendingCount: 2 })
+		).toBe(true);
+	});
+
+	it('honors Retry-After once before making another rate-limited request', async () => {
+		vi.useFakeTimers();
+		let attempts = 0;
+		const task = startSrdTranslationQueue(
+			'campaign-429-delay',
+			[entry('spell-1')],
+			async (item) => {
+				attempts += 1;
+				if (attempts <= 2) throw new ApiError(429, 'Rate limited.', null, 2_000);
+				return { ...item, translations: { 'pt-BR': 'Tradução salva' } };
+			},
+			(item) => item.name
+		);
+
+		await vi.advanceTimersByTimeAsync(1_999);
+		expect(attempts).toBe(1);
+		await vi.advanceTimersByTimeAsync(1);
+		await task;
+		expect(attempts).toBe(2);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'rate_limited'
+		});
+		await startSrdTranslationQueue(
+			'campaign-429-delay',
+			[entry('spell-1')],
+			async (item) => {
+				attempts += 1;
+				return { ...item, translations: { 'pt-BR': 'Tradução salva' } };
+			},
+			(item) => item.name
+		);
+		expect(attempts).toBe(3);
+		expect(get(srdTranslationQueue).status).toBe('completed');
+	});
+
+	it('does not retry automatically when Retry-After exceeds the bounded wait', async () => {
+		let attempts = 0;
+		await startSrdTranslationQueue(
+			'campaign-429-long-delay',
+			[entry('spell-1')],
+			async () => {
+				attempts += 1;
+				throw new ApiError(429, 'Rate limited.', null, 60_000);
+			},
+			(item) => item.name
+		);
+
+		expect(attempts).toBe(1);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'rate_limited'
+		});
+	});
+
+	it('allows manual resume after quota renewal without retrying the failed request automatically', async () => {
+		let attempts = 0;
+		const completedItem = entry('spell-completed');
+		const pendingItem = entry('spell-pending');
+		let savedCompleted: CompendiumEntry | undefined;
+		const translate = async (value: CompendiumEntry) => {
+			attempts += 1;
+			if (value.id === pendingItem.id && attempts === 2)
+				throw new ApiError(503, 'Cota encerrada.', {
+					error: { code: 'TRANSLATION_QUOTA_EXCEEDED', message: 'Cota encerrada.' }
+				});
+			const translated = { ...value, translations: { 'pt-BR': 'Tradução salva' } };
+			if (value.id === completedItem.id) savedCompleted = translated;
+			return translated;
+		};
+
+		await startSrdTranslationQueue(
+			'campaign-quota-resume',
+			[completedItem, pendingItem],
+			translate,
+			(value) => value.name
+		);
+		expect(attempts).toBe(2);
+		expect(get(srdTranslationQueue)).toMatchObject({ status: 'paused', pauseReason: 'quota' });
+		expect(savedCompleted?.translations['pt-BR']).toBe('Tradução salva');
+		await startSrdTranslationQueue(
+			'campaign-quota-resume',
+			[savedCompleted!, pendingItem],
+			translate,
+			(value) => value.name
+		);
+		expect(attempts).toBe(3);
+		expect(get(srdTranslationQueue).status).toBe('completed');
+	});
+
+	it('keeps a missing-configuration pause resumable without a request loop', async () => {
+		let attempts = 0;
+		const item = entry('spell-config');
+		await startSrdTranslationQueue(
+			'campaign-config-resume',
+			[item],
+			async () => {
+				attempts += 1;
+				throw new ApiError(503, 'Configuração ausente.', {
+					error: { code: 'TRANSLATION_NOT_CONFIGURED', message: 'Configuração ausente.' }
+				});
+			},
+			(value) => value.name
+		);
+		expect(attempts).toBe(1);
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			pauseReason: 'configuration'
+		});
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'pt-BR', isRunning: false, pendingCount: 1 })
+		).toBe(true);
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'pt-BR', isRunning: true, pendingCount: 1 })
+		).toBe(false);
+		await startSrdTranslationQueue(
+			'campaign-config-resume',
+			[item],
+			async (value) => ({
+				...value,
+				translations: { 'pt-BR': 'Tradução após corrigir configuração' }
+			}),
+			(value) => value.name
+		);
+		expect(get(srdTranslationQueue).status).toBe('completed');
+	});
+
+	it('only enables the queue action for a narrator with pending Portuguese entries', () => {
+		expect(
+			canResumeTranslationQueue({ isGM: false, locale: 'pt-BR', isRunning: false, pendingCount: 1 })
+		).toBe(false);
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'en', isRunning: false, pendingCount: 1 })
+		).toBe(false);
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'pt-BR', isRunning: true, pendingCount: 1 })
+		).toBe(false);
+		expect(
+			canResumeTranslationQueue({ isGM: true, locale: 'pt-BR', isRunning: false, pendingCount: 0 })
+		).toBe(false);
+	});
+
+	it('does not call already completed entries again when resuming a batch', async () => {
+		const alreadySaved = { ...entry('spell-done'), translations: { 'pt-BR': 'Salva' } };
+		const pending = entry('spell-pending');
+		const calls: string[] = [];
+		let pendingAttempts = 0;
+		const translate = async (item: CompendiumEntry) => {
+			calls.push(item.id);
+			if (item.id === pending.id && pendingAttempts++ === 0)
+				throw new ApiError(429, 'Rate limited.');
+			return { ...item, translations: { 'pt-BR': 'Salva agora' } };
+		};
+
+		await startSrdTranslationQueue(
+			'campaign-resume-pending',
+			[alreadySaved, pending],
+			translate,
+			(item) => item.name
+		);
+		expect(get(srdTranslationQueue).status).toBe('paused');
+		await startSrdTranslationQueue(
+			'campaign-resume-pending',
+			[alreadySaved, pending],
+			translate,
+			(item) => item.name
+		);
+		expect(calls).toEqual(['spell-pending', 'spell-pending']);
+		expect(get(srdTranslationQueue)).toMatchObject({ status: 'completed', total: 1, completed: 1 });
 	});
 });
