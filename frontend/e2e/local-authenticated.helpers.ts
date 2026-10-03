@@ -83,7 +83,8 @@ export type LocalAuthenticatedFixture = {
 
 export async function createLocalAuthenticatedFixture(
 	browser: Browser,
-	withAudio = false
+	withAudio = false,
+	audioSamples = 800
 ): Promise<LocalAuthenticatedFixture> {
 	if (!supabaseUrl || !serviceRoleKey)
 		throw new Error('Local Supabase test configuration is unavailable.');
@@ -244,9 +245,15 @@ export async function createLocalAuthenticatedFixture(
 		});
 		if (withAudio)
 			await test.step('upload unique temporary audio assets to Storage', async () => {
-				await prepareAudioAssets(admin, campaignId!, suffix, (paths) => {
-					audioPaths = paths;
-				});
+				await prepareAudioAssets(
+					admin,
+					campaignId!,
+					suffix,
+					(paths) => {
+						audioPaths = paths;
+					},
+					audioSamples
+				);
 			});
 
 		const fixture: LocalAuthenticatedFixture = {
@@ -378,7 +385,8 @@ async function prepareAudioAssets(
 	admin: APIRequestContext,
 	campaignId: string,
 	suffix: string,
-	setPaths: (paths: string[]) => void
+	setPaths: (paths: string[]) => void,
+	audioSamples: number
 ) {
 	const names = [
 		`music_once__e2e-old-${suffix}.wav`,
@@ -408,7 +416,7 @@ async function prepareAudioAssets(
 				throw new Error('Shared local campaign-assets bucket did not become available.');
 		}
 	}
-	const wav = createSilentWav();
+	const wav = createSilentWav(audioSamples);
 	for (const path of paths) {
 		const uploaded = await admin.post(`/storage/v1/object/campaign-assets/${path}`, {
 			headers: { 'Content-Type': 'audio/wav', 'x-upsert': 'false' },
@@ -606,8 +614,7 @@ export async function audioSnapshot(page: Page) {
 	});
 }
 
-export function createSilentWav(): Buffer {
-	const samples = 800;
+export function createSilentWav(samples = 800): Buffer {
 	const buffer = Buffer.alloc(44 + samples * 2);
 	buffer.write('RIFF', 0);
 	buffer.writeUInt32LE(buffer.length - 8, 4);

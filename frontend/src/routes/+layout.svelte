@@ -138,6 +138,55 @@
 		outline: 2px solid var(--mm-accent);
 		outline-offset: 2px;
 	}
+	:global(.map-tool-menu) {
+		box-sizing: border-box;
+		display: grid;
+		gap: 0.55rem;
+		max-height: min(72dvh, 620px);
+		overflow: auto;
+		padding: 0.75rem;
+		border: 1px solid rgba(216, 173, 103, 0.38);
+		border-radius: 10px;
+		color: var(--mm-text);
+		background: rgba(25, 19, 23, 0.97);
+		box-shadow: 0 16px 36px #0007;
+		backdrop-filter: blur(12px);
+		font-size: 0.72rem;
+		line-height: 1.4;
+		text-align: start;
+	}
+	:global(.map-tool-menu strong) {
+		color: #f0cb85;
+		font:
+			600 1rem Georgia,
+			serif;
+	}
+	:global(.map-tool-menu :is(small, p, span)) {
+		color: var(--mm-text-muted);
+		line-height: 1.4;
+	}
+	:global(.map-tool-menu button) {
+		min-height: 2rem;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.4rem 0.55rem;
+		color: #e8d3aa;
+		background: #2b211e;
+		text-align: start;
+	}
+	:global(.map-tool-menu button:hover:not(:disabled)),
+	:global(.map-tool-menu button.active) {
+		border-color: #d8ad67;
+		background: #453329;
+	}
+	:global(.map-tool-menu :is(input:not([type='checkbox']), select)) {
+		min-width: 0;
+		border: 1px solid #5d493b;
+		border-radius: 5px;
+		padding: 0.4rem 0.5rem;
+		color: #e8d3aa;
+		background: #241c1e;
+	}
 	.request-error-toast {
 		position: fixed;
 		z-index: 3000;

@@ -129,9 +129,8 @@
 	class="token-inspector"
 	aria-label={`${isEnglish ? 'Information for' : 'Informações de'} ${token.nome}`}
 >
-	<header>
+	<header class="inspector-header">
 		<div>
-			<span class="inspector-eyebrow">{isEnglish ? 'SELECTED TOKEN' : 'TOKEN SELECIONADO'}</span>
 			<h2>{characterSheet?.name || token.nome}</h2>
 		</div>
 		<button
@@ -232,51 +231,51 @@
 				</div>{/if}
 		</div>
 	{/if}
-	<div class="official-effects">
-		<div class="status-heading">
-			<span>{isEnglish ? 'Official conditions (SRD)' : 'Condições oficiais (SRD)'}</span>
-		</div>
-		{#if permissions.canManageConditions}
-			{#if effectDefinitions.length}
-				<select
-					value={selectedEffectSlug}
-					onchange={(event) => onEffectSelectionChange(event.currentTarget.value)}
-					aria-label={isEnglish ? 'Official condition' : 'Condição oficial'}
-					>{#each effectDefinitions as definition (definition.slug)}<option value={definition.slug}
-							>{definition.name}</option
-						>{/each}</select
-				>
-				{#if selectedEffect}<p>{selectedEffect.summary}</p>{/if}
-				<div class="effect-actions">
-					<input
-						value={effectDuration}
-						oninput={(event) => onEffectDurationChange(event.currentTarget.value)}
-						inputmode="numeric"
-						type="number"
-						min="1"
-						placeholder={isEnglish ? 'Turns (optional)' : 'Turnos (opcional)'}
-						aria-label={isEnglish ? 'Duration in turns' : 'Duração em turnos'}
-					/><button onclick={onApplyEffect}>{isEnglish ? 'Apply' : 'Aplicar'}</button>
-				</div>
-			{:else}<p class="effect-empty">
-					{isEnglish
-						? 'Run migration 0017 to load the SRD catalog.'
-						: 'Execute a migração 0017 para carregar o catálogo SRD.'}
+	<details class="official-effects">
+		<summary>{isEnglish ? 'Conditions (SRD)' : 'Condições oficiais (SRD)'}</summary>
+		<div class="official-effects-content">
+			{#if permissions.canManageConditions}
+				{#if effectDefinitions.length}
+					<select
+						value={selectedEffectSlug}
+						onchange={(event) => onEffectSelectionChange(event.currentTarget.value)}
+						aria-label={isEnglish ? 'Official condition' : 'Condição oficial'}
+						>{#each effectDefinitions as definition (definition.slug)}<option
+								value={definition.slug}>{definition.name}</option
+							>{/each}</select
+					>
+					{#if selectedEffect}<p>{selectedEffect.summary}</p>{/if}
+					<div class="effect-actions">
+						<input
+							value={effectDuration}
+							oninput={(event) => onEffectDurationChange(event.currentTarget.value)}
+							inputmode="numeric"
+							type="number"
+							min="1"
+							placeholder={isEnglish ? 'Turns (optional)' : 'Turnos (opcional)'}
+							aria-label={isEnglish ? 'Duration in turns' : 'Duração em turnos'}
+						/><button onclick={onApplyEffect}>{isEnglish ? 'Apply' : 'Aplicar'}</button>
+					</div>
+				{:else}<p class="effect-empty">
+						{isEnglish
+							? 'Run migration 0017 to load the SRD catalog.'
+							: 'Execute a migração 0017 para carregar o catálogo SRD.'}
+					</p>{/if}
+			{/if}
+			{#if activeEffects.length}<div class="official-effect-list">
+					{#each activeEffects as effect (effect.id)}<span title={effect.source}
+							>{effect.name}{effect.remainingTurns
+								? ` · ${effect.remainingTurns} ${isEnglish ? 'turns' : 'turnos'}`
+								: ''}{#if permissions.canManageConditions}<button
+									onclick={() => onRemoveEffect(effect)}
+									aria-label={`${isEnglish ? 'Remove' : 'Remover'} ${effect.name}`}>×</button
+								>{/if}</span
+						>{/each}
+				</div>{:else}<p class="effect-empty">
+					{isEnglish ? 'No active conditions.' : 'Nenhuma condição ativa.'}
 				</p>{/if}
-		{/if}
-		{#if activeEffects.length}<div class="official-effect-list">
-				{#each activeEffects as effect (effect.id)}<span title={effect.source}
-						>{effect.name}{effect.remainingTurns
-							? ` · ${effect.remainingTurns} ${isEnglish ? 'turns' : 'turnos'}`
-							: ''}{#if permissions.canManageConditions}<button
-								onclick={() => onRemoveEffect(effect)}
-								aria-label={`${isEnglish ? 'Remove' : 'Remover'} ${effect.name}`}>×</button
-							>{/if}</span
-					>{/each}
-			</div>{:else}<p class="effect-empty">
-				{isEnglish ? 'No active conditions.' : 'Nenhuma condição ativa.'}
-			</p>{/if}
-	</div>
+		</div>
+	</details>
 	{#if permissions.canEditAppearance || permissions.canEditVision || permissions.canChangeVisibility || permissions.canRemoveToken}
 		<details class="token-settings">
 			<summary>{isEnglish ? 'Token settings' : 'Configurações do token'}</summary>
@@ -459,7 +458,6 @@
 	.token-inspector .token-settings > .token-appearance,
 	.token-inspector .token-settings > .vision-control,
 	.token-inspector .token-settings > .visibility-control,
-	.token-inspector > .official-effects,
 	.token-inspector .token-settings > .remove-token {
 		order: 5;
 	}
@@ -502,11 +500,18 @@
 		font-size: 0.68rem;
 	}
 	.token-inspector header {
+		position: sticky;
+		top: -1rem;
+		z-index: 4;
 		display: flex;
 		justify-content: space-between;
 		gap: 0.75rem;
 		align-items: start;
-		margin-bottom: 0.9rem;
+		margin: -1rem -1rem 0.55rem;
+		border-bottom: 1px solid rgba(216, 173, 103, 0.22);
+		padding: 0.85rem 1rem 0.65rem;
+		background: rgba(27, 22, 27, 0.98);
+		backdrop-filter: blur(12px);
 	}
 	.inspector-eyebrow {
 		color: #d8ad67;
@@ -805,17 +810,21 @@
 	.hp-actions input::-webkit-inner-spin-button {
 		appearance: none;
 	}
-	.status-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.7rem;
-		color: #a99c91;
-		font-size: 0.72rem;
-	}
 	.official-effects {
+		display: grid;
+		gap: 0.5rem;
 		padding: 0.75rem 0;
 		border-top: 1px solid #423839;
+	}
+	.official-effects > summary {
+		color: #e8c786;
+		font-size: 0.72rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.official-effects-content {
+		display: grid;
+		gap: 0.35rem;
 	}
 	.official-effects select,
 	.effect-actions input {

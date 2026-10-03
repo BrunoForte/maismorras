@@ -38,12 +38,36 @@
 		onCastSpell = () => {},
 		onPresentSpell = () => {}
 	}: Props = $props();
-	const weapons = $derived(sheet.inventory.filter((item) => equipmentCategory(item) === 'weapon'));
+	const weaponRows = $derived.by(() => {
+		const occurrences = new SvelteMap<string, number>();
+		return sheet.inventory
+			.filter((item) => equipmentCategory(item) === 'weapon')
+			.map((item) => {
+				const identity = item.entryId || JSON.stringify([item.name, item.rules]);
+				const occurrence = occurrences.get(identity) ?? 0;
+				occurrences.set(identity, occurrence + 1);
+				return { item, key: `${identity}:${occurrence}` };
+			});
+	});
 	const spellGroups = $derived.by(() => {
-		const groups = new SvelteMap<number, { spell: Spell; index: number }[]>();
+		const groups = new SvelteMap<number, { spell: Spell; index: number; key: string }[]>();
+		const occurrences = new SvelteMap<string, number>();
 		sheet.spells.forEach((spell, index) => {
+			const identity =
+				spell.entryId ||
+				JSON.stringify([
+					spell.name,
+					spell.level,
+					spell.notes,
+					spell.description ?? '',
+					spell.diceFormula ?? '',
+					spell.higherLevels ?? '',
+					spell.origin ?? ''
+				]);
+			const occurrence = occurrences.get(identity) ?? 0;
+			occurrences.set(identity, occurrence + 1);
 			const group = groups.get(spell.level) ?? [];
-			group.push({ spell, index });
+			group.push({ spell, index, key: `${identity}:${occurrence}` });
 			groups.set(spell.level, group);
 		});
 		return [...groups.entries()].sort(([left], [right]) => left - right);
@@ -52,6 +76,22 @@
 		canCastSpells &&
 		(spell.level === 0 ||
 			sheet.spellSlots.some((slot) => slot.level >= spell.level && slot.current > 0));
+	const customAttackRows = $derived.by(() => {
+		const occurrences = new SvelteMap<string, number>();
+		return sheet.attacks.map((attack, index) => {
+			const identity = JSON.stringify([
+				attack.name,
+				attack.attackType ?? '',
+				attack.ability ?? '',
+				attack.attackBonus,
+				attack.damage,
+				attack.notes
+			]);
+			const occurrence = occurrences.get(identity) ?? 0;
+			occurrences.set(identity, occurrence + 1);
+			return { attack, index, key: `${identity}:${occurrence}` };
+		});
+	});
 	const circleLabel = (level: number) =>
 		level === 0
 			? isEnglish
@@ -108,13 +148,10 @@
 		>
 	</div>
 
-	{#if weapons.length || sheet.attacks.length}
-		<section
-			class="summary-section"
-			aria-label={isEnglish ? 'Weapon attacks' : 'Ataques com armas'}
-		>
-			<strong>{isEnglish ? 'Attacks' : 'Ataques'}</strong>
-			{#each weapons as item (item.entryId || item.name)}
+	{#if weaponRows.length || sheet.attacks.length}
+		<details class="summary-section">
+			<summary>{isEnglish ? 'Attacks' : 'Ataques'}</summary>
+			{#each weaponRows as { item, key } (key)}
 				{@const profiles = weaponAttackProfiles(item)}
 				<div class="action-row">
 					<strong>{item.name}</strong>
@@ -141,7 +178,7 @@
 					</div>
 				{/each}
 			{/each}
-			{#each sheet.attacks as attack, index (index)}
+			{#each customAttackRows as { attack, index, key } (key)}
 				<div class="action-row">
 					<strong>{attack.name}</strong>
 					<div>
@@ -156,19 +193,16 @@
 					</div>
 				</div>
 			{/each}
-		</section>
+		</details>
 	{/if}
 
 	{#if spellGroups.length}
-		<section
-			class="summary-section spell-groups"
-			aria-label={isEnglish ? 'Spells by circle' : 'Magias por círculo'}
-		>
-			<strong>{isEnglish ? 'Spells' : 'Magias'}</strong>
+		<details class="summary-section spell-groups">
+			<summary>{isEnglish ? 'Spells' : 'Magias'}</summary>
 			{#each spellGroups as [level, entries] (level)}
 				<details>
 					<summary>{circleLabel(level)}</summary>
-					{#each entries as { spell, index } (spell.entryId || `${spell.name}:${index}`)}
+					{#each entries as { spell, index, key } (key)}
 						<div class="action-row spell-row">
 							<strong>{spell.name}</strong>
 							<div>
@@ -183,7 +217,7 @@
 					{/each}
 				</details>
 			{/each}
-		</section>
+		</details>
 	{/if}
 </section>
 
@@ -220,7 +254,6 @@
 		padding: 0.25rem 0.45rem;
 	}
 	.armor-class b,
-	.summary-section > strong,
 	.hit-points > label {
 		color: #d8ad67;
 	}
@@ -269,6 +302,11 @@
 	.summary-section {
 		display: grid;
 		gap: 0.28rem;
+	}
+	.summary-section > summary {
+		color: #d8ad67;
+		font-weight: 700;
+		cursor: pointer;
 	}
 	.action-row {
 		display: grid;

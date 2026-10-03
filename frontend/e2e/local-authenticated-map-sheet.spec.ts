@@ -66,6 +66,90 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	test('six map menus share accessible styling on desktop and mobile and signal remains available', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const character = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Categorias do inspector E2E'
+			});
+			await fixture.createCharacterToken(character.id);
+			const page = fixture.gm;
+			await openMap(page, fixture.campaignId, fixture.sceneId);
+			await selectTokenAtDefaultPosition(page);
+			const menus = [
+				'Régua',
+				'Iniciativa',
+				'Dados',
+				'Camadas do mapa',
+				'Área persistente',
+				'Barreiras'
+			];
+			const referenceStyle = { borderRadius: '10px', padding: '12px', gap: '8.8px' };
+			for (const viewport of [
+				{ width: 1280, height: 900 },
+				{ width: 390, height: 844 }
+			]) {
+				await page.setViewportSize(viewport);
+				for (const name of menus) {
+					const trigger = page.getByRole('button', { name, exact: true });
+					await trigger.click();
+					await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+					const menu = page.locator('.map-tool-menu:visible');
+					await expect(menu).toHaveCount(1);
+					const measurements = await menu.evaluate((element) => {
+						const style = getComputedStyle(element);
+						const rect = element.getBoundingClientRect();
+						return {
+							borderRadius: style.borderRadius,
+							padding: style.padding,
+							gap: style.gap,
+							x: rect.x,
+							y: rect.y,
+							right: rect.right,
+							bottom: rect.bottom
+						};
+					});
+					expect(measurements).toMatchObject(referenceStyle);
+					expect(measurements.x).toBeGreaterThanOrEqual(0);
+					expect(measurements.y).toBeGreaterThanOrEqual(0);
+					expect(measurements.right).toBeLessThanOrEqual(viewport.width);
+					expect(measurements.bottom).toBeLessThanOrEqual(viewport.height);
+					await trigger.click();
+					await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+				}
+			}
+			const signal = page.getByTestId('map-signal-button');
+			await expect(signal).toHaveAttribute('aria-pressed', 'false');
+			await signal.click();
+			await expect(signal).toHaveAttribute('aria-pressed', 'true');
+			await page
+				.locator('canvas')
+				.first()
+				.click({ position: { x: 80, y: 80 } });
+			await expect(signal).toHaveAttribute('aria-pressed', 'false');
+			await test.step('keep the inspector header in view while its categories scroll', async () => {
+				await page.setViewportSize({ width: 1280, height: 900 });
+				const inspector = page.locator('.token-inspector');
+				await expect(inspector.locator('.inspector-header')).toHaveCSS('position', 'sticky');
+				await inspector.locator('details.token-settings > summary').click();
+				const scrollable = await inspector.evaluate(
+					(node) => node.scrollHeight > node.clientHeight
+				);
+				expect(scrollable).toBe(true);
+				await inspector.evaluate((node) => (node.scrollTop = node.scrollHeight));
+				const panelTop = (await inspector.boundingBox())!.y;
+				const stickyTop = (await inspector.locator('.inspector-header').boundingBox())!.y;
+				expect(stickyTop).toBeGreaterThanOrEqual(panelTop);
+				expect(stickyTop).toBeLessThan(panelTop + 5);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
 	test('resizable floating panels collapse physically and restore above the audio footer', async ({
 		browser
 	}) => {
@@ -198,16 +282,22 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await assertAboveAudioFooter(page, chat);
 				await assertAboveAudioFooter(page, sheet);
 			});
-			await test.step('bring each panel forward and collapse/restore without losing its contents', async () => {
-				const sheetFront = sheet.getByRole('button', { name: 'Trazer ficha à frente' });
-				const chatFront = chat.getByRole('button', { name: 'Trazer chat à frente' });
-				await expect(sheetFront).toBeVisible();
-				await expect(chatFront).toBeVisible();
-				await chatFront.click();
+			await test.step('interaction and keyboard focus raise either panel without a front button', async () => {
+				const sheetBackdrop = page.locator('.sheet-backdrop');
+				const sheetLayerBefore = Number(
+					await sheetBackdrop.evaluate((node) => getComputedStyle(node).zIndex)
+				);
+				const chatLayerBefore = Number(
+					await chat.evaluate((node) => getComputedStyle(node).zIndex)
+				);
+				await expect(chat.locator('.front-toggle')).toHaveCount(0);
+				await expect(sheet.locator('.front-toggle')).toHaveCount(0);
+				await chat.locator('.chat-titlebar').focus();
 				const chatLayer = Number(await chat.evaluate((node) => getComputedStyle(node).zIndex));
-				await sheetFront.click();
+				expect(chatLayer).toBeGreaterThan(Math.max(sheetLayerBefore, chatLayerBefore));
+				await sheet.locator('header[role="toolbar"]').focus();
 				const sheetLayer = Number(
-					await page.locator('.sheet-backdrop').evaluate((node) => getComputedStyle(node).zIndex)
+					await sheetBackdrop.evaluate((node) => getComputedStyle(node).zIndex)
 				);
 				expect(sheetLayer).toBeGreaterThan(chatLayer);
 				await collapseAndRestore(

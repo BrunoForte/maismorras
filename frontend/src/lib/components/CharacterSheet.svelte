@@ -1034,12 +1034,6 @@
 				</div>
 			</div>
 			<div class="sheet-actions">
-				{#if !standalone}<button
-						type="button"
-						title={$appLocale === 'en' ? 'Bring sheet to front' : 'Trazer ficha à frente'}
-						aria-label={$appLocale === 'en' ? 'Bring sheet to front' : 'Trazer ficha à frente'}
-						onclick={bringToFront}>↟</button
-					>{/if}
 				{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
 						{docked
 							? $appLocale === 'en'

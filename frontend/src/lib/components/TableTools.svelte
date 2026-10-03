@@ -26,6 +26,8 @@
 	let initiativeOpen = $state(false);
 	let toolsOpen = $state(false);
 	let diceOpen = $state(false);
+	let pingArmed = $state(false);
+	let activeMapTool = $state<'layers' | 'areas' | 'barriers' | null>(null);
 	let rolling = $state(false);
 	let diceQuantity = $state('1');
 	let activeTokenId = $state<string | null>(null);
@@ -221,16 +223,32 @@
 		diceOpen = false;
 		window.dispatchEvent(new CustomEvent('maismorras:map-tool', { detail: tool }));
 	}
+	function togglePing() {
+		window.dispatchEvent(new CustomEvent('maismorras:toggle-map-signal'));
+	}
 	function closePanels() {
 		toolsOpen = false;
 		initiativeOpen = false;
 		diceOpen = false;
+		activeMapTool = null;
 	}
 
 	onMount(() => {
 		const closeHandler = () => closePanels();
+		const pingStateHandler = (event: Event) => {
+			pingArmed = (event as CustomEvent<boolean>).detail;
+		};
+		const mapToolStateHandler = (event: Event) => {
+			activeMapTool = (event as CustomEvent<'layers' | 'areas' | 'barriers' | null>).detail;
+		};
 		window.addEventListener('maismorras:close-table-tools', closeHandler);
-		return () => window.removeEventListener('maismorras:close-table-tools', closeHandler);
+		window.addEventListener('maismorras:map-signal-state', pingStateHandler);
+		window.addEventListener('maismorras:map-tool-state', mapToolStateHandler);
+		return () => {
+			window.removeEventListener('maismorras:close-table-tools', closeHandler);
+			window.removeEventListener('maismorras:map-signal-state', pingStateHandler);
+			window.removeEventListener('maismorras:map-tool-state', mapToolStateHandler);
+		};
 	});
 </script>
 
@@ -238,30 +256,67 @@
 	<div class="tool-group">
 		<button
 			class:active={toolsOpen}
+			aria-expanded={toolsOpen}
+			aria-label={$appLocale === 'en' ? 'Area ruler' : 'Régua'}
 			onclick={() => togglePanel('ruler')}
 			title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}>📏</button
 		><button
 			class:active={initiativeOpen}
+			aria-expanded={initiativeOpen}
+			aria-label={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}
 			onclick={() => togglePanel('initiative')}
 			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}>⚔️</button
 		><button
 			class:active={diceOpen}
+			aria-expanded={diceOpen}
+			aria-label={$appLocale === 'en' ? 'Dice' : 'Dados'}
 			onclick={() => togglePanel('dice')}
 			disabled={rolling}
 			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
 		>
 		{#if isGM}<button
+				class:active={activeMapTool === 'layers'}
+				aria-expanded={activeMapTool === 'layers'}
+				aria-label={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
 				onclick={() => toggleMapTool('layers')}
 				title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
 			><button
+				class:active={activeMapTool === 'areas'}
+				aria-expanded={activeMapTool === 'areas'}
+				aria-label={$appLocale === 'en' ? 'Persistent areas' : 'Área persistente'}
 				onclick={() => toggleMapTool('areas')}
 				title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}>📐</button
 			><button
+				class:active={activeMapTool === 'barriers'}
+				aria-expanded={activeMapTool === 'barriers'}
+				aria-label={$appLocale === 'en' ? 'Barriers' : 'Barreiras'}
 				onclick={() => toggleMapTool('barriers')}
 				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
-			>{/if}
+			>{/if}<button
+			class:active={pingArmed}
+			data-testid="map-signal-button"
+			aria-pressed={pingArmed}
+			aria-label={pingArmed
+				? $appLocale === 'en'
+					? 'Cancel map signal'
+					: 'Cancelar sinalização'
+				: $appLocale === 'en'
+					? 'Signal on map'
+					: 'Sinalizar'}
+			onclick={togglePing}
+			title={pingArmed
+				? $appLocale === 'en'
+					? 'Click the map or cancel signal'
+					: 'Clique no mapa ou cancele a sinalização'
+				: $appLocale === 'en'
+					? 'Signal on map'
+					: 'Sinalizar'}>📍</button
+		>
 	</div>
-	{#if toolsOpen}<section class="tool-popover">
+	{#if toolsOpen}<section
+			class="tool-popover map-tool-menu"
+			aria-label={$appLocale === 'en' ? 'Ruler tool' : 'Ferramenta de régua'}
+		>
 			<strong>{$appLocale === 'en' ? 'Spell ruler' : 'Régua de magia'}</strong><span
 				>{$appLocale === 'en' ? 'Choose an area and hold' : 'Escolha a área e segure'}
 				<kbd>Shift</kbd>
@@ -277,7 +332,10 @@
 				>
 			</div>
 		</section>{/if}
-	{#if diceOpen}<section class="dice-popover">
+	{#if diceOpen}<section
+			class="dice-popover map-tool-menu"
+			aria-label={$appLocale === 'en' ? 'Dice tool' : 'Ferramenta de dados'}
+		>
 			<strong>{$appLocale === 'en' ? 'Dice' : 'Dados'}</strong>
 			<label class="dice-quantity" for="quick-dice-quantity">
 				{$appLocale === 'en' ? 'Quantity' : 'Quantidade'}
@@ -314,7 +372,10 @@
 					: 'Use o chat para expressões como'} <code>/r 2d6+3</code>.</small
 			>
 		</section>{/if}
-	{#if initiativeOpen}<section class="initiative-popover">
+	{#if initiativeOpen}<section
+			class="initiative-popover map-tool-menu"
+			aria-label={$appLocale === 'en' ? 'Initiative tool' : 'Ferramenta de iniciativa'}
+		>
 			<header>
 				<div>
 					<span>{$appLocale === 'en' ? 'COMBAT' : 'COMBATE'}</span><strong
@@ -404,28 +465,16 @@
 		top: 0;
 		left: 2.85rem;
 		width: 300px;
-		padding: 0.85rem;
-		border: 1px solid rgba(216, 173, 103, 0.38);
-		border-radius: 10px;
-		color: #eee4d6;
-		background: rgba(25, 19, 23, 0.96);
-		box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-		backdrop-filter: blur(12px);
 	}
 	.tool-popover {
-		display: grid;
-		gap: 0.45rem;
+		gap: 0.55rem;
 	}
 	.dice-popover {
 		top: 5.5rem;
-		display: grid;
 		gap: 0.55rem;
 	}
 	.dice-popover strong {
-		color: #f0cb85;
-		font:
-			600 1rem Georgia,
-			serif;
+		font-weight: 700;
 	}
 	.dice-quantity {
 		display: grid;
@@ -437,12 +486,6 @@
 	}
 	.dice-quantity input {
 		min-width: 0;
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.4rem 0.5rem;
-		color: #f0cb85;
-		background: #171216;
-		font: inherit;
 	}
 	.dice-quantity input[aria-invalid='true'] {
 		border-color: #d47468;
@@ -460,24 +503,11 @@
 		gap: 0.35rem;
 	}
 	.mode-buttons button {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.4rem;
-		color: #e8d2aa;
-		background: #2b211e;
-		cursor: pointer;
 		font-size: 0.7rem;
-	}
-	.mode-buttons button.active {
-		color: #281a0f;
-		background: #e0b86f;
 	}
 	.tool-popover strong,
 	.initiative-popover strong {
-		font:
-			600 1rem Georgia,
-			serif;
-		color: #f0cb85;
+		font-weight: 700;
 	}
 	.tool-popover span,
 	.initiative-popover p {
@@ -500,18 +530,8 @@
 	}
 	.quick-dice button,
 	.initiative-popover header button {
-		border: 1px solid #765d3d;
-		border-radius: 6px;
-		padding: 0.38rem;
-		color: #f0cb85;
-		background: #2b211e;
-		cursor: pointer;
 		font-weight: 700;
 		font-size: 0.72rem;
-	}
-	.quick-dice button:hover,
-	.initiative-popover header button:hover {
-		background: #513321;
 	}
 	.quick-dice button:disabled {
 		cursor: not-allowed;

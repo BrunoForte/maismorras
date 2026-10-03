@@ -128,6 +128,7 @@ describe('TokenInspector', () => {
 		expect(body).toContain('Ficha resumida do personagem');
 		expect(body).toContain('Ataques');
 		expect(body).toContain('Espada longa');
+		expect(body).not.toContain('Token selecionado');
 		expect(body).toContain('16');
 		expect(body).not.toContain('Salvaguardas');
 		expect(body).not.toContain('Perícias');
@@ -145,9 +146,14 @@ describe('TokenInspector', () => {
 
 		expect(body).toContain('Remover token da cena');
 		expect(body).toContain('Condições oficiais (SRD)');
+		expect(body).toMatch(/<details class="official-effects(?:\s[^>]*)?">/);
+		expect(body).toContain('<header class="inspector-header');
 		expect(body).toContain('VISIBILIDADE PARA OUTROS JOGADORES');
 		expect(body).toContain('Visão na névoa');
 		expect(body).toContain('Remover Cego');
+		expect(body.indexOf('summary-section')).toBeLessThan(body.indexOf('official-effects'));
+		expect(body.indexOf('official-effects')).toBeLessThan(body.indexOf('token-settings'));
+		expect(body).not.toMatch(/<details class="official-effects[^>]* open/);
 	});
 
 	it('keeps own-token player controls while omitting GM-only controls', () => {

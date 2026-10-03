@@ -11,6 +11,127 @@ import {
 test.describe('local authenticated audio E2E', () => {
 	test.skip(!localStackEnabled, 'Runs only against the isolated local Supabase stack in CI.');
 
+	test('library audio tracks stay below their title/actions and remain usable on desktop and mobile', async ({
+		browser
+	}, testInfo) => {
+		test.skip(
+			testInfo.project.name !== 'chromium',
+			'The authenticated browser flow runs once on Chromium.'
+		);
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			await test.step('prepare a campaign with isolated, seekable audio assets', async () => {
+				fixture = await createLocalAuthenticatedFixture(browser, true, 32_000);
+				await fixture.gm.goto(`/?campaign=${fixture.campaignId}&scene=${fixture.sceneId}`);
+				await expect(fixture.gm.locator('canvas').first()).toBeVisible({ timeout: 20_000 });
+				await fixture.gm.getByRole('button', { name: 'Mídias', exact: true }).click();
+				await expect(fixture.gm.getByTestId('audio-asset-card')).toHaveCount(4);
+			});
+			const page = fixture!.gm;
+			const groups = page.locator('.audio-groups > .media-group');
+			const musicGroup = groups.nth(0);
+			const effectsGroup = groups.nth(1);
+			await test.step('verify desktop columns and non-overlapping title/actions and track rows', async () => {
+				await expect(musicGroup.getByRole('heading', { name: 'Músicas' })).toBeVisible();
+				await expect(effectsGroup.getByRole('heading', { name: 'Efeitos sonoros' })).toBeVisible();
+				const musicBox = await musicGroup.boundingBox();
+				const effectsBox = await effectsGroup.boundingBox();
+				expect(musicBox).not.toBeNull();
+				expect(effectsBox).not.toBeNull();
+				expect(musicBox!.x).toBeLessThan(effectsBox!.x);
+				for (const card of await page.getByTestId('audio-asset-card').all()) {
+					const footer = await card.locator('.asset-footer').boundingBox();
+					const track = await card.locator('audio').boundingBox();
+					const cardBox = await card.boundingBox();
+					expect(footer).not.toBeNull();
+					expect(track).not.toBeNull();
+					expect(track!.y).toBeGreaterThanOrEqual(footer!.y + footer!.height);
+					expect(track!.x).toBeGreaterThanOrEqual(cardBox!.x);
+					expect(track!.x + track!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+				}
+			});
+			const firstMusic = musicGroup.getByTestId('audio-asset-card').first();
+			const track = firstMusic.locator('audio');
+			const name = (await track.getAttribute('aria-label'))!.replace('Controles da faixa: ', '');
+			await test.step('seek the track independently and exercise every audio item action', async () => {
+				await expect
+					.poll(() => track.evaluate((audio) => (audio as HTMLAudioElement).readyState))
+					.toBeGreaterThanOrEqual(1);
+				const duration = await track.evaluate((audio) => (audio as HTMLAudioElement).duration);
+				expect(duration).toBeGreaterThan(3);
+				const trackBox = await track.boundingBox();
+				expect(trackBox).not.toBeNull();
+				await track.evaluate((audio) => {
+					audio.addEventListener(
+						'play',
+						() => ((audio as HTMLAudioElement).dataset.e2ePlayControlUsed = 'true'),
+						{ once: true }
+					);
+				});
+				await page.mouse.click(trackBox!.x + 16, trackBox!.y + trackBox!.height / 2);
+				await expect
+					.poll(() =>
+						track.evaluate((audio) => (audio as HTMLAudioElement).dataset.e2ePlayControlUsed)
+					)
+					.toBe('true');
+				await track.evaluate((audio) => (audio as HTMLAudioElement).pause());
+				const startX = trackBox!.x + trackBox!.width * 0.44;
+				const endX = trackBox!.x + trackBox!.width * 0.62;
+				const centerY = trackBox!.y + trackBox!.height / 2;
+				await page.mouse.move(startX, centerY);
+				await page.mouse.down();
+				await page.mouse.move(endX, centerY, { steps: 3 });
+				await page.mouse.up();
+				await expect
+					.poll(() => track.evaluate((audio) => (audio as HTMLAudioElement).currentTime))
+					.toBeGreaterThan(1);
+
+				const kind = firstMusic.getByLabel(`Tipo do áudio: ${name}`);
+				await kind.selectOption('effect');
+				await expect(effectsGroup.getByText(name, { exact: false })).toBeVisible();
+				const trackSelector = `audio[aria-label="Controles da faixa: ${name}"]`;
+				const movedCard = effectsGroup
+					.getByTestId('audio-asset-card')
+					.filter({ has: page.locator(trackSelector) });
+				const loop = movedCard.getByLabel(`Repetir em loop: ${name}`);
+				await loop.check();
+				await expect(loop).toBeChecked();
+				await loop.uncheck();
+				await expect(loop).not.toBeChecked();
+				await movedCard.getByRole('button', { name: `Gerenciar acesso a ${name}` }).click();
+				await expect(page.getByRole('dialog')).toBeVisible();
+				await page.getByRole('button', { name: 'Fechar', exact: true }).click();
+				page.once('dialog', (dialog) => void dialog.dismiss());
+				await movedCard.getByRole('button', { name: `Excluir ${name}` }).click();
+				await expect(movedCard).toBeVisible();
+				await expect(movedCard.locator('audio')).toBeVisible();
+			});
+			await test.step('stack music/effects on narrow screens without putting the track above controls', async () => {
+				await page.setViewportSize({ width: 390, height: 844 });
+				const narrowMusic = page.locator('.audio-groups > .media-group').filter({
+					has: page.getByRole('heading', { name: 'Músicas' })
+				});
+				const narrowEffects = page.locator('.audio-groups > .media-group').filter({
+					has: page.getByRole('heading', { name: 'Efeitos sonoros' })
+				});
+				const musicRect = await narrowMusic.boundingBox();
+				const effectsRect = await narrowEffects.boundingBox();
+				expect(musicRect).not.toBeNull();
+				expect(effectsRect).not.toBeNull();
+				expect(effectsRect!.y).toBeGreaterThan(musicRect!.y);
+				expect(Math.abs(effectsRect!.x - musicRect!.x)).toBeLessThan(2);
+				const movedTrackCard = page
+					.getByTestId('audio-asset-card')
+					.filter({ has: page.locator(`audio[aria-label="Controles da faixa: ${name}"]`) });
+				const footer = await movedTrackCard.locator('.asset-footer').boundingBox();
+				const trackRect = await movedTrackCard.locator('audio').boundingBox();
+				expect(trackRect!.y).toBeGreaterThanOrEqual(footer!.y + footer!.height);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
 	test('music selection is pending until Play and syncs the committed crossfade to player and overlay', async ({
 		browser
 	}, testInfo) => {

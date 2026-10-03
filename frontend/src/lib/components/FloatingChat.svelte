@@ -285,13 +285,7 @@
 					saveCampaignChatDocked(campaignId, docked);
 				}}
 				aria-pressed={docked}>{docked ? 'Desacoplar' : 'Acoplar'}</button
-			>{/if}<button
-			class="front-toggle"
-			type="button"
-			title={$appLocale === 'en' ? 'Bring chat to front' : 'Trazer chat à frente'}
-			aria-label={$appLocale === 'en' ? 'Bring chat to front' : 'Trazer chat à frente'}
-			onclick={bringToFront}>↟</button
-		>
+			>{/if}
 	</div>
 	{#if open}
 		<div class="chat-body">
@@ -532,15 +526,6 @@
 		font:
 			600 0.67rem Georgia,
 			serif;
-		cursor: pointer;
-	}
-	.front-toggle {
-		flex: 0 0 auto;
-		border: 0;
-		padding: 0.45rem 0.55rem;
-		color: #e7d6b8;
-		background: rgba(35, 27, 30, 0.9);
-		font: inherit;
 		cursor: pointer;
 	}
 	.chat-body {

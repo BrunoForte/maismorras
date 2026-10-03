@@ -108,10 +108,17 @@ describe('library panels role controls', () => {
 		expect(playerHtml).not.toContain('Salvar acesso');
 	});
 
-	it('groups all media into audio, visual, and optional document sections while preserving audio lists', () => {
+	it('groups music and effects separately from visual and document media, with tracks below their controls', () => {
 		const props = {
 			assets: [
 				{ ...asset, type: 'audio' as const, path: 'song.mp3', name: 'Trilha.mp3' },
+				{
+					...asset,
+					type: 'audio' as const,
+					audioKind: 'effect' as const,
+					path: 'rain.mp3',
+					name: 'Chuva.mp3'
+				},
 				asset,
 				{ ...asset, type: 'map' as const, path: 'map.png', name: 'Mapa.png' },
 				{ ...asset, type: 'document' as const, path: 'note.pdf', name: 'Nota.pdf' }
@@ -124,12 +131,16 @@ describe('library panels role controls', () => {
 			actions: assetActions
 		};
 		const allHtml = render(LibraryAssetsPanel, { props }).body;
-		expect(allHtml).toContain('Músicas e efeitos');
+		expect(allHtml).toContain('Músicas');
+		expect(allHtml).toContain('Efeitos sonoros');
 		expect(allHtml).toContain('Imagens e mapas');
 		expect(allHtml).toContain('Documentos');
 		const audioHtml = render(LibraryAssetsPanel, { props: { ...props, filter: 'audio' } }).body;
 		expect(audioHtml).toContain('audio-list');
 		expect(audioHtml).toContain('Trilha.mp3');
+		expect(audioHtml).toContain('Chuva.mp3');
+		expect(audioHtml).toContain('Controles da faixa: Trilha.mp3');
+		expect(audioHtml).not.toContain('autoplay');
 		expect(audioHtml).not.toContain('Imagens e mapas');
 	});
 

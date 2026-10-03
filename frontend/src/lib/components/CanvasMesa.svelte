@@ -666,7 +666,7 @@
 	}
 	function handleMapTap(worldX: number, worldY: number) {
 		if (pingArmed) {
-			pingArmed = false;
+			setPingArmed(false);
 			const pingColor = personagemSelecionado?.cor ?? 0xf2cf77;
 			motor?.showPing(worldX, worldY, pingColor);
 			sceneSocket?.publishPing(worldX, worldY, pingColor);
@@ -792,8 +792,15 @@
 	}
 	function toggleMapTool(tool: SceneMapTool) {
 		openMapTool = toggleSceneMapTool(openMapTool, tool);
-		if (!openMapTool) return;
-		window.dispatchEvent(new CustomEvent('maismorras:close-table-tools'));
+		if (openMapTool) window.dispatchEvent(new CustomEvent('maismorras:close-table-tools'));
+		window.dispatchEvent(new CustomEvent('maismorras:map-tool-state', { detail: openMapTool }));
+	}
+	function setPingArmed(armed: boolean) {
+		pingArmed = armed;
+		window.dispatchEvent(new CustomEvent('maismorras:map-signal-state', { detail: armed }));
+	}
+	function toggleMapSignal() {
+		setPingArmed(!pingArmed);
 	}
 	const mapToolsActions: SceneMapToolsActions = {
 		onFogModeToggle: (mode) => (fogMode = fogMode === mode ? null : mode),
@@ -830,10 +837,13 @@
 			const tool = (event as CustomEvent<SceneMapTool>).detail;
 			toggleMapTool(tool);
 		};
+		const signalHandler = () => toggleMapSignal();
 		const closeHandler = () => {
 			openMapTool = null;
+			window.dispatchEvent(new CustomEvent('maismorras:map-tool-state', { detail: null }));
 		};
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
+		window.addEventListener('maismorras:toggle-map-signal', signalHandler);
 		window.addEventListener('maismorras:close-map-tools', closeHandler);
 		motor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
@@ -905,6 +915,7 @@
 
 		return () => {
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
+			window.removeEventListener('maismorras:toggle-map-signal', signalHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);
 			realtimeLifecycle.cleanup();
 			unsubscribe();
@@ -1043,11 +1054,6 @@
 			? 'Interactive game map. Focus it to use keyboard shortcuts.'
 			: 'Mapa interativo da mesa. Foque nele para usar atalhos do teclado.'}
 	></canvas>
-	<div class="ping-tool" class:has-fog={isGM && scene.fogEnabled}>
-		<button class:active={pingArmed} onclick={() => (pingArmed = !pingArmed)}
-			>{pingArmed ? 'Clique no mapa' : '📍 Sinalizar'}</button
-		>
-	</div>
 	<SceneMapTools state={mapToolsState} actions={mapToolsActions} />
 	{#if personagemSelecionado}
 		<TokenInspector
@@ -1128,36 +1134,11 @@
 		width: 100%;
 		height: 100%;
 	}
-	.ping-tool {
-		position: absolute;
-		z-index: 4;
-		top: 0.8rem;
-		right: 0.8rem;
-	}
-	.ping-tool.has-fog {
-		top: 3.65rem;
-	}
-	.ping-tool button {
-		border: 1px solid #765d3d;
-		border-radius: 7px;
-		padding: 0.42rem 0.6rem;
-		color: #ecd8a8;
-		background: rgba(25, 19, 23, 0.92);
-		font-size: 0.67rem;
-		cursor: pointer;
-	}
-	.ping-tool button.active {
-		color: #291b10;
-		background: #e0b86f;
-	}
 	@media (max-width: 760px) {
 		.borda-mesa {
 			height: calc(100dvh - 142px);
 			min-height: 420px;
 			border-width: 2px;
-		}
-		.ping-tool.has-fog {
-			top: 3.55rem;
 		}
 	}
 	.persistence-error {

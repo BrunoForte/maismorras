@@ -68,6 +68,9 @@ describe('CharacterMapSummary', () => {
 		expect(body).toContain('Golpe pesado');
 		expect(body).toContain('Ataque');
 		expect(body).toContain('Dano');
+		expect(body).toMatch(/<details class="summary-section(?:\s[^>]*)?">/);
+		expect(body.indexOf('PV atuais')).toBeLessThan(body.indexOf('summary-section'));
+		expect(body.indexOf('Ataques')).toBeLessThan(body.indexOf('Magias'));
 		expect(body).toContain('Truques');
 		expect(body).toContain('1º círculo');
 		expect(body).toContain('Mísseis mágicos');
@@ -115,5 +118,44 @@ describe('CharacterMapSummary', () => {
 		});
 
 		expect(body).toContain('disabled=""');
+	});
+
+	it('omits the spells accordion when the sheet has no spells', () => {
+		const sheet = createEmptySheet();
+		sheet.spells = [];
+		sheet.attacks = [{ name: 'Ataque simples', attackBonus: 2, damage: '1d4', notes: '' }];
+		const { body } = render(CharacterMapSummary, { props: { sheet } });
+
+		expect(body).toContain('Ataque simples');
+		expect(body).not.toContain('Magias');
+		expect(body).not.toContain('Truques');
+	});
+
+	it('keeps duplicated legacy item and spell identities as distinct stable rows', () => {
+		const sheet = createEmptySheet();
+		sheet.inventory = [
+			{
+				entryId: 'legacy-shared-entry',
+				name: 'Espada repetida',
+				quantity: 1,
+				equipped: true,
+				rules: { category: 'weapon', damage: '1d6' }
+			},
+			{
+				entryId: 'legacy-shared-entry',
+				name: 'Espada repetida',
+				quantity: 1,
+				equipped: true,
+				rules: { category: 'weapon', damage: '1d6' }
+			}
+		];
+		sheet.spells = [
+			{ entryId: 'legacy-spell', name: 'Luz repetida', level: 0, notes: '' },
+			{ entryId: 'legacy-spell', name: 'Luz repetida', level: 0, notes: '' }
+		];
+		const { body } = render(CharacterMapSummary, { props: { sheet, canCastSpells: true } });
+
+		expect(body.split('Espada repetida').length - 1).toBe(2);
+		expect(body.split('Luz repetida').length - 1).toBe(2);
 	});
 });
