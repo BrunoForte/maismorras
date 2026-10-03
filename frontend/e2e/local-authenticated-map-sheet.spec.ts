@@ -317,6 +317,84 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	test('chat preferences stay isolated by campaign and survive remount and reload', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		let secondCampaignId: string | undefined;
+		let campaignAPosition = 0;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const secondCampaignResponse = await fixture.gmApi.post('/api/v1/campaigns', {
+				data: { name: 'Campanha B de preferências E2E', systemId: 'dnd2024' }
+			});
+			expect(secondCampaignResponse.status()).toBe(201);
+			const secondCampaign = (await secondCampaignResponse.json()) as { id: string };
+			secondCampaignId = secondCampaign.id;
+			const secondScenesResponse = await fixture.gmApi.get(
+				`/api/v1/campaigns/${secondCampaign.id}/scenes`
+			);
+			expect(secondScenesResponse.status()).toBe(200);
+			const secondScenes = (await secondScenesResponse.json()) as {
+				scenes: Array<{ id: string }>;
+			};
+			expect(secondScenes.scenes).toHaveLength(1);
+
+			const page = fixture.gm;
+			await openMap(page, fixture.campaignId, fixture.sceneId);
+			const chat = page.locator('.floating-chat');
+			await test.step('save campaign A size, moved position, collapsed state and dock mode', async () => {
+				await setExpandedSize(chat, 510, 360);
+				await dragPanel(page, chat.locator('.panel-grip'), 56, 44);
+				campaignAPosition = (await chat.boundingBox())!.x;
+				await chat.getByRole('button', { name: 'Acoplar' }).click();
+				await page.getByRole('button', { name: 'Chat da mesa' }).click();
+				await expect(chat).toHaveClass(/closed/);
+			});
+
+			await test.step('campaign B starts with its own defaults instead of inheriting campaign A', async () => {
+				await openMap(page, secondCampaign.id, secondScenes.scenes[0].id);
+				const campaignBChat = page.locator('.floating-chat');
+				await expect(campaignBChat).not.toHaveClass(/closed/);
+				await expect(campaignBChat).not.toHaveClass(/docked/);
+				const size = await campaignBChat.boundingBox();
+				expect(size).toBeTruthy();
+				expect(Math.abs(size!.width - 510)).toBeGreaterThan(30);
+			await expect
+				.poll(() => campaignBChat.evaluate((node) => node.getBoundingClientRect().left))
+				.toBeLessThan(campaignAPosition - 20);
+			});
+
+			await test.step('return to campaign A and restore its own state after reload', async () => {
+				await openMap(page, fixture!.campaignId, fixture!.sceneId);
+				const campaignAChat = page.locator('.floating-chat');
+				await expect(campaignAChat).toHaveClass(/closed/);
+				await expect(campaignAChat).toHaveClass(/docked/);
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+				await expect(campaignAChat).not.toHaveClass(/closed/);
+				await expect
+					.poll(() => campaignAChat.evaluate((node) => node.getBoundingClientRect().width))
+					.toBeGreaterThan(500);
+				const movedLeft = (await campaignAChat.boundingBox())!.x;
+				await page.reload();
+				await expect(page.locator('canvas').first()).toBeVisible();
+				const restoredChat = page.locator('.floating-chat');
+				await expect(restoredChat).not.toHaveClass(/closed/);
+				await expect(restoredChat).toHaveClass(/docked/);
+				await expect
+					.poll(() => restoredChat.evaluate((node) => node.getBoundingClientRect().width))
+					.toBeGreaterThan(500);
+				await expect
+					.poll(() => restoredChat.evaluate((node) => node.getBoundingClientRect().left))
+					.toBeGreaterThan(movedLeft - 10);
+			});
+		} finally {
+			if (fixture && secondCampaignId)
+				await fixture.gmApi.delete(`/api/v1/campaigns/${secondCampaignId}`).catch(() => undefined);
+			await fixture?.close();
+		}
+	});
+
 	test('player sheet stays accessible and restores its size across map tabs', async ({
 		browser
 	}) => {

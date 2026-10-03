@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
 	import { chatMensagens } from '$lib/stores/chatStore';
@@ -24,7 +24,13 @@
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import { appLocale } from '$lib/stores/locale';
-	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
+	import { resizablePanel } from '$lib/utils/resizablePanel';
+	import {
+		campaignChatPanelKey,
+		campaignChatStartsDocked,
+		campaignChatStartsOpen,
+		saveCampaignChatDocked
+	} from '$lib/utils/campaignChatPreferences';
 	import { movablePanel } from '$lib/utils/movablePanel';
 	import { nextFloatingPanelLayer } from '$lib/utils/floatingPanelStack';
 
@@ -33,8 +39,9 @@
 		session,
 		sheetOpen = false
 	}: { campaignId: string; session: Session; sheetOpen?: boolean } = $props();
-	let open = $state(!(resizablePanelPreference('campaign-chat')?.collapsed ?? false));
-	let docked = $state(false);
+	// CampaignWorkspace keys this component by campaign, so these are intentionally read once per campaign mount.
+	let open = $state(untrack(() => campaignChatStartsOpen(campaignId)));
+	let docked = $state(untrack(() => campaignChatStartsDocked(campaignId)));
 	let panelZIndex = $state(8);
 	let sending = $state(false);
 	let expanded = $state<{ author: string; text: string } | null>(null);
@@ -233,7 +240,7 @@
 
 <aside
 	use:movablePanel={{
-		storageKey: `campaign-chat:${campaignId}`,
+		storageKey: campaignChatPanelKey(campaignId),
 		handleSelector: '.chat-titlebar',
 		minTop: sheetOpen ? 96 : 56,
 		avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
@@ -242,7 +249,7 @@
 		collapsed: !open,
 		headerSelector: '.chat-titlebar',
 		minWidth: 190,
-		storageKey: `campaign-chat:${campaignId}`
+		storageKey: campaignChatPanelKey(campaignId)
 	}}
 	class:closed={!open}
 	class:docked
@@ -271,8 +278,13 @@
 					? 'Open chat'
 					: 'Abrir chat'}
 		</button>
-		{#if open}<button class="dock-toggle" onclick={() => (docked = !docked)} aria-pressed={docked}
-				>{docked ? 'Desacoplar' : 'Acoplar'}</button
+		{#if open}<button
+				class="dock-toggle"
+				onclick={() => {
+					docked = !docked;
+					saveCampaignChatDocked(campaignId, docked);
+				}}
+				aria-pressed={docked}>{docked ? 'Desacoplar' : 'Acoplar'}</button
 			>{/if}<button
 			class="front-toggle"
 			type="button"
