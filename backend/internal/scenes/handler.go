@@ -651,6 +651,9 @@ func write(w http.ResponseWriter, status int, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 func mapError(err error) error {
+	if errors.Is(err, ErrUnsupportedCampaignSystem) {
+		return apperror.Conflict("UNSUPPORTED_CAMPAIGN_SYSTEM", "O sistema desta campanha ainda não é compatível com rolagens de combate.")
+	}
 	if errors.Is(err, ErrInvalidOverlayCharacter) {
 		return apperror.BadRequest("INVALID_OVERLAY_CHARACTER", "A ficha vinculada não pertence a esta campanha.")
 	}

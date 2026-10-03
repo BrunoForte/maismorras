@@ -21,6 +21,17 @@ func TestTokenColorCollisionMapsToConflict(t *testing.T) {
 	}
 }
 
+func TestUnsupportedCampaignSystemMapsToConflict(t *testing.T) {
+	err := mapError(ErrUnsupportedCampaignSystem)
+	var response *apperror.Error
+	if !errors.As(err, &response) {
+		t.Fatalf("mapError returned %T, want *apperror.Error", err)
+	}
+	if response.Status != http.StatusConflict || response.Code != "UNSUPPORTED_CAMPAIGN_SYSTEM" {
+		t.Fatalf("unexpected response: status=%d code=%q", response.Status, response.Code)
+	}
+}
+
 func TestDecodeHitPointsUpdateAcceptsExactlyOneSupportedField(t *testing.T) {
 	for _, test := range []struct {
 		name string

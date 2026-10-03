@@ -109,7 +109,11 @@ func sceneTestUUID(t *testing.T) string {
 }
 
 func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {
-	rolled, err := systems.DefaultCharacterRules().RollD20(systems.RollAdvantage, 3, fixedRoller(4, 17))
+	rules, err := resolveDnd2024Rules(systems.DefaultRef())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rolled, err := rules.RollD20(systems.RollAdvantage, 3, fixedRoller(4, 17))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,24 +122,42 @@ func TestInitiativeAdvantageKeepsHigherRoll(t *testing.T) {
 	}
 }
 
-func TestRollD20CountAndBounds(t *testing.T) {
+func TestResolveDnd2024RulesAndRejectUnknownReference(t *testing.T) {
+	rules, err := resolveDnd2024Rules(systems.Ref{ID: systems.Dnd2024, Version: systems.Dnd2024V1})
+	if err != nil || rules == nil {
+		t.Fatalf("resolve registered reference = %v, %v", rules, err)
+	}
+	if _, err := resolveDnd2024Rules(systems.Ref{ID: systems.Dnd2024, Version: "9.9.9"}); !errors.Is(err, ErrUnsupportedCampaignSystem) {
+		t.Fatalf("unknown reference error = %v, want unsupported campaign system", err)
+	}
+}
+
+func TestRollD20ModesPreserveDnd2024Results(t *testing.T) {
+	rules, err := resolveDnd2024Rules(systems.DefaultRef())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, test := range []struct {
-		name      string
-		mode      systems.D20Mode
-		wantCount int
-	}{{"normal", systems.RollNormal, 1}, {"advantage", systems.RollAdvantage, 2}, {"disadvantage", systems.RollDisadvantage, 2}} {
+		name     string
+		mode     systems.D20Mode
+		rolls    []int
+		wantKept int
+	}{{"normal", systems.RollNormal, []int{9}, 9}, {"advantage", systems.RollAdvantage, []int{4, 17}, 17}, {"disadvantage", systems.RollDisadvantage, []int{16, 3}, 3}} {
 		t.Run(test.name, func(t *testing.T) {
-			rolled, err := rollD20(test.mode)
+			rolled, err := rollD20WithRoller(rules, test.mode, fixedRoller(test.rolls...))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(rolled.Rolls) != test.wantCount {
-				t.Fatalf("got %d d20 results, want %d", len(rolled.Rolls), test.wantCount)
+			if len(rolled.Rolls) != len(test.rolls) {
+				t.Fatalf("got %d d20 results, want %d", len(rolled.Rolls), len(test.rolls))
 			}
 			for _, roll := range rolled.Rolls {
 				if roll < 1 || roll > 20 {
 					t.Fatalf("d20 result out of range: %d", roll)
 				}
+			}
+			if rolled.Kept != test.wantKept || rolled.Total != test.wantKept {
+				t.Fatalf("d20 result = %+v, want kept/total %d", rolled, test.wantKept)
 			}
 		})
 	}

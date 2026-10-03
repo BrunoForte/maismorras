@@ -187,6 +187,10 @@ func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+	rules, err := dnd2024RulesForScene(ctx, sceneID, tx)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := tx.Query(ctx, `select id::text,name,initiative_bonus,actor_id::text from scene_tokens where scene_id=$1 order by id for update`, sceneID)
 	if err != nil {
 		return nil, err
@@ -237,7 +241,7 @@ func (r *Repository) RollInitiative(ctx context.Context, sceneID, userID string)
 		if advantage {
 			mode = systems.RollAdvantage
 		}
-		rolled, err := rollD20(mode)
+		rolled, err := rollD20(rules, mode)
 		if err != nil {
 			return nil, fmt.Errorf("roll initiative: %w", err)
 		}
@@ -291,6 +295,10 @@ func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, 
 	if role != "gm" && (ownerID == nil || *ownerID != userID) {
 		return InitiativeResult{}, ErrForbidden
 	}
+	rules, err := dnd2024RulesForScene(ctx, sceneID, tx)
+	if err != nil {
+		return InitiativeResult{}, err
+	}
 	advantage := false
 	if actorID != nil {
 		var raw []byte
@@ -314,7 +322,7 @@ func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, 
 	if advantage {
 		mode = systems.RollAdvantage
 	}
-	rolled, err := rollD20(mode)
+	rolled, err := rollD20(rules, mode)
 	if err != nil {
 		return InitiativeResult{}, fmt.Errorf("roll token initiative: %w", err)
 	}
@@ -337,12 +345,16 @@ func (r *Repository) RollTokenInitiative(ctx context.Context, sceneID, tokenID, 
 	return result, nil
 }
 
-func rollD20(mode systems.D20Mode) (systems.D20Result, error) {
-	return systems.DefaultCharacterRules().RollD20(mode, 0, func(sides int) (int, error) {
+func rollD20(rules systems.Dnd2024CharacterRules, mode systems.D20Mode) (systems.D20Result, error) {
+	return rollD20WithRoller(rules, mode, func(sides int) (int, error) {
 		roll, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
 		if err != nil {
 			return 0, err
 		}
 		return int(roll.Int64()) + 1, nil
 	})
+}
+
+func rollD20WithRoller(rules systems.Dnd2024CharacterRules, mode systems.D20Mode, roller systems.DiceRoller) (systems.D20Result, error) {
+	return rules.RollD20(mode, 0, roller)
 }
