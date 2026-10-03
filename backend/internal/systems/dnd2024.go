@@ -74,4 +74,4 @@ func (Dnd2024Rules) RollD20(mode D20Mode, modifier int, roll DiceRoller) (D20Res
 	return result, nil
 }
 
-var _ D20CharacterRules = Dnd2024Rules{}
+var _ Dnd2024CharacterRules = Dnd2024Rules{}

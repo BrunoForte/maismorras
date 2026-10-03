@@ -2,9 +2,22 @@ package characters
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+
+	"vtt-backend/internal/apperror"
+	"vtt-backend/internal/systems"
 )
+
+func TestUnsupportedCampaignSystemReturnsExplicitConflict(t *testing.T) {
+	var appError *apperror.Error
+	if err := mapError(ErrUnsupportedSystem); !errors.As(err, &appError) {
+		t.Fatalf("mapError = %T, want an application error", err)
+	} else if appError.Status != 409 || appError.Code != "UNSUPPORTED_CAMPAIGN_SYSTEM" {
+		t.Fatalf("unsupported system response = (%d, %s), want explicit 409", appError.Status, appError.Code)
+	}
+}
 
 func TestCharacterAccessIsLimitedToOwnerOrCampaignGM(t *testing.T) {
 	cases := []struct {
@@ -30,7 +43,7 @@ func TestCharacterAccessIsLimitedToOwnerOrCampaignGM(t *testing.T) {
 func TestAbilityModifierUsesDNDHalfDownForNegativeScores(t *testing.T) {
 	cases := map[int]int{1: -5, 9: -1, 10: 0, 11: 0, 18: 4}
 	for score, want := range cases {
-		if got := abilityModifier(score); got != want {
+		if got := abilityModifier(score, systems.Dnd2024Rules{}); got != want {
 			t.Errorf("abilityModifier(%d) = %d, want %d", score, got, want)
 		}
 	}

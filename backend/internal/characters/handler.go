@@ -57,6 +57,9 @@ func (h *Handler) RollMine(w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(err, ErrNotFound) {
 		return apperror.NotFound("CHARACTER_NOT_FOUND", "Você ainda não criou uma ficha nesta campanha.")
 	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
 	if err != nil {
 		return apperror.BadRequest("INVALID_ROLL", "A rolagem precisa ser uma ação autorizada pela ficha.")
 	}
@@ -84,6 +87,9 @@ func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(err, ErrInvalidRest) {
 		return apperror.BadRequest("INVALID_REST", "Tipo de descanso ou dado de vida inválido.")
 	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
 	if err != nil {
 		return apperror.Internal(err)
 	}
@@ -105,6 +111,9 @@ func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 	}
 	if errors.Is(err, ErrNotFound) {
 		return apperror.NotFound("CHARACTER_NOT_FOUND", "Você ainda não criou uma ficha nesta campanha.")
+	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
 	}
 	if err != nil {
 		return apperror.BadRequest("INVALID_SPELL_CAST", "Não há espaço compatível disponível para esta magia.")
@@ -234,5 +243,12 @@ func mapError(err error) error {
 	if errors.Is(err, ErrNotFound) {
 		return apperror.NotFound("CHARACTER_NOT_FOUND", "Você ainda não criou uma ficha nesta campanha.")
 	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
 	return apperror.Internal(err)
+}
+
+func unsupportedCampaignSystemError() *apperror.Error {
+	return apperror.Conflict("UNSUPPORTED_CAMPAIGN_SYSTEM", "O sistema desta campanha ainda não é compatível com operações de ficha.")
 }

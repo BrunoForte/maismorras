@@ -1,12 +1,16 @@
 package characters
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"vtt-backend/internal/systems"
 )
 
@@ -16,34 +20,62 @@ var (
 	firstSignedNumber = regexp.MustCompile(`[+-]?\d+(?:\.\d+)?`)
 )
 
-// normalizeDerivedFields keeps the server authoritative for values derived
+var ErrUnsupportedSystem = errors.New("campaign ruleset is not supported")
+
+type campaignReferenceQuerier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func dnd2024RulesForCampaign(ctx context.Context, campaignID string, queryer campaignReferenceQuerier) (systems.Dnd2024CharacterRules, error) {
+	var systemID, systemVersion string
+	if err := queryer.QueryRow(ctx, `select system_id,system_version from campaigns where id=$1`, campaignID).Scan(&systemID, &systemVersion); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("load campaign system reference: %w", err)
+	}
+	return resolveDnd2024RulesForReference(systems.Ref{
+		ID: systems.ID(systemID), Version: systems.Version(systemVersion),
+	})
+
+}
+
+func resolveDnd2024RulesForReference(ref systems.Ref) (systems.Dnd2024CharacterRules, error) {
+	rules, ok := systems.ResolveDnd2024CharacterRules(ref)
+	if !ok {
+		return nil, ErrUnsupportedSystem
+	}
+	return rules, nil
+}
+
+// normalizeDerivedFields keeps the server authoritative for D&D 2024 values derived
 // from the character's level, abilities, and equipped inventory. The browser
 // may show a local preview while editing, but values sent by clients are not
 // trusted when the sheet is persisted or used for a roll.
-func normalizeDerivedFields(sheet Sheet) Sheet {
-	sheet.ProficiencyBonus = proficiencyBonus(sheet.Level)
-	sheet.ArmorClass = calculateArmorClass(sheet)
-	sheet.PassivePerception = passivePerception(sheet)
+func normalizeDerivedFields(sheet Sheet, rules systems.Dnd2024CharacterRules) Sheet {
+	sheet.ProficiencyBonus = proficiencyBonus(sheet.Level, rules)
+	sheet.ArmorClass = calculateArmorClass(sheet, rules)
+	sheet.PassivePerception = passivePerception(sheet, rules)
 	return sheet
 }
 
-func proficiencyBonus(level int) int {
-	return systems.DefaultCharacterRules().ProficiencyBonus(level)
+func proficiencyBonus(level int, rules systems.Dnd2024CharacterRules) int {
+	return rules.ProficiencyBonus(level)
 }
 
-func passivePerception(sheet Sheet) int {
-	bonus := abilityModifier(sheet.AbilityScores.Wisdom)
+func passivePerception(sheet Sheet, rules systems.Dnd2024CharacterRules) int {
+	bonus := abilityModifier(sheet.AbilityScores.Wisdom, rules)
 	if containsNormalized(sheet.SkillProficiencies, "percepcao") {
-		bonus += proficiencyBonus(sheet.Level)
+		bonus += proficiencyBonus(sheet.Level, rules)
 	}
 	if containsNormalized(sheet.SkillExpertise, "percepcao") {
-		bonus += proficiencyBonus(sheet.Level)
+		bonus += proficiencyBonus(sheet.Level, rules)
 	}
 	return 10 + bonus
 }
 
-func calculateArmorClass(sheet Sheet) int {
-	dexterity := abilityModifier(sheet.AbilityScores.Dexterity)
+func calculateArmorClass(sheet Sheet, rules systems.Dnd2024CharacterRules) int {
+	dexterity := abilityModifier(sheet.AbilityScores.Dexterity, rules)
 	equipped := make([]inventoryRules, 0, len(sheet.Inventory))
 	for _, item := range sheet.Inventory {
 		if !item.Equipped {
@@ -92,9 +124,9 @@ func calculateArmorClass(sheet Sheet) int {
 	} else {
 		switch canonicalClass(sheet.Class) {
 		case "barbarian":
-			total += float64(abilityModifier(sheet.AbilityScores.Constitution))
+			total += float64(abilityModifier(sheet.AbilityScores.Constitution, rules))
 		case "monk":
-			total += float64(abilityModifier(sheet.AbilityScores.Wisdom))
+			total += float64(abilityModifier(sheet.AbilityScores.Wisdom, rules))
 		}
 	}
 

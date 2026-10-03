@@ -74,7 +74,7 @@ func TestDnd2024CharacterRulesUseTypedD20Contract(t *testing.T) {
 }
 
 func TestVersionedCharacterRuleResolutionPreservesDnd2024Behavior(t *testing.T) {
-	rules, ok := ResolveD20CharacterRules(DefaultRef())
+	rules, ok := ResolveDnd2024CharacterRules(DefaultRef())
 	if !ok {
 		t.Fatal("default versioned character rules must resolve")
 	}
@@ -94,7 +94,7 @@ func TestVersionedCharacterRuleResolutionPreservesDnd2024Behavior(t *testing.T) 
 	if err != nil || result.Total != 20 || result.Kept != 17 || len(result.Rolls) != 2 {
 		t.Fatalf("version-resolved D&D 2024 roll = %+v, %v", result, err)
 	}
-	if _, ok := ResolveD20CharacterRules(Ref{ID: Dnd2024, Version: "2.0.0"}); ok {
+	if _, ok := ResolveDnd2024CharacterRules(Ref{ID: Dnd2024, Version: "2.0.0"}); ok {
 		t.Fatal("unsupported versions must not resolve to current rules")
 	}
 }

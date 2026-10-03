@@ -166,8 +166,8 @@ var skills = map[string]string{"Acrobacia": "dexterity", "Adestrar Animais": "wi
 var spellAbility = map[string]string{"bard": "charisma", "cleric": "wisdom", "druid": "wisdom", "paladin": "charisma", "ranger": "wisdom", "sorcerer": "charisma", "warlock": "charisma", "wizard": "intelligence"}
 var diceInEffect = regexp.MustCompile(`(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?`)
 
-func abilityModifier(score int) int {
-	return systems.DefaultCharacterRules().AbilityModifier(score)
+func abilityModifier(score int, rules systems.Dnd2024CharacterRules) int {
+	return rules.AbilityModifier(score)
 }
 func canonicalClass(value string) string {
 	key := strings.ToLower(strings.TrimSpace(value))
@@ -188,7 +188,18 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 	if mode != "normal" && mode != "advantage" && mode != "disadvantage" {
 		return SheetRollResult{}, fmt.Errorf("invalid roll mode")
 	}
-	character, err := r.GetMine(ctx, campaignID, userID)
+	member, err := r.isMember(ctx, campaignID, userID)
+	if err != nil {
+		return SheetRollResult{}, err
+	}
+	if !member {
+		return SheetRollResult{}, ErrForbidden
+	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return SheetRollResult{}, err
+	}
+	character, err := r.getMineWithRules(ctx, campaignID, userID, rules)
 	if err != nil {
 		return SheetRollResult{}, err
 	}
@@ -201,7 +212,7 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 			return result, fmt.Errorf("invalid skill")
 		}
 		result.Label = "Teste de " + key
-		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores))
+		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores), rules)
 		if contains(sheet.SkillProficiencies, key) {
 			result.Modifier += sheet.ProficiencyBonus
 		}
@@ -214,7 +225,7 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 			return result, fmt.Errorf("invalid saving throw")
 		}
 		result.Label = "Resistência de " + key
-		result.Modifier = abilityModifier(get(sheet.AbilityScores))
+		result.Modifier = abilityModifier(get(sheet.AbilityScores), rules)
 		if contains(sheet.SavingThrows, key) {
 			result.Modifier += sheet.ProficiencyBonus
 		}
@@ -224,11 +235,11 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 			return result, fmt.Errorf("character cannot cast spells")
 		}
 		result.Label = "Ataque mágico"
-		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores)) + sheet.ProficiencyBonus
+		result.Modifier = abilityModifier(abilityKey[ability](sheet.AbilityScores), rules) + sheet.ProficiencyBonus
 	default:
 		return result, fmt.Errorf("invalid sheet roll")
 	}
-	d20, rollErr := systems.DefaultCharacterRules().RollD20(systems.D20Mode(mode), result.Modifier, func(sides int) (int, error) {
+	d20, rollErr := rules.RollD20(systems.D20Mode(mode), result.Modifier, func(sides int) (int, error) {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
 		if err != nil {
 			return 0, err
@@ -276,6 +287,10 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 		return SpellCastResult{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	characterRules, err := dnd2024RulesForCampaign(ctx, campaignID, tx)
+	if err != nil {
+		return SpellCastResult{}, err
+	}
 	var raw []byte
 	var characterID string
 	if err = tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &raw); err != nil {
@@ -288,7 +303,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, s
 	if err = json.Unmarshal(raw, &sheet); err != nil {
 		return SpellCastResult{}, err
 	}
-	sheet = normalizeDerivedFields(sheet)
+	sheet = normalizeDerivedFields(sheet, characterRules)
 	if spellIndex >= len(sheet.Spells) {
 		return SpellCastResult{}, fmt.Errorf("spell not found")
 	}
@@ -515,9 +530,17 @@ func (r *Repository) GetMine(ctx context.Context, campaignID, userID string) (Ch
 	if !ok {
 		return Character{}, ErrForbidden
 	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
+	return r.getMineWithRules(ctx, campaignID, userID, rules)
+}
+
+func (r *Repository) getMineWithRules(ctx context.Context, campaignID, userID string, rules systems.Dnd2024CharacterRules) (Character, error) {
 	var item Character
 	var raw []byte
-	err = r.pool.QueryRow(ctx, `select id::text,campaign_id::text,owner_id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	err := r.pool.QueryRow(ctx, `select id::text,campaign_id::text,owner_id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Character{}, ErrNotFound
 	}
@@ -527,7 +550,7 @@ func (r *Repository) GetMine(ctx context.Context, campaignID, userID string) (Ch
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
-	item.Sheet = normalizeDerivedFields(item.Sheet)
+	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
 	return item, nil
 }
 
@@ -539,7 +562,11 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if !ok {
 		return Character{}, ErrForbidden
 	}
-	sheet = normalizeDerivedFields(sheet)
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
+	sheet = normalizeDerivedFields(sheet, rules)
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -557,7 +584,7 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
-	item.Sheet = normalizeDerivedFields(item.Sheet)
+	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
 	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
 		return Character{}, err
 	}
@@ -583,10 +610,14 @@ func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, user
 	if err := r.authorizeCharacterWrite(ctx, campaignID, ownerID, userID); err != nil {
 		return Character{}, err
 	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
-	item.Sheet = normalizeDerivedFields(item.Sheet)
+	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
 	return item, nil
 }
 
@@ -604,7 +635,11 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := r.authorizeCharacterWrite(ctx, campaignID, currentOwnerID, userID); err != nil {
 		return Character{}, err
 	}
-	sheet = normalizeDerivedFields(sheet)
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
+	sheet = normalizeDerivedFields(sheet, rules)
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -620,7 +655,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
-	item.Sheet = normalizeDerivedFields(item.Sheet)
+	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
 	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
 		return Character{}, err
 	}
@@ -706,7 +741,11 @@ func (r *Repository) CreateForGM(ctx context.Context, campaignID, ownerID, userI
 	if err := r.pool.QueryRow(ctx, `select exists(select 1 from campaign_members where campaign_id=$1 and user_id=$2)`, campaignID, ownerID).Scan(&member); err != nil || !member {
 		return Character{}, ErrForbidden
 	}
-	sheet := normalizeDerivedFields(Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}})
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
+	sheet := normalizeDerivedFields(Sheet{Name: "Novo personagem", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}}, rules)
 	raw, err := json.Marshal(sheet)
 	if err != nil {
 		return Character{}, err
@@ -736,6 +775,10 @@ func (r *Repository) ListForGM(ctx context.Context, campaignID, userID string) (
 	if err := r.requireGM(ctx, campaignID, userID); err != nil {
 		return nil, ErrForbidden
 	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := r.pool.Query(ctx, `select m.user_id::text,p.display_name,m.role::text,a.id::text,a.owner_id::text,a.sheet from campaign_members m join profiles p on p.id=m.user_id left join actors a on a.campaign_id=m.campaign_id and a.owner_id=m.user_id and a.kind='character' where m.campaign_id=$1 order by m.joined_at`, campaignID)
 	if err != nil {
 		return nil, err
@@ -754,7 +797,7 @@ func (r *Repository) ListForGM(ctx context.Context, campaignID, userID string) (
 			if err := json.Unmarshal(raw, &character.Sheet); err != nil {
 				return nil, fmt.Errorf("decode participant sheet: %w", err)
 			}
-			character.Sheet = normalizeDerivedFields(character.Sheet)
+			character.Sheet = normalizeDerivedFields(character.Sheet, rules)
 			item.Character = &character
 		}
 		items = append(items, item)

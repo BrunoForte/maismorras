@@ -21,10 +21,10 @@ type D20Result struct {
 // authoritative secure RNG without owning persistence or transport concerns.
 type DiceRoller func(sides int) (int, error)
 
-// D20CharacterRules is the typed boundary used by the current D&D sheet and
-// combat implementation. It is separate from descriptive metadata; a system
-// that does not use d20 mechanics need not implement this contract.
-type D20CharacterRules interface {
+// Dnd2024CharacterRules is intentionally specific to the current D&D 2024
+// sheet contract. Other systems are not required to implement six ability
+// scores, proficiency bonus, or d20 rolls.
+type Dnd2024CharacterRules interface {
 	AbilityModifier(score int) int
 	ProficiencyBonus(level int) int
 	RollD20(mode D20Mode, modifier int, roll DiceRoller) (D20Result, error)
@@ -96,7 +96,7 @@ var adapters = map[Ref]Adapter{
 	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024Adapter{},
 }
 
-var d20CharacterRules = map[Ref]D20CharacterRules{
+var dnd2024CharacterRules = map[Ref]Dnd2024CharacterRules{
 	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024Rules{},
 }
 
@@ -134,10 +134,10 @@ func ResolveRef(ref Ref) (Adapter, bool) {
 	return adapter, ok
 }
 
-// ResolveD20CharacterRules resolves the existing character-roll domain only.
-// It does not expose a generic operation dispatcher or execute uploaded rules.
-func ResolveD20CharacterRules(ref Ref) (D20CharacterRules, bool) {
-	rules, ok := d20CharacterRules[ref]
+// ResolveDnd2024CharacterRules resolves only the currently supported D&D 2024
+// sheet rules; it does not expose a generic operation dispatcher.
+func ResolveDnd2024CharacterRules(ref Ref) (Dnd2024CharacterRules, bool) {
+	rules, ok := dnd2024CharacterRules[ref]
 	return rules, ok
 }
 
@@ -155,8 +155,8 @@ func All() []Adapter { return []Adapter{adapters[DefaultRef()]} }
 
 // DefaultCharacterRules is a compatibility boundary for legacy call sites
 // that do not yet carry their campaign reference. New campaign-aware flows
-// should resolve rules with ResolveD20CharacterRules(campaignRef).
-func DefaultCharacterRules() D20CharacterRules {
-	rules, _ := ResolveD20CharacterRules(DefaultRef())
+// should resolve rules with ResolveDnd2024CharacterRules(campaignRef).
+func DefaultCharacterRules() Dnd2024CharacterRules {
+	rules, _ := ResolveDnd2024CharacterRules(DefaultRef())
 	return rules
 }

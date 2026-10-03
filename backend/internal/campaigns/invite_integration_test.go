@@ -1,15 +1,21 @@
 package campaigns
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"vtt-backend/internal/apperror"
+	"vtt-backend/internal/auth"
 	"vtt-backend/internal/systems"
 )
 
@@ -29,7 +35,7 @@ func TestCreateCampaignPersistsRegisteredSystemReferenceIntegration(t *testing.T
 		t.Fatal(err)
 	}
 
-	userID := randomTestUUID(t)
+	userID, playerID := randomTestUUID(t), randomTestUUID(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +44,7 @@ func TestCreateCampaignPersistsRegisteredSystemReferenceIntegration(t *testing.T
 		_ = tx.Rollback(context.Background())
 		t.Skipf("database role cannot create isolated auth test profiles: %v", err)
 	}
-	if _, err := tx.Exec(ctx, `insert into profiles(id,display_name) values($1,'System reference test')`, userID); err != nil {
+	if _, err := tx.Exec(ctx, `insert into profiles(id,display_name) values($1,'System reference GM'),($2,'System reference player')`, userID, playerID); err != nil {
 		_ = tx.Rollback(context.Background())
 		t.Fatal(err)
 	}
@@ -47,7 +53,7 @@ func TestCreateCampaignPersistsRegisteredSystemReferenceIntegration(t *testing.T
 	}
 	defer func() {
 		_, _ = pool.Exec(context.Background(), `delete from campaigns where owner_id=$1`, userID)
-		_, _ = pool.Exec(context.Background(), `delete from profiles where id=$1`, userID)
+		_, _ = pool.Exec(context.Background(), `delete from profiles where id in ($1,$2)`, userID, playerID)
 	}()
 
 	campaign, err := NewRepository(pool).Create(ctx, userID, "Pinned D&D campaign", systems.DefaultRef())
@@ -56,6 +62,33 @@ func TestCreateCampaignPersistsRegisteredSystemReferenceIntegration(t *testing.T
 	}
 	if campaign.SystemID != string(systems.Dnd2024) || campaign.SystemVersion != string(systems.Dnd2024V1) {
 		t.Fatalf("created campaign reference = %s@%s, want %s@%s", campaign.SystemID, campaign.SystemVersion, systems.Dnd2024, systems.Dnd2024V1)
+	}
+	if _, err := pool.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'player')`, campaign.ID, playerID); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewHandler(NewRepository(pool))
+	gmRequest := httptest.NewRequest("PATCH", "/", strings.NewReader(`{"name":"Renamed campaign","systemId":"melted-lands","systemVersion":"999.0.0"}`))
+	gmRequest.SetPathValue("campaignID", campaign.ID)
+	gmRequest = gmRequest.WithContext(auth.WithPrincipal(gmRequest.Context(), auth.Principal{UserID: userID}))
+	gmResponse := httptest.NewRecorder()
+	if err := handler.Rename(gmResponse, gmRequest); err != nil || gmResponse.Code != 200 {
+		t.Fatalf("GM rename = status %d, err %v, body %s", gmResponse.Code, err, gmResponse.Body.String())
+	}
+	var renamed Campaign
+	if err := json.Unmarshal(gmResponse.Body.Bytes(), &renamed); err != nil {
+		t.Fatal(err)
+	}
+	if renamed.SystemID != string(systems.Dnd2024) || renamed.SystemVersion != string(systems.Dnd2024V1) {
+		t.Fatalf("GM rename changed system reference: %+v", renamed)
+	}
+	playerRequest := httptest.NewRequest("PATCH", "/", bytes.NewBufferString(`{"name":"Player rename","systemId":"melted-lands"}`))
+	playerRequest.SetPathValue("campaignID", campaign.ID)
+	playerRequest = playerRequest.WithContext(auth.WithPrincipal(playerRequest.Context(), auth.Principal{UserID: playerID}))
+	playerErr := handler.Rename(httptest.NewRecorder(), playerRequest)
+	var playerAppError *apperror.Error
+	if !errors.As(playerErr, &playerAppError) || playerAppError.Status != 403 {
+		t.Fatalf("player rename error = %v, want 403 forbidden", playerErr)
 	}
 
 	items, err := NewRepository(pool).List(ctx, userID, false)

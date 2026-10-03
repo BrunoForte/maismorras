@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"vtt-backend/internal/systems"
 )
 
 var hitDieFormula = regexp.MustCompile(`^1d(\d+)$`)
@@ -60,11 +61,15 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 		}
 		return RestResult{}, err
 	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, tx)
+	if err != nil {
+		return RestResult{}, err
+	}
 	var sheet Sheet
 	if err = json.Unmarshal(raw, &sheet); err != nil {
 		return RestResult{}, err
 	}
-	sheet = normalizeDerivedFields(sheet)
+	sheet = normalizeDerivedFields(sheet, rules)
 	result := RestResult{Sheet: sheet, Kind: kind}
 	if kind == "short" {
 		if sheet.HitDiceSpent >= sheet.Level {
@@ -83,7 +88,7 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 			return RestResult{}, rollErr
 		}
 		rolled := int(roll.Int64()) + 1
-		modifier := abilityModifier(sheet.AbilityScores.Constitution)
+		modifier := abilityModifier(sheet.AbilityScores.Constitution, rules)
 		sheet.HitDiceSpent++
 		result.Dice = []int{rolled}
 		result.Modifier = modifier
@@ -91,7 +96,7 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 		result.Label = "Dado de vida · " + sheet.Name
 	}
 
-	sheet = applyRestRecovery(sheet, kind, result.Total)
+	sheet = applyRestRecovery(sheet, kind, result.Total, rules)
 	result.Sheet = sheet
 	raw, err = json.Marshal(sheet)
 	if err != nil {
@@ -140,7 +145,7 @@ func recoverResources(resources []Resource, kind string) []Resource {
 	return resources
 }
 
-func applyRestRecovery(sheet Sheet, kind string, hitPointHealing int) Sheet {
+func applyRestRecovery(sheet Sheet, kind string, hitPointHealing int, rules systems.Dnd2024CharacterRules) Sheet {
 	if kind == "short" {
 		sheet.HitPointsCurrent = min(sheet.HitPointsMax, sheet.HitPointsCurrent+hitPointHealing)
 	}
@@ -155,5 +160,5 @@ func applyRestRecovery(sheet Sheet, kind string, hitPointHealing int) Sheet {
 		sheet.TemporaryHP = 0
 		sheet.HitDiceSpent = 0
 	}
-	return normalizeDerivedFields(sheet)
+	return normalizeDerivedFields(sheet, rules)
 }
