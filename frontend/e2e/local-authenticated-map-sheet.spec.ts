@@ -360,9 +360,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const size = await campaignBChat.boundingBox();
 				expect(size).toBeTruthy();
 				expect(Math.abs(size!.width - 510)).toBeGreaterThan(30);
-			await expect
-				.poll(() => campaignBChat.evaluate((node) => node.getBoundingClientRect().left))
-				.toBeLessThan(campaignAPosition - 20);
+				await expect
+					.poll(() => campaignBChat.evaluate((node) => node.getBoundingClientRect().left))
+					.toBeLessThan(campaignAPosition - 20);
 			});
 
 			await test.step('return to campaign A and restore its own state after reload', async () => {
