@@ -62,8 +62,9 @@ func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var input struct {
-		Name     string `json:"name"`
-		SystemID string `json:"systemId"`
+		Name          string `json:"name"`
+		SystemID      string `json:"systemId"`
+		SystemVersion string `json:"systemVersion"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&input); err != nil {
 		return apperror.BadRequest("INVALID_BODY", "JSON inválido.")
@@ -72,14 +73,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	if input.SystemID == "" {
 		input.SystemID = string(systems.Default())
 	}
-	systemID, systemErr := systems.Parse(input.SystemID)
+	systemRef, systemErr := systems.ParseRef(input.SystemID, input.SystemVersion)
 	if systemErr != nil {
 		return apperror.BadRequest("INVALID_SYSTEM", "Sistema de regras não suportado.")
 	}
 	if input.Name == "" || len([]rune(input.Name)) > 120 {
 		return apperror.BadRequest("INVALID_NAME", "Nome deve ter entre 1 e 120 caracteres.")
 	}
-	item, err := h.repo.Create(r.Context(), p.UserID, input.Name, systemID)
+	item, err := h.repo.Create(r.Context(), p.UserID, input.Name, systemRef)
 	if err != nil {
 		return apperror.Internal(err)
 	}

@@ -12,11 +12,12 @@ import (
 )
 
 type Campaign struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	SystemID string `json:"systemId"`
-	Role     string `json:"role"`
-	IsAdmin  bool   `json:"isAdmin"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	SystemID      string `json:"systemId"`
+	SystemVersion string `json:"systemVersion"`
+	Role          string `json:"role"`
+	IsAdmin       bool   `json:"isAdmin"`
 }
 type Invite struct {
 	Code       string    `json:"code"`
@@ -25,9 +26,10 @@ type Invite struct {
 }
 
 var (
-	ErrForbidden     = errors.New("forbidden")
-	ErrInviteInvalid = errors.New("invalid invite")
-	ErrNotFound      = errors.New("not found")
+	ErrForbidden         = errors.New("forbidden")
+	ErrInviteInvalid     = errors.New("invalid invite")
+	ErrNotFound          = errors.New("not found")
+	ErrUnsupportedSystem = errors.New("unsupported campaign system reference")
 )
 
 func inviteLinkGrantsAccess(inactive, alreadyMember bool) bool {
@@ -39,7 +41,7 @@ type Repository struct{ pool *pgxpool.Pool }
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
 
 func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]Campaign, error) {
-	query := `select c.id::text, c.name, c.system_id, case when $2 then 'gm' else m.role::text end, $2 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$1 where $2 or m.user_id is not null order by c.created_at desc`
+	query := `select c.id::text, c.name, c.system_id, c.system_version, case when $2 then 'gm' else m.role::text end, $2 from campaigns c left join campaign_members m on m.campaign_id=c.id and m.user_id=$1 where $2 or m.user_id is not null order by c.created_at desc`
 	rows, err := r.pool.Query(ctx, query, userID, isAdmin)
 	if err != nil {
 		return nil, fmt.Errorf("list campaigns: %w", err)
@@ -48,7 +50,7 @@ func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]C
 	items := []Campaign{}
 	for rows.Next() {
 		var item Campaign
-		if err := rows.Scan(&item.ID, &item.Name, &item.SystemID, &item.Role, &item.IsAdmin); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.SystemID, &item.SystemVersion, &item.Role, &item.IsAdmin); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -56,14 +58,17 @@ func (r *Repository) List(ctx context.Context, userID string, isAdmin bool) ([]C
 	return items, rows.Err()
 }
 
-func (r *Repository) Create(ctx context.Context, userID, name string, systemID systems.ID) (Campaign, error) {
+func (r *Repository) Create(ctx context.Context, userID, name string, systemRef systems.Ref) (Campaign, error) {
+	if _, ok := systems.ResolveRef(systemRef); !ok {
+		return Campaign{}, ErrUnsupportedSystem
+	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return Campaign{}, err
 	}
 	defer tx.Rollback(ctx)
 	var item Campaign
-	err = tx.QueryRow(ctx, `insert into campaigns (name, owner_id, system_id) values ($1,$2,$3) returning id::text,name,system_id`, name, userID, systemID).Scan(&item.ID, &item.Name, &item.SystemID)
+	err = tx.QueryRow(ctx, `insert into campaigns (name, owner_id, system_id, system_version) values ($1,$2,$3,$4) returning id::text,name,system_id,system_version`, name, userID, systemRef.ID, systemRef.Version).Scan(&item.ID, &item.Name, &item.SystemID, &item.SystemVersion)
 	if err != nil {
 		return Campaign{}, fmt.Errorf("create campaign: %w", err)
 	}
@@ -85,7 +90,7 @@ func (r *Repository) Create(ctx context.Context, userID, name string, systemID s
 
 func (r *Repository) Rename(ctx context.Context, campaignID, userID, name string) (Campaign, error) {
 	var item Campaign
-	err := r.pool.QueryRow(ctx, `update campaigns set name=$1 where id=$2 and owner_id=$3 returning id::text,name,system_id`, name, campaignID, userID).Scan(&item.ID, &item.Name, &item.SystemID)
+	err := r.pool.QueryRow(ctx, `update campaigns set name=$1 where id=$2 and owner_id=$3 returning id::text,name,system_id,system_version`, name, campaignID, userID).Scan(&item.ID, &item.Name, &item.SystemID, &item.SystemVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Campaign{}, ErrForbidden
 	}
@@ -136,9 +141,9 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 	// Membership, not possession of an expired/revoked code, remains the source
 	// of authorization. Do not mutate the invite in this path.
 	var campaign Campaign
-	err = tx.QueryRow(ctx, `select c.id::text,c.name,c.system_id,m.role::text
+	err = tx.QueryRow(ctx, `select c.id::text,c.name,c.system_id,c.system_version,m.role::text
 		from campaigns c join campaign_members m on m.campaign_id=c.id
-		where c.id=$1 and m.user_id=$2`, campaignID, userID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID, &campaign.Role)
+		where c.id=$1 and m.user_id=$2`, campaignID, userID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID, &campaign.SystemVersion, &campaign.Role)
 	if err == nil {
 		if err = tx.Commit(ctx); err != nil {
 			return Campaign{}, err
@@ -157,7 +162,7 @@ func (r *Repository) AcceptInvite(ctx context.Context, code, userID string) (Cam
 	if _, err = tx.Exec(ctx, `update campaign_invites set accepted_by=coalesce(accepted_by,$1),accepted_at=coalesce(accepted_at,now()) where code=$2`, userID, code); err != nil {
 		return Campaign{}, err
 	}
-	if err = tx.QueryRow(ctx, `select id::text,name,system_id from campaigns where id=$1`, campaignID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID); err != nil {
+	if err = tx.QueryRow(ctx, `select id::text,name,system_id,system_version from campaigns where id=$1`, campaignID).Scan(&campaign.ID, &campaign.Name, &campaign.SystemID, &campaign.SystemVersion); err != nil {
 		return Campaign{}, err
 	}
 	campaign.Role = "player"

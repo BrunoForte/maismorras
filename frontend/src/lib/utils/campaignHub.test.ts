@@ -2,8 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { filterCampaigns, type CampaignSystemFilter } from './campaignHub';
 
 const campaigns = [
-	{ id: 'gm-table', name: 'Crônicas da Lua', role: 'gm', systemId: 'dnd2024' },
-	{ id: 'player-table', name: 'Sombras do Porto', role: 'player', systemId: 'dnd2024' }
+	{
+		id: 'gm-table',
+		name: 'Crônicas da Lua',
+		role: 'gm',
+		systemId: 'dnd2024',
+		systemVersion: '1.0.0'
+	},
+	{
+		id: 'player-table',
+		name: 'Sombras do Porto',
+		role: 'player',
+		systemId: 'dnd2024',
+		systemVersion: '1.0.0'
+	}
 ] as const;
 
 describe('filterCampaigns', () => {

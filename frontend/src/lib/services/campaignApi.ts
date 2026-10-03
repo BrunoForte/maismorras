@@ -1,29 +1,38 @@
 import type { Session } from '@supabase/supabase-js';
 import { request as httpRequest } from './httpClient';
+import { DND2024_REF, type GameSystemRef } from '$lib/systems/types';
 
-export type CampaignSummary = {
+export type CampaignSummary = GameSystemRef & {
 	id: string;
 	name: string;
 	role: 'gm' | 'player';
-	systemId: 'dnd2024';
 	isAdmin?: boolean;
 };
 
-type CampaignDto = Partial<CampaignSummary> & {
+export type CampaignDto = Partial<CampaignSummary> & {
 	ID?: string;
 	Name?: string;
 	Role?: 'gm' | 'player';
-	SystemID?: 'dnd2024';
-	system_id?: 'dnd2024';
+	SystemID?: string;
+	system_id?: string;
+	systemVersion?: string;
+	system_version?: string;
+	SystemVersion?: string;
 	is_admin?: boolean;
 };
 
-function normalizeCampaign(value: CampaignDto): CampaignSummary {
+export function normalizeCampaign(value: CampaignDto): CampaignSummary {
+	const systemId = value.systemId ?? value.system_id ?? value.SystemID ?? DND2024_REF.systemId;
 	return {
 		id: value.id ?? value.ID ?? '',
 		name: value.name ?? value.Name ?? '',
 		role: value.role ?? value.Role ?? 'player',
-		systemId: value.systemId ?? value.system_id ?? value.SystemID ?? 'dnd2024',
+		systemId,
+		systemVersion:
+			value.systemVersion ??
+			value.system_version ??
+			value.SystemVersion ??
+			(systemId === DND2024_REF.systemId ? DND2024_REF.systemVersion : ''),
 		isAdmin: value.isAdmin ?? value.is_admin ?? false
 	};
 }
@@ -39,7 +48,7 @@ export async function listCampaigns(session: Session): Promise<CampaignSummary[]
 
 export async function createCampaign(
 	session: Session,
-	input: { name: string; systemId: 'dnd2024' }
+	input: { name: string } & GameSystemRef
 ): Promise<CampaignSummary> {
 	const created = await request<CampaignDto>(session, '/api/v1/campaigns', {
 		method: 'POST',

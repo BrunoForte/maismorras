@@ -4,7 +4,13 @@ import type { Character } from '$lib/services/characterApi';
 import { resolveStandaloneSheetAccess } from './standaloneSheetAccess';
 
 const session = {} as Session;
-const campaign = { id: 'campaign-1', name: 'Mesa', role: 'player', systemId: 'dnd2024' } as const;
+const campaign = {
+	id: 'campaign-1',
+	name: 'Mesa',
+	role: 'player',
+	systemId: 'dnd2024',
+	systemVersion: '1.0.0'
+} as const;
 const ownCharacter = { id: 'character-1', campaignId: campaign.id } as unknown as Character;
 
 function dependencies(role: 'gm' | 'player' = 'player') {

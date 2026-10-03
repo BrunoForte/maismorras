@@ -30,6 +30,7 @@
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { createOverlayPairing, revokeOverlayAccess } from '$lib/services/overlayPairingApi';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
+	import { DND2024_REF } from '$lib/systems/types';
 	const auxiliarySheetWindows: Record<string, Window> = {};
 	import {
 		readSheetPanelMode,
@@ -285,7 +286,8 @@
 		try {
 			const campaign = await createCampaignRequest(session, {
 				name: campaignName.trim(),
-				systemId: campaignSystem
+				systemId: campaignSystem,
+				systemVersion: DND2024_REF.systemVersion
 			});
 			campaigns = [campaign, ...campaigns];
 			campaignName = '';
