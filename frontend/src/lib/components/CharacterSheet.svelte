@@ -134,6 +134,7 @@
 		standalone = false,
 		focusRequest = 0,
 		actorPanelVisible = false,
+		onCharacterResolved = () => {},
 		onDockChange = () => {},
 		onOpenNewWindow = () => {},
 		onclose,
@@ -150,6 +151,7 @@
 		standalone?: boolean;
 		focusRequest?: number;
 		actorPanelVisible?: boolean;
+		onCharacterResolved?: (characterId: string) => void;
 		onDockChange?: (docked: boolean) => void;
 		onOpenNewWindow?: (characterId: string) => void;
 		onclose: () => void;
@@ -173,6 +175,7 @@
 	let sheetPanelElement = $state<HTMLElement>();
 	let raisedPanelLayer = $state(0);
 	let panelZIndex = $derived(Math.max(raisedPanelLayer, docked ? 9 : 20));
+	let reportedResolvedCharacterId = $state('');
 	$effect(() => {
 		if (!standalone) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
 	});
@@ -388,6 +391,16 @@
 		saveMyCharacter,
 		createTokenFromCharacter,
 		onInitiativeAdvantageUpdated: (enabled) => (sheet.initiativeAdvantage = enabled)
+	});
+	$effect(() => {
+		const resolvedId = lifecycle.state.resolvedCharacterId;
+		if (!resolvedId) {
+			reportedResolvedCharacterId = '';
+			return;
+		}
+		if (resolvedId === reportedResolvedCharacterId) return;
+		reportedResolvedCharacterId = resolvedId;
+		onCharacterResolved(resolvedId);
 	});
 	const portraitWorkflow = createCharacterPortraitWorkflow({
 		getContext: () => ({ campaignId, session }),
@@ -986,12 +999,7 @@
 			storageKey: sheetPanelKey,
 			handleSelector: 'header',
 			minTop: 56,
-			avoidSelectors: [
-				'.app-header',
-				'.game-header',
-				'.workspace-tabs',
-				...(standalone ? [] : ['.floating-chat.sheet-open'])
-			],
+			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs'],
 			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			enabled: !docked && !standalone
@@ -1062,8 +1070,10 @@
 						onclick={() =>
 							onOpenNewWindow(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
 						disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
-						aria-label={$appLocale === 'en' ? 'Open sheet in a new tab' : 'Abrir ficha em nova aba'}
-						>{$appLocale === 'en' ? 'New tab' : 'Nova aba'}</button
+						aria-label={$appLocale === 'en'
+							? 'Open sheet in auxiliary window'
+							: 'Abrir ficha em janela auxiliar'}
+						>{$appLocale === 'en' ? 'Auxiliary window' : 'Janela auxiliar'}</button
 					><button
 						type="button"
 						onclick={() => (minimized = !minimized)}
@@ -1376,15 +1386,44 @@
 		bottom: auto;
 		right: var(--mm-panel-right-inset, 1rem);
 		left: auto;
-		width: min(780px, calc(100vw - 2rem));
-		height: min(720px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
-		min-width: min(480px, calc(100vw - 2rem));
+		width: min(920px, calc(100vw - 450px));
+		height: min(780px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
+		min-width: min(440px, calc(100vw - 2rem));
 		max-width: calc(100vw - 1rem);
-		min-height: min(320px, var(--mm-panel-available-height, 320px));
+		min-height: min(400px, var(--mm-panel-available-height, 400px));
 		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
 		resize: both;
 		overflow: auto;
 		pointer-events: auto;
+	}
+	@media (max-width: 880px) {
+		.sheet-backdrop.floating .sheet {
+			--sheet-stacked-chat-height: min(40vh, 360px);
+			--sheet-stacked-top: calc(
+				var(--mm-panel-navigation-bottom, 6rem) + 3.7rem + var(--sheet-stacked-chat-height) +
+					0.75rem
+			);
+			top: var(--sheet-stacked-top);
+			left: 0.5rem;
+			right: 0.5rem;
+			width: calc(100vw - 1rem);
+			min-width: min(320px, calc(100vw - 2rem));
+			max-width: calc(100vw - 1rem);
+			min-height: min(
+				320px,
+				max(
+					120px,
+					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 4.25rem) - 1rem)
+				)
+			);
+			max-height: min(
+				var(--mm-panel-available-height, calc(100dvh - 10rem)),
+				max(
+					120px,
+					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 4.25rem) - 1rem)
+				)
+			);
+		}
 	}
 	@media (max-width: 1050px) {
 		.sheet-backdrop.docked .sheet {
@@ -1652,14 +1691,33 @@
 			max-width: 100vw;
 		}
 		.sheet-backdrop.floating .sheet {
-			top: var(--mm-panel-navigation-bottom, 6rem);
+			--sheet-stacked-chat-height: min(24dvh, 220px);
+			--sheet-stacked-top: calc(
+				var(--mm-panel-navigation-bottom, 5.8rem) + 3.7rem + var(--sheet-stacked-chat-height) +
+					0.75rem
+			);
+			top: var(--sheet-stacked-top);
 			bottom: auto;
-			left: 0;
-			right: 0;
-			width: 100vw;
-			height: auto;
-			max-width: 100vw;
+			left: 0.5rem;
+			right: 0.5rem;
+			width: calc(100vw - 1rem);
+			height: min(72dvh, var(--mm-panel-available-height, calc(100dvh - 10rem)));
+			max-width: calc(100vw - 1rem);
 			max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
+			min-height: min(
+				220px,
+				max(
+					120px,
+					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 6.5rem) - 1rem)
+				)
+			);
+			max-height: min(
+				var(--mm-panel-available-height, calc(100dvh - 10rem)),
+				max(
+					120px,
+					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 6.5rem) - 1rem)
+				)
+			);
 			resize: both;
 		}
 		.sheet-actions {

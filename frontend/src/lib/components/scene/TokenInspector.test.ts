@@ -178,7 +178,7 @@ describe('TokenInspector', () => {
 		const { body } = render(TokenInspector, { props: createProps() });
 		expect(body).toContain('Rolar iniciativa');
 		expect(body).toContain('Abrir ficha vinculada');
-		expect(body).toContain('Abrir ficha em nova janela');
+		expect(body).toContain('Abrir ficha em janela auxiliar');
 		expect(body).toMatch(
 			/<div class="sheet-actions(?:\s[^"]*)?">[\s\S]*class="open-sheet(?:\s[^"]*)?"[\s\S]*class="open-sheet-new-window(?:\s[^"]*)?"/
 		);

@@ -30,6 +30,7 @@
 	import { getOverlaySettings, saveOverlaySettings } from '$lib/services/overlaySettingsApi';
 	import { createOverlayPairing, revokeOverlayAccess } from '$lib/services/overlayPairingApi';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
+	const auxiliarySheetWindows: Record<string, Window> = {};
 	import {
 		readSheetPanelMode,
 		sheetPanelModeKey,
@@ -141,7 +142,8 @@
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
-	let sheetDocked = $state(true);
+	let resolvedSheetCharacterId = $state<string | null>(null);
+	let sheetDocked = $state(false);
 	let sheetFocusRequest = $state(0);
 	let workspaceTab = $state<WorkspaceTab>('map');
 	$effect(() => {
@@ -446,9 +448,14 @@
 		sheetFocusRequest += 1;
 	}
 	function openCharacter(characterId: string, ownerName: string) {
-		const sameSheetAlreadyOpen = sheetOpen && editingCharacter?.id === characterId;
-		editingCharacter = { id: characterId, ownerName };
-		if (!sameSheetAlreadyOpen) sheetDocked = storedSheetMode(characterId) === 'docked';
+		const sameSheetAlreadyOpen =
+			sheetOpen &&
+			(editingCharacter?.id === characterId || resolvedSheetCharacterId === characterId);
+		if (!sameSheetAlreadyOpen) {
+			editingCharacter = { id: characterId, ownerName };
+			resolvedSheetCharacterId = null;
+			sheetDocked = storedSheetMode(characterId) === 'docked';
+		}
 		sheetOpen = true;
 		sheetFocusRequest += 1;
 	}
@@ -464,19 +471,38 @@
 		sheetFocusRequest += 1;
 	}
 	function openCharacterWindow(characterId: string) {
-		if (!activeCampaign) return;
+		if (!activeCampaign || !characterId) return;
 		const url = new URL('/sheet', window.location.origin);
 		url.searchParams.set('campaign', activeCampaign.id);
 		url.searchParams.set('character', characterId);
-		const newTab = window.open(url, '_blank');
-		if (newTab) {
-			newTab.opener = null;
-			newTab.focus();
+		url.searchParams.set('auxiliary', '1');
+		const screenWidth = window.screen.availWidth || window.innerWidth;
+		const screenHeight = window.screen.availHeight || window.innerHeight;
+		const width = Math.min(1120, Math.max(320, screenWidth - 48));
+		const height = Math.min(900, Math.max(360, screenHeight - 72));
+		const left = Math.max(0, Math.round((screenWidth - width) / 2));
+		const top = Math.max(0, Math.round((screenHeight - height) / 2));
+		const windowName = `maismorras-sheet-${activeCampaign.id}-${characterId}`;
+		const existingWindow = auxiliarySheetWindows[windowName];
+		if (existingWindow && !existingWindow.closed) {
+			existingWindow.focus();
+			return;
+		}
+		const auxiliaryWindow = window.open(
+			url.toString(),
+			windowName,
+			`popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+		);
+		if (auxiliaryWindow) {
+			// Keep a stable named browsing context for reuse, but prevent reverse tabnabbing.
+			auxiliarySheetWindows[windowName] = auxiliaryWindow;
+			auxiliaryWindow.opener = null;
+			auxiliaryWindow.focus();
 		} else
 			showInviteStatus(
 				$appLocale === 'en'
-					? 'The browser blocked the new window. Allow pop-ups for MaisMorras and try again.'
-					: 'O navegador bloqueou a nova janela. Permita pop-ups para o MaisMorras e tente novamente.'
+					? 'The browser blocked the auxiliary window. Allow pop-ups or keep using the sheet in this page.'
+					: 'O navegador bloqueou a janela auxiliar. Permita pop-ups ou continue usando a ficha nesta página.'
 			);
 	}
 	function selectScene(sceneId: string) {
@@ -807,7 +833,9 @@
 					{session}
 					{sheetOpen}
 				/>{/key}{/if}
-		{#if inviteStatus}<p class="invite-status">{inviteStatus}</p>{/if}
+		{#if inviteStatus}<p class="invite-status" role="status" aria-live="polite">
+				{inviteStatus}
+			</p>{/if}
 		{#if sheetOpen && !CharacterSheetComponent}<p
 				class="status-message"
 				role="status"
@@ -822,6 +850,7 @@
 					isGM={activeCampaign.role === 'gm'}
 					characterId={editingCharacter?.id}
 					characterOwnerName={editingCharacter?.ownerName ?? ''}
+					onCharacterResolved={(characterId) => (resolvedSheetCharacterId = characterId)}
 					docked={sheetDocked}
 					focusRequest={sheetFocusRequest}
 					onDockChange={updateSheetDocked}
@@ -832,6 +861,7 @@
 					onclose={() => {
 						sheetOpen = false;
 						sheetDocked = false;
+						resolvedSheetCharacterId = null;
 					}}
 					onTokenCreated={() => void reloadActiveScene()}
 				/>{/key}{/if}

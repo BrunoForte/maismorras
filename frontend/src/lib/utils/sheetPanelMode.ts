@@ -11,9 +11,9 @@ export function readSheetPanelMode(
 	key: string
 ): SheetPanelMode {
 	try {
-		return storage?.getItem(key) === 'floating' ? 'floating' : 'docked';
+		return storage?.getItem(key) === 'docked' ? 'docked' : 'floating';
 	} catch {
-		return 'docked';
+		return 'floating';
 	}
 }
 

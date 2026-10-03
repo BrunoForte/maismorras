@@ -168,7 +168,7 @@
 				>{isEnglish ? 'Open linked sheet' : 'Abrir ficha vinculada'}</button
 			>
 			<button class="open-sheet-new-window" onclick={() => onOpenSheetInNewWindow(token.actorId!)}
-				>{isEnglish ? 'Open sheet in new window' : 'Abrir ficha em nova janela'}</button
+				>{isEnglish ? 'Open sheet in auxiliary window' : 'Abrir ficha em janela auxiliar'}</button
 			>
 		</div>
 	{/if}

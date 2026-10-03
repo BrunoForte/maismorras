@@ -25,6 +25,10 @@
 		new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get(
 			'character'
 		) ?? '';
+	const isAuxiliaryWindow =
+		new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get(
+			'auxiliary'
+		) === '1';
 
 	async function authorize(currentSession: Session) {
 		const generation = ++requestGeneration;
@@ -136,8 +140,14 @@
 	});
 
 	function closeSheet() {
-		if (window.opener) window.close();
-		else void goto(resolve('/'));
+		if (!isAuxiliaryWindow) {
+			void goto(resolve('/'));
+			return;
+		}
+		window.close();
+		window.setTimeout(() => {
+			if (!window.closed) void goto(resolve('/'));
+		}, 150);
 	}
 </script>
 
