@@ -45,6 +45,14 @@ function makeHarness(
 	}
 	const nodeListeners = new Map<string, (event: PointerEvent) => void>();
 	const nodeStyle: Record<string, string> = {};
+	let resizeObserverCallback: ResizeObserverCallback | undefined;
+	class FakeResizeObserver {
+		constructor(callback: ResizeObserverCallback) {
+			resizeObserverCallback = callback;
+		}
+		observe = vi.fn();
+		disconnect = vi.fn();
+	}
 	const styleApi = Object.assign(nodeStyle, {
 		setProperty: (name: string, value: string) => {
 			nodeStyle[name] = value;
@@ -63,19 +71,17 @@ function makeHarness(
 		),
 		removeEventListener: vi.fn((name: string) => nodeListeners.delete(name)),
 		getBoundingClientRect() {
-			return {
-				left: Number.parseFloat(nodeStyle.left ?? '') || 100,
-				top: Number.parseFloat(nodeStyle.top ?? '') || 100,
-				right: (Number.parseFloat(nodeStyle.left ?? '') || 100) + size.width,
-				bottom: (Number.parseFloat(nodeStyle.top ?? '') || 100) + size.height,
-				width: size.width,
-				height: size.height
-			};
+			const left = Number.parseFloat(nodeStyle.left ?? '') || 100;
+			const top = Number.parseFloat(nodeStyle.top ?? '') || 100;
+			const width = Number.parseFloat(nodeStyle.width ?? '') || size.width;
+			const height = Number.parseFloat(nodeStyle.height ?? '') || size.height;
+			return { left, top, right: left + width, bottom: top + height, width, height };
 		}
 	} as unknown as HTMLElement;
 	installGlobal('window', windowMock);
 	installGlobal('document', documentMock);
 	installGlobal('Element', FakeElement);
+	installGlobal('ResizeObserver', FakeResizeObserver);
 	installGlobal('getComputedStyle', () => ({ getPropertyValue: () => '68px' }));
 	installGlobal('localStorage', {
 		getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -89,7 +95,10 @@ function makeHarness(
 		storage,
 		windowMock,
 		documentMock,
-		obstacleRects
+		obstacleRects,
+		triggerResize() {
+			resizeObserverCallback?.([], {} as ResizeObserver);
+		}
 	};
 }
 
@@ -112,6 +121,24 @@ describe('movablePanel', () => {
 		});
 		const style = (h.node as unknown as { style: Record<string, string> }).style;
 		expect(style['--mm-panel-width']).toBe('min(1280px, calc(100vw - 32px))');
+		action.destroy();
+	});
+
+	it('keeps a resized sheet inside the right viewport edge', () => {
+		const h = makeHarness({ width: 832, height: 526 });
+		h.windowMock.innerWidth = 1280;
+		h.storage.set('maismorras:moved-panel:sheet-edge', JSON.stringify({ left: 452, top: 104 }));
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-edge',
+			handleSelector: '.titlebar',
+			constrainToViewport: true
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		style.width = '832px';
+		h.triggerResize();
+		const rect = h.node.getBoundingClientRect();
+		expect(rect.right).toBeLessThanOrEqual(1264);
+		expect(Number.parseFloat(style.left)).toBeLessThan(452);
 		action.destroy();
 	});
 

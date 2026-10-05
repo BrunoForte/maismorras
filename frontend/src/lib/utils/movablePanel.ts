@@ -10,6 +10,8 @@ export type MovablePanelOptions = {
 	avoidLeftSelectors?: string[];
 	avoidRightSelectors?: string[];
 	avoidBottomSelectors?: string[];
+	/** Keep a small right-side gutter when clamping this panel after a resize. */
+	constrainToViewport?: boolean;
 	enabled?: boolean;
 };
 
@@ -53,12 +55,20 @@ function readPosition(key: string): PanelPosition | null {
 	return null;
 }
 
-function clampPosition(node: HTMLElement, position: PanelPosition, minTop: number): PanelPosition {
+function clampPosition(
+	node: HTMLElement,
+	position: PanelPosition,
+	minTop: number,
+	rightGutter = 0
+): PanelPosition {
 	const width = node.getBoundingClientRect().width || node.offsetWidth;
 	const height = node.getBoundingClientRect().height || node.offsetHeight;
 	const footerOffset = readCssLengthInPixels(node, '--mm-audio-footer-offset', 68) || 68;
 	return {
-		left: Math.max(0, Math.min(position.left, Math.max(0, window.innerWidth - width))),
+		left: Math.max(
+			0,
+			Math.min(position.left, Math.max(0, window.innerWidth - width - rightGutter))
+		),
 		top: Math.max(
 			minTop,
 			Math.min(position.top, Math.max(minTop, window.innerHeight - footerOffset - height - 8))
@@ -154,7 +164,7 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 	};
 	const apply = (position: PanelPosition, persist = false) => {
 		updateViewportConstraints();
-		const bounded = clampPosition(node, position, minTop());
+		const bounded = clampPosition(node, position, minTop(), options.constrainToViewport ? 16 : 0);
 		node.style.left = `${bounded.left}px`;
 		node.style.top = `${bounded.top}px`;
 		node.style.right = 'auto';
@@ -244,7 +254,12 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		}
 		updateViewportConstraints();
 		const rect = node.getBoundingClientRect();
-		const bounded = clampPosition(node, { left: rect.left, top: rect.top }, minTop());
+		const bounded = clampPosition(
+			node,
+			{ left: rect.left, top: rect.top },
+			minTop(),
+			options.constrainToViewport ? 16 : 0
+		);
 		if (options.enabled !== false && node.style.left) apply(bounded, true);
 	};
 	const observer =
@@ -252,7 +267,9 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 			? null
 			: new ResizeObserver(() => {
 					updateViewportConstraints();
-					if (options.enabled !== false && node.style.left) onResize();
+					if (options.enabled !== false && (node.style.left || options.constrainToViewport)) {
+						onResize();
+					}
 				});
 	observer?.observe(node);
 	const refreshObservedObstacles = () => {

@@ -867,23 +867,46 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			expect(playerCharacter).toBeTruthy();
 			expect(gmCharacter).toBeTruthy();
 			await test.step('popup opens the isolated own sheet without auth credentials in its URL', async () => {
-				await openMap(f.player, f.campaignId, f.sceneId);
-				await selectTokenAtDefaultPosition(f.player);
-				const popupPromise = f.player.waitForEvent('popup');
-				await f.player.getByRole('button', { name: 'Destacar ficha em janela auxiliar' }).click();
-				const popup = await popupPromise;
-				await expect(popup.locator('.sheet')).toBeVisible({ timeout: 20_000 });
-				expect(new URL(popup.url()).pathname).toBe('/sheet');
-				expect(popup.url()).toContain(`campaign=${f.campaignId}`);
-				expect(popup.url()).toContain(`character=${playerCharacter!.id}`);
-				expect(popup.url()).toContain('auxiliary=1');
-				expect(popup.url()).not.toMatch(/access_token|refresh_token|authorization|jwt/i);
-				const popupState = await popup.evaluate(() => ({
-					name: window.name,
-					openerIsNull: window.opener === null,
-					width: window.outerWidth,
-					height: window.outerHeight
-				}));
+				await test.step('select own token on an uncovered map point', async () => {
+					await openMap(f.player, f.campaignId, f.sceneId);
+					await movePanelAwayFromMapTarget(f.player, '.floating-chat', '.panel-grip');
+					await selectTokenAtDefaultPosition(f.player, true);
+				});
+				const auxiliaryButton = f.player.getByRole('button', {
+					name: 'Destacar ficha',
+					exact: true
+				});
+				const popup =
+					await test.step('trigger and observe the auxiliary popup from the own-token action', async () => {
+						await expect(auxiliaryButton).toBeVisible();
+						const popupEvent = f.player.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
+						await auxiliaryButton.click({ timeout: 5_000 });
+						const openedPopup = await popupEvent;
+						if (!openedPopup) {
+							const fallbackVisible = (await f.player.getByRole('alert').count()) > 0;
+							throw new Error(
+								`Auxiliary popup was not observed; browser-block feedback visible=${fallbackVisible}.`
+							);
+						}
+						return openedPopup;
+					});
+				await test.step('load authorized isolated sheet in popup', async () => {
+					await expect(popup.locator('.sheet')).toBeVisible({ timeout: 20_000 });
+				});
+				await test.step('verify popup route and secret-free URL', async () => {
+					expect(new URL(popup.url()).pathname).toBe('/sheet');
+					expect(popup.url()).toContain(`campaign=${f.campaignId}`);
+					expect(popup.url()).toContain(`character=${playerCharacter!.id}`);
+					expect(popup.url()).toContain('auxiliary=1');
+					expect(popup.url()).not.toMatch(/access_token|refresh_token|authorization|jwt/i);
+				});
+				const popupState = await test.step('check safe popup window features', () =>
+					popup.evaluate(() => ({
+						name: window.name,
+						openerIsNull: window.opener === null,
+						width: window.outerWidth,
+						height: window.outerHeight
+					})));
 				expect(popupState.name).toContain(
 					`maismorras-sheet-${f.campaignId}-${playerCharacter!.id}`
 				);
@@ -950,7 +973,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					popup.locator('canvas, .app-header, .floating-chat, .actor-drawer, .audio-channels')
 				).toHaveCount(0);
 				const pageCount = f.player.context().pages().length;
-				await f.player.getByRole('button', { name: 'Destacar ficha em janela auxiliar' }).click();
+				await auxiliaryButton.click({ timeout: 5_000 });
 				await expect.poll(() => f.player.context().pages().length).toBe(pageCount);
 				await expect(popup.locator('.sheet')).toBeVisible();
 				await popup.close();
@@ -1331,11 +1354,26 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await sheet.evaluate((node) => (node.dataset.instanceMarker = 'same-sheet-instance'));
 			await player.getByRole('button', { name: 'Mesa', exact: true }).click();
 			await expect(player.locator('canvas').first()).toBeVisible();
-			await selectTokenAtDefaultPosition(player);
+			await movePanelAwayFromMapTarget(player, '.sheet-backdrop.floating .sheet', 'header h2');
+			await movePanelAwayFromMapTarget(player, '.floating-chat', '.panel-grip');
+			await selectTokenAtDefaultPosition(player, true);
 			await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
 			await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
 			await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
 			await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
+			await test.step('map clicks outside the sheet and sheet controls inside it remain usable', async () => {
+				const canvas = player.locator('canvas').first();
+				await expect(player.locator('.token-inspector')).toBeVisible();
+				await canvas.click({ position: { x: 105, y: 105 } });
+				await expect(canvas).toBeFocused();
+				const skillsTab = sheet.locator('.sheet-tabs').getByRole('button', {
+					name: 'Perícias',
+					exact: true
+				});
+				await skillsTab.click();
+				await expect(skillsTab).toHaveClass(/active/);
+				await expect(sheet.locator('.sheet-body')).toBeVisible();
+			});
 		});
 		return prepared;
 	}
@@ -1831,9 +1869,19 @@ function sanitizeBrowserDiagnostic(value: string): string {
 		);
 }
 
-async function selectTokenAtDefaultPosition(page: Page) {
+async function selectTokenAtDefaultPosition(page: Page, requireUncoveredTarget = false) {
 	const canvas = page.locator('canvas').first();
 	await expect(canvas).toBeVisible();
+	if (requireUncoveredTarget) {
+		const targetIsCanvas = await page.evaluate(() => {
+			const canvasNode = document.querySelector('canvas');
+			if (!canvasNode) return false;
+			const rect = canvasNode.getBoundingClientRect();
+			const target = document.elementFromPoint(rect.left + 105, rect.top + 105);
+			return target === canvasNode || Boolean(target && canvasNode.contains(target));
+		});
+		expect(targetIsCanvas, 'map test click must land on an uncovered canvas location').toBe(true);
+	}
 	const chatCoversTarget = await page.evaluate(() => {
 		const canvasNode = document.querySelector('canvas');
 		if (!canvasNode) return false;
@@ -1846,12 +1894,60 @@ async function selectTokenAtDefaultPosition(page: Page) {
 	const restoreChat =
 		chatCoversTarget && !(await chat.evaluate((node) => node.classList.contains('closed')));
 	if (restoreChat) await chat.locator('.chat-toggle').click();
-	await canvas.click({ position: { x: 105, y: 105 } });
+	if (requireUncoveredTarget) {
+		const box = (await canvas.boundingBox())!;
+		await page.mouse.click(box.x + 105, box.y + 105);
+	} else {
+		await canvas.click({ position: { x: 105, y: 105 } });
+	}
 	if (restoreChat) {
 		await expect(page.locator('.token-inspector')).toBeVisible({ timeout: 10_000 });
 		await chat.locator('.chat-toggle').click();
 	}
 	await expect(page.locator('.token-inspector')).toBeVisible({ timeout: 10_000 });
+}
+
+async function movePanelAwayFromMapTarget(
+	page: Page,
+	panelSelector: string,
+	handleSelector: string
+) {
+	const canvas = page.locator('canvas').first();
+	const canvasBox = (await canvas.boundingBox())!;
+	const targetX = canvasBox.x + 105;
+	const targetY = canvasBox.y + 105;
+	const panel = page.locator(panelSelector).first();
+	const box = await panel.boundingBox();
+	if (
+		!box ||
+		targetX < box.x ||
+		targetX > box.x + box.width ||
+		targetY < box.y ||
+		targetY > box.y + box.height
+	)
+		return;
+	const viewportWidth = page.viewportSize()!.width;
+	const rightCandidate = Math.min(targetX + 24, viewportWidth - box.width - 16);
+	const destinationLeft =
+		rightCandidate > targetX ? rightCandidate : Math.max(8, targetX - box.width - 24);
+	if (targetX >= destinationLeft && targetX <= destinationLeft + box.width) {
+		throw new Error(
+			'The panel cannot be moved away from the map test target within this viewport.'
+		);
+	}
+	await dragPanel(page, panel.locator(handleSelector).first(), destinationLeft - box.x, 0);
+	await expect
+		.poll(async () => {
+			const next = await panel.boundingBox();
+			return (
+				!next ||
+				targetX < next.x ||
+				targetX > next.x + next.width ||
+				targetY < next.y ||
+				targetY > next.y + next.height
+			);
+		})
+		.toBe(true);
 }
 
 async function setExpandedSize(panel: Locator, width: number, height: number) {

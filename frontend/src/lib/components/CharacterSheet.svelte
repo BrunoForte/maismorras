@@ -1006,6 +1006,7 @@
 			avoidLeftSelectors: ['.floating-chat.sheet-open:not(.closed)'],
 			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
+			constrainToViewport: true,
 			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
