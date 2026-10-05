@@ -103,6 +103,18 @@ afterEach(() => {
 });
 
 describe('movablePanel', () => {
+	it('allows a larger panel to use available viewport width when requested', () => {
+		const h = makeHarness();
+		const action = movablePanel(h.node, {
+			storageKey: 'large-sheet-panel',
+			handleSelector: '.titlebar',
+			maxWidth: 1280
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-width']).toBe('min(1280px, calc(100vw - 32px))');
+		action.destroy();
+	});
+
 	it('moves by the title bar, persists per key, and restores the position', () => {
 		const h = makeHarness();
 		const action = movablePanel(h.node, {

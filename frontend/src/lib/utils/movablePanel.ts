@@ -5,6 +5,7 @@ export type MovablePanelOptions = {
 	layoutKey?: string;
 	handleSelector: string;
 	minTop?: number;
+	maxWidth?: number;
 	avoidSelectors?: string[];
 	avoidLeftSelectors?: string[];
 	avoidRightSelectors?: string[];
@@ -122,8 +123,8 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		node.style.setProperty(
 			'--mm-panel-width',
 			left === null
-				? 'min(920px, calc(100vw - 450px))'
-				: `min(920px, calc(100vw - ${left}px - ${right}px - 1rem))`
+				? `min(${options.maxWidth ?? 920}px, calc(100vw - ${options.maxWidth ? 32 : 450}px))`
+				: `min(${options.maxWidth ?? 920}px, calc(100vw - ${left}px - ${right}px - 1rem))`
 		);
 		node.style.setProperty(
 			'--mm-panel-min-width',

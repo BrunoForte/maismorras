@@ -1,6 +1,8 @@
 export type ResizablePanelOptions = {
 	collapsed: boolean;
 	headerSelector: string;
+	/** Fill the current browser window instead of restoring page-panel preferences. */
+	fillViewport?: boolean;
 	minWidth?: number;
 	storageKey?: string;
 };
@@ -65,11 +67,14 @@ function viewportSize(size: PanelSize): PanelSize {
 /** Preserves resize dimensions and collapsed state across remounts and viewport changes. */
 export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions) {
 	let options = initial;
-	const saved = initial.storageKey ? readPreference(initial.storageKey) : null;
-	let lastExpandedSize: PanelSize = saved?.size ?? {
-		width: node.getBoundingClientRect().width || node.offsetWidth || 1,
-		height: node.getBoundingClientRect().height || node.offsetHeight || 1
-	};
+	const saved =
+		initial.fillViewport || !initial.storageKey ? null : readPreference(initial.storageKey);
+	let lastExpandedSize: PanelSize = initial.fillViewport
+		? { width: window.innerWidth, height: window.innerHeight }
+		: (saved?.size ?? {
+				width: node.getBoundingClientRect().width || node.offsetWidth || 1,
+				height: node.getBoundingClientRect().height || node.offsetHeight || 1
+			});
 	let collapsed = false;
 	const observer =
 		typeof ResizeObserver === 'undefined'
@@ -79,7 +84,8 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 					const { width, height } = node.getBoundingClientRect();
 					if (width > 0 && height > 0) {
 						lastExpandedSize = { width, height };
-						writePreference(options.storageKey, { collapsed: false, size: lastExpandedSize });
+						if (!options.fillViewport)
+							writePreference(options.storageKey, { collapsed: false, size: lastExpandedSize });
 					}
 				});
 	observer?.observe(node);
@@ -110,6 +116,10 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 	}
 
 	function applyExpandedStyles() {
+		if (options.fillViewport) {
+			applyViewportStyles();
+			return;
+		}
 		const restored = viewportSize(lastExpandedSize);
 		node.style.removeProperty('resize');
 		node.style.removeProperty('min-width');
@@ -120,6 +130,18 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 		node.style.width = `${restored.width}px`;
 		node.style.height = `${restored.height}px`;
 		lastExpandedSize = restored;
+	}
+
+	function applyViewportStyles() {
+		lastExpandedSize = { width: window.innerWidth, height: window.innerHeight };
+		node.style.resize = 'none';
+		node.style.width = `${lastExpandedSize.width}px`;
+		node.style.height = `${lastExpandedSize.height}px`;
+		node.style.minWidth = '0';
+		node.style.minHeight = '0';
+		node.style.maxWidth = 'none';
+		node.style.maxHeight = 'none';
+		node.style.overflow = 'hidden';
 	}
 
 	function setCollapsed(next: boolean, captureExpandedSize = true) {
@@ -141,10 +163,12 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 	// The component initializes its content from the saved preference. Apply the same state
 	// physically here, without capturing collapsed header dimensions as the expanded size.
 	setCollapsed(initial.collapsed, false);
-	if (!initial.collapsed && saved) applyExpandedStyles();
+	if (initial.fillViewport && !initial.collapsed) applyViewportStyles();
+	else if (!initial.collapsed && saved) applyExpandedStyles();
 
 	const onResize = () => {
-		if (collapsed) applyCollapsedStyles();
+		if (options.fillViewport) applyViewportStyles();
+		else if (collapsed) applyCollapsedStyles();
 		else {
 			const size = viewportSize(lastExpandedSize);
 			lastExpandedSize = size;
@@ -157,13 +181,15 @@ export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions
 
 	return {
 		update(next: ResizablePanelOptions) {
+			const fillViewportChanged = next.fillViewport !== options.fillViewport;
 			options = next;
+			if (fillViewportChanged && options.fillViewport) applyViewportStyles();
 			setCollapsed(next.collapsed);
 		},
 		destroy() {
 			observer?.disconnect();
 			window.removeEventListener('resize', onResize);
-			if (!collapsed)
+			if (!collapsed && !options.fillViewport)
 				writePreference(options.storageKey, { collapsed: false, size: currentSize() });
 		}
 	};

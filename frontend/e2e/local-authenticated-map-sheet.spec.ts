@@ -470,6 +470,18 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
 				await expect(page.locator('canvas').first()).toBeVisible();
 				await expect(sheet).toBeVisible();
+				await page.setViewportSize({ width: 390, height: 844 });
+				await expect(sheet.locator('header h2')).toBeVisible();
+				await expect(sheet.getByRole('button', { name: 'Fixar ficha' })).toBeVisible();
+				await expect(
+					sheet.getByRole('button', { name: 'Destacar ficha em janela auxiliar' })
+				).toBeVisible();
+				await expect(sheet.locator('.sheet-tabs')).toBeVisible();
+				await expect(sheet.getByRole('button', { name: 'Salvar ficha' })).toBeVisible();
+				await expect(actors.locator('.drawer-toggle')).toBeVisible();
+				await expect(page.locator('.audio-channels')).toBeVisible();
+				await assertAboveAudioFooter(page, sheet);
+				await page.setViewportSize({ width: 1280, height: 900 });
 			});
 		} finally {
 			await fixture?.close();
@@ -858,7 +870,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await openMap(f.player, f.campaignId, f.sceneId);
 				await selectTokenAtDefaultPosition(f.player);
 				const popupPromise = f.player.waitForEvent('popup');
-				await f.player.getByRole('button', { name: 'Abrir ficha em janela auxiliar' }).click();
+				await f.player.getByRole('button', { name: 'Destacar ficha em janela auxiliar' }).click();
 				const popup = await popupPromise;
 				await expect(popup.locator('.sheet')).toBeVisible({ timeout: 20_000 });
 				expect(new URL(popup.url()).pathname).toBe('/sheet');
@@ -878,11 +890,67 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				expect(popupState.openerIsNull).toBe(true);
 				expect(popupState.width).toBeGreaterThan(600);
 				expect(popupState.height).toBeGreaterThan(500);
+				const assertPopupUsesItsViewport = async (width: number, height: number) => {
+					await popup.setViewportSize({ width, height });
+					await expect(popup.locator('.sheet-tabs')).toBeVisible();
+					await expect(popup.locator('.sheet-body')).toBeVisible();
+					await expect
+						.poll(() =>
+							popup.locator('.sheet').evaluate((node) => {
+								const rect = node.getBoundingClientRect();
+								return { width: Math.round(rect.width), height: Math.round(rect.height) };
+							})
+						)
+						.toEqual({ width, height });
+					const layout = await popup.locator('.sheet').evaluate((node) => {
+						const body = node.querySelector<HTMLElement>('.sheet-body')!;
+						const header = node.querySelector<HTMLElement>('header')!;
+						const tabs = node.querySelector<HTMLElement>('.sheet-tabs')!;
+						const footer = node.querySelector<HTMLElement>('footer')!;
+						const sheetStyle = getComputedStyle(node);
+						const bodyStyle = getComputedStyle(body);
+						const verticalScrollers = [node, ...node.querySelectorAll<HTMLElement>('*')]
+							.filter((element) => {
+								const style = getComputedStyle(element);
+								const rect = element.getBoundingClientRect();
+								return (
+									rect.width > 0 &&
+									rect.height > 0 &&
+									['auto', 'scroll'].includes(style.overflowY) &&
+									element.scrollHeight > element.clientHeight + 1
+								);
+							})
+							.map((element) => (element === body ? '.sheet-body' : element.tagName.toLowerCase()));
+						return {
+							viewport: { width: window.innerWidth, height: window.innerHeight },
+							sheet: { width: node.clientWidth, height: node.clientHeight },
+							sheetOverflowY: sheetStyle.overflowY,
+							bodyOverflowY: bodyStyle.overflowY,
+							verticalScrollers,
+							fixedRegionsVisible: [header, tabs, footer].every((element) => {
+								const rect = element.getBoundingClientRect();
+								return rect.top >= 0 && rect.bottom <= window.innerHeight;
+							})
+						};
+					});
+					expect(layout.viewport).toEqual({ width, height });
+					expect(layout.sheet).toEqual({ width, height });
+					expect(layout.sheetOverflowY).toBe('hidden');
+					expect(layout.bodyOverflowY).toBe('auto');
+					expect(layout.verticalScrollers).toEqual(['.sheet-body']);
+					expect(layout.fixedRegionsVisible).toBe(true);
+					await expect(popup.locator('.sheet-tabs')).toBeVisible();
+					await expect(
+						popup.getByRole('button', { name: /Salvar ficha|Save character sheet/ })
+					).toBeVisible();
+				};
+				await assertPopupUsesItsViewport(1280, 900);
+				await assertPopupUsesItsViewport(390, 720);
 				await expect(
 					popup.locator('canvas, .app-header, .floating-chat, .actor-drawer, .audio-channels')
 				).toHaveCount(0);
 				const pageCount = f.player.context().pages().length;
-				await f.player.getByRole('button', { name: 'Abrir ficha em janela auxiliar' }).click();
+				await f.player.getByRole('button', { name: 'Destacar ficha em janela auxiliar' }).click();
 				await expect.poll(() => f.player.context().pages().length).toBe(pageCount);
 				await expect(popup.locator('.sheet')).toBeVisible();
 				await popup.close();
@@ -1433,7 +1501,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await expect(sheet.locator('.sheet-mode-status')).toHaveText('Acoplada');
 						await assertAboveAudioFooter(player, sheet);
 						phase = 'restore floating mode';
-						await sheet.getByRole('button', { name: 'Destacar ficha' }).click();
+						await sheet.getByRole('button', { name: 'Flutuar ficha' }).click();
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						phase = 'close sheet explicitly';
 						await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
@@ -1466,7 +1534,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					async () => {
 						const [popup] = await Promise.all([
 							player.waitForEvent('popup'),
-							sheet.getByRole('button', { name: 'Abrir ficha em janela auxiliar' }).click()
+							sheet.getByRole('button', { name: 'Destacar ficha em janela auxiliar' }).click()
 						]);
 						standalone = popup;
 						phase = 'assert isolated route and authorization-safe URL';
