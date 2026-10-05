@@ -10,7 +10,7 @@ const message = (id: string, texto = id): Mensagem => ({
 });
 
 describe('mergeCampaignMessages', () => {
-	it('deduplicates REST history and realtime echoes using the persistent ID', () => {
+	it('deduplicates realtime-first and optimistic HTTP responses using the persistent ID', () => {
 		expect(
 			mergeCampaignMessages([message('12')], [message('12', 'websocket'), message('13')])
 		).toEqual([message('12', 'websocket'), message('13')]);

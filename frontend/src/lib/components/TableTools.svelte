@@ -4,6 +4,7 @@
 	import { personagens, turnoAtualId } from '$lib/stores/gameStore';
 	import { diceOverlay } from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
+	import { mergeCampaignMessages } from '$lib/utils/campaignChatState';
 	import { loadMessages, rollDice } from '$lib/services/eventApi';
 	import {
 		getCombat,
@@ -92,8 +93,7 @@
 				modificador: number;
 				total: number;
 			};
-			$chatMensagens = [
-				...$chatMensagens,
+			$chatMensagens = mergeCampaignMessages($chatMensagens, [
 				{
 					id: String(event.id),
 					autor: event.author,
@@ -101,7 +101,7 @@
 					tipo: 'rolagem',
 					detalhesRolagem: result
 				}
-			];
+			]);
 			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${event.author} · ${result.expressao}`,

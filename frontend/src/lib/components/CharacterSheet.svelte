@@ -37,6 +37,7 @@
 		setDiceColor
 	} from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
+	import { mergeCampaignMessages } from '$lib/utils/campaignChatState';
 	import { getSupabaseClient } from '$lib/services/supabase';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { savePresentation } from '$lib/services/presentationApi';
@@ -490,7 +491,7 @@
 		saveSpellDisplay: publishSpellToChat,
 		savePresentation: (activeSession, activeSceneId, presentation) =>
 			savePresentation(activeSession, activeSceneId, presentation),
-		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),
+		appendChat: (message) => ($chatMensagens = mergeCampaignMessages($chatMensagens, [message])),
 		setDiceOverlay: (result) => diceOverlay.set(result),
 		beginDiceBatch,
 		finishDiceBatch,

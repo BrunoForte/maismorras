@@ -56,6 +56,7 @@
 		setDiceColor
 	} from '$lib/stores/diceOverlayStore';
 	import { chatMensagens } from '$lib/stores/chatStore';
+	import { mergeCampaignMessages } from '$lib/utils/campaignChatState';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import {
 		castMySpell,
@@ -208,7 +209,7 @@
 		updateCharacters: (update) => personagens.update(update),
 		rememberToken: (token) => tokenController.remember(token),
 		clearSelection: () => (tokenSelecionadoId = null),
-		appendChat: (message) => ($chatMensagens = [...$chatMensagens, message]),
+		appendChat: (message) => ($chatMensagens = mergeCampaignMessages($chatMensagens, [message])),
 		setDiceOverlay: (result) => diceOverlay.set(result),
 		publishChatUpdated: () => sceneSocket?.publishChatUpdated(),
 		publishRefresh: () => sceneSocket?.publishRefresh(),
@@ -987,8 +988,7 @@
 			);
 			const attack = attackEvent.payload as { expressao: string; dados: number[]; total: number };
 			const critical = attack.dados[0] === 20;
-			$chatMensagens = [
-				...$chatMensagens,
+			$chatMensagens = mergeCampaignMessages($chatMensagens, [
 				{
 					id: String(attackEvent.id),
 					autor: npcSelecionado.name,
@@ -1000,7 +1000,7 @@
 						modificador: attack.total - attack.dados.reduce((sum, die) => sum + die, 0)
 					}
 				}
-			];
+			]);
 			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name}`,
@@ -1022,8 +1022,7 @@
 				'combat'
 			);
 			const damage = damageEvent.payload as { expressao: string; dados: number[]; total: number };
-			$chatMensagens = [
-				...$chatMensagens,
+			$chatMensagens = mergeCampaignMessages($chatMensagens, [
 				{
 					id: String(damageEvent.id),
 					autor: npcSelecionado.name,
@@ -1035,7 +1034,7 @@
 						modificador: damage.total - damage.dados.reduce((sum, die) => sum + die, 0)
 					}
 				}
-			];
+			]);
 			sceneSocket?.publishChatUpdated();
 			$diceOverlay = {
 				expression: `${npcSelecionado.name} · ${action.name} · dano`,
