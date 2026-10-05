@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import {
 	expect,
 	request as playwrightRequest,
@@ -6,8 +8,10 @@ import {
 	type Browser,
 	type BrowserContext,
 	type Page,
-	type APIRequestContext
+	type APIRequestContext,
+	type TestInfo
 } from '@playwright/test';
+import { sanitizeSafeE2EDiagnostic } from '../src/lib/utils/safeE2EDiagnostics';
 
 export const localStackEnabled = process.env.E2E_LOCAL_STACK === 'true';
 const supabaseUrl = process.env.LOCAL_SUPABASE_URL;
@@ -112,6 +116,10 @@ export async function createLocalAuthenticatedFixture(
 	let gmPublisher: Page | undefined;
 	let overlay: Page | undefined;
 	let closed = false;
+	let setupStage = 'initialize fixture';
+	let setupHttpStatus: number | null = null;
+	const fixtureStartedAt = new Date().toISOString();
+	const fixtureStarted = performance.now();
 
 	const close = async () => {
 		if (closed) return;
@@ -138,6 +146,7 @@ export async function createLocalAuthenticatedFixture(
 	};
 
 	try {
+		setupStage = 'create unique GM/player test users';
 		const createUser = async (email: string) => {
 			const response = await admin.post('/auth/v1/admin/users', {
 				data: { email, password, email_confirm: true }
@@ -177,6 +186,7 @@ export async function createLocalAuthenticatedFixture(
 				return { page, token: token! };
 			});
 
+		setupStage = 'login GM and player independently';
 		const [gmLogin, playerLogin] = await test.step('login GM and player independently', async () =>
 			Promise.all([login('GM', gmContext, gmEmail), login('player', playerContext, playerEmail)]));
 		gm = gmLogin.page;
@@ -187,15 +197,18 @@ export async function createLocalAuthenticatedFixture(
 			baseURL: apiBase,
 			extraHTTPHeaders: { Authorization: `Bearer ${gmLogin.token}` }
 		});
+		setupStage = 'create campaign and initial scene';
 		const { campaignId: createdCampaignId, sceneId: createdSceneId } =
 			await test.step('create campaign and initial scene', async () => {
 				const campaign = await gmApi!.post('/api/v1/campaigns', {
 					data: { name: `Campanha E2E ${suffix}`, systemId: 'dnd2024' }
 				});
+				setupHttpStatus = campaign.status();
 				expect(campaign.status()).toBe(201);
 				const id = ((await campaign.json()) as { id: string }).id;
 				campaignId = id;
 				const scenesResponse = await gmApi!.get(`/api/v1/campaigns/${id}/scenes`);
+				setupHttpStatus = scenesResponse.status();
 				expect(scenesResponse.status()).toBe(200);
 				const scenes = (await scenesResponse.json()) as { scenes: Array<{ id: string }> };
 				expect(scenes.scenes).toHaveLength(1);
@@ -204,10 +217,12 @@ export async function createLocalAuthenticatedFixture(
 			});
 		campaignId = createdCampaignId;
 		sceneId = createdSceneId;
+		setupStage = 'create invite and join player to campaign';
 		await test.step('create invite and join player to campaign', async () => {
 			const inviteResponse = await gmApi!.post(`/api/v1/campaigns/${campaignId}/invites`, {
 				data: {}
 			});
+			setupHttpStatus = inviteResponse.status();
 			expect(inviteResponse.status()).toBe(201);
 			const invite = (await inviteResponse.json()) as { code: string };
 			playerApi = await playwrightRequest.newContext({
@@ -215,8 +230,10 @@ export async function createLocalAuthenticatedFixture(
 				extraHTTPHeaders: { Authorization: `Bearer ${playerLogin.token}` }
 			});
 			const accepted = await playerApi.post(`/api/v1/invites/${invite.code}/accept`, { data: {} });
+			setupHttpStatus = accepted.status();
 			expect(accepted.ok()).toBeTruthy();
 		});
+		if (withAudio) setupStage = 'upload unique temporary audio assets to Storage';
 		if (withAudio)
 			await test.step('upload unique temporary audio assets to Storage', async () => {
 				await prepareAudioAssets(
@@ -350,9 +367,150 @@ export async function createLocalAuthenticatedFixture(
 		};
 		return fixture;
 	} catch (error) {
+		const testInfo = test.info();
+		if (
+			/^(six map menus|resizable floating panels|floating chat and sheet resize|GM cannot cast through|player sheet floats by default)/.test(
+				testInfo.title
+			)
+		) {
+			await attachFixtureSetupDiagnostics(
+				testInfo,
+				gm ?? player,
+				setupStage,
+				fixtureStartedAt,
+				fixtureStarted,
+				error instanceof Error && error.name === 'TimeoutError' ? 'TimeoutError' : 'Error',
+				setupHttpStatus
+			).catch(() => undefined);
+		}
 		await close();
 		throw error;
 	}
+}
+
+async function attachFixtureSetupDiagnostics(
+	testInfo: TestInfo,
+	page: Page | undefined,
+	step: string,
+	startedAt: string,
+	started: number,
+	failureType: 'TimeoutError' | 'Error',
+	httpStatus: number | null
+) {
+	const browser = page
+		? await page
+				.evaluate(() => {
+					const selectors = [
+						'.workspace-tabs',
+						'canvas',
+						'.map-tool-menu',
+						'.token-inspector',
+						'.token-inspector .spell-row button',
+						'.floating-chat',
+						'.sheet-backdrop .sheet',
+						'.actor-drawer',
+						'.audio-channels',
+						'.presentation-text'
+					];
+					const elements = selectors.map((selector) => {
+						const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 4);
+						const measured = nodes.map((node) => {
+							const style = getComputedStyle(node);
+							const rect = node.getBoundingClientRect();
+							return {
+								visible:
+									style.display !== 'none' &&
+									style.visibility !== 'hidden' &&
+									rect.width > 0 &&
+									rect.height > 0,
+								box: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+								style: {
+									display: style.display,
+									visibility: style.visibility,
+									opacity: style.opacity,
+									position: style.position,
+									zIndex: style.zIndex
+								},
+								state: {
+									expanded: node.getAttribute('aria-expanded'),
+									pressed: node.getAttribute('aria-pressed'),
+									disabled: node instanceof HTMLButtonElement ? node.disabled : false,
+									ariaDisabled: node.getAttribute('aria-disabled')
+								}
+							};
+						});
+						return {
+							selector,
+							count: document.querySelectorAll(selector).length,
+							visibleCount: measured.filter((item) => item.visible).length,
+							boxes: measured.map((item) => item.box),
+							styles: measured.map((item) => item.style),
+							states: measured.map((item) => item.state)
+						};
+					});
+					const tabs = Array.from(
+						document.querySelectorAll('.workspace-tabs button, [role="tab"]')
+					);
+					const activeTabIndex = tabs.findIndex(
+						(tab) =>
+							tab.matches('[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]') ||
+							tab.classList.contains('active') ||
+							tab.classList.contains('selected')
+					);
+					return {
+						activeTabIndex: activeTabIndex < 0 ? null : activeTabIndex,
+						scroll: {
+							x: window.scrollX,
+							y: window.scrollY,
+							viewportWidth: window.innerWidth,
+							viewportHeight: window.innerHeight,
+							documentWidth: document.documentElement.scrollWidth,
+							documentHeight: document.documentElement.scrollHeight
+						},
+						elements
+					};
+				})
+				.catch(() => null)
+		: null;
+	const viewport = page?.viewportSize() ?? null;
+	const record = sanitizeSafeE2EDiagnostic({
+		test: testInfo.title,
+		step,
+		attempt: testInfo.retry + 1,
+		startedAt,
+		failedAt: new Date().toISOString(),
+		durationMs: performance.now() - started,
+		failureType,
+		httpStatus,
+		url: page?.url() ?? 'about:blank',
+		viewport,
+		activeTabIndex: browser?.activeTabIndex ?? null,
+		scroll: browser?.scroll ?? {
+			x: 0,
+			y: 0,
+			viewportWidth: viewport?.width ?? 0,
+			viewportHeight: viewport?.height ?? 0,
+			documentWidth: viewport?.width ?? 0,
+			documentHeight: viewport?.height ?? 0
+		},
+		pointer: {
+			x: null,
+			y: null,
+			action: null,
+			startX: null,
+			startY: null,
+			targetX: null,
+			targetY: null
+		},
+		elements: browser?.elements ?? []
+	});
+	const path = testInfo.outputPath('sanitized-ui-failure-diagnostics.json');
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, JSON.stringify(record), 'utf8');
+	await testInfo.attach('sanitized-ui-failure-diagnostics.json', {
+		path,
+		contentType: 'application/json'
+	});
 }
 
 async function prepareAudioAssets(
