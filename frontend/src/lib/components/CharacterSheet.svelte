@@ -51,10 +51,11 @@
 		addableSpellCircles as projectAddableSpellCircles,
 		deriveGrantedSpells,
 		eligibleSpellEntries,
-		groupSpellsByCircle,
+		groupCharacterSpellsByCircle,
 		hasAISpellTranslation,
 		localizedSpellField,
 		normalizeSpellName,
+		projectCharacterSpells,
 		removeSpellFromSheet,
 		resolveSpellOrigin,
 		updateSpellOnSheet
@@ -112,6 +113,7 @@
 	import type { CustomInventoryItemDraft } from '$lib/components/character/inventoryTypes';
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
 	import CharacterLevelUpModal from '$lib/components/character/CharacterLevelUpModal.svelte';
+	import { synchronizeDndFeatGrantActivation } from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
@@ -643,11 +645,13 @@
 					entry.name.toLowerCase() === sheet.class.toLowerCase())
 		);
 	const shouldShowSpellcasting = () => {
-		return spellcastingEnabled(
-			sheet.class,
-			sheet.level,
-			compendiumClass()?.rules.spellcasting,
-			sheet.spellcastingOverride
+		return (
+			spellcastingEnabled(
+				sheet.class,
+				sheet.level,
+				compendiumClass()?.rules.spellcasting,
+				sheet.spellcastingOverride
+			) || (sheet.featSpellGrants ?? []).some((grant) => grant.active !== false)
 		);
 	};
 	const compendiumSubclassOptions = () =>
@@ -797,30 +801,48 @@
 	}
 	const spellEntries = (circle?: number) =>
 		eligibleSpellEntries(compendiumEntries, sheet.spells, optionLabel, sheet.class, circle);
-	const availableSpellCircles = () => projectAvailableSpellCircles(sheet.spellSlots, sheet.spells);
+	const projectedCharacterSpells = () =>
+		projectCharacterSpells(
+			sheet.spells,
+			sheet.featSpellGrants ?? [],
+			optionsFor('spell'),
+			optionLabel
+		);
+	const availableSpellCircles = () =>
+		projectAvailableSpellCircles(
+			sheet.spellSlots,
+			projectedCharacterSpells().map(({ spell }) => spell)
+		);
 	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
-	const spellsForCircle = (circle: number) => groupSpellsByCircle(sheet.spells, circle);
+	const spellsForCircle = (circle: number) =>
+		groupCharacterSpellsByCircle(projectedCharacterSpells(), circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
 		return resolveSpellOrigin(spell, spellCompendiumEntry(spell)?.rules);
 	};
 	const grantedSpells = () => {
-		const sourceTexts = [
-			{
-				origin: 'species' as const,
-				text: getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).join(' ')
-			},
-			...featList().flatMap((feat) => {
-				const entry = optionsFor('feat').find(
-					(candidate) =>
-						optionLabel(candidate).toLowerCase() === feat.toLowerCase() ||
-						candidate.name.toLowerCase() === feat.toLowerCase()
-				);
-				return entry ? [{ origin: 'feat' as const, text: JSON.stringify(entry.rules) }] : [];
-			})
-		];
-		return deriveGrantedSpells(sheet.spells, compendiumEntries, sourceTexts, optionLabel);
+		const speciesGrants = deriveGrantedSpells(
+			sheet.spells,
+			compendiumEntries,
+			[
+				{
+					origin: 'species',
+					text: getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).join(' ')
+				}
+			],
+			optionLabel
+		);
+		const curatedFeatGrants = projectedCharacterSpells()
+			.filter(({ origins }) => origins?.includes('feat'))
+			.map(({ spell }) => spell);
+		const seen: string[] = [];
+		return [...speciesGrants, ...curatedFeatGrants].filter((spell) => {
+			const key = spell.entryId ?? normalizeSpellName(spell.name);
+			if (seen.includes(key)) return false;
+			seen.push(key);
+			return true;
+		});
 	};
 	const circleLabel = (circle: number) =>
 		circle === 0
@@ -1235,6 +1257,8 @@
 						itemEntries={itemEntries()}
 						visibleItems={visibleInventory()}
 						totalWeight={inventoryWeight()}
+						money={sheet.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }}
+						onMoneyChange={(money) => (sheet.money = money)}
 						bind:inventoryFilter
 						{optionLabel}
 						onAddCompendiumItem={addInventoryItem}
@@ -1285,7 +1309,7 @@
 							change: updateSpell,
 							present: (spell) => void combatActions.presentSpell(spell),
 							rollEffect: (spell) => void combatActions.rollSpellDamage(spell),
-							cast: (spell, index) => void combatActions.castSpell(spell, index)
+							cast: (spell, index, grant) => void combatActions.castSpell(spell, index, grant)
 						}}
 					/>
 				{/if}
@@ -1294,8 +1318,17 @@
 						{sheet}
 						feats={featList()}
 						featEntries={optionsFor('feat')}
+						spellEntries={optionsFor('spell')}
+						featSpellGrants={sheet.featSpellGrants ?? []}
 						{optionLabel}
-						onFeatsChange={(feats) => (sheet.feats = feats)}
+						onFeatsChange={(feats) => {
+							sheet.feats = feats;
+							sheet.featSpellGrants = synchronizeDndFeatGrantActivation(
+								feats,
+								sheet.featSpellGrants ?? []
+							);
+						}}
+						onFeatSpellGrantsChange={(grants) => (sheet.featSpellGrants = grants)}
 						onSpellcastingOverride={(enabled) => (sheet.spellcastingOverride = enabled)}
 						onFeaturesChange={(features) => (sheet.features = features)}
 						onEquipmentChange={(equipment) => (sheet.equipment = equipment)}

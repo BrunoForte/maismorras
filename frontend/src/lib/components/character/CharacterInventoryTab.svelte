@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
-	import type { InventoryItem } from '$lib/services/characterApi';
+	import type { Dnd2024Money, InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
 	import {
 		itemWeight,
@@ -9,11 +9,14 @@
 	} from '$lib/utils/characterEquipment';
 	import { groupInventoryOptions } from '$lib/utils/inventoryRules';
 	import type { CustomInventoryItemDraft } from './inventoryTypes';
+	import { parseDnd2024CoinAmount } from '$lib/utils/character/dnd2024Money';
 
 	let {
 		itemEntries,
 		visibleItems,
 		totalWeight,
+		money,
+		onMoneyChange,
 		inventoryFilter = $bindable(),
 		optionLabel,
 		onAddCompendiumItem,
@@ -25,6 +28,8 @@
 		itemEntries: CompendiumEntry[];
 		visibleItems: { item: InventoryItem; index: number }[];
 		totalWeight: number;
+		money: Dnd2024Money;
+		onMoneyChange: (money: Dnd2024Money) => void;
 		inventoryFilter: InventoryCategory;
 		optionLabel: (entry: CompendiumEntry) => string;
 		onAddCompendiumItem: (entryId: string) => void;
@@ -56,6 +61,28 @@
 	const itemOptionGroups = $derived(
 		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
 	);
+	const moneyFields: { key: keyof Dnd2024Money; labelPt: string; labelEn: string }[] = [
+		{ key: 'cp', labelPt: 'PC · Cobre', labelEn: 'CP · Copper' },
+		{ key: 'sp', labelPt: 'PP · Prata', labelEn: 'SP · Silver' },
+		{ key: 'ep', labelPt: 'PE · Electro', labelEn: 'EP · Electrum' },
+		{ key: 'gp', labelPt: 'PO · Ouro', labelEn: 'GP · Gold' },
+		{ key: 'pp', labelPt: 'PL · Platina', labelEn: 'PP · Platinum' }
+	];
+	function updateMoney(key: keyof Dnd2024Money, input: HTMLInputElement) {
+		const value = input.valueAsNumber;
+		const amount = parseDnd2024CoinAmount(value);
+		if (!input.validity.valid || amount === null) {
+			input.setCustomValidity(
+				$appLocale === 'en'
+					? 'Enter a non-negative whole number.'
+					: 'Informe um número inteiro não negativo.'
+			);
+			input.reportValidity();
+			return;
+		}
+		input.setCustomValidity('');
+		onMoneyChange({ ...money, [key]: amount });
+	}
 	const optionGroupLabel = (category: InventoryOptionGroup) => {
 		const labels: Record<InventoryOptionGroup, [string, string]> = {
 			weapon: ['Armas', 'Weapons'],
@@ -89,6 +116,25 @@
 			>{$appLocale === 'en' ? 'Total weight' : 'Peso total'}: {totalWeight} lb</span
 		>
 	</div>
+	<fieldset class="money-panel">
+		<legend>{$appLocale === 'en' ? 'Money' : 'Dinheiro'}</legend>
+		{#each moneyFields as field (field.key)}
+			<label>
+				{$appLocale === 'en' ? field.labelEn : field.labelPt}
+				<input
+					type="number"
+					min="0"
+					max="9007199254740991"
+					step="1"
+					value={money[field.key]}
+					inputmode="numeric"
+					aria-label={$appLocale === 'en' ? field.labelEn : field.labelPt}
+					oninput={(event) => event.currentTarget.setCustomValidity('')}
+					onchange={(event) => updateMoney(field.key, event.currentTarget)}
+				/>
+			</label>
+		{/each}
+	</fieldset>
 	<div
 		class="inventory-filters"
 		aria-label={$appLocale === 'en' ? 'Equipment categories' : 'Categorias de equipamento'}
@@ -268,6 +314,36 @@
 		margin: 0;
 		color: #e7c98c;
 		font-size: 1rem;
+	}
+	.money-panel {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+		gap: 0.55rem;
+		margin: 0;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		padding: 0.65rem;
+	}
+	.money-panel legend {
+		padding: 0 0.35rem;
+		color: #e7c98c;
+		font-size: 0.82rem;
+	}
+	.money-panel label {
+		display: grid;
+		gap: 0.25rem;
+		color: #cdbfae;
+		font-size: 0.7rem;
+	}
+	.money-panel input {
+		min-width: 0;
+		width: 100%;
+		border: 1px solid #493c39;
+		border-radius: 6px;
+		padding: 0.5rem;
+		color: #eee4d6;
+		background: #161216;
+		font: inherit;
 	}
 	.defense-hint {
 		color: #aa9d91;

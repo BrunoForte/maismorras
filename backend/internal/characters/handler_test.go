@@ -129,6 +129,46 @@ func TestValidateAcceptsMinimalDND2024Sheet(t *testing.T) {
 	}
 }
 
+func TestDnd2024MoneyAcceptsNonnegativeIntegerDenominationsAndRejectsNegative(t *testing.T) {
+	sheet := validSheet()
+	sheet.Money = Dnd2024Money{CP: 14, SP: 3, EP: 2, GP: 7, PP: 1}
+	if err := validate(sheet); err != nil {
+		t.Fatalf("valid purse rejected: %v", err)
+	}
+	sheet.Money.EP = -1
+	if err := validate(sheet); err == nil {
+		t.Fatal("negative coins accepted")
+	}
+}
+
+func TestSheetRoundTripKeepsMoneyAndFeatGrantUsageAndLegacyDefaults(t *testing.T) {
+	sheet := validSheet()
+	sheet.Money = Dnd2024Money{CP: 1, SP: 2, EP: 3, GP: 4, PP: 5}
+	sheet.FeatSpellGrants = []FeatSpellGrant{{
+		ID: "grant", FeatID: "magic-initiate", SpellList: "wizard", Ability: "intelligence",
+		CantripEntryIDs: []string{"c1", "c2"}, FirstLevelSpellEntryID: "s1", FreeCastsRemaining: 0, Active: true,
+	}}
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored Sheet
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if restored.Money != sheet.Money || len(restored.FeatSpellGrants) != 1 || restored.FeatSpellGrants[0].FreeCastsRemaining != 0 {
+		t.Fatalf("sheet additions did not round-trip: %+v", restored)
+	}
+	var legacy Sheet
+	if err := json.Unmarshal([]byte(`{"name":"Lia"}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	legacy = normalizeDerivedFields(legacy, systems.Dnd2024Rules{})
+	if legacy.Money != (Dnd2024Money{}) || legacy.FeatSpellGrants == nil {
+		t.Fatalf("legacy sheet did not receive empty compatible defaults: %+v", legacy)
+	}
+}
+
 func TestValidateAndDecodeAcceptFractionalMetricSpeciesSpeed(t *testing.T) {
 	for _, species := range []string{"Goliath", "Elfo"} {
 		t.Run(species, func(t *testing.T) {

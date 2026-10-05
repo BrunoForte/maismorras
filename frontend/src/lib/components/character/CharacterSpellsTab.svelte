@@ -76,7 +76,7 @@
 				</div>
 			</header>
 			{#if spellbook.spellsForCircle(circle).length}
-				{#each spellbook.spellsForCircle(circle) as { spell, index } (index)}
+				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], origins = [] } (key ?? index)}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
@@ -94,40 +94,63 @@
 									: '⌄'}</span
 							>
 						</button>
+						{#if origins.length > 1 || origins[0] === 'feat'}
+							<small class="spell-origins"
+								>{$appLocale === 'en' ? 'Sources' : 'Origens'}: {origins
+									.map((origin) =>
+										origin === 'feat'
+											? $appLocale === 'en'
+												? 'Feat'
+												: 'Talento'
+											: origin === 'species'
+												? $appLocale === 'en'
+													? 'Species'
+													: 'Espécie'
+												: $appLocale === 'en'
+													? 'Class'
+													: 'Classe'
+									)
+									.join(' · ')}</small
+							>
+						{/if}
 						{#if expandedSpell === index}
 							<div class="spell-details">
-								<label
-									>{$appLocale === 'en' ? 'Spell source' : 'Origem da magia'}
-									<select
-										value={spell.origin ?? 'class'}
-										onchange={(event) =>
-											actions.change(index, {
-												origin: event.currentTarget.value as Spell['origin']
-											})}
-									>
-										<option value="class">{$appLocale === 'en' ? 'Class' : 'Classe'}</option>
-										<option value="species"
-											>{$appLocale === 'en' ? 'Species / race' : 'Raça'}</option
+								{#if index >= 0}<label
+										>{$appLocale === 'en' ? 'Spell source' : 'Origem da magia'}
+										<select
+											value={spell.origin ?? 'class'}
+											onchange={(event) =>
+												actions.change(index, {
+													origin: event.currentTarget.value as Spell['origin']
+												})}
 										>
-										<option value="feat">{$appLocale === 'en' ? 'Feat' : 'Talento'}</option>
-									</select>
-								</label>
-								<label
-									>{$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}
-									<input
-										value={spell.name}
-										oninput={(event) => actions.change(index, { name: event.currentTarget.value })}
-									/>
-								</label>
-								<label
-									>{$appLocale === 'en' ? 'Dice expression' : 'Dados de efeito'}
-									<input
-										value={spell.diceFormula ?? ''}
-										placeholder="Ex.: 6d6"
-										oninput={(event) =>
-											actions.change(index, { diceFormula: event.currentTarget.value })}
-									/>
-								</label>
+											<option value="class">{$appLocale === 'en' ? 'Class' : 'Classe'}</option>
+											<option value="species"
+												>{$appLocale === 'en' ? 'Species / race' : 'Raça'}</option
+											>
+											<option value="feat">{$appLocale === 'en' ? 'Feat' : 'Talento'}</option>
+										</select>
+									</label>
+								{/if}
+								{#if index >= 0}<label
+										>{$appLocale === 'en' ? 'Spell name' : 'Nome da magia'}
+										<input
+											value={spell.name}
+											oninput={(event) =>
+												actions.change(index, { name: event.currentTarget.value })}
+										/>
+									</label>
+								{/if}
+								{#if index >= 0}<label
+										>{$appLocale === 'en' ? 'Dice expression' : 'Dados de efeito'}
+										<input
+											value={spell.diceFormula ?? ''}
+											placeholder="Ex.: 6d6"
+											oninput={(event) =>
+												actions.change(index, { diceFormula: event.currentTarget.value })}
+										/>
+									</label>
+								{/if}
 								{#if !spell.entryId}
 									<div class="custom-spell-scaling">
 										<label>
@@ -202,15 +225,36 @@
 										></textarea>
 									</label>
 								{/if}
-								<label class="spell-description-field"
-									>{$appLocale === 'en' ? 'Notes' : 'Notas'}
-									<textarea
-										value={spell.notes}
-										rows="2"
-										oninput={(event) => actions.change(index, { notes: event.currentTarget.value })}
-									></textarea>
-								</label>
+								{#if index >= 0}<label class="spell-description-field"
+										>{$appLocale === 'en' ? 'Notes' : 'Notas'}
+										<textarea
+											value={spell.notes}
+											rows="2"
+											oninput={(event) =>
+												actions.change(index, { notes: event.currentTarget.value })}></textarea>
+									</label>
+								{/if}
 								<div class="spell-actions">
+									{#each featGrants.filter((grant) => grant.firstLevelSpellEntryId === spell.entryId) as grant (grant.id)}
+										<small class="feat-casting-source">
+											{$appLocale === 'en' ? 'Magic Initiate' : 'Iniciado em Magia'} · {grant.spellList}
+											· {grant.ability}
+										</small>
+										{#if grant.freeCastsRemaining > 0}<button
+												class="free-cast"
+												type="button"
+												disabled={castingSpell === index}
+												onclick={() =>
+													actions.cast(spell, index, {
+														grantId: grant.id,
+														entryId: spell.entryId ?? '',
+														freeCast: true
+													})}
+												>{$appLocale === 'en'
+													? `Cast free (${grant.freeCastsRemaining})`
+													: `Lançar grátis (${grant.freeCastsRemaining})`}</button
+											>{/if}
+									{/each}
 									{#if isGM}<button type="button" onclick={() => actions.present(spell)}
 											>{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}</button
 										>{/if}
@@ -219,6 +263,23 @@
 											onclick={() => actions.rollEffect(spell)}
 											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
+									{#if spell.level === 0 && index < 0 && featGrants[0]}
+										<small class="feat-casting-source">
+											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {featGrants[0]
+												.spellList} · {featGrants[0].ability}
+										</small>
+										<button
+											class="cast-spell"
+											type="button"
+											disabled={castingSpell === index}
+											onclick={() =>
+												actions.cast(spell, index, {
+													grantId: featGrants[0].id,
+													entryId: spell.entryId ?? '',
+													freeCast: false
+												})}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
+										>
+									{/if}
 									{#if spell.level > 0}
 										<select
 											value={spellbook.selectedSlot(spell, index)}
@@ -235,7 +296,18 @@
 											class="cast-spell"
 											type="button"
 											disabled={castingSpell === index || !spellbook.compatibleSlots(spell).length}
-											onclick={() => actions.cast(spell, index)}
+											onclick={() =>
+												actions.cast(
+													spell,
+													index,
+													index < 0 && featGrants[0]
+														? {
+																grantId: featGrants[0].id,
+																entryId: spell.entryId ?? '',
+																freeCast: false
+															}
+														: undefined
+												)}
 											>{castingSpell === index
 												? '…'
 												: $appLocale === 'en'
@@ -243,9 +315,10 @@
 													: 'Lançar'}</button
 										>
 									{/if}
-									<button type="button" onclick={() => actions.remove(index)}
-										>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button
-									>
+									{#if index >= 0}<button type="button" onclick={() => actions.remove(index)}
+											>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button
+										>
+									{/if}
 								</div>
 							</div>
 						{/if}
@@ -271,6 +344,11 @@
 		border-radius: 8px;
 		padding: 0.75rem;
 		background: #171417;
+	}
+	.spell-origins,
+	.feat-casting-source {
+		color: #bba681;
+		font-size: 0.68rem;
 	}
 	.spell-circle header {
 		display: flex;

@@ -1,5 +1,9 @@
 import type { Session } from '@supabase/supabase-js';
 import { request as httpRequest } from './httpClient';
+import { EMPTY_DND2024_MONEY, normalizeDnd2024Money } from '$lib/utils/character/dnd2024Money';
+import type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
+
+export type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 
 export type AbilityScores = {
 	strength: number;
@@ -40,6 +44,17 @@ export type CharacterResource = {
 	restoreOn: 'short' | 'long';
 };
 export type SpellSlot = { level: number; current: number; max: number };
+/** A reviewed D&D 2024 feat-to-spell selection. Uses are reported by the server. */
+export type Dnd2024FeatSpellGrant = {
+	id: string;
+	featId: string;
+	spellList: string;
+	ability: 'intelligence' | 'wisdom' | 'charisma';
+	cantripEntryIds: string[];
+	firstLevelSpellEntryId: string;
+	freeCastsRemaining: number;
+	active?: boolean;
+};
 export type InventoryItem = {
 	entryId: string;
 	name: string;
@@ -82,6 +97,8 @@ export type CharacterSheet = {
 	inventory: InventoryItem[];
 	resources: CharacterResource[];
 	spellSlots: SpellSlot[];
+	money?: Dnd2024Money;
+	featSpellGrants?: Dnd2024FeatSpellGrant[];
 	visibleRolls?: string[];
 	resistances?: string[];
 	automaticTraits?: string[];
@@ -115,6 +132,8 @@ function normalizeCharacter(character: Character): Character {
 		portraitPath: character.sheet.portraitPath ?? '',
 		resources: character.sheet.resources ?? [],
 		spellSlots: character.sheet.spellSlots ?? [],
+		money: normalizeDnd2024Money(character.sheet.money),
+		featSpellGrants: character.sheet.featSpellGrants ?? [],
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
 		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
@@ -231,16 +250,19 @@ export type SpellCast = {
 	dados?: number[];
 	modificador?: number;
 	total?: number;
+	spellcastingAbility?: keyof AbilityScores | string;
+	freeCastRemaining?: number;
 };
 export const castMySpell = (
 	session: Session,
 	campaignId: string,
 	spellIndex: number,
-	slotLevel: number
+	slotLevel: number,
+	featGrant?: { grantId: string; entryId: string; freeCast: boolean }
 ) =>
 	request<SpellCast>(session, `/api/v1/campaigns/${campaignId}/character/cast-spell`, {
 		method: 'POST',
-		body: JSON.stringify({ spellIndex, slotLevel })
+		body: JSON.stringify({ spellIndex: featGrant ? -1 : spellIndex, slotLevel, ...featGrant })
 	}).then((result) => ({
 		...result,
 		sheet: normalizeCharacter({ id: '', campaignId, ownerId: '', sheet: result.sheet }).sheet
@@ -288,6 +310,8 @@ export function createEmptySheet(): CharacterSheet {
 		inventory: [],
 		resources: [],
 		spellSlots: [],
+		money: { ...EMPTY_DND2024_MONEY },
+		featSpellGrants: [],
 		visibleRolls: [],
 		resistances: [],
 		automaticTraits: [],

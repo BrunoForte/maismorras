@@ -53,6 +53,12 @@ func resolveDnd2024RulesForReference(ref systems.Ref) (systems.Dnd2024CharacterR
 // may show a local preview while editing, but values sent by clients are not
 // trusted when the sheet is persisted or used for a roll.
 func normalizeDerivedFields(sheet Sheet, rules systems.Dnd2024CharacterRules) Sheet {
+	if sheet.Spells == nil {
+		sheet.Spells = []Spell{}
+	}
+	if sheet.FeatSpellGrants == nil {
+		sheet.FeatSpellGrants = []FeatSpellGrant{}
+	}
 	sheet.ProficiencyBonus = proficiencyBonus(sheet.Level, rules)
 	sheet.ArmorClass = calculateArmorClass(sheet, rules)
 	sheet.PassivePerception = passivePerception(sheet, rules)

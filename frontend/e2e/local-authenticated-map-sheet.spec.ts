@@ -1096,6 +1096,12 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				expect((await readRolls()).at(-1)?.payload.expressao).toMatch(/\d+d4/);
 			});
 			await test.step('cast owned leveled spell and verify its slot was consumed', async () => {
+				const before = (await (await characterResponse()).json()) as {
+					sheet: { spellSlots: Array<{ level: number; current: number; max: number }> };
+				};
+				const currentBefore =
+					before.sheet.spellSlots.find((slot) => slot.level === 1)?.current ?? 0;
+				expect(currentBefore).toBeGreaterThan(0);
 				await inspector.locator('.spell-groups').locator('summary').first().click();
 				await inspector
 					.locator('.spell-groups details')
@@ -1110,7 +1116,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						};
 						return value.sheet.spellSlots.find((slot) => slot.level === 1)?.current;
 					})
-					.toBe(0);
+					.toBe(currentBefore - 1);
 			});
 			await test.step('display spell as a persisted campaign chat message', async () => {
 				await inspector.getByRole('button', { name: 'Exibir' }).last().click();

@@ -159,6 +159,19 @@ func applyRestRecovery(sheet Sheet, kind string, hitPointHealing int, rules syst
 		sheet.HitPointsCurrent = sheet.HitPointsMax
 		sheet.TemporaryHP = 0
 		sheet.HitDiceSpent = 0
+		sheet.FeatSpellGrants = recoverFeatSpellGrantUses(sheet.FeatSpellGrants, kind)
 	}
 	return normalizeDerivedFields(sheet, rules)
+}
+
+func recoverFeatSpellGrantUses(grants []FeatSpellGrant, kind string) []FeatSpellGrant {
+	if kind != "long" {
+		return grants
+	}
+	for i := range grants {
+		if rule, ok := dnd2024FeatSpellRules[grants[i].FeatID]; ok && rule.Recovery == kind {
+			grants[i].FreeCastsRemaining = rule.FreeCasts
+		}
+	}
+	return grants
 }

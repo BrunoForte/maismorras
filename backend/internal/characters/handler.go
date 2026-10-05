@@ -100,13 +100,19 @@ func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {
-		SpellIndex int `json:"spellIndex"`
-		SlotLevel  int `json:"slotLevel"`
+		SpellIndex int    `json:"spellIndex"`
+		SlotLevel  int    `json:"slotLevel"`
+		GrantID    string `json:"grantId"`
+		EntryID    string `json:"entryId"`
+		FreeCast   bool   `json:"freeCast"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_SPELL_CAST", "Conjuração inválida.")
 	}
-	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, in.SpellIndex, in.SlotLevel)
+	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, SpellCastInput{
+		SpellIndex: in.SpellIndex, SlotLevel: in.SlotLevel, GrantID: strings.TrimSpace(in.GrantID),
+		EntryID: strings.TrimSpace(in.EntryID), FreeCast: in.FreeCast,
+	})
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não participa desta campanha.")
 	}
@@ -223,6 +229,14 @@ func validate(sheet Sheet) error {
 	}
 	if len(sheet.Inventory) > 200 {
 		return apperror.BadRequest("INVALID_SHEET", "A ficha pode ter no máximo 200 itens.")
+	}
+	for _, coins := range []int64{sheet.Money.CP, sheet.Money.SP, sheet.Money.EP, sheet.Money.GP, sheet.Money.PP} {
+		if coins < 0 || coins > 9007199254740991 {
+			return apperror.BadRequest("INVALID_SHEET", "Valores de moedas devem ser inteiros não negativos.")
+		}
+	}
+	if len(sheet.FeatSpellGrants) > 20 {
+		return apperror.BadRequest("INVALID_SHEET", "A ficha possui concessões de magia demais.")
 	}
 	for _, item := range sheet.Inventory {
 		if strings.TrimSpace(item.Name) == "" || len([]rune(item.Name)) > 120 || item.Quantity < 0 || item.Quantity > 9999 {

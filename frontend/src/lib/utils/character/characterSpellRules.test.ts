@@ -9,11 +9,13 @@ import {
 	deriveGrantedSpells,
 	eligibleSpellEntries,
 	groupSpellsByCircle,
+	groupCharacterSpellsByCircle,
 	hasAISpellTranslation,
 	normalizeSpellName,
 	removeSpellFromSheet,
 	resolveSpellOrigin,
-	updateSpellOnSheet
+	updateSpellOnSheet,
+	projectCharacterSpells
 } from './characterSpellRules';
 
 const entry = (overrides: Partial<CompendiumEntry> = {}): CompendiumEntry => ({
@@ -77,6 +79,58 @@ describe('character spell rules', () => {
 		expect(defaultSpellSlot(known, 0, { 0: 3 }, slots)).toBe(3);
 		expect(defaultSpellSlot(known, 0, { 0: 2 }, slots)).toBe(1);
 		expect(defaultSpellSlot(spell({ level: 5 }), 0, {}, slots)).toBe(5);
+	});
+
+	it('projects a feat spell once while preserving class and feat origins', () => {
+		const known = spell({ entryId: 'fireball', name: 'Bola de Fogo', origin: 'class' });
+		const grant = {
+			id: 'grant-1',
+			featId: 'magic-initiate',
+			spellList: 'wizard',
+			ability: 'intelligence' as const,
+			cantripEntryIds: ['light'],
+			firstLevelSpellEntryId: 'fireball',
+			freeCastsRemaining: 1
+		};
+		const projection = projectCharacterSpells(
+			[known],
+			[grant],
+			[
+				entry({ rules: { level: 3, classes: ['wizard'] } }),
+				entry({ id: 'light', name: 'Light', rules: { level: 0, classes: ['wizard'] } })
+			]
+		);
+		expect(projection).toHaveLength(2);
+		expect(
+			projection.find(({ spell: projected }) => projected.entryId === 'fireball')
+		).toMatchObject({
+			index: 0,
+			origins: ['class', 'feat'],
+			featGrants: [grant]
+		});
+		expect(groupCharacterSpellsByCircle(projection, 0)).toHaveLength(1);
+	});
+
+	it('projects only active curated choices as virtual spells without mutating the sheet', () => {
+		const grant = {
+			id: 'grant-2',
+			featId: 'magic-initiate',
+			spellList: 'wizard',
+			ability: 'wisdom' as const,
+			cantripEntryIds: ['light', 'mage-hand'],
+			firstLevelSpellEntryId: 'shield',
+			freeCastsRemaining: 0
+		};
+		const entries = [
+			entry({ id: 'light', name: 'Light', rules: { level: 0 } }),
+			entry({ id: 'mage-hand', name: 'Mage Hand', rules: { level: 0 } }),
+			entry({ id: 'shield', name: 'Shield', rules: { level: 1 } })
+		];
+		const projected = projectCharacterSpells([], [grant], entries);
+		expect(projected.map(({ spell: item }) => item.level)).toEqual([0, 0, 1]);
+		expect(projected.every(({ index }) => index < 0)).toBe(true);
+		expect(projected[0].spell.origin).toBe('feat');
+		expect(projectCharacterSpells([], [{ ...grant, active: false }], entries)).toEqual([]);
 	});
 
 	it('normalizes origins and derives racial/feat grants without duplicate names', () => {
