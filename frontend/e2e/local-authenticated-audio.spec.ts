@@ -28,6 +28,13 @@ test.describe('local authenticated audio E2E', () => {
 				await expect(fixture.gm.getByTestId('audio-asset-card')).toHaveCount(4);
 			});
 			const page = fixture!.gm;
+			// The persistent chat is intentionally allowed to float over other tabs;
+			// collapse it explicitly so this scenario exercises the native media controls.
+			const chat = page.locator('.floating-chat');
+			if (!(await chat.evaluate((node) => node.classList.contains('closed')))) {
+				await chat.getByRole('button', { name: 'Chat da mesa' }).click();
+				await expect(chat).toHaveClass(/closed/);
+			}
 			const groups = page.locator('.audio-groups > .media-group');
 			const musicGroup = groups.nth(0);
 			const effectsGroup = groups.nth(1);
@@ -54,6 +61,9 @@ test.describe('local authenticated audio E2E', () => {
 			const track = firstMusic.locator('audio');
 			const name = (await track.getAttribute('aria-label'))!.replace('Controles da faixa: ', '');
 			await test.step('seek the track independently and exercise every audio item action', async () => {
+				await track.evaluate((audio) =>
+					audio.scrollIntoView({ block: 'center', inline: 'center' })
+				);
 				await expect
 					.poll(() => track.evaluate((audio) => (audio as HTMLAudioElement).readyState))
 					.toBeGreaterThanOrEqual(1);
@@ -68,7 +78,7 @@ test.describe('local authenticated audio E2E', () => {
 						{ once: true }
 					);
 				});
-				await page.mouse.click(trackBox!.x + 16, trackBox!.y + trackBox!.height / 2);
+				await track.click({ position: { x: 16, y: trackBox!.height / 2 } });
 				await expect
 					.poll(() =>
 						track.evaluate((audio) => (audio as HTMLAudioElement).dataset.e2ePlayControlUsed)

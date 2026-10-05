@@ -17,6 +17,7 @@
 		sceneId,
 		session,
 		sheetOpen = false,
+		tokenSelected = false,
 		onadded = async () => {},
 		oncompendium = () => {}
 	}: {
@@ -24,6 +25,7 @@
 		sceneId: string;
 		session: Session;
 		sheetOpen?: boolean;
+		tokenSelected?: boolean;
 		onadded?: () => void | Promise<void>;
 		oncompendium?: () => void;
 	} = $props();
@@ -133,6 +135,7 @@
 	}}
 	class:closed={!open}
 	class:sheet-open={sheetOpen}
+	class:token-selected={tokenSelected}
 	class="actor-drawer"
 	aria-label="Atores da cena"
 >
@@ -200,6 +203,9 @@
 		height: auto;
 		resize: none;
 	}
+	.actor-drawer.token-selected:not(.closed) {
+		height: min(260px, calc(100dvh - 7.5rem));
+	}
 	.compendium-link {
 		border: 1px solid #765d3d;
 		border-radius: 6px;
@@ -252,6 +258,11 @@
 			height: min(26dvh, 230px);
 			max-height: min(26dvh, 230px);
 			min-height: min(170px, 26dvh);
+		}
+		.actor-drawer.token-selected:not(.closed) {
+			height: min(19dvh, 160px);
+			max-height: min(19dvh, 160px);
+			min-height: min(130px, 19dvh);
 		}
 	}
 	.hint,

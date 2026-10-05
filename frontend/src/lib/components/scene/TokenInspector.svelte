@@ -426,7 +426,8 @@
 	}
 	.token-inspector {
 		position: absolute;
-		z-index: 2;
+		/* A ficha flutuante não deve tornar inacessíveis as ações do token selecionado. */
+		z-index: 100;
 		top: 1rem;
 		right: 1rem;
 		width: min(340px, calc(100% - 2rem));

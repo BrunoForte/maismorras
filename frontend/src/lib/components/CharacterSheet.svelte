@@ -997,9 +997,11 @@
 		bind:this={sheetPanelElement}
 		use:movablePanel={{
 			storageKey: sheetPanelKey,
+			layoutKey: actorPanelVisible ? 'map-panels' : 'campaign-panels',
 			handleSelector: 'header',
 			minTop: 56,
-			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs'],
+			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs', '.sheet-picker'],
+			avoidLeftSelectors: ['.floating-chat.sheet-open:not(.closed)'],
 			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			enabled: !docked && !standalone
@@ -1379,10 +1381,10 @@
 		top: var(--mm-panel-navigation-bottom, 6rem);
 		bottom: auto;
 		right: var(--mm-panel-right-inset, 1rem);
-		left: auto;
-		width: min(920px, calc(100vw - 450px));
+		left: var(--mm-panel-left-inset, 1rem);
+		width: var(--mm-panel-width, min(920px, calc(100vw - 450px)));
 		height: min(780px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
-		min-width: min(440px, calc(100vw - 2rem));
+		min-width: var(--mm-panel-min-width, min(440px, calc(100vw - 2rem)));
 		max-width: calc(100vw - 1rem);
 		min-height: min(400px, var(--mm-panel-available-height, 400px));
 		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
@@ -1685,7 +1687,7 @@
 			max-width: 100vw;
 		}
 		.sheet-backdrop.floating .sheet {
-			--sheet-stacked-chat-height: min(24dvh, 220px);
+			--sheet-stacked-chat-height: min(20dvh, 170px);
 			--sheet-stacked-top: calc(
 				var(--mm-panel-navigation-bottom, 5.8rem) + 3.7rem + var(--sheet-stacked-chat-height) +
 					0.75rem
@@ -1695,21 +1697,29 @@
 			left: 0.5rem;
 			right: 0.5rem;
 			width: calc(100vw - 1rem);
-			height: min(72dvh, var(--mm-panel-available-height, calc(100dvh - 10rem)));
-			max-width: calc(100vw - 1rem);
-			max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
-			min-height: min(
-				220px,
-				max(
-					120px,
-					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 6.5rem) - 1rem)
+			height: min(
+				72dvh,
+				calc(
+					100dvh - var(--sheet-stacked-top) -
+						var(--mm-panel-bottom-offset, var(--mm-audio-footer-offset, 6.5rem)) - 1rem
 				)
 			);
+			max-width: calc(100vw - 1rem);
 			max-height: min(
 				var(--mm-panel-available-height, calc(100dvh - 10rem)),
+				calc(
+					100dvh - var(--sheet-stacked-top) -
+						var(--mm-panel-bottom-offset, var(--mm-audio-footer-offset, 6.5rem)) - 1rem
+				)
+			);
+			min-height: min(
+				190px,
 				max(
 					120px,
-					calc(100dvh - var(--sheet-stacked-top) - var(--mm-audio-footer-offset, 6.5rem) - 1rem)
+					calc(
+						100dvh - var(--sheet-stacked-top) -
+							var(--mm-panel-bottom-offset, var(--mm-audio-footer-offset, 6.5rem)) - 1rem
+					)
 				)
 			);
 			resize: both;

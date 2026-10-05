@@ -348,10 +348,10 @@ export async function createLocalAuthenticatedFixture(
 					expect(new URL((await sceneRead).url()).origin).toBe(new URL(apiBase).origin);
 				});
 				const mediaNames = {
-					musicInitial: `music_once__e2e-old-${suffix}.wav`,
-					musicReplacement: `music_loop__e2e-new-${suffix}.wav`,
-					effectInitial: `effect_once__e2e-old-${suffix}.wav`,
-					effectReplacement: `effect_loop__e2e-new-${suffix}.wav`
+					musicInitial: `music_once__e2e-music-old-${suffix}.wav`,
+					musicReplacement: `music_loop__e2e-music-new-${suffix}.wav`,
+					effectInitial: `effect_once__e2e-effect-old-${suffix}.wav`,
+					effectReplacement: `effect_loop__e2e-effect-new-${suffix}.wav`
 				};
 				return {
 					gm,
@@ -362,10 +362,10 @@ export async function createLocalAuthenticatedFixture(
 					mediaPrefix: `campaigns/${campaignId}/media/`,
 					names: mediaNames,
 					displayNames: {
-						musicInitial: `e2e-old-${suffix}.wav`,
-						musicReplacement: `e2e-new-${suffix}.wav`,
-						effectInitial: `e2e-old-${suffix}.wav`,
-						effectReplacement: `e2e-new-${suffix}.wav`
+						musicInitial: `e2e-music-old-${suffix}.wav`,
+						musicReplacement: `e2e-music-new-${suffix}.wav`,
+						effectInitial: `e2e-effect-old-${suffix}.wav`,
+						effectReplacement: `e2e-effect-new-${suffix}.wav`
 					},
 					gmAudio,
 					playerAudio,
@@ -389,10 +389,10 @@ async function prepareAudioAssets(
 	audioSamples: number
 ) {
 	const names = [
-		`music_once__e2e-old-${suffix}.wav`,
-		`music_loop__e2e-new-${suffix}.wav`,
-		`effect_once__e2e-old-${suffix}.wav`,
-		`effect_loop__e2e-new-${suffix}.wav`
+		`music_once__e2e-music-old-${suffix}.wav`,
+		`music_loop__e2e-music-new-${suffix}.wav`,
+		`effect_once__e2e-effect-old-${suffix}.wav`,
+		`effect_loop__e2e-effect-new-${suffix}.wav`
 	];
 	const paths = names.map((name) => `campaigns/${campaignId}/media/${name}`);
 	setPaths(paths);

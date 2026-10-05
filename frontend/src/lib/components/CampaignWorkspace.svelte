@@ -147,6 +147,7 @@
 	let sheetDocked = $state(false);
 	let sheetFocusRequest = $state(0);
 	let workspaceTab = $state<WorkspaceTab>('map');
+	let tokenInspectorOpen = $state(false);
 	$effect(() => {
 		if (activeCampaign && !canAccessWorkspaceTab(workspaceTab, activeCampaign.role))
 			workspaceTab = 'map';
@@ -764,6 +765,7 @@
 									onopensheet={(actorId) =>
 										activeCampaign?.role === 'gm' ? openCharacter(actorId, '') : openMySheet()}
 									onopennewwindow={openCharacterWindow}
+									oninspectorvisibilitychange={(visible) => (tokenInspectorOpen = visible)}
 								/>{:else}<p class="status-message" role="status" aria-live="polite">
 									Carregando mapa…
 								</p>{/if}
@@ -779,6 +781,7 @@
 									sceneId={activeScene.id}
 									{session}
 									{sheetOpen}
+									tokenSelected={tokenInspectorOpen}
 									onadded={() => reloadActiveScene()}
 									oncompendium={() => (workspaceTab = 'compendium')}
 								/>{/if}

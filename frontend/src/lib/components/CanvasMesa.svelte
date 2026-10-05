@@ -92,7 +92,8 @@
 		isGM,
 		campaignId = scene.campaignId,
 		onopensheet = () => {},
-		onopennewwindow = () => {}
+		onopennewwindow = () => {},
+		oninspectorvisibilitychange = () => {}
 	}: {
 		scene: Scene;
 		session: Session;
@@ -100,6 +101,7 @@
 		campaignId?: string;
 		onopensheet?: (actorId: string) => void;
 		onopennewwindow?: (actorId: string) => void;
+		oninspectorvisibilitychange?: (visible: boolean) => void;
 	} = $props();
 
 	let canvasMesa: HTMLCanvasElement;
@@ -114,6 +116,9 @@
 	);
 	$effect(() => {
 		if (tokenSelecionadoId !== null && !personagemSelecionado) tokenSelecionadoId = null;
+	});
+	$effect(() => {
+		oninspectorvisibilitychange(Boolean(personagemSelecionado));
 	});
 	let characterCompendiumEntries = $state<CompendiumEntry[]>([]);
 	let characterCompendiumContext = '';

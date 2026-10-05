@@ -2,9 +2,11 @@ export type PanelPosition = { left: number; top: number };
 
 export type MovablePanelOptions = {
 	storageKey: string;
+	layoutKey?: string;
 	handleSelector: string;
 	minTop?: number;
 	avoidSelectors?: string[];
+	avoidLeftSelectors?: string[];
 	avoidRightSelectors?: string[];
 	avoidBottomSelectors?: string[];
 	enabled?: boolean;
@@ -75,6 +77,7 @@ function savePosition(key: string, position: PanelPosition) {
 /** Adds title-bar dragging while constraining the panel to the usable viewport. */
 export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 	let options = initial;
+	let hasCustomPosition = false;
 	let drag: {
 		pointerId: number;
 		originX: number;
@@ -98,7 +101,14 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		const top = minTop();
 		const footerOffset = readCssLengthInPixels(node, '--mm-audio-footer-offset', 68) || 68;
 		let bottom = footerOffset + 8;
+		let left: number | null = null;
 		let right = 16;
+		for (const selector of options.avoidLeftSelectors ?? []) {
+			const obstacle = document.querySelector(selector);
+			if (!obstacle) continue;
+			const rect = obstacle.getBoundingClientRect();
+			if (rect.width > 0 && rect.height > 0) left = Math.max(left ?? 16, rect.right + 12);
+		}
 		for (const selector of options.avoidRightSelectors ?? []) {
 			const obstacle = document.querySelector(selector);
 			if (!obstacle) continue;
@@ -107,7 +117,20 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 				right = Math.max(right, window.innerWidth - rect.left + 12);
 			}
 		}
+		node.style.setProperty('--mm-panel-left-inset', left === null ? 'auto' : `${left}px`);
 		node.style.setProperty('--mm-panel-right-inset', `${right}px`);
+		node.style.setProperty(
+			'--mm-panel-width',
+			left === null
+				? 'min(920px, calc(100vw - 450px))'
+				: `min(920px, calc(100vw - ${left}px - ${right}px - 1rem))`
+		);
+		node.style.setProperty(
+			'--mm-panel-min-width',
+			left === null
+				? 'min(440px, calc(100vw - 2rem))'
+				: `min(440px, calc(100vw - ${left}px - ${right}px - 1rem))`
+		);
 		const panel = node.getBoundingClientRect();
 		for (const selector of options.avoidBottomSelectors ?? []) {
 			const obstacle = document.querySelector(selector);
@@ -135,18 +158,31 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		node.style.top = `${bounded.top}px`;
 		node.style.right = 'auto';
 		node.style.bottom = 'auto';
-		if (persist) savePosition(options.storageKey, bounded);
+		if (persist) {
+			hasCustomPosition = true;
+			savePosition(options.storageKey, bounded);
+		}
+	};
+	const applyDefaultPosition = () => {
+		node.style.removeProperty('left');
+		node.style.removeProperty('top');
+		node.style.removeProperty('right');
+		node.style.removeProperty('bottom');
+		updateViewportConstraints();
+		const rect = node.getBoundingClientRect();
+		apply({ left: rect.left, top: rect.top });
 	};
 	updateViewportConstraints();
 	const keepBelowNavigation = () => {
-		if (!node.style.left) {
-			const rect = node.getBoundingClientRect();
-			if (rect.top < minTop()) apply({ left: rect.left, top: minTop() });
-		}
+		const rect = node.getBoundingClientRect();
+		const requiredTop = minTop();
+		if (rect.top < requiredTop) apply({ left: rect.left, top: requiredTop });
 	};
 	const saved = options.enabled === false ? null : readPosition(options.storageKey);
-	if (saved) apply(saved);
-	else if (options.enabled !== false) keepBelowNavigation();
+	if (saved) {
+		hasCustomPosition = true;
+		apply(saved);
+	} else if (options.enabled !== false) keepBelowNavigation();
 
 	const onPointerDown = (event: PointerEvent) => {
 		if (options.enabled === false) return;
@@ -201,6 +237,10 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		apply({ left: rect.left + delta.left * distance, top: rect.top + delta.top * distance }, true);
 	};
 	const onResize = () => {
+		if (!hasCustomPosition && options.enabled !== false) {
+			applyDefaultPosition();
+			return;
+		}
 		updateViewportConstraints();
 		const rect = node.getBoundingClientRect();
 		const bounded = clampPosition(node, { left: rect.left, top: rect.top }, minTop());
@@ -218,6 +258,7 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		if (!observer) return;
 		for (const selector of [
 			...(options.avoidSelectors ?? []),
+			...(options.avoidLeftSelectors ?? []),
 			...(options.avoidRightSelectors ?? []),
 			...(options.avoidBottomSelectors ?? [])
 		]) {
@@ -233,6 +274,7 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 	return {
 		update(next: MovablePanelOptions) {
 			const changedKey = next.storageKey !== options.storageKey;
+			const changedLayout = next.layoutKey !== options.layoutKey;
 			const wasEnabled = options.enabled !== false;
 			options = next;
 			refreshObservedObstacles();
@@ -249,8 +291,11 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 				else keepBelowNavigation();
 			} else if (changedKey) {
 				const position = readPosition(options.storageKey);
+				hasCustomPosition = Boolean(position);
 				if (position) apply(position);
-				else keepBelowNavigation();
+				else applyDefaultPosition();
+			} else if (changedLayout && !hasCustomPosition && options.enabled !== false) {
+				applyDefaultPosition();
 			} else if (options.enabled !== false) keepBelowNavigation();
 		},
 		destroy() {

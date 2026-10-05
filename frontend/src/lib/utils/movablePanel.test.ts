@@ -88,7 +88,8 @@ function makeHarness(
 		windowListeners,
 		storage,
 		windowMock,
-		documentMock
+		documentMock,
+		obstacleRects
 	};
 }
 
@@ -186,6 +187,48 @@ describe('movablePanel', () => {
 		action.destroy();
 	});
 
+	it('moves a restored panel below a workspace control that becomes visible later', () => {
+		const h = makeHarness({ width: 320, height: 900 });
+		h.storage.set('maismorras:moved-panel:campaign-sheet', JSON.stringify({ left: 820, top: 100 }));
+		const options = {
+			storageKey: 'campaign-sheet',
+			handleSelector: '.titlebar'
+		};
+		const action = movablePanel(h.node, options);
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(Number.parseFloat(style.top)).toBeLessThan(318);
+		h.obstacleRects['.sheet-picker'] = {
+			left: 0,
+			top: 220,
+			right: 1200,
+			bottom: 310,
+			width: 1200,
+			height: 90
+		};
+		action.update({ ...options, avoidSelectors: ['.sheet-picker'] });
+		expect(style.left).toBe('820px');
+		expect(style.top).toBe('318px');
+		expect(style['--mm-panel-navigation-bottom']).toBe('318px');
+		action.destroy();
+	});
+
+	it('recalculates the default layout when a persistent panel changes workspace mode', () => {
+		const h = makeHarness();
+		const action = movablePanel(h.node, {
+			storageKey: 'chat-layout',
+			layoutKey: 'normal',
+			handleSelector: '.titlebar'
+		});
+		action.update({
+			storageKey: 'chat-layout',
+			layoutKey: 'sheet-open',
+			handleSelector: '.titlebar'
+		});
+		expect((h.node as unknown as { style: Record<string, string> }).style.left).toBe('100px');
+		expect((h.node as unknown as { style: Record<string, string> }).style.top).toBe('100px');
+		action.destroy();
+	});
+
 	it('converts inherited rem audio offsets before constraining panels above the footer', () => {
 		const h = makeHarness();
 		installGlobal('getComputedStyle', (element: HTMLElement) =>
@@ -241,6 +284,29 @@ describe('movablePanel', () => {
 			preventDefault: vi.fn()
 		} as unknown as PointerEvent);
 		expect(h.documentListeners.has('pointermove')).toBe(true);
+		action.destroy();
+	});
+
+	it('leaves room between an open chat and actor drawer for a floating sheet', () => {
+		const h = makeHarness(
+			{ width: 320, height: 260 },
+			{
+				'.floating-chat': { left: 16, top: 180, right: 376, bottom: 620, width: 360, height: 440 },
+				'.actor-drawer': { left: 934, top: 400, right: 1264, bottom: 850, width: 330, height: 450 }
+			}
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'three-panel-layout',
+			handleSelector: '.titlebar',
+			avoidLeftSelectors: ['.floating-chat'],
+			avoidRightSelectors: ['.actor-drawer']
+		});
+		expect(
+			(h.node as unknown as { style: Record<string, string> }).style['--mm-panel-left-inset']
+		).toBe('388px');
+		expect(
+			(h.node as unknown as { style: Record<string, string> }).style['--mm-panel-right-inset']
+		).toBe('278px');
 		action.destroy();
 	});
 

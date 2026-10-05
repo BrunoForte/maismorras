@@ -188,6 +188,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await test.step('dock the sheet without covering the actor drawer or audio footer', async () => {
 				await selectTokenAtDefaultPosition(page);
 				await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+				await page.getByRole('button', { name: 'Fixar ficha' }).click();
 				const sheet = page.locator('.sheet-backdrop.docked .sheet');
 				const actors = page.locator('.actor-drawer');
 				await expect(sheet).toBeVisible();
@@ -228,7 +229,6 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await page.getByRole('button', { name: 'Abrir chat' }).click();
 			await selectTokenAtDefaultPosition(page);
 			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-			await page.getByRole('button', { name: 'Fixar ficha' }).click();
 			const sheet = page.locator('.sheet-backdrop.floating .sheet');
 			await expect(sheet).toBeVisible();
 			await expect(chat).not.toHaveClass(/closed/);
@@ -300,14 +300,16 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					await sheetBackdrop.evaluate((node) => getComputedStyle(node).zIndex)
 				);
 				expect(sheetLayer).toBeGreaterThan(chatLayer);
-				await collapseAndRestore(
-					chat,
-					page,
-					'Chat da mesa',
-					'Abrir chat',
-					'.chat-body',
-					'.chat-titlebar'
-				);
+				const chatToggle = chat.getByRole('button', { name: 'Chat da mesa' });
+				await chatToggle.focus();
+				await chatToggle.click();
+				await expect(chat).toHaveClass(/closed/);
+				await expect(chat.locator('.chat-body')).toHaveCount(0);
+				const restoreChat = page.getByRole('button', { name: 'Abrir chat' });
+				await restoreChat.focus();
+				await restoreChat.click();
+				await expect(chat).not.toHaveClass(/closed/);
+				await expect(chat.locator('.chat-body')).toBeVisible();
 				await sheet.getByRole('button', { name: 'Minimizar ficha' }).click();
 				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
 				await page.getByRole('button', { name: 'Restaurar ficha' }).click();
@@ -726,6 +728,11 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					};
 					return result.events.filter((event) => event.type === 'dice.roll');
 				};
+				await inspector
+					.locator('.summary-section')
+					.filter({ hasText: 'Ataques' })
+					.locator('summary')
+					.click();
 				const beforeAttack = (await readRolls()).length;
 				await inspector.getByRole('button', { name: 'Ataque', exact: true }).first().click();
 				await expect.poll(async () => (await readRolls()).length).toBeGreaterThan(beforeAttack);
@@ -737,6 +744,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				expect((await readRolls()).at(-1)?.payload.expressao).toMatch(/\d+d4/);
 			});
 			await test.step('cast owned leveled spell and verify its slot was consumed', async () => {
+				await inspector.locator('.spell-groups').locator('summary').first().click();
 				await inspector
 					.locator('.spell-groups details')
 					.filter({ hasText: '1º círculo' })
@@ -892,6 +900,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await test.step('select player token and confirm both cantrip and leveled casting are disabled', async () => {
 				await selectTokenAtDefaultPosition(f.gm);
 				const inspector = f.gm.locator('.token-inspector');
+				await inspector.locator('.spell-groups').locator('summary').first().click();
 				const cantrip = inspector
 					.locator('.spell-groups details')
 					.filter({ hasText: 'Truque alvo E2E' });
@@ -916,6 +925,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			});
 			await test.step('GM display publishes chat and updates the scene presentation', async () => {
 				const inspector = f.gm.locator('.token-inspector');
+				const spellCategory = inspector.locator('.spell-groups');
+				if (!(await spellCategory.evaluate((node) => (node as HTMLDetailsElement).open)))
+					await spellCategory.locator('summary').first().click();
 				const spellGroup = inspector
 					.locator('.spell-groups details')
 					.filter({ hasText: 'Magia alvo E2E' });
@@ -1214,7 +1226,23 @@ function sanitizeBrowserDiagnostic(value: string): string {
 async function selectTokenAtDefaultPosition(page: Page) {
 	const canvas = page.locator('canvas').first();
 	await expect(canvas).toBeVisible();
+	const chatCoversTarget = await page.evaluate(() => {
+		const canvasNode = document.querySelector('canvas');
+		if (!canvasNode) return false;
+		const rect = canvasNode.getBoundingClientRect();
+		return Boolean(
+			document.elementFromPoint(rect.left + 105, rect.top + 105)?.closest('.floating-chat')
+		);
+	});
+	const chat = page.locator('.floating-chat');
+	const restoreChat =
+		chatCoversTarget && !(await chat.evaluate((node) => node.classList.contains('closed')));
+	if (restoreChat) await chat.locator('.chat-toggle').click();
 	await canvas.click({ position: { x: 105, y: 105 } });
+	if (restoreChat) {
+		await expect(page.locator('.token-inspector')).toBeVisible({ timeout: 10_000 });
+		await chat.locator('.chat-toggle').click();
+	}
 	await expect(page.locator('.token-inspector')).toBeVisible({ timeout: 10_000 });
 }
 
@@ -1351,6 +1379,11 @@ async function assertControlReachable(page: Page, control: Locator) {
 }
 
 async function assertPanelsDoNotOverlap(page: Page, first: Locator, second: Locator) {
+	const labels = await Promise.all(
+		[first, second].map((panel) =>
+			panel.evaluate((node) => node.getAttribute('aria-label') || node.className.toString())
+		)
+	);
 	await expect
 		.poll(async () => {
 			const firstBox = await first.boundingBox();
@@ -1372,5 +1405,8 @@ async function assertPanelsDoNotOverlap(page: Page, first: Locator, second: Loca
 			);
 			return { overlaps, belowNavigation: firstBox.y >= navBottom - 1 };
 		})
-		.toEqual({ overlaps: false, belowNavigation: true });
+		.toEqual(
+			{ overlaps: false, belowNavigation: true },
+			`Panels must remain accessible without overlap: ${labels.join(' / ')}`
+		);
 }

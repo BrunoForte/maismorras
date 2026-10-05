@@ -241,6 +241,7 @@
 <aside
 	use:movablePanel={{
 		storageKey: campaignChatPanelKey(campaignId),
+		layoutKey: sheetOpen ? 'sheet-open' : 'normal',
 		handleSelector: '.chat-titlebar',
 		minTop: sheetOpen ? 96 : 56,
 		avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs']
@@ -461,7 +462,7 @@
 	.floating-chat.sheet-open:not(.docked) {
 		top: var(--mm-panel-navigation-bottom, 6rem);
 		bottom: auto;
-		left: 4rem;
+		left: 5rem;
 		height: min(360px, 40vh);
 		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
 	}
@@ -474,7 +475,7 @@
 	.floating-chat.sheet-open.closed {
 		top: var(--mm-panel-navigation-bottom, 6rem);
 		bottom: auto;
-		left: 4rem;
+		left: 5rem;
 		max-height: none;
 	}
 	.floating-chat.docked.sheet-open.closed {
@@ -716,15 +717,15 @@
 			bottom: auto;
 			left: 4rem;
 			width: calc(100% - 4.6rem);
-			height: min(24dvh, 220px);
+			height: min(20dvh, 170px);
 			min-height: 150px;
-			max-height: min(24dvh, 220px);
+			max-height: min(20dvh, 170px);
 			border-radius: 12px;
 		}
 		.floating-chat.sheet-open.closed {
 			top: calc(var(--mm-panel-navigation-bottom, 5.8rem) + 3.7rem);
 			bottom: auto;
-			left: 0.6rem;
+			left: 4rem;
 			width: min(220px, calc(100% - 1.2rem));
 		}
 		.floating-chat.docked.sheet-open.closed {
