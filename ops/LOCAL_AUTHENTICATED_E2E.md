@@ -11,7 +11,13 @@ Workflow run #232 ran on the Linux GitHub Actions runner at commit `52f2923`. Th
 | Backend build, process launch, and readiness (combined) |                 17 s | The combined app step started at 03:37:37 and Playwright began at 03:37:54; the old workflow did not measure these separately. |
 | Playwright                                              |               15m03s | Included repeated 30-second timeouts and the configured retries after six tests failed.                                        |
 
-The long Playwright duration was therefore not attributed to Supabase startup or dependency installation. With six tests each exhausting the 30-second timeout across the initial attempt and two retries, those failures can account for up to nine minutes of the test step.
+The long Playwright duration was therefore not attributed to Supabase startup or dependency installation. Under the policy used by run #232, six tests each exhausting the 30-second timeout across the initial attempt and two retries could account for up to nine minutes of the test step.
+
+## Current retry policy
+
+In CI, Playwright now allows **one retry**, for at most **two total attempts per test** (the initial run plus one repeat). Local runs still default to zero retries. The local diagnostic script retains its explicit `-Retries` option, also defaulting to zero. The mandatory workflow does not pass a retry override, so it uses the CI policy from `playwright.config.ts`.
+
+This trades faster termination for a higher chance that an intermittent test blocks the gate: persistent failures consume fewer repeated timeout windows, while a transient failure has only one opportunity to recover. This policy change does not establish or fix the cause of failures in run #232.
 
 ## Instrumentation
 

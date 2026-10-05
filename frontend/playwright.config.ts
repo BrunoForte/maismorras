@@ -4,7 +4,7 @@ export default defineConfig({
 	testDir: './e2e',
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
-	retries: process.env.CI ? 2 : 0,
+	retries: process.env.CI ? 1 : 0,
 	reporter: process.env.E2E_TIMINGS_FILE
 		? [['line'], ['./e2e/safeMetricsReporter.ts', { outputFile: process.env.E2E_TIMINGS_FILE }]]
 		: process.env.CI
