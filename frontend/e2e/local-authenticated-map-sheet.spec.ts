@@ -1,6 +1,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import {
+	expect,
+	test,
+	type Browser,
+	type Locator,
+	type Page,
+	type TestInfo
+} from '@playwright/test';
 import { createLocalAuthenticatedFixture, localStackEnabled } from './local-authenticated.helpers';
 import { sanitizeSafeE2EDiagnostic } from '../src/lib/utils/safeE2EDiagnostics';
 
@@ -12,12 +19,32 @@ type PointerObservation = {
 	targetY: number;
 };
 
+type DiagnosticSelector = string | { selector: string; label: string };
+
 const pointerTargets = new WeakMap<Page, PointerObservation>();
 const observedPointers = new WeakSet<Page>();
 const MENU_OPERATION_TIMEOUT_MS = 5_000;
 const DIAGNOSTIC_SNAPSHOT_TIMEOUT_MS = 1_000;
 const DIAGNOSTIC_COMPLETION_RESERVE_MS = 2_000;
 const testStartedAt = new WeakMap<TestInfo, number>();
+const mapToolDiagnosticSelectors: DiagnosticSelector[] = [
+	{ label: 'interactive tool group', selector: '.table-tools .tool-group' },
+	{ label: 'interactive tool buttons', selector: '.table-tools .tool-group > button' },
+	{
+		label: 'interactive open/close menu triggers',
+		selector: '.table-tools .tool-group button[aria-expanded]'
+	},
+	{ label: 'open menu panel', selector: '.map-tool-menu' },
+	{ label: 'menu controls', selector: '.map-tool-menu button' },
+	{ label: 'signal control', selector: '[data-testid="map-signal-button"]' },
+	{
+		label: 'hidden overlay host anchor (not clickable)',
+		selector: '.table-tools-gm'
+	},
+	'.workspace-tabs button',
+	'.token-inspector',
+	'.audio-channels'
+];
 
 test.describe('local authenticated map and character sheet E2E', () => {
 	test.skip(!localStackEnabled, 'Runs only against the isolated local Supabase stack in CI.');
@@ -85,208 +112,221 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('six map menus share accessible styling on desktop and mobile and signal remains available', async ({
+	const menuGroups = [
+		['Régua', 'Iniciativa'],
+		['Dados', 'Camadas do mapa'],
+		['Área persistente', 'Barreiras']
+	] as const;
+	const menuViewports = [
+		{ name: 'desktop', width: 1280, height: 900 },
+		{ name: 'mobile', width: 390, height: 844 }
+	] as const;
+	const referenceMenuStyle = { borderRadius: '10px', padding: '12px', gap: '8.8px' };
+	for (const viewport of menuViewports) {
+		for (const [groupIndex, names] of menuGroups.entries()) {
+			test(`map menus ${viewport.name} group ${groupIndex + 1}: ${names.join(' and ')} preserve styling and bounds`, async ({
+				browser
+			}, testInfo) => {
+				let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+				try {
+					fixture = await createLocalAuthenticatedFixture(browser);
+					const page = fixture.gm;
+					await test.step('prepare selected token and map', () =>
+						diagnoseOnFailure(
+							testInfo,
+							page,
+							'prepare selected token and map',
+							mapToolDiagnosticSelectors,
+							async () => {
+								const character = await fixture!.createCharacter(fixture!.playerUserId, {
+									name: 'Categorias do inspector E2E'
+								});
+								await fixture!.createCharacterToken(character.id);
+								await openMap(page, fixture!.campaignId, fixture!.sceneId);
+								await selectTokenAtDefaultPosition(page);
+							}
+						));
+					await test.step(`set ${viewport.name} viewport to ${viewport.width}x${viewport.height}`, () =>
+						diagnoseOnFailure(
+							testInfo,
+							page,
+							`map menu viewport ${viewport.width}x${viewport.height}`,
+							mapToolDiagnosticSelectors,
+							async () => {
+								const resized = await completeWithinBudget(
+									page.setViewportSize({ width: viewport.width, height: viewport.height }),
+									menuWaitBudget(testInfo)
+								);
+								if (resized === null) throw diagnosticTimeout('Viewport resize timed out.');
+							}
+						));
+
+					for (const name of names) {
+						await test.step(`menu ${name} at ${viewport.width}x${viewport.height}`, async () => {
+							let phase = 'locate interactive trigger';
+							await diagnoseOnFailure(
+								testInfo,
+								page,
+								`map menu ${name} at ${viewport.width}x${viewport.height}`,
+								mapToolDiagnosticSelectors,
+								async () => {
+									const trigger = page.getByRole('button', { name, exact: true });
+									phase = 'click interactive menu trigger to open';
+									await trigger.click({ timeout: menuWaitBudget(testInfo) });
+									phase = 'assert trigger expanded';
+									await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+										timeout: menuWaitBudget(testInfo)
+									});
+									const menu = page.locator('.map-tool-menu:visible');
+									phase = 'assert one visible menu target';
+									await expect(menu).toHaveCount(1, { timeout: menuWaitBudget(testInfo) });
+									phase = 'measure menu styles and viewport bounds';
+									const measurements = await completeWithinBudget(
+										menu.evaluate((element) => {
+											const style = getComputedStyle(element);
+											const rect = element.getBoundingClientRect();
+											return {
+												borderRadius: style.borderRadius,
+												padding: style.padding,
+												gap: style.gap,
+												x: rect.x,
+												y: rect.y,
+												right: rect.right,
+												bottom: rect.bottom
+											};
+										}),
+										menuWaitBudget(testInfo)
+									);
+									if (measurements === null) {
+										throw diagnosticTimeout('Menu geometry measurement exceeded its safe wait.');
+									}
+									phase = 'assert visual style matches shared menu style';
+									expect(measurements).toMatchObject(referenceMenuStyle);
+									phase = 'assert menu remains inside viewport';
+									expect(measurements.x).toBeGreaterThanOrEqual(0);
+									expect(measurements.y).toBeGreaterThanOrEqual(0);
+									expect(measurements.right).toBeLessThanOrEqual(viewport.width);
+									expect(measurements.bottom).toBeLessThanOrEqual(viewport.height);
+									phase = 'click interactive menu trigger to close';
+									await trigger.click({ timeout: menuWaitBudget(testInfo) });
+									phase = 'assert trigger collapsed';
+									await expect(trigger).toHaveAttribute('aria-expanded', 'false', {
+										timeout: menuWaitBudget(testInfo)
+									});
+								},
+								() => phase
+							);
+						});
+					}
+				} finally {
+					await fixture?.close();
+				}
+			});
+		}
+	}
+
+	test('map signal remains available on mobile', async ({ browser }, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const page = fixture.gm;
+			await test.step('prepare selected token and mobile map', () =>
+				diagnoseOnFailure(
+					testInfo,
+					page,
+					'prepare map signal test',
+					mapToolDiagnosticSelectors,
+					async () => {
+						const character = await fixture!.createCharacter(fixture!.playerUserId, {
+							name: 'Sinalização de mapa E2E'
+						});
+						await fixture!.createCharacterToken(character.id);
+						await openMap(page, fixture!.campaignId, fixture!.sceneId);
+						await selectTokenAtDefaultPosition(page);
+						await page.setViewportSize({ width: 390, height: 844 });
+					}
+				));
+			await test.step('toggle signal and clear it on the map', () => {
+				let phase = 'locate signal control';
+				return diagnoseOnFailure(
+					testInfo,
+					page,
+					'mobile map signal',
+					mapToolDiagnosticSelectors,
+					async () => {
+						const signal = page.getByTestId('map-signal-button');
+						phase = 'assert signal starts unpressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'false');
+						phase = 'click signal control';
+						await signal.click();
+						phase = 'assert signal becomes pressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'true');
+						phase = 'click map canvas to clear signal';
+						await page
+							.locator('canvas')
+							.first()
+							.click({ position: { x: 80, y: 80 } });
+						phase = 'assert signal becomes unpressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'false');
+					},
+					() => phase
+				);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('token inspector header stays sticky while its categories scroll', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			fixture = await createLocalAuthenticatedFixture(browser);
-			await test.step('prepare selected token and map', () =>
+			const page = fixture.gm;
+			await test.step('prepare selected token and desktop map', () =>
 				diagnoseOnFailure(
 					testInfo,
-					fixture!.gm,
-					'prepare selected token and map',
-					['.workspace-tabs', 'canvas', '.token-inspector', '.floating-chat', '.audio-channels'],
-					async () => {
-						const character = await fixture!.createCharacter(fixture!.playerUserId, {
-							name: 'Categorias do inspector E2E'
-						});
-						await fixture!.createCharacterToken(character.id);
-						await openMap(fixture!.gm, fixture!.campaignId, fixture!.sceneId);
-						await selectTokenAtDefaultPosition(fixture!.gm);
-					}
-				));
-			const page = fixture.gm;
-			const menus = [
-				'Régua',
-				'Iniciativa',
-				'Dados',
-				'Camadas do mapa',
-				'Área persistente',
-				'Barreiras'
-			];
-			const referenceStyle = { borderRadius: '10px', padding: '12px', gap: '8.8px' };
-			for (const viewport of [
-				{ width: 1280, height: 900 },
-				{ width: 390, height: 844 }
-			]) {
-				await test.step(`set viewport to ${viewport.width}x${viewport.height}`, () => {
-					const phase = 'set viewport dimensions';
-					return diagnoseOnFailure(
-						testInfo,
-						page,
-						`map menu viewport ${viewport.width}x${viewport.height}`,
-						[
-							'.table-tools-gm',
-							'.table-tools-gm-buttons button[aria-expanded]',
-							'.workspace-tabs button',
-							'.audio-channels'
-						],
-						async () => {
-							const resized = await completeWithinBudget(
-								page.setViewportSize(viewport),
-								menuWaitBudget(testInfo)
-							);
-							if (resized === null) throw diagnosticTimeout('Viewport resize timed out.');
-						},
-						() => phase
-					);
-				});
-				for (const name of menus) {
-					await test.step(`menu ${name} at ${viewport.width}x${viewport.height}`, async () => {
-						let phase = 'locate trigger';
-						await diagnoseOnFailure(
-							testInfo,
-							page,
-							`map menu ${name} at ${viewport.width}x${viewport.height}`,
-							[
-								'.map-tool-menu',
-								'.map-tool-menu button',
-								'.table-tools-gm',
-								'.table-tools-gm-buttons button',
-								'.table-tools-gm-buttons button[aria-expanded]',
-								'.workspace-tabs button',
-								'.token-inspector',
-								'.audio-channels'
-							],
-							async () => {
-								const trigger = page.getByRole('button', { name, exact: true });
-								phase = 'click menu trigger';
-								await trigger.click({ timeout: menuWaitBudget(testInfo) });
-								phase = 'assert trigger expanded';
-								await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
-									timeout: menuWaitBudget(testInfo)
-								});
-								const menu = page.locator('.map-tool-menu:visible');
-								phase = 'assert one visible menu';
-								await expect(menu).toHaveCount(1, { timeout: menuWaitBudget(testInfo) });
-								phase = 'measure menu styles and viewport bounds';
-								const measurements = await completeWithinBudget(
-									menu.evaluate((element) => {
-										const style = getComputedStyle(element);
-										const rect = element.getBoundingClientRect();
-										return {
-											borderRadius: style.borderRadius,
-											padding: style.padding,
-											gap: style.gap,
-											x: rect.x,
-											y: rect.y,
-											right: rect.right,
-											bottom: rect.bottom
-										};
-									}),
-									menuWaitBudget(testInfo)
-								);
-								if (measurements === null) {
-									const timeout = new Error('Menu geometry measurement exceeded its safe wait.');
-									timeout.name = 'TimeoutError';
-									throw timeout;
-								}
-								phase = 'assert visual style matches shared menu style';
-								expect(measurements).toMatchObject(referenceStyle);
-								phase = 'assert menu remains inside viewport';
-								expect(measurements.x).toBeGreaterThanOrEqual(0);
-								expect(measurements.y).toBeGreaterThanOrEqual(0);
-								expect(measurements.right).toBeLessThanOrEqual(viewport.width);
-								expect(measurements.bottom).toBeLessThanOrEqual(viewport.height);
-								phase = 'click menu trigger to close';
-								await trigger.click({ timeout: menuWaitBudget(testInfo) });
-								phase = 'assert trigger collapsed';
-								await expect(trigger).toHaveAttribute('aria-expanded', 'false', {
-									timeout: menuWaitBudget(testInfo)
-								});
-							},
-							() => phase
-						);
-					});
-				}
-			}
-			await test.step('signal tool remains available', () => {
-				let phase = 'locate signal control';
-				return diagnoseOnFailure(
-					testInfo,
 					page,
-					'Sinalizar control after map menus',
-					['[data-testid="map-signal-button"]', '.table-tools-gm', 'canvas'],
-					async () => {
-						const signal = page.getByTestId('map-signal-button');
-						phase = 'assert signal starts unpressed';
-						await expect(signal).toHaveAttribute('aria-pressed', 'false', {
-							timeout: menuWaitBudget(testInfo)
-						});
-						phase = 'click signal control';
-						await signal.click({ timeout: menuWaitBudget(testInfo) });
-						phase = 'assert signal becomes pressed';
-						await expect(signal).toHaveAttribute('aria-pressed', 'true', {
-							timeout: menuWaitBudget(testInfo)
-						});
-						phase = 'click map canvas to clear signal';
-						await page
-							.locator('canvas')
-							.first()
-							.click({ position: { x: 80, y: 80 }, timeout: menuWaitBudget(testInfo) });
-						phase = 'assert signal becomes unpressed';
-						await expect(signal).toHaveAttribute('aria-pressed', 'false', {
-							timeout: menuWaitBudget(testInfo)
-						});
-					},
-					() => phase
-				);
-			});
-			await test.step('keep the inspector header in view while its categories scroll', () => {
-				let phase = 'restore desktop viewport';
-				return diagnoseOnFailure(
-					testInfo,
-					page,
-					'inspector sticky header after map menu checks',
+					'prepare inspector sticky-header test',
 					['.token-inspector', '.inspector-header', 'details.token-settings > summary'],
 					async () => {
-						const resized = await completeWithinBudget(
-							page.setViewportSize({ width: 1280, height: 900 }),
-							menuWaitBudget(testInfo)
-						);
-						if (resized === null) throw diagnosticTimeout('Viewport resize timed out.');
+						const character = await fixture!.createCharacter(fixture!.playerUserId, {
+							name: 'Cabeçalho fixo E2E'
+						});
+						await fixture!.createCharacterToken(character.id);
+						await openMap(page, fixture!.campaignId, fixture!.sceneId);
+						await selectTokenAtDefaultPosition(page);
+						await page.setViewportSize({ width: 1280, height: 900 });
+					}
+				));
+			await test.step('verify sticky header remains accessible during inspector scroll', () => {
+				let phase = 'assert inspector header is sticky';
+				return diagnoseOnFailure(
+					testInfo,
+					page,
+					'inspector sticky header',
+					['.token-inspector', '.inspector-header', 'details.token-settings > summary'],
+					async () => {
 						const inspector = page.locator('.token-inspector');
-						phase = 'assert inspector header is sticky';
-						await expect(inspector.locator('.inspector-header')).toHaveCSS('position', 'sticky', {
-							timeout: menuWaitBudget(testInfo)
-						});
+						await expect(inspector.locator('.inspector-header')).toHaveCSS('position', 'sticky');
 						phase = 'open token settings category';
-						await inspector.locator('details.token-settings > summary').click({
-							timeout: menuWaitBudget(testInfo)
-						});
-						phase = 'read inspector scroll dimensions';
-						const scrollable = await completeWithinBudget(
-							inspector.evaluate((node) => node.scrollHeight > node.clientHeight),
-							menuWaitBudget(testInfo)
-						);
-						if (scrollable === null) throw diagnosticTimeout('Inspector measurement timed out.');
+						await inspector.locator('details.token-settings > summary').click();
 						phase = 'assert inspector content can scroll';
+						const scrollable = await inspector.evaluate(
+							(node) => node.scrollHeight > node.clientHeight
+						);
 						expect(scrollable).toBe(true);
 						phase = 'scroll inspector content';
-						const scrollTop = await completeWithinBudget(
-							inspector.evaluate((node) => {
-								node.scrollTop = node.scrollHeight;
-								return node.scrollTop;
-							}),
-							menuWaitBudget(testInfo)
-						);
-						if (scrollTop === null) throw diagnosticTimeout('Inspector scroll timed out.');
-						const panel = await inspector.boundingBox();
-						const header = await inspector.locator('.inspector-header').boundingBox();
-						phase = 'assert sticky header remains at inspector top';
-						expect(header!.y).toBeGreaterThanOrEqual(panel!.y);
-						expect(header!.y).toBeLessThan(panel!.y + 5);
+						await inspector.evaluate((node) => {
+							node.scrollTop = node.scrollHeight;
+						});
+						phase = 'assert header remains at panel top';
+						const headerTop = await inspector
+							.locator('.inspector-header')
+							.evaluate((node) => node.getBoundingClientRect().top);
+						const panelTop = (await inspector.boundingBox())!.y;
+						expect(headerTop).toBeLessThanOrEqual(panelTop + 1);
 					},
 					() => phase
 				);
@@ -1216,164 +1256,239 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player sheet floats by default, can dock, opens an auxiliary window, and survives map navigation', async ({
+	async function startLinkedSheetScenario(browser: Browser, testInfo: TestInfo) {
+		const prepared = await prepareSavedPlayerSheet(browser, testInfo);
+		const { player, sheet } = prepared;
+		await test.step('open the same owned sheet from the map and focus its existing instance', async () => {
+			await sheet.evaluate((node) => (node.dataset.instanceMarker = 'same-sheet-instance'));
+			await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+			await expect(player.locator('canvas').first()).toBeVisible();
+			await selectTokenAtDefaultPosition(player);
+			await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
+			await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
+			await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
+		});
+		return prepared;
+	}
+
+	const sheetPanelDiagnosticSelectors = [
+		'.sheet-backdrop',
+		'.sheet-backdrop .sheet',
+		'.sheet-backdrop .sheet header',
+		'.sheet-backdrop .sheet button',
+		'.sheet-backdrop .sheet-body',
+		'.workspace-tabs',
+		'.actor-drawer',
+		'.audio-channels'
+	];
+
+	test('player sheet floats by default and moves by its title bar', async ({
 		browser
 	}, testInfo) => {
-		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		let fixture: LocalAuthenticatedFixture | undefined;
 		try {
-			fixture = await createLocalAuthenticatedFixture(browser);
-			await test.step('prepare a saved player sheet and open it from the Sheets tab', async () => {
-				await diagnoseOnFailure(
-					testInfo,
-					fixture!.player,
-					'prepare and open saved player sheet',
-					[
-						'.workspace-tabs',
-						'.sheets-view',
-						'.sheet-backdrop',
-						'.sheet-backdrop .sheet',
-						'.sheet-backdrop .sheet header',
-						'.audio-channels'
-					],
-					async () => {
-						const character = await fixture!.createCharacter(fixture!.playerUserId, {
-							name: 'Ficha flutuante E2E',
-							hitPointsCurrent: 10,
-							hitPointsMax: 10
-						});
-						await fixture!.createCharacterToken(character.id);
-						await openMap(fixture!.player, fixture!.campaignId, fixture!.sceneId);
-						await fixture!.player.getByRole('button', { name: 'Fichas', exact: true }).click();
-						await expect(fixture!.player.locator('.sheets-view')).toBeVisible();
-						await fixture!.player
-							.getByRole('button', { name: 'Abrir minha ficha' })
-							.first()
-							.click();
-						const sheet = fixture!.player.locator('.sheet-backdrop.floating .sheet');
-						await expect(sheet).toBeVisible({ timeout: 20_000 });
-						await fixture!.player
-							.getByPlaceholder('Nome do personagem')
-							.fill('Ficha persistida E2E');
-						await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
-						await expect
-							.poll(async () => {
-								const response = await fixture!.playerApi.get(
-									`/api/v1/campaigns/${fixture!.campaignId}/character`
-								);
-								return ((await response.json()) as { sheet: { name: string } }).sheet.name;
-							})
-							.toBe('Ficha persistida E2E');
-					}
-				);
-			});
-			const player = fixture!.player;
-			const sheet = player.locator('.sheet-backdrop .sheet');
-			await test.step('opening the same owned sheet from the map focuses its existing instance', async () => {
-				await sheet.evaluate((node) => (node.dataset.instanceMarker = 'same-sheet-instance'));
-				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
-				await expect(player.locator('canvas').first()).toBeVisible();
-				await selectTokenAtDefaultPosition(player);
-				await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-				await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
-				await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
-				await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
-			});
-			await test.step('confirm floating default, move, resize, and navigate', () =>
-				diagnoseOnFailure(
+			const prepared = await prepareSavedPlayerSheet(browser, testInfo);
+			fixture = prepared.fixture;
+			const { player, sheet } = prepared;
+			await test.step('move floating sheet by its title bar', () => {
+				let phase = 'assert sheet starts floating';
+				return diagnoseOnFailure(
 					testInfo,
 					player,
-					'floating sheet move, resize and navigation',
-					[
-						'.sheet-backdrop',
-						'.sheet-backdrop .sheet',
-						'.sheet-backdrop .sheet header',
-						'.sheet-backdrop .sheet button',
-						'.sheet-backdrop .sheet-body',
-						'.workspace-tabs',
-						'.actor-drawer',
-						'.audio-channels'
-					],
+					'move floating sheet',
+					sheetPanelDiagnosticSelectors,
 					async () => {
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						await expect(sheet.locator('.sheet-mode-status')).toHaveText('Flutuante');
 						await assertAboveAudioFooter(player, sheet);
 						const before = (await sheet.boundingBox())!;
 						const title = (await sheet.locator('header').boundingBox())!;
-						await player.mouse.move(title.x + title.width * 0.45, title.y + title.height / 2);
-						markPointerTarget(
-							player,
-							'move sheet',
-							title.x + title.width * 0.45 - 45,
-							title.y + title.height / 2 + 32,
-							title.x + title.width * 0.45,
-							title.y + title.height / 2
-						);
+						const startX = title.x + title.width * 0.45;
+						const startY = title.y + title.height / 2;
+						markPointerTarget(player, 'move sheet', startX - 45, startY + 32, startX, startY);
+						phase = 'drag title bar';
+						await player.mouse.move(startX, startY);
 						await player.mouse.down();
-						await player.mouse.move(
-							title.x + title.width * 0.45 - 45,
-							title.y + title.height / 2 + 32
-						);
+						await player.mouse.move(startX - 45, startY + 32);
 						await player.mouse.up();
+						phase = 'assert moved position';
 						await expect
 							.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().top))
 							.toBeGreaterThan(before.y + 15);
-						const beforeResize = (await sheet.boundingBox())!;
-						await player.mouse.move(
-							beforeResize.x + beforeResize.width - 4,
-							beforeResize.y + beforeResize.height - 4
-						);
+						await assertAboveAudioFooter(player, sheet);
+					},
+					() => phase
+				);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player sheet resizes within the viewport', async ({ browser }, testInfo) => {
+		let fixture: LocalAuthenticatedFixture | undefined;
+		try {
+			const prepared = await prepareSavedPlayerSheet(browser, testInfo);
+			fixture = prepared.fixture;
+			const { player, sheet } = prepared;
+			await test.step('resize floating sheet from its lower corner', () => {
+				let phase = 'measure initial sheet bounds';
+				return diagnoseOnFailure(
+					testInfo,
+					player,
+					'resize floating sheet',
+					sheetPanelDiagnosticSelectors,
+					async () => {
+						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
+						await assertAboveAudioFooter(player, sheet);
+						const before = (await sheet.boundingBox())!;
+						const startX = before.x + before.width - 4;
+						const startY = before.y + before.height - 4;
 						markPointerTarget(
 							player,
 							'resize sheet',
-							beforeResize.x + beforeResize.width + 32,
-							beforeResize.y + beforeResize.height + 24,
-							beforeResize.x + beforeResize.width - 4,
-							beforeResize.y + beforeResize.height - 4
+							before.x + before.width + 32,
+							before.y + before.height + 24,
+							startX,
+							startY
 						);
+						phase = 'drag lower resize corner';
+						await player.mouse.move(startX, startY);
 						await player.mouse.down();
-						await player.mouse.move(
-							beforeResize.x + beforeResize.width + 32,
-							beforeResize.y + beforeResize.height + 24,
-							{ steps: 4 }
-						);
+						await player.mouse.move(before.x + before.width + 32, before.y + before.height + 24, {
+							steps: 4
+						});
 						await player.mouse.up();
+						phase = 'assert expanded width';
 						await expect
 							.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
-							.toBeGreaterThan(beforeResize.width + 15);
+							.toBeGreaterThan(before.width + 15);
+						await assertAboveAudioFooter(player, sheet);
+					},
+					() => phase
+				);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player linked sheet survives map navigation and focuses one instance', async ({
+		browser
+	}, testInfo) => {
+		let fixture: LocalAuthenticatedFixture | undefined;
+		try {
+			const prepared = await startLinkedSheetScenario(browser, testInfo);
+			fixture = prepared.fixture;
+			const { player, sheet } = prepared;
+			await test.step('navigate between map and library while the same sheet stays open', () => {
+				let phase = 'open library tab';
+				return diagnoseOnFailure(
+					testInfo,
+					player,
+					'sheet persists across workspace navigation',
+					sheetPanelDiagnosticSelectors,
+					async () => {
+						await player.getByRole('button', { name: 'Mídias', exact: true }).click();
+						await expect(player.locator('.library-view')).toBeVisible();
+						phase = 'assert sheet remains during library tab';
+						await expect(sheet).toBeVisible();
+						await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
+						phase = 'return to map';
 						await player.getByRole('button', { name: 'Mesa', exact: true }).click();
 						await expect(player.locator('canvas').first()).toBeVisible();
+						phase = 'assert sheet and identity persist';
 						await expect(sheet).toBeVisible();
-						await expect
-							.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
-							.toBeGreaterThan(beforeResize.width + 15);
+						await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
+						await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
+						await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
 						await assertAboveAudioFooter(player, sheet);
+					},
+					() => phase
+				);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player sheet can dock, float again and close explicitly', async ({ browser }, testInfo) => {
+		let fixture: LocalAuthenticatedFixture | undefined;
+		try {
+			const prepared = await prepareSavedPlayerSheet(browser, testInfo);
+			fixture = prepared.fixture;
+			const { player, sheet } = prepared;
+			await test.step('dock and restore floating mode', () => {
+				let phase = 'dock sheet';
+				return diagnoseOnFailure(
+					testInfo,
+					player,
+					'dock and restore linked sheet',
+					sheetPanelDiagnosticSelectors,
+					async () => {
+						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						await sheet.getByRole('button', { name: 'Fixar ficha' }).click();
 						await expect(player.locator('.sheet-backdrop.docked .sheet')).toBeVisible();
 						await expect(sheet.locator('.sheet-mode-status')).toHaveText('Acoplada');
 						await assertAboveAudioFooter(player, sheet);
+						phase = 'restore floating mode';
 						await sheet.getByRole('button', { name: 'Destacar ficha' }).click();
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
-						const [standalone] = await Promise.all([
+						phase = 'close sheet explicitly';
+						await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
+						await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(0);
+					},
+					() => phase
+				);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('player opens an isolated authorized auxiliary sheet window', async ({
+		browser
+	}, testInfo) => {
+		let fixture: LocalAuthenticatedFixture | undefined;
+		let standalone: Page | undefined;
+		try {
+			const prepared = await prepareSavedPlayerSheet(browser, testInfo);
+			fixture = prepared.fixture;
+			const { player, sheet } = prepared;
+			await test.step('open and verify isolated auxiliary popup', () => {
+				let phase = 'open popup from the user gesture';
+				return diagnoseOnFailure(
+					testInfo,
+					player,
+					'auxiliary sheet popup',
+					sheetPanelDiagnosticSelectors,
+					async () => {
+						const [popup] = await Promise.all([
 							player.waitForEvent('popup'),
 							sheet.getByRole('button', { name: 'Abrir ficha em janela auxiliar' }).click()
 						]);
-						await expect(standalone).toHaveURL(/\/sheet\?campaign=[^&]+&character=[^&]+/);
-						expect(standalone.url()).toContain('auxiliary=1');
-						expect(standalone.url()).not.toMatch(/access_token|token|jwt/i);
-						expect(await standalone.evaluate(() => window.opener === null)).toBe(true);
-						expect(await standalone.evaluate(() => window.name)).toContain('maismorras-sheet-');
+						standalone = popup;
+						phase = 'assert isolated route and authorization-safe URL';
+						await expect(popup).toHaveURL(/\/sheet\?campaign=[^&]+&character=[^&]+/);
+						expect(popup.url()).toContain('auxiliary=1');
+						expect(popup.url()).not.toMatch(/access_token|token|jwt/i);
+						expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+						expect(await popup.evaluate(() => window.name)).toContain('maismorras-sheet-');
+						await expect(popup.locator('.sheet-backdrop.standalone .sheet header h2')).toHaveText(
+							'Ficha persistida E2E'
+						);
 						await expect(
-							standalone.locator('.sheet-backdrop.standalone .sheet header h2')
-						).toHaveText('Ficha persistida E2E');
-						await expect(
-							standalone.locator('canvas, .app-header, .floating-chat, .actor-drawer')
+							popup.locator('canvas, .app-header, .floating-chat, .actor-drawer')
 						).toHaveCount(0);
-						await standalone.close();
-					}
-				));
-			await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
-			await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(0);
+						await popup.close();
+						standalone = undefined;
+					},
+					() => phase
+				);
+			});
 		} finally {
+			await standalone?.close();
 			await fixture?.close();
 		}
 	});
@@ -1526,7 +1641,14 @@ test('bounded diagnostic failure creates a sanitized artifact attachment', async
 				testInfo,
 				page,
 				'controlled diagnostic failure at 390x844',
-				['body'],
+				[
+					'body',
+					{ selector: '.table-tools .tool-group', label: 'interactive tool group' },
+					{
+						selector: '.table-tools-gm',
+						label: 'hidden overlay host anchor (not clickable)'
+					}
+				],
 				async () => {
 					try {
 						await page
@@ -1557,6 +1679,8 @@ test('bounded diagnostic failure creates a sanitized artifact attachment', async
 		const diagnostic = readFileSync(attachmentPath, 'utf8');
 		expect(diagnostic).toContain('controlled bounded click timeout');
 		expect(diagnostic).toContain('"failureType":"TimeoutError"');
+		expect(diagnostic).toContain('interactive tool group: .table-tools .tool-group');
+		expect(diagnostic).toContain('hidden overlay host anchor (not clickable): .table-tools-gm');
 		expect(diagnostic).not.toContain('DIAGNOSTIC_SECRET_CANARY');
 	} finally {
 		await page.close();
@@ -1567,6 +1691,66 @@ async function openMap(page: Page, campaignId: string, sceneId: string) {
 	await page.goto(`/?campaign=${campaignId}&scene=${sceneId}`);
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20_000 });
 	await expect(page.locator('.floating-chat')).toBeVisible();
+}
+
+type LocalAuthenticatedFixture = Awaited<ReturnType<typeof createLocalAuthenticatedFixture>>;
+
+async function prepareSavedPlayerSheet(browser: Browser, testInfo: TestInfo) {
+	const fixture = await createLocalAuthenticatedFixture(browser);
+	try {
+		await test.step('prepare and open a saved player sheet', () => {
+			let phase = 'create player character and token';
+			return diagnoseOnFailure(
+				testInfo,
+				fixture.player,
+				'prepare and open saved player sheet',
+				[
+					'.workspace-tabs',
+					'.sheets-view',
+					'.sheet-backdrop',
+					'.sheet-backdrop .sheet',
+					'.sheet-backdrop .sheet header',
+					'.audio-channels'
+				],
+				async () => {
+					const character = await fixture.createCharacter(fixture.playerUserId, {
+						name: 'Ficha persistida E2E',
+						hitPointsCurrent: 10,
+						hitPointsMax: 10
+					});
+					await fixture.createCharacterToken(character.id);
+					phase = 'open sheet list';
+					await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+					await fixture.player.getByRole('button', { name: 'Fichas', exact: true }).click();
+					await expect(fixture.player.locator('.sheets-view')).toBeVisible();
+					phase = 'open linked sheet';
+					await fixture.player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+					const sheet = fixture.player.locator('.sheet-backdrop.floating .sheet');
+					await expect(sheet).toBeVisible({ timeout: 20_000 });
+					phase = 'save player sheet';
+					await fixture.player.getByPlaceholder('Nome do personagem').fill('Ficha persistida E2E');
+					await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+					await expect
+						.poll(async () => {
+							const response = await fixture.playerApi.get(
+								`/api/v1/campaigns/${fixture.campaignId}/character`
+							);
+							return ((await response.json()) as { sheet: { name: string } }).sheet.name;
+						})
+						.toBe('Ficha persistida E2E');
+				},
+				() => phase
+			);
+		});
+		return {
+			fixture,
+			player: fixture.player,
+			sheet: fixture.player.locator('.sheet-backdrop .sheet')
+		};
+	} catch (error) {
+		await fixture.close();
+		throw error;
+	}
 }
 
 function sanitizeBrowserDiagnostic(value: string): string {
@@ -1631,7 +1815,7 @@ async function diagnoseOnFailure<T>(
 	testInfo: TestInfo,
 	page: Page,
 	step: string,
-	selectors: string[],
+	selectors: DiagnosticSelector[],
 	operation: () => Promise<T>,
 	currentPhase: () => string = () => 'operation'
 ): Promise<T> {
@@ -1643,75 +1827,82 @@ async function diagnoseOnFailure<T>(
 	} catch (error) {
 		try {
 			const browser = await completeWithinBudget(
-				page.evaluate((targets) => {
-					const readRect = (element: Element) => {
-						const rect = element.getBoundingClientRect();
-						return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-					};
-					const elements = targets.map((selector) => {
-						const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 4);
-						const metrics = nodes.map((node) => {
-							const style = getComputedStyle(node);
-							const rect = node.getBoundingClientRect();
+				page.evaluate(
+					(targets) => {
+						const readRect = (element: Element) => {
+							const rect = element.getBoundingClientRect();
+							return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+						};
+						const elements = targets.map(({ selector, label }) => {
+							const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 4);
+							const metrics = nodes.map((node) => {
+								const style = getComputedStyle(node);
+								const rect = node.getBoundingClientRect();
+								return {
+									visible:
+										style.display !== 'none' &&
+										style.visibility !== 'hidden' &&
+										rect.width > 0 &&
+										rect.height > 0,
+									box: readRect(node),
+									style: {
+										display: style.display,
+										visibility: style.visibility,
+										opacity: style.opacity,
+										position: style.position,
+										zIndex: style.zIndex
+									},
+									state: {
+										expanded: node.getAttribute('aria-expanded'),
+										pressed: node.getAttribute('aria-pressed'),
+										disabled: node instanceof HTMLButtonElement ? node.disabled : false,
+										ariaDisabled: node.getAttribute('aria-disabled')
+									}
+								};
+							});
 							return {
-								visible:
-									style.display !== 'none' &&
-									style.visibility !== 'hidden' &&
-									rect.width > 0 &&
-									rect.height > 0,
-								box: readRect(node),
-								style: {
-									display: style.display,
-									visibility: style.visibility,
-									opacity: style.opacity,
-									position: style.position,
-									zIndex: style.zIndex
-								},
-								state: {
-									expanded: node.getAttribute('aria-expanded'),
-									pressed: node.getAttribute('aria-pressed'),
-									disabled: node instanceof HTMLButtonElement ? node.disabled : false,
-									ariaDisabled: node.getAttribute('aria-disabled')
-								}
+								selector: `${label}: ${selector}`,
+								count: document.querySelectorAll(selector).length,
+								visibleCount: metrics.filter((metric) => metric.visible).length,
+								boxes: metrics.map((metric) => metric.box),
+								styles: metrics.map((metric) => metric.style),
+								states: metrics.map((metric) => metric.state)
 							};
 						});
+						const tabs = Array.from(
+							document.querySelectorAll('.workspace-tabs button, [role="tab"]')
+						);
+						const activeTabIndex = tabs.findIndex(
+							(tab) =>
+								tab.matches(
+									'[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]'
+								) ||
+								tab.classList.contains('active') ||
+								tab.classList.contains('selected')
+						);
+						const pointer = (
+							window as Window & {
+								__safeE2ePointer?: { x: number; y: number };
+							}
+						).__safeE2ePointer;
 						return {
-							selector,
-							count: document.querySelectorAll(selector).length,
-							visibleCount: metrics.filter((metric) => metric.visible).length,
-							boxes: metrics.map((metric) => metric.box),
-							styles: metrics.map((metric) => metric.style),
-							states: metrics.map((metric) => metric.state)
+							activeTabIndex: activeTabIndex < 0 ? null : activeTabIndex,
+							scroll: {
+								x: window.scrollX,
+								y: window.scrollY,
+								viewportWidth: window.innerWidth,
+								viewportHeight: window.innerHeight,
+								documentWidth: document.documentElement.scrollWidth,
+								documentHeight: document.documentElement.scrollHeight
+							},
+							pointer: pointer ?? null,
+							elements
 						};
-					});
-					const tabs = Array.from(
-						document.querySelectorAll('.workspace-tabs button, [role="tab"]')
-					);
-					const activeTabIndex = tabs.findIndex(
-						(tab) =>
-							tab.matches('[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]') ||
-							tab.classList.contains('active') ||
-							tab.classList.contains('selected')
-					);
-					const pointer = (
-						window as Window & {
-							__safeE2ePointer?: { x: number; y: number };
-						}
-					).__safeE2ePointer;
-					return {
-						activeTabIndex: activeTabIndex < 0 ? null : activeTabIndex,
-						scroll: {
-							x: window.scrollX,
-							y: window.scrollY,
-							viewportWidth: window.innerWidth,
-							viewportHeight: window.innerHeight,
-							documentWidth: document.documentElement.scrollWidth,
-							documentHeight: document.documentElement.scrollHeight
-						},
-						pointer: pointer ?? null,
-						elements
-					};
-				}, selectors),
+					},
+					selectors.map((target) =>
+						typeof target === 'string' ? { selector: target, label: target } : target
+					)
+				),
 				DIAGNOSTIC_SNAPSHOT_TIMEOUT_MS
 			);
 			const target = pointerTargets.get(page);

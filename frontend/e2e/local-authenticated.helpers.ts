@@ -369,7 +369,7 @@ export async function createLocalAuthenticatedFixture(
 	} catch (error) {
 		const testInfo = test.info();
 		if (
-			/^(six map menus|resizable floating panels|floating chat and sheet resize|GM cannot cast through|player sheet floats by default)/.test(
+			/^(map menus|map signal remains|token inspector header|resizable floating panels|floating chat and sheet resize|GM cannot cast through|player sheet|player linked sheet|player opens an isolated)/.test(
 				testInfo.title
 			)
 		) {
@@ -404,6 +404,9 @@ async function attachFixtureSetupDiagnostics(
 						'.workspace-tabs',
 						'canvas',
 						'.map-tool-menu',
+						'.table-tools .tool-group',
+						'.table-tools .tool-group > button',
+						'.table-tools .tool-group button[aria-expanded]',
 						'.token-inspector',
 						'.token-inspector .spell-row button',
 						'.floating-chat',
