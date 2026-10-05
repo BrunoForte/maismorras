@@ -59,6 +59,20 @@ func normalizeDerivedFields(sheet Sheet, rules systems.Dnd2024CharacterRules) Sh
 	return sheet
 }
 
+// MovementLimitSquares converts the canonical character speed (stored in
+// metres) to 1.5 m battle-map grid squares. Legacy integer speeds are naturally
+// compatible because they use the same metric unit.
+func MovementLimitSquares(speed float64) int {
+	if speed <= 0 {
+		return 6
+	}
+	squares := int(math.Ceil(speed / 1.5))
+	if squares > 30 {
+		return 30
+	}
+	return squares
+}
+
 func proficiencyBonus(level int, rules systems.Dnd2024CharacterRules) int {
 	return rules.ProficiencyBonus(level)
 }

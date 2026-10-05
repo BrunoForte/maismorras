@@ -367,4 +367,72 @@ describe('SRD translation queue', () => {
 		expect(calls).toEqual(['spell-pending', 'spell-pending']);
 		expect(get(srdTranslationQueue)).toMatchObject({ status: 'completed', total: 1, completed: 1 });
 	});
+
+	it('resumes the four remaining entries from a 1253-entry batch without reprocessing saved translations', async () => {
+		vi.useFakeTimers();
+		const savedEntries = Array.from({ length: 1249 }, (_, index) => {
+			const saved = entry(`saved-${index}`);
+			return {
+				...saved,
+				translations: {
+					'pt-BR': `Nome traduzido ${index}`,
+					'pt-BR.source': index % 2 === 0 ? 'official' : 'manual',
+					'pt-BR.summary': `Resumo revisado ${index}`,
+					'pt-BR.summary.source': 'reviewed'
+				}
+			};
+		});
+		const pendingEntries = [
+			entry('Wizard'),
+			entry('Bead of Nourishment'),
+			entry('Dispel Magic'),
+			entry('Pending entry four')
+		];
+		const batch = [...savedEntries, ...pendingEntries];
+		const calls: string[] = [];
+		let failTransiently = true;
+		const translate = async (item: CompendiumEntry) => {
+			calls.push(item.id);
+			if (failTransiently && ['Wizard', 'Bead of Nourishment', 'Dispel Magic'].includes(item.id))
+				throw new ApiError(502, 'gateway temporarily unavailable');
+			return { ...item, translations: { ...item.translations, 'pt-BR': `Traduzido ${item.id}` } };
+		};
+
+		const initialRun = startSrdTranslationQueue(
+			'campaign-1253',
+			batch,
+			translate,
+			(item) => item.name
+		);
+		await vi.advanceTimersByTimeAsync(20_000);
+		await initialRun;
+		expect(get(srdTranslationQueue)).toMatchObject({
+			status: 'paused',
+			total: 4,
+			completed: 0,
+			failedEntries: pendingEntries.map((item) => item.name)
+		});
+		expect(calls).toEqual([
+			'Wizard',
+			'Wizard',
+			'Wizard',
+			'Bead of Nourishment',
+			'Bead of Nourishment',
+			'Bead of Nourishment',
+			'Dispel Magic',
+			'Dispel Magic',
+			'Dispel Magic'
+		]);
+		failTransiently = false;
+		await startSrdTranslationQueue('campaign-1253', batch, translate, (item) => item.name);
+		expect(get(srdTranslationQueue)).toMatchObject({ status: 'completed', total: 4, completed: 4 });
+		expect(calls.slice(9)).toEqual(pendingEntries.map((item) => item.id));
+		expect(calls.some((id) => id.startsWith('saved-'))).toBe(false);
+		expect(savedEntries[0].translations).toMatchObject({
+			'pt-BR': 'Nome traduzido 0',
+			'pt-BR.source': 'official',
+			'pt-BR.summary': 'Resumo revisado 0',
+			'pt-BR.summary.source': 'reviewed'
+		});
+	});
 });

@@ -3,6 +3,7 @@ package characters
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strings"
 
@@ -209,7 +210,7 @@ func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
 func validate(sheet Sheet) error {
 	// ArmorClass, proficiencyBonus and passivePerception are server-derived;
 	// ignore client values and recompute them before persistence.
-	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.Speed < 0 || sheet.Speed > 300 {
+	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || math.IsNaN(sheet.Speed) || math.IsInf(sheet.Speed, 0) || sheet.Speed < 0 || sheet.Speed > 300 {
 		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV e deslocamento da ficha.")
 	}
 	if len([]rune(strings.TrimSpace(sheet.SpeciesLineage))) > 80 {

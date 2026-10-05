@@ -45,7 +45,7 @@ type Sheet struct {
 	ArmorClass            int             `json:"armorClass"`
 	Initiative            int             `json:"initiative"`
 	InitiativeAdvantage   bool            `json:"initiativeAdvantage"`
-	Speed                 int             `json:"speed"`
+	Speed                 float64         `json:"speed"`
 	HitPointsCurrent      int             `json:"hitPointsCurrent"`
 	HitPointsMax          int             `json:"hitPointsMax"`
 	TemporaryHP           int             `json:"temporaryHP"`
@@ -724,7 +724,7 @@ func (r *Repository) syncSceneTokens(ctx context.Context, actorID string, sheet 
 	if strings.TrimSpace(portrait) == "" {
 		portrait = sheet.PortraitPath
 	}
-	_, err := r.pool.Exec(ctx, `update scene_tokens set name=$1,hp_current=$2,hp_max=$3,armor_class=$4,initiative_bonus=$5,image_url=nullif($6,''),updated_at=now() where actor_id=$7`, sheet.Name, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, portrait, actorID)
+	_, err := r.pool.Exec(ctx, `update scene_tokens set name=$1,hp_current=$2,hp_max=$3,armor_class=$4,initiative_bonus=$5,movement_limit=$6,image_url=nullif($7,''),updated_at=now() where actor_id=$8`, sheet.Name, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, MovementLimitSquares(sheet.Speed), portrait, actorID)
 	if err != nil {
 		return fmt.Errorf("sync character tokens: %w", err)
 	}

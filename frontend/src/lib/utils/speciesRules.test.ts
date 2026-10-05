@@ -24,6 +24,7 @@ describe('species rules', () => {
 
 	it('uses catalog speed and a lineage override, preserving unknown legacy speed', () => {
 		expect(getSpeciesSpeed('Humano', '', 7)).toBe(9);
+		expect(getSpeciesSpeed('Golias', '', 7)).toBe(10.5);
 		expect(getSpeciesSpeed('Elfo', 'Elfo da Floresta', 7)).toBe(10.5);
 		expect(getSpeciesSpeed('espécie antiga', 'linhagem antiga', 7)).toBe(7);
 	});

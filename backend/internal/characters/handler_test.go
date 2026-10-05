@@ -3,6 +3,7 @@ package characters
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 
@@ -125,6 +126,52 @@ func validSheet() Sheet {
 func TestValidateAcceptsMinimalDND2024Sheet(t *testing.T) {
 	if err := validate(validSheet()); err != nil {
 		t.Fatalf("expected valid sheet, got %v", err)
+	}
+}
+
+func TestValidateAndDecodeAcceptFractionalMetricSpeciesSpeed(t *testing.T) {
+	for _, species := range []string{"Goliath", "Elfo"} {
+		t.Run(species, func(t *testing.T) {
+			payload := `{"name":"Ari","level":1,"species":"` + species + `","speciesLineage":"Elfo da Floresta","speed":10.5,"hitPointsCurrent":10,"hitPointsMax":10,"abilityScores":{"strength":10,"dexterity":10,"constitution":10,"intelligence":10,"wisdom":10,"charisma":10}}`
+			var sheet Sheet
+			if err := json.Unmarshal([]byte(payload), &sheet); err != nil {
+				t.Fatalf("fractional speed should decode through the API sheet contract: %v", err)
+			}
+			if err := validate(sheet); err != nil {
+				t.Fatalf("fractional speed should be valid: %v", err)
+			}
+			if sheet.Speed != 10.5 {
+				t.Fatalf("decoded speed = %v, want 10.5", sheet.Speed)
+			}
+		})
+	}
+}
+
+func TestLegacyIntegerSpeedStillDecodesAndRoundTrips(t *testing.T) {
+	var sheet Sheet
+	if err := json.Unmarshal([]byte(`{"speed":9}`), &sheet); err != nil {
+		t.Fatalf("legacy integer speed failed to decode: %v", err)
+	}
+	if sheet.Speed != 9 {
+		t.Fatalf("legacy speed = %v, want 9", sheet.Speed)
+	}
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored Sheet
+	if err := json.Unmarshal(raw, &restored); err != nil || restored.Speed != 9 {
+		t.Fatalf("legacy speed round trip = %v, err=%v", restored.Speed, err)
+	}
+}
+
+func TestValidateRejectsNonFiniteOrOutOfRangeSpeed(t *testing.T) {
+	for _, speed := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), -0.1, 300.1} {
+		sheet := validSheet()
+		sheet.Speed = speed
+		if err := validate(sheet); err == nil {
+			t.Errorf("validate accepted invalid speed %v", speed)
+		}
 	}
 }
 

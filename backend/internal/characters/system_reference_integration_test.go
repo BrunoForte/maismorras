@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -62,6 +63,17 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if _, err := tx.Exec(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','Versioned sheet test','{}')`, campaignID, playerID); err != nil {
 		t.Fatal(err)
 	}
+	var actorID string
+	if err := tx.QueryRow(ctx, `select id::text from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, playerID).Scan(&actorID); err != nil {
+		t.Fatal(err)
+	}
+	var sceneID string
+	if err := tx.QueryRow(ctx, `insert into scenes(campaign_id,name) values($1,'Fractional speed test') returning id::text`, campaignID).Scan(&sceneID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `insert into scene_tokens(scene_id,actor_id,name,movement_limit) values($1,$2,'Fractional speed token',6)`, sceneID, actorID); err != nil {
+		t.Fatal(err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +81,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	repo := NewRepository(pool)
 	handler := NewHandler(repo)
 	sheet := Sheet{
-		Name: "Versioned character", Level: 5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
+		Name: "Versioned character", Level: 5, Species: "Goliath", Speed: 10.5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
 		ProficiencyBonus: 99, ArmorClass: 99, PassivePerception: 99, SkillProficiencies: []string{"Percepção"},
 		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", SpellSlots: []SpellSlot{}, Resources: []Resource{},
 	}
@@ -104,6 +116,57 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if saved.Sheet.ProficiencyBonus != 3 || saved.Sheet.ArmorClass != 12 || saved.Sheet.PassivePerception != 14 {
 		t.Fatalf("derived fields did not use persisted D&D reference: proficiency=%d AC=%d passive=%d", saved.Sheet.ProficiencyBonus, saved.Sheet.ArmorClass, saved.Sheet.PassivePerception)
 	}
+	assertPlayerSpeed := func(species, lineage string, speed float64, wantSquares int) {
+		t.Helper()
+		current := saved.Sheet
+		current.Species, current.SpeciesLineage, current.Speed = species, lineage, speed
+		body, err := json.Marshal(current)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest("PUT", "/", bytes.NewReader(body))
+		req.SetPathValue("campaignID", campaignID)
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{UserID: playerID}))
+		res := httptest.NewRecorder()
+		if err := handler.SaveMine(res, req); err != nil {
+			t.Fatal(err)
+		}
+		if res.Code != http.StatusOK {
+			t.Fatalf("player SaveMine for %s returned %d: %s", species, res.Code, res.Body.String())
+		}
+		var response Character
+		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Sheet.Speed != speed {
+			t.Fatalf("saved %s speed = %v, want exact %v", species, response.Sheet.Speed, speed)
+		}
+		req = httptest.NewRequest("GET", "/", nil)
+		req.SetPathValue("campaignID", campaignID)
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{UserID: playerID}))
+		res = httptest.NewRecorder()
+		if err := handler.GetMine(res, req); err != nil || res.Code != http.StatusOK {
+			t.Fatalf("player GetMine for %s returned %d, err=%v", species, res.Code, err)
+		}
+		var loaded Character
+		if err := json.Unmarshal(res.Body.Bytes(), &loaded); err != nil {
+			t.Fatal(err)
+		}
+		if loaded.Sheet.Speed != speed {
+			t.Fatalf("reloaded %s speed = %v, want %v", species, loaded.Sheet.Speed, speed)
+		}
+		var actualSquares int
+		if err := pool.QueryRow(ctx, `select movement_limit from scene_tokens where scene_id=$1 and actor_id=$2`, sceneID, actorID).Scan(&actualSquares); err != nil {
+			t.Fatal(err)
+		}
+		if actualSquares != wantSquares {
+			t.Fatalf("token movement limit for %s = %d squares, want %d", species, actualSquares, wantSquares)
+		}
+		saved = response
+	}
+	assertPlayerSpeed("Golias", "", 10.5, 7)
+	assertPlayerSpeed("Elfo", "Elfo da Floresta", 10.5, 7)
+	assertPlayerSpeed("Humano", "", 9, 6)
 	gmPayload, err := json.Marshal(clientPayload)
 	if err != nil {
 		t.Fatal(err)
