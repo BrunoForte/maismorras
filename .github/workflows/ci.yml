@@ -238,6 +238,7 @@ jobs:
           "E2E_TIMINGS_FILE=$((Join-Path $env:GITHUB_WORKSPACE 'artifacts/e2e-test-durations.jsonl'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "- Local credential configuration: $([Math]::Round($credentialWatch.Elapsed.TotalMilliseconds)) ms" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Install frontend dependencies and browser
+        shell: pwsh
         working-directory: frontend
         run: |
           $installWatch = [Diagnostics.Stopwatch]::StartNew()
