@@ -1,5 +1,5 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { createLocalAuthenticatedFixture, localStackEnabled } from './local-authenticated.helpers';
 import { sanitizeSafeE2EDiagnostic } from '../src/lib/utils/safeE2EDiagnostics';
@@ -14,10 +14,15 @@ type PointerObservation = {
 
 const pointerTargets = new WeakMap<Page, PointerObservation>();
 const observedPointers = new WeakSet<Page>();
+const MENU_OPERATION_TIMEOUT_MS = 5_000;
+const DIAGNOSTIC_SNAPSHOT_TIMEOUT_MS = 1_000;
+const DIAGNOSTIC_COMPLETION_RESERVE_MS = 2_000;
+const testStartedAt = new WeakMap<TestInfo, number>();
 
 test.describe('local authenticated map and character sheet E2E', () => {
 	test.skip(!localStackEnabled, 'Runs only against the isolated local Supabase stack in CI.');
 	test.beforeEach(({ page }, testInfo) => {
+		testStartedAt.set(testInfo, performance.now());
 		page.setDefaultTimeout(30_000);
 		test.skip(testInfo.project.name !== 'chromium', 'Runs once on desktop.');
 	});
@@ -115,72 +120,176 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				{ width: 1280, height: 900 },
 				{ width: 390, height: 844 }
 			]) {
-				await page.setViewportSize(viewport);
-				for (const name of menus) {
-					await diagnoseOnFailure(
+				await test.step(`set viewport to ${viewport.width}x${viewport.height}`, () => {
+					const phase = 'set viewport dimensions';
+					return diagnoseOnFailure(
 						testInfo,
 						page,
-						`map menu ${name} at ${viewport.width}x${viewport.height}`,
+						`map menu viewport ${viewport.width}x${viewport.height}`,
 						[
-							'.map-tool-menu',
-							'.map-tool-menu button',
+							'.table-tools-gm',
+							'.table-tools-gm-buttons button[aria-expanded]',
 							'.workspace-tabs button',
-							'.token-inspector',
 							'.audio-channels'
 						],
 						async () => {
-							const trigger = page.getByRole('button', { name, exact: true });
-							await trigger.click();
-							await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-							const menu = page.locator('.map-tool-menu:visible');
-							await expect(menu).toHaveCount(1);
-							const measurements = await menu.evaluate((element) => {
-								const style = getComputedStyle(element);
-								const rect = element.getBoundingClientRect();
-								return {
-									borderRadius: style.borderRadius,
-									padding: style.padding,
-									gap: style.gap,
-									x: rect.x,
-									y: rect.y,
-									right: rect.right,
-									bottom: rect.bottom
-								};
-							});
-							expect(measurements).toMatchObject(referenceStyle);
-							expect(measurements.x).toBeGreaterThanOrEqual(0);
-							expect(measurements.y).toBeGreaterThanOrEqual(0);
-							expect(measurements.right).toBeLessThanOrEqual(viewport.width);
-							expect(measurements.bottom).toBeLessThanOrEqual(viewport.height);
-							await trigger.click();
-							await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-						}
+							const resized = await completeWithinBudget(
+								page.setViewportSize(viewport),
+								menuWaitBudget(testInfo)
+							);
+							if (resized === null) throw diagnosticTimeout('Viewport resize timed out.');
+						},
+						() => phase
 					);
+				});
+				for (const name of menus) {
+					await test.step(`menu ${name} at ${viewport.width}x${viewport.height}`, async () => {
+						let phase = 'locate trigger';
+						await diagnoseOnFailure(
+							testInfo,
+							page,
+							`map menu ${name} at ${viewport.width}x${viewport.height}`,
+							[
+								'.map-tool-menu',
+								'.map-tool-menu button',
+								'.table-tools-gm',
+								'.table-tools-gm-buttons button',
+								'.table-tools-gm-buttons button[aria-expanded]',
+								'.workspace-tabs button',
+								'.token-inspector',
+								'.audio-channels'
+							],
+							async () => {
+								const trigger = page.getByRole('button', { name, exact: true });
+								phase = 'click menu trigger';
+								await trigger.click({ timeout: menuWaitBudget(testInfo) });
+								phase = 'assert trigger expanded';
+								await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+									timeout: menuWaitBudget(testInfo)
+								});
+								const menu = page.locator('.map-tool-menu:visible');
+								phase = 'assert one visible menu';
+								await expect(menu).toHaveCount(1, { timeout: menuWaitBudget(testInfo) });
+								phase = 'measure menu styles and viewport bounds';
+								const measurements = await completeWithinBudget(
+									menu.evaluate((element) => {
+										const style = getComputedStyle(element);
+										const rect = element.getBoundingClientRect();
+										return {
+											borderRadius: style.borderRadius,
+											padding: style.padding,
+											gap: style.gap,
+											x: rect.x,
+											y: rect.y,
+											right: rect.right,
+											bottom: rect.bottom
+										};
+									}),
+									menuWaitBudget(testInfo)
+								);
+								if (measurements === null) {
+									const timeout = new Error('Menu geometry measurement exceeded its safe wait.');
+									timeout.name = 'TimeoutError';
+									throw timeout;
+								}
+								phase = 'assert visual style matches shared menu style';
+								expect(measurements).toMatchObject(referenceStyle);
+								phase = 'assert menu remains inside viewport';
+								expect(measurements.x).toBeGreaterThanOrEqual(0);
+								expect(measurements.y).toBeGreaterThanOrEqual(0);
+								expect(measurements.right).toBeLessThanOrEqual(viewport.width);
+								expect(measurements.bottom).toBeLessThanOrEqual(viewport.height);
+								phase = 'click menu trigger to close';
+								await trigger.click({ timeout: menuWaitBudget(testInfo) });
+								phase = 'assert trigger collapsed';
+								await expect(trigger).toHaveAttribute('aria-expanded', 'false', {
+									timeout: menuWaitBudget(testInfo)
+								});
+							},
+							() => phase
+						);
+					});
 				}
 			}
-			const signal = page.getByTestId('map-signal-button');
-			await expect(signal).toHaveAttribute('aria-pressed', 'false');
-			await signal.click();
-			await expect(signal).toHaveAttribute('aria-pressed', 'true');
-			await page
-				.locator('canvas')
-				.first()
-				.click({ position: { x: 80, y: 80 } });
-			await expect(signal).toHaveAttribute('aria-pressed', 'false');
-			await test.step('keep the inspector header in view while its categories scroll', async () => {
-				await page.setViewportSize({ width: 1280, height: 900 });
-				const inspector = page.locator('.token-inspector');
-				await expect(inspector.locator('.inspector-header')).toHaveCSS('position', 'sticky');
-				await inspector.locator('details.token-settings > summary').click();
-				const scrollable = await inspector.evaluate(
-					(node) => node.scrollHeight > node.clientHeight
+			await test.step('signal tool remains available', () => {
+				let phase = 'locate signal control';
+				return diagnoseOnFailure(
+					testInfo,
+					page,
+					'Sinalizar control after map menus',
+					['[data-testid="map-signal-button"]', '.table-tools-gm', 'canvas'],
+					async () => {
+						const signal = page.getByTestId('map-signal-button');
+						phase = 'assert signal starts unpressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'false', {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'click signal control';
+						await signal.click({ timeout: menuWaitBudget(testInfo) });
+						phase = 'assert signal becomes pressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'true', {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'click map canvas to clear signal';
+						await page
+							.locator('canvas')
+							.first()
+							.click({ position: { x: 80, y: 80 }, timeout: menuWaitBudget(testInfo) });
+						phase = 'assert signal becomes unpressed';
+						await expect(signal).toHaveAttribute('aria-pressed', 'false', {
+							timeout: menuWaitBudget(testInfo)
+						});
+					},
+					() => phase
 				);
-				expect(scrollable).toBe(true);
-				await inspector.evaluate((node) => (node.scrollTop = node.scrollHeight));
-				const panelTop = (await inspector.boundingBox())!.y;
-				const stickyTop = (await inspector.locator('.inspector-header').boundingBox())!.y;
-				expect(stickyTop).toBeGreaterThanOrEqual(panelTop);
-				expect(stickyTop).toBeLessThan(panelTop + 5);
+			});
+			await test.step('keep the inspector header in view while its categories scroll', () => {
+				let phase = 'restore desktop viewport';
+				return diagnoseOnFailure(
+					testInfo,
+					page,
+					'inspector sticky header after map menu checks',
+					['.token-inspector', '.inspector-header', 'details.token-settings > summary'],
+					async () => {
+						const resized = await completeWithinBudget(
+							page.setViewportSize({ width: 1280, height: 900 }),
+							menuWaitBudget(testInfo)
+						);
+						if (resized === null) throw diagnosticTimeout('Viewport resize timed out.');
+						const inspector = page.locator('.token-inspector');
+						phase = 'assert inspector header is sticky';
+						await expect(inspector.locator('.inspector-header')).toHaveCSS('position', 'sticky', {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'open token settings category';
+						await inspector.locator('details.token-settings > summary').click({
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'read inspector scroll dimensions';
+						const scrollable = await completeWithinBudget(
+							inspector.evaluate((node) => node.scrollHeight > node.clientHeight),
+							menuWaitBudget(testInfo)
+						);
+						if (scrollable === null) throw diagnosticTimeout('Inspector measurement timed out.');
+						phase = 'assert inspector content can scroll';
+						expect(scrollable).toBe(true);
+						phase = 'scroll inspector content';
+						const scrollTop = await completeWithinBudget(
+							inspector.evaluate((node) => {
+								node.scrollTop = node.scrollHeight;
+								return node.scrollTop;
+							}),
+							menuWaitBudget(testInfo)
+						);
+						if (scrollTop === null) throw diagnosticTimeout('Inspector scroll timed out.');
+						const panel = await inspector.boundingBox();
+						const header = await inspector.locator('.inspector-header').boundingBox();
+						phase = 'assert sticky header remains at inspector top';
+						expect(header!.y).toBeGreaterThanOrEqual(panel!.y);
+						expect(header!.y).toBeLessThan(panel!.y + 5);
+					},
+					() => phase
+				);
 			});
 		} finally {
 			await fixture?.close();
@@ -1404,6 +1513,56 @@ test.describe('local authenticated map and character sheet E2E', () => {
 	});
 });
 
+test('bounded diagnostic failure creates a sanitized artifact attachment', async ({
+	browser
+}, testInfo) => {
+	const page = await browser.newPage();
+	try {
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('about:blank');
+		let operationFailed = false;
+		try {
+			await diagnoseOnFailure(
+				testInfo,
+				page,
+				'controlled diagnostic failure at 390x844',
+				['body'],
+				async () => {
+					try {
+						await page
+							.getByRole('button', { name: 'absent diagnostic target' })
+							.click({ timeout: 100 });
+					} catch {
+						const timeout = new Error('Bearer DIAGNOSTIC_SECRET_CANARY');
+						timeout.name = 'TimeoutError';
+						throw timeout;
+					}
+				},
+				() => 'controlled bounded click timeout'
+			);
+		} catch {
+			operationFailed = true;
+		}
+
+		expect(operationFailed).toBe(true);
+		const attachment = testInfo.attachments.find(
+			(item) => item.name === 'sanitized-ui-failure-diagnostics.json'
+		);
+		expect(attachment?.path).toBeTruthy();
+		const attachmentPath = resolve(attachment!.path!);
+		const outputRelative = relative(resolve(testInfo.outputDir), attachmentPath);
+		expect(outputRelative).not.toMatch(/^\.\.(?:[\\/]|$)/);
+		const uploadedArtifactPath = relative(resolve('test-results'), attachmentPath);
+		expect(uploadedArtifactPath).not.toMatch(/^\.\.(?:[\\/]|$)/);
+		const diagnostic = readFileSync(attachmentPath, 'utf8');
+		expect(diagnostic).toContain('controlled bounded click timeout');
+		expect(diagnostic).toContain('"failureType":"TimeoutError"');
+		expect(diagnostic).not.toContain('DIAGNOSTIC_SECRET_CANARY');
+	} finally {
+		await page.close();
+	}
+});
+
 async function openMap(page: Page, campaignId: string, sceneId: string) {
 	await page.goto(`/?campaign=${campaignId}&scene=${sceneId}`);
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20_000 });
@@ -1473,86 +1632,92 @@ async function diagnoseOnFailure<T>(
 	page: Page,
 	step: string,
 	selectors: string[],
-	operation: () => Promise<T>
+	operation: () => Promise<T>,
+	currentPhase: () => string = () => 'operation'
 ): Promise<T> {
 	const startedAt = new Date().toISOString();
 	const started = performance.now();
-	await observePointer(page);
+	await completeWithinBudget(observePointer(page), 250);
 	try {
 		return await operation();
 	} catch (error) {
 		try {
-			const browser = await page.evaluate((targets) => {
-				const readRect = (element: Element) => {
-					const rect = element.getBoundingClientRect();
-					return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-				};
-				const elements = targets.map((selector) => {
-					const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 4);
-					const metrics = nodes.map((node) => {
-						const style = getComputedStyle(node);
-						const rect = node.getBoundingClientRect();
+			const browser = await completeWithinBudget(
+				page.evaluate((targets) => {
+					const readRect = (element: Element) => {
+						const rect = element.getBoundingClientRect();
+						return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+					};
+					const elements = targets.map((selector) => {
+						const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 4);
+						const metrics = nodes.map((node) => {
+							const style = getComputedStyle(node);
+							const rect = node.getBoundingClientRect();
+							return {
+								visible:
+									style.display !== 'none' &&
+									style.visibility !== 'hidden' &&
+									rect.width > 0 &&
+									rect.height > 0,
+								box: readRect(node),
+								style: {
+									display: style.display,
+									visibility: style.visibility,
+									opacity: style.opacity,
+									position: style.position,
+									zIndex: style.zIndex
+								},
+								state: {
+									expanded: node.getAttribute('aria-expanded'),
+									pressed: node.getAttribute('aria-pressed'),
+									disabled: node instanceof HTMLButtonElement ? node.disabled : false,
+									ariaDisabled: node.getAttribute('aria-disabled')
+								}
+							};
+						});
 						return {
-							visible:
-								style.display !== 'none' &&
-								style.visibility !== 'hidden' &&
-								rect.width > 0 &&
-								rect.height > 0,
-							box: readRect(node),
-							style: {
-								display: style.display,
-								visibility: style.visibility,
-								opacity: style.opacity,
-								position: style.position,
-								zIndex: style.zIndex
-							},
-							state: {
-								expanded: node.getAttribute('aria-expanded'),
-								pressed: node.getAttribute('aria-pressed'),
-								disabled: node instanceof HTMLButtonElement ? node.disabled : false,
-								ariaDisabled: node.getAttribute('aria-disabled')
-							}
+							selector,
+							count: document.querySelectorAll(selector).length,
+							visibleCount: metrics.filter((metric) => metric.visible).length,
+							boxes: metrics.map((metric) => metric.box),
+							styles: metrics.map((metric) => metric.style),
+							states: metrics.map((metric) => metric.state)
 						};
 					});
+					const tabs = Array.from(
+						document.querySelectorAll('.workspace-tabs button, [role="tab"]')
+					);
+					const activeTabIndex = tabs.findIndex(
+						(tab) =>
+							tab.matches('[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]') ||
+							tab.classList.contains('active') ||
+							tab.classList.contains('selected')
+					);
+					const pointer = (
+						window as Window & {
+							__safeE2ePointer?: { x: number; y: number };
+						}
+					).__safeE2ePointer;
 					return {
-						selector,
-						count: document.querySelectorAll(selector).length,
-						visibleCount: metrics.filter((metric) => metric.visible).length,
-						boxes: metrics.map((metric) => metric.box),
-						styles: metrics.map((metric) => metric.style),
-						states: metrics.map((metric) => metric.state)
+						activeTabIndex: activeTabIndex < 0 ? null : activeTabIndex,
+						scroll: {
+							x: window.scrollX,
+							y: window.scrollY,
+							viewportWidth: window.innerWidth,
+							viewportHeight: window.innerHeight,
+							documentWidth: document.documentElement.scrollWidth,
+							documentHeight: document.documentElement.scrollHeight
+						},
+						pointer: pointer ?? null,
+						elements
 					};
-				});
-				const tabs = Array.from(document.querySelectorAll('.workspace-tabs button, [role="tab"]'));
-				const activeTabIndex = tabs.findIndex(
-					(tab) =>
-						tab.matches('[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]') ||
-						tab.classList.contains('active') ||
-						tab.classList.contains('selected')
-				);
-				const pointer = (
-					window as Window & {
-						__safeE2ePointer?: { x: number; y: number };
-					}
-				).__safeE2ePointer;
-				return {
-					activeTabIndex: activeTabIndex < 0 ? null : activeTabIndex,
-					scroll: {
-						x: window.scrollX,
-						y: window.scrollY,
-						viewportWidth: window.innerWidth,
-						viewportHeight: window.innerHeight,
-						documentWidth: document.documentElement.scrollWidth,
-						documentHeight: document.documentElement.scrollHeight
-					},
-					pointer: pointer ?? null,
-					elements
-				};
-			}, selectors);
+				}, selectors),
+				DIAGNOSTIC_SNAPSHOT_TIMEOUT_MS
+			);
 			const target = pointerTargets.get(page);
 			const record = sanitizeSafeE2EDiagnostic({
 				test: testInfo.title,
-				step,
+				step: `${step}: ${currentPhase()}`,
 				attempt: testInfo.retry + 1,
 				startedAt,
 				failedAt: new Date().toISOString(),
@@ -1562,32 +1727,71 @@ async function diagnoseOnFailure<T>(
 				httpStatus: null,
 				url: page.url(),
 				viewport: page.viewportSize(),
-				activeTabIndex: browser.activeTabIndex,
-				scroll: browser.scroll,
+				activeTabIndex: browser?.activeTabIndex ?? null,
+				scroll: browser?.scroll ?? {
+					x: 0,
+					y: 0,
+					viewportWidth: page.viewportSize()?.width ?? 0,
+					viewportHeight: page.viewportSize()?.height ?? 0,
+					documentWidth: page.viewportSize()?.width ?? 0,
+					documentHeight: page.viewportSize()?.height ?? 0
+				},
 				pointer: {
-					x: browser.pointer?.x ?? null,
-					y: browser.pointer?.y ?? null,
+					x: browser?.pointer?.x ?? null,
+					y: browser?.pointer?.y ?? null,
 					action: target?.action ?? null,
 					startX: target?.x ?? null,
 					startY: target?.y ?? null,
 					targetX: target?.targetX ?? null,
 					targetY: target?.targetY ?? null
 				},
-				elements: browser.elements
+				elements: browser?.elements ?? []
 			});
 			const body = JSON.stringify(record);
 			const diagnosticPath = testInfo.outputPath('sanitized-ui-failure-diagnostics.json');
 			mkdirSync(dirname(diagnosticPath), { recursive: true });
 			writeFileSync(diagnosticPath, body, 'utf8');
-			await testInfo.attach('sanitized-ui-failure-diagnostics.json', {
-				path: diagnosticPath,
-				contentType: 'application/json'
-			});
+			await completeWithinBudget(
+				testInfo.attach('sanitized-ui-failure-diagnostics.json', {
+					path: diagnosticPath,
+					contentType: 'application/json'
+				}),
+				DIAGNOSTIC_SNAPSHOT_TIMEOUT_MS
+			);
 		} catch {
 			// Diagnostic collection must never replace the original test failure.
 		}
 		throw error;
 	}
+}
+
+async function completeWithinBudget<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<null>((resolve) => {
+				timer = setTimeout(() => resolve(null), timeoutMs);
+			})
+		]);
+	} catch {
+		return null;
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+function menuWaitBudget(testInfo: TestInfo): number {
+	const elapsed = performance.now() - (testStartedAt.get(testInfo) ?? performance.now());
+	const remaining = testInfo.timeout - elapsed - DIAGNOSTIC_COMPLETION_RESERVE_MS;
+	if (remaining <= 0) throw diagnosticTimeout('Reserved time for safe diagnostics reached.');
+	return Math.max(100, Math.min(MENU_OPERATION_TIMEOUT_MS, remaining));
+}
+
+function diagnosticTimeout(message: string): Error {
+	const timeout = new Error(message);
+	timeout.name = 'TimeoutError';
+	return timeout;
 }
 
 async function observePointer(page: Page) {
