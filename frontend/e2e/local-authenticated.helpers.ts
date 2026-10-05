@@ -177,26 +177,15 @@ export async function createLocalAuthenticatedFixture(
 				return { page, token: token! };
 			});
 
-		gm = (await login('GM', gmContext, gmEmail)).page;
+		const [gmLogin, playerLogin] = await test.step('login GM and player independently', async () =>
+			Promise.all([login('GM', gmContext, gmEmail), login('player', playerContext, playerEmail)]));
+		gm = gmLogin.page;
+		player = playerLogin.page;
 		gmPublisher = await gmContext.newPage();
 		await gmPublisher.goto('/');
-		const gmToken = await gm.evaluate(() => {
-			for (let i = 0; i < localStorage.length; i += 1) {
-				const key = localStorage.key(i);
-				if (key?.includes('auth-token')) {
-					try {
-						const value = JSON.parse(localStorage.getItem(key) ?? '{}');
-						return value.access_token ?? value.currentSession?.access_token ?? null;
-					} catch {
-						/* Ignore unrelated entries. */
-					}
-				}
-			}
-			return null;
-		});
 		gmApi = await playwrightRequest.newContext({
 			baseURL: apiBase,
-			extraHTTPHeaders: { Authorization: `Bearer ${gmToken}` }
+			extraHTTPHeaders: { Authorization: `Bearer ${gmLogin.token}` }
 		});
 		const { campaignId: createdCampaignId, sceneId: createdSceneId } =
 			await test.step('create campaign and initial scene', async () => {
@@ -221,24 +210,9 @@ export async function createLocalAuthenticatedFixture(
 			});
 			expect(inviteResponse.status()).toBe(201);
 			const invite = (await inviteResponse.json()) as { code: string };
-			player = (await login('player', playerContext, playerEmail)).page;
-			const playerToken = await player.evaluate(() => {
-				for (let i = 0; i < localStorage.length; i += 1) {
-					const key = localStorage.key(i);
-					if (key?.includes('auth-token')) {
-						try {
-							const value = JSON.parse(localStorage.getItem(key) ?? '{}');
-							return value.access_token ?? value.currentSession?.access_token ?? null;
-						} catch {
-							/* Ignore unrelated entries. */
-						}
-					}
-				}
-				return null;
-			});
 			playerApi = await playwrightRequest.newContext({
 				baseURL: apiBase,
-				extraHTTPHeaders: { Authorization: `Bearer ${playerToken}` }
+				extraHTTPHeaders: { Authorization: `Bearer ${playerLogin.token}` }
 			});
 			const accepted = await playerApi.post(`/api/v1/invites/${invite.code}/accept`, { data: {} });
 			expect(accepted.ok()).toBeTruthy();

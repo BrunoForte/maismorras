@@ -196,13 +196,17 @@ jobs:
         shell: bash
         run: |
           set +x
+          started_ms=$(date +%s%3N)
           supabase start > "$RUNNER_TEMP/supabase-start.log" 2>&1 || {
             echo '::error::Local Supabase failed to start; output was suppressed to protect generated credentials.'
             exit 1
           }
+          duration_ms=$(( $(date +%s%3N) - started_ms ))
+          printf '### Local authenticated E2E setup timing\n- Supabase start and migrations: %s ms\n' "$duration_ms" >> "$GITHUB_STEP_SUMMARY"
       - name: Configure local service credentials without printing them
         shell: pwsh
         run: |
+          $credentialWatch = [Diagnostics.Stopwatch]::StartNew()
           $status = supabase status -o env
           if ($LASTEXITCODE -ne 0) { throw 'Could not read local Supabase runtime settings.' }
           $values = @{}
@@ -231,11 +235,22 @@ jobs:
             'LOCAL_AUTH_E2E=true',
             'E2E_LOCAL_STACK=true'
           ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "E2E_TIMINGS_FILE=$((Join-Path $env:GITHUB_WORKSPACE 'artifacts/e2e-test-durations.jsonl'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "- Local credential configuration: $([Math]::Round($credentialWatch.Elapsed.TotalMilliseconds)) ms" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Install frontend dependencies and browser
         working-directory: frontend
         run: |
+          $installWatch = [Diagnostics.Stopwatch]::StartNew()
           npm ci
+          $npmInstallMs = [Math]::Round($installWatch.Elapsed.TotalMilliseconds)
+          $installWatch.Restart()
           npx playwright install --with-deps chromium
+          $browserInstallMs = [Math]::Round($installWatch.Elapsed.TotalMilliseconds)
+          @(
+            '### Local authenticated E2E setup timing',
+            "- npm ci: $npmInstallMs ms",
+            "- Playwright browser/system dependencies: $browserInstallMs ms"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Start local apps, run authenticated E2E, and always stop apps
         shell: pwsh
         run: |
@@ -243,17 +258,25 @@ jobs:
           New-Item -ItemType Directory -Force artifacts | Out-Null
           $backend = $null
           $frontend = $null
+          $phaseDurations = [ordered]@{}
+          $phaseWatch = [Diagnostics.Stopwatch]::StartNew()
+          $playwrightResults = @()
           try {
             $apiBinary = Join-Path (Get-Location).Path 'artifacts/maismorras-api'
             Push-Location backend
             try {
+              $phaseWatch.Restart()
               go build -o $apiBinary ./cmd/api
               if ($LASTEXITCODE -ne 0) { throw 'Local API build failed.' }
+              $phaseDurations['Backend build'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
             } finally { Pop-Location }
 
+            $phaseWatch.Restart()
             $backend = Start-Process -FilePath $apiBinary -WorkingDirectory (Join-Path (Get-Location).Path 'backend') -RedirectStandardOutput (Join-Path (Get-Location).Path 'artifacts/backend.log') -RedirectStandardError (Join-Path (Get-Location).Path 'artifacts/backend-error.log') -PassThru
             $frontend = Start-Process -FilePath 'node' -ArgumentList @('node_modules/vite/bin/vite.js', 'dev', '--host', '127.0.0.1', '--port', '4173') -WorkingDirectory (Join-Path (Get-Location).Path 'frontend') -RedirectStandardOutput (Join-Path (Get-Location).Path 'artifacts/frontend.log') -RedirectStandardError (Join-Path (Get-Location).Path 'artifacts/frontend-error.log') -PassThru
+            $phaseDurations['Process launch'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
 
+            $phaseWatch.Restart()
             $deadline = (Get-Date).AddMinutes(3)
             do {
               Start-Sleep -Seconds 2
@@ -263,16 +286,44 @@ jobs:
               if ($backend.HasExited -or $frontend.HasExited) { throw 'A local app process exited before becoming ready.' }
               if ((Get-Date) -gt $deadline) { throw 'Local API or frontend did not become ready; inspect sanitized artifacts.' }
             } while ($true)
+            $phaseDurations['Backend + frontend readiness'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
 
             Push-Location frontend
             try {
+              $phaseWatch.Restart()
               npx playwright test e2e/local-authenticated.spec.ts e2e/local-authenticated-audio.spec.ts e2e/local-authenticated-map-sheet.spec.ts --project=chromium --workers=1
+              $phaseDurations['Playwright suite'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
               if ($LASTEXITCODE -ne 0) { throw 'Mandatory authenticated E2E failed.' }
             } finally { Pop-Location }
           } finally {
+            $phaseWatch.Restart()
             foreach ($process in @($frontend, $backend)) {
               if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
             }
+            $phaseDurations['Process shutdown'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
+            $summary = @('### Local authenticated E2E phase timing', '', '| Phase | Duration |', '|---|---:|')
+            foreach ($phase in $phaseDurations.GetEnumerator()) { $summary += "| $($phase.Key) | $($phase.Value) ms |" }
+            $summary += ''
+            $timingFile = Join-Path (Get-Location).Path 'artifacts/e2e-test-durations.jsonl'
+            if (Test-Path -LiteralPath $timingFile) {
+              $summary += '### Playwright test and attempt timing (sanitized metadata only)'
+              $summary += ''
+              $summary += '| Test | Attempt | Result | Duration |'
+              $summary += '|---|---:|---|---:|'
+              foreach ($line in Get-Content -LiteralPath $timingFile) {
+                try {
+                  $record = $line | ConvertFrom-Json
+                  $safeTitle = [regex]::Replace([string]$record.test, '[^\p{L}\p{N} .,:;()_/-]', '')
+                  $summary += "| $safeTitle | $([int]$record.retry + 1) | $($record.status) | $([int]$record.durationMs) ms |"
+                  foreach ($step in $record.steps | Where-Object { $_.depth -eq 0 }) {
+                    $safePhase = [regex]::Replace([string]$step.name, '[^\p{L}\p{N} .,:;()_/-]', '')
+                    $summary += "| ↳ $safePhase | $([int]$record.retry + 1) | phase | $([int]$step.durationMs) ms |"
+                  }
+                } catch { $summary += '| Unreadable test timing record | — | unavailable | — |' }
+              }
+              $summary += ''
+            }
+            $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
       - name: Sanitize local E2E diagnostics
         if: always()
@@ -329,6 +380,7 @@ jobs:
           name: local-authenticated-e2e-diagnostics
           path: |
             artifacts/*.log
+            artifacts/e2e-test-durations.jsonl
             frontend/test-results/
             frontend/playwright-report/
             !frontend/test-results/**/*.zip
