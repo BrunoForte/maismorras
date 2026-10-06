@@ -336,7 +336,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('resizable floating panels collapse physically and restore above the audio footer', async ({
+	test('floating chat collapses physically and restores above the audio footer', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -393,28 +393,47 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await expect(chat).toHaveCSS('resize', 'both');
 					}
 				));
-			await test.step('dock the sheet without covering the actor drawer or audio footer', () =>
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('docked sheet stays above actors and audio footer on desktop and mobile', async ({
+		browser
+	}, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			await test.step('prepare narrator map and linked player token', async () => {
+				const character = await fixture!.createCharacter(fixture!.playerUserId, {
+					name: 'Ficha acoplada E2E',
+					hitPointsCurrent: 14,
+					hitPointsMax: 14
+				});
+				await fixture!.createCharacterToken(character.id);
+				await openMap(fixture!.gm, fixture!.campaignId, fixture!.sceneId);
+			});
+			const page = fixture!.gm;
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			await page.getByRole('button', { name: 'Fixar ficha' }).click();
+			const sheet = page.locator('.sheet-backdrop.docked .sheet');
+			const actors = page.locator('.actor-drawer');
+			await expect(sheet).toBeVisible();
+			await expect(actors).toBeVisible();
+			await test.step('verify docked sheet and actors remain accessible above audio footer', () =>
 				diagnoseOnFailure(
 					testInfo,
 					page,
-					'dock sheet and compare panel geometry',
+					'docked sheet and actor drawer geometry',
 					[
-						'.sheet-backdrop',
-						'.sheet-backdrop .sheet',
-						'.sheet-backdrop .sheet header',
+						'.sheet-backdrop.docked .sheet',
 						'.actor-drawer',
 						'.actor-drawer .drawer-toggle',
 						'.audio-channels',
 						'.workspace-tabs'
 					],
 					async () => {
-						await selectTokenAtDefaultPosition(page);
-						await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-						await page.getByRole('button', { name: 'Fixar ficha' }).click();
-						const sheet = page.locator('.sheet-backdrop.docked .sheet');
-						const actors = page.locator('.actor-drawer');
-						await expect(sheet).toBeVisible();
-						await expect(actors).toBeVisible();
 						await expect(actors.locator('.drawer-toggle')).toBeVisible();
 						await assertPanelsDoNotOverlap(page, sheet, actors);
 						await assertAboveAudioFooter(page, sheet);
@@ -430,9 +449,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('chat and sheet remain reachable together on desktop and narrow viewports', async ({
+	test('chat and linked sheet remain reachable together on desktop', async ({
 		browser
-	}) => {
+	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			await test.step('open the player sheet with chat and actors visible on the GM map', async () => {
@@ -456,39 +475,102 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await expect(sheet).toBeVisible();
 			await expect(chat).not.toHaveClass(/closed/);
 			await expect(actors).toBeVisible();
-			await test.step('keep titles, controls, navigation, actors, and footer accessible on desktop', async () => {
-				await assertPanelsDoNotOverlap(page, chat, sheet);
-				await assertPanelsDoNotOverlap(page, sheet, actors);
-				await assertPanelsDoNotOverlap(page, chat, actors);
-				await assertTitleReachable(page, chat, '.chat-titlebar');
-				await assertTitleReachable(page, sheet, 'header');
-				await assertAboveAudioFooter(page, chat);
-				await assertAboveAudioFooter(page, sheet);
-				await expect(actors.locator('.drawer-toggle')).toBeVisible();
-				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(sheet).toBeVisible();
-				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
-				await expect(page.locator('canvas').first()).toBeVisible();
-				await expect(sheet).toBeVisible();
-				await page.setViewportSize({ width: 390, height: 844 });
-				await expect(sheet.locator('header h2')).toBeVisible();
-				await expect(sheet.getByRole('button', { name: 'Fixar ficha' })).toBeVisible();
-				await expect(
-					sheet.getByRole('button', { name: 'Destacar ficha em janela auxiliar' })
-				).toBeVisible();
-				await expect(sheet.locator('.sheet-tabs')).toBeVisible();
-				await expect(sheet.getByRole('button', { name: 'Salvar ficha' })).toBeVisible();
-				await expect(actors.locator('.drawer-toggle')).toBeVisible();
-				await expect(page.locator('.audio-channels')).toBeVisible();
-				await assertAboveAudioFooter(page, sheet);
-				await page.setViewportSize({ width: 1280, height: 900 });
-			});
+			await test.step('keep titles, controls, navigation, actors, and footer accessible on desktop', () =>
+				diagnoseOnFailure(
+					testInfo,
+					page,
+					'desktop chat and sheet reachability',
+					[
+						'.floating-chat',
+						'.floating-chat .chat-titlebar',
+						'.sheet-backdrop.floating .sheet',
+						'.sheet-backdrop.floating .sheet header',
+						'.actor-drawer .drawer-toggle',
+						'.audio-channels',
+						'.workspace-tabs'
+					],
+					async () => {
+						await assertPanelsDoNotOverlap(page, chat, sheet);
+						await assertPanelsDoNotOverlap(page, sheet, actors);
+						await assertPanelsDoNotOverlap(page, chat, actors);
+						await assertTitleReachable(page, chat, '.chat-titlebar');
+						await assertTitleReachable(page, sheet, 'header');
+						await assertAboveAudioFooter(page, chat);
+						await assertAboveAudioFooter(page, sheet);
+						await expect(actors.locator('.drawer-toggle')).toBeVisible();
+						await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+						await expect(sheet).toBeVisible();
+						await page.getByRole('button', { name: 'Mesa', exact: true }).click();
+						await expect(page.locator('canvas').first()).toBeVisible();
+						await expect(sheet).toBeVisible();
+					}
+				));
 		} finally {
 			await fixture?.close();
 		}
 	});
 
-	test('floating chat and sheet resize, move, minimize, restore and raise independently', async ({
+	test('chat and linked sheet remain reachable on a narrow viewport', async ({
+		browser
+	}, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const character = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Painéis estreitos E2E',
+				hitPointsCurrent: 11,
+				hitPointsMax: 11
+			});
+			await fixture.createCharacterToken(character.id);
+			await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			const page = fixture.gm;
+			const chat = page.locator('.floating-chat');
+			const actors = page.locator('.actor-drawer');
+			if (await chat.evaluate((node) => node.classList.contains('closed')))
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			const sheet = page.locator('.sheet-backdrop.floating .sheet');
+			await expect(sheet).toBeVisible();
+			await expect(chat).not.toHaveClass(/closed/);
+			await expect(actors).toBeVisible();
+			await page.setViewportSize({ width: 390, height: 844 });
+			await test.step('keep controls, navigation, actors, and footer accessible on mobile', () =>
+				diagnoseOnFailure(
+					testInfo,
+					page,
+					'narrow viewport chat and sheet reachability',
+					[
+						'.floating-chat',
+						'.floating-chat .chat-titlebar',
+						'.sheet-backdrop.floating .sheet',
+						'.sheet-backdrop.floating .sheet header',
+						'.actor-drawer .drawer-toggle',
+						'.audio-channels',
+						'.workspace-tabs'
+					],
+					async () => {
+						await assertPanelsDoNotOverlap(page, chat, sheet);
+						await assertPanelsDoNotOverlap(page, sheet, actors);
+						await assertPanelsDoNotOverlap(page, chat, actors);
+						await expect(sheet.locator('header h2')).toBeVisible();
+						await expect(sheet.getByRole('button', { name: 'Fixar ficha' })).toBeVisible();
+						await expect(
+							sheet.getByRole('button', { name: 'Destacar ficha em janela auxiliar' })
+						).toBeVisible();
+						await expect(sheet.locator('.sheet-tabs')).toBeVisible();
+						await expect(sheet.getByRole('button', { name: 'Salvar ficha' })).toBeVisible();
+						await expect(actors.locator('.drawer-toggle')).toBeVisible();
+						await expect(page.locator('.audio-channels')).toBeVisible();
+						await assertAboveAudioFooter(page, sheet);
+					}
+				));
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('floating chat and sheet resize and stay above the audio footer', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -540,12 +622,36 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await assertAboveAudioFooter(page, sheet);
 					}
 				));
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('floating panels raise on keyboard focus and minimize and restore independently', async ({
+		browser
+	}, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const character = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Foco dos painéis E2E'
+			});
+			await fixture.createCharacterToken(character.id);
+			await openMap(fixture.gm, fixture.campaignId, fixture.sceneId);
+			const page = fixture.gm;
+			const chat = page.locator('.floating-chat');
+			if (await chat.evaluate((node) => node.classList.contains('closed')))
+				await page.getByRole('button', { name: 'Abrir chat' }).click();
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			const sheet = page.locator('.sheet-backdrop .sheet');
+			await expect(sheet).toBeVisible();
 			let phase = 'read initial panel layers';
-			await test.step('interaction and keyboard focus raise either panel without a front button', () =>
+			await test.step('focus either panel to raise it; minimize and restore each panel', () =>
 				diagnoseOnFailure(
 					testInfo,
 					page,
-					'raise chat and sheet through focus',
+					'panel focus, raise, minimize and restore',
 					[
 						'.floating-chat',
 						'.floating-chat .chat-titlebar',
@@ -1197,7 +1303,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('GM cannot cast through the own-character route for a selected player; display reaches chat and presentation', async ({
+	test('GM cannot cast through the own-character route for a selected player', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -1265,11 +1371,44 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				).toBeDisabled();
 				expect(unauthorizedSpellRequests).toEqual([]);
 			});
-			await test.step('GM display publishes chat and updates the scene presentation', () =>
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test("GM display publishes another player's spell to campaign chat and presentation", async ({
+		browser
+	}, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const f = fixture;
+			const character = await f.createCharacter(f.playerUserId, {
+				name: 'Alvo do narrador para exibição',
+				spellcastingOverride: true,
+				spells: [
+					{ name: 'Magia alvo E2E', level: 1, notes: 'Efeito com espaço.', diceFormula: '1d6' }
+				],
+				spellSlots: [{ level: 1, current: 1, max: 1 }]
+			});
+			await f.createCharacterToken(character.id);
+			await Promise.all([
+				openMap(f.player, f.campaignId, f.sceneId),
+				openMap(f.gm, f.campaignId, f.sceneId)
+			]);
+			const unauthorizedSpellRequests: string[] = [];
+			f.gm.on('request', (request) => {
+				if (
+					request.method() === 'POST' &&
+					request.url().includes(`/api/v1/campaigns/${f.campaignId}/character/cast-spell`)
+				)
+					unauthorizedSpellRequests.push('POST');
+			});
+			await test.step('GM displays the selected player spell to chat and presentation', () =>
 				diagnoseOnFailure(
 					testInfo,
 					f.gm,
-					'GM displays selected spell to chat and presentation',
+					'display selected player spell to chat and presentation',
 					[
 						'.token-inspector',
 						'.token-inspector .spell-groups',
@@ -1280,6 +1419,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						'.presentation-text'
 					],
 					async () => {
+						await selectTokenAtDefaultPosition(f.gm);
 						const inspector = f.gm.locator('.token-inspector');
 						const spellCategory = inspector.locator('.spell-groups');
 						if (!(await spellCategory.evaluate((node) => (node as HTMLDetailsElement).open)))
@@ -1287,13 +1427,10 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						const spellGroup = inspector
 							.locator('.spell-groups details')
 							.filter({ hasText: 'Magia alvo E2E' });
-						if (!(await spellGroup.evaluate((node) => (node as HTMLDetailsElement).open))) {
+						if (!(await spellGroup.evaluate((node) => (node as HTMLDetailsElement).open)))
 							await spellGroup.locator('summary').click();
-						}
 						const spell = spellGroup.locator('.spell-row').filter({ hasText: 'Magia alvo E2E' });
-						const displayAction = spell.getByRole('button', { name: 'Exibir' });
-						await displayAction.scrollIntoViewIfNeeded();
-						await displayAction.click();
+						await spell.getByRole('button', { name: 'Exibir' }).click();
 						await expect(
 							f.gm.locator('.floating-chat [data-event-id]').filter({ hasText: 'Magia alvo E2E' })
 						).toBeVisible();
@@ -1637,6 +1774,77 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		'.actor-drawer',
 		'.audio-channels'
 	];
+
+	test('player edits and reloads D&D money independently from inventory', async ({ browser }) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await test.step('prepare isolated campaign and player character', async () => {
+				const createdFixture = await createLocalAuthenticatedFixture(browser);
+				fixture = createdFixture;
+				await createdFixture.createCharacter(createdFixture.playerUserId, {
+					name: 'Dinheiro persistente E2E',
+					money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+					inventory: []
+				});
+				return createdFixture;
+			});
+			const character = await fixture.playerApi.get(
+				`/api/v1/campaigns/${fixture.campaignId}/character`
+			);
+			expect(character.status()).toBe(200);
+			const savedCharacter = (await character.json()) as { id: string };
+			const page = fixture.player;
+			await test.step('open the isolated player sheet and its equipment tab', async () => {
+				await page.goto(`/sheet?campaign=${fixture!.campaignId}&character=${savedCharacter.id}`);
+				await expect(page.locator('.sheet')).toBeVisible();
+				await page.getByRole('button', { name: 'Inventário', exact: true }).click();
+				await expect(page.locator('.money-panel')).toBeVisible();
+			});
+			const money = [
+				['PC · Cobre', '13'],
+				['PP · Prata', '4'],
+				['PE · Electro', '2'],
+				['PO · Ouro', '51'],
+				['PL · Platina', '1']
+			] as const;
+			await test.step('edit all D&D denominations', async () => {
+				for (const [label, value] of money) await page.getByLabel(label).fill(value);
+			});
+			await test.step('save through the authorized character route and verify the persisted response', async () => {
+				const saveResponse = page.waitForResponse((response) => {
+					const url = new URL(response.url());
+					return (
+						response.request().method() === 'PUT' &&
+						(url.pathname === `/api/v1/campaigns/${fixture!.campaignId}/character` ||
+							url.pathname.startsWith(`/api/v1/campaigns/${fixture!.campaignId}/characters/`))
+					);
+				});
+				await page.getByRole('button', { name: 'Salvar ficha' }).click();
+				const response = await saveResponse;
+				expect(new URL(response.url()).pathname).toBe(
+					`/api/v1/campaigns/${fixture!.campaignId}/characters/${savedCharacter.id}`
+				);
+				expect(response.status()).toBe(200);
+				const saved = (await response.json()) as {
+					sheet: {
+						money: { cp: number; sp: number; ep: number; gp: number; pp: number };
+						inventory: unknown[];
+					};
+				};
+				expect(saved.sheet.money).toEqual({ cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 });
+				expect(saved.sheet.inventory).toEqual([]);
+			});
+			await test.step('reload the isolated sheet and confirm values remain separate from inventory', async () => {
+				await page.reload();
+				await expect(page.locator('.sheet')).toBeVisible();
+				await page.getByRole('button', { name: 'Inventário', exact: true }).click();
+				for (const [label, value] of money) await expect(page.getByLabel(label)).toHaveValue(value);
+				await expect(page.locator('.money-panel')).toBeVisible();
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
 
 	test('player sheet floats by default and moves by its title bar', async ({
 		browser

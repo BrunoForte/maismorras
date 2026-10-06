@@ -197,9 +197,15 @@ jobs:
         working-directory: frontend
         run: Remove-Item -Force -ErrorAction SilentlyContinue e2e-storage-state.json, e2e-player-storage-state.json
   local-authenticated-e2e:
-    name: Mandatory local authenticated E2E
+    name: ${{ matrix.suite == 'routine' && 'Mandatory local authenticated E2E' || format('Release local authenticated E2E ({0})', matrix.suite) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["release-core","release-map-sheet"]' || '["routine"]') }}
+    env:
+      E2E_SUITE_MODE: ${{ matrix.suite }}
     permissions:
       contents: read
     steps:
@@ -289,7 +295,11 @@ jobs:
           $phaseDurations = [ordered]@{}
           $phaseWatch = [Diagnostics.Stopwatch]::StartNew()
           $playwrightResults = @()
-          $suiteScope = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { 'release: complete authenticated local suite' } else { 'routine: @routine-gate critical smoke suite' }
+          $suiteScope = switch ($env:E2E_SUITE_MODE) {
+            'release-core' { 'release: local authorization and audio suite' }
+            'release-map-sheet' { 'release: local map and character-sheet suite' }
+            default { 'routine: @routine-gate critical smoke suite' }
+          }
           try {
             $apiBinary = Join-Path (Get-Location).Path 'artifacts/maismorras-api'
             Push-Location backend
@@ -320,17 +330,17 @@ jobs:
             Push-Location frontend
             try {
               $phaseWatch.Restart()
-              $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1')
-              if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
-                $suiteScope = 'release: complete authenticated local suite'
-                $playwrightArgs += '--global-timeout=600000'
+              if ($env:E2E_SUITE_MODE -eq 'release-core') {
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', '--project=chromium', '--workers=1', '--global-timeout=600000', '--output=test-results/release-core')
+              } elseif ($env:E2E_SUITE_MODE -eq 'release-map-sheet') {
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1', '--global-timeout=600000', '--output=test-results/release-map-sheet')
               } else {
-                $suiteScope = 'routine: @routine-gate critical smoke suite'
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1')
                 $playwrightArgs += @('--grep=@routine-gate', '--global-timeout=300000')
               }
               & npx @playwrightArgs
               $phaseDurations['Playwright suite'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
-              if ($LASTEXITCODE -ne 0) { throw 'Mandatory authenticated E2E failed.' }
+              if ($LASTEXITCODE -ne 0) { throw "Authenticated E2E suite '$suiteScope' failed." }
             } finally { Pop-Location }
           } finally {
             $phaseWatch.Restart()
@@ -414,7 +424,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: local-authenticated-e2e-diagnostics
+          name: local-authenticated-e2e-diagnostics-${{ matrix.suite }}
           path: |
             artifacts/e2e-test-durations.jsonl
             frontend/test-results/**/attachments/sanitized-ui-failure-diagnostics.json

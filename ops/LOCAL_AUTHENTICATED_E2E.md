@@ -26,11 +26,16 @@ safe metrics reporter record phase and per-attempt durations.
 
 The complete local authenticated suite (all three local-authenticated spec
 files, including audio, map menus, panels, sheet, spells, overlay, and narrow
-viewports) runs on `workflow_dispatch`, with a ten-minute suite-level cap. It
-starts its own temporary Supabase, backend, and frontend stack; it does not
-require `E2E_BASE_URL`, `E2E_API_BASE`, or `E2E_SCENE_URL`. Before a substantial
+viewports) runs on `workflow_dispatch` as two parallel jobs with independent
+temporary Supabase/API/frontend stacks: authorization and audio, plus map and
+character sheet. Each job uses Chromium, one worker, the standard 30-second
+per-test timeout, the existing CI retry policy, and the existing ten-minute
+Playwright suite cap. Both jobs must pass; neither filters out tests. Each
+runner executes the full specs assigned to it with unique per-test campaign
+data. The jobs do not share database state and do not require
+`E2E_BASE_URL`, `E2E_API_BASE`, or `E2E_SCENE_URL`. Before a substantial
 release, dispatch the workflow against the candidate SHA, review every gate
-and the complete-suite result, and retain the run URL with the release record.
+and both complete-suite jobs, and retain the run URL with the release record.
 The manual event is validation only: production migration verification and
 deployment are conditioned only on a push to `main`; manual dispatch cannot
 deploy production.
