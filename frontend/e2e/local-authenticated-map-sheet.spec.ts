@@ -874,7 +874,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 
 	test('standalone sheet uses authenticated session, enforces ownership and stays isolated @routine-gate', async ({
 		browser
-	}) => {
+	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			await test.step('prepare independent player and narrator character sheets', async () => {
@@ -946,17 +946,38 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				expect(popupState.width).toBeGreaterThan(600);
 				expect(popupState.height).toBeGreaterThan(500);
 				const assertPopupUsesItsViewport = async (width: number, height: number) => {
-					await popup.setViewportSize({ width, height });
-					await expect(popup.locator('.sheet-tabs')).toBeVisible();
-					await expect(popup.locator('.sheet-body')).toBeVisible();
-					await expect
-						.poll(() =>
-							popup.locator('.sheet').evaluate((node) => {
-								const rect = node.getBoundingClientRect();
-								return { width: Math.round(rect.width), height: Math.round(rect.height) };
-							})
-						)
-						.toEqual({ width, height });
+					await diagnoseOnFailure(
+						testInfo,
+						popup,
+						`standalone sheet viewport ${width}x${height}`,
+						[
+							{ label: 'sheet backdrop', selector: '.sheet-backdrop' },
+							{ label: 'standalone sheet panel', selector: '.sheet' },
+							{ label: 'sheet header', selector: '.sheet > header' },
+							{ label: 'sheet tabs', selector: '.sheet-tabs' },
+							{ label: 'sheet body', selector: '.sheet-body' },
+							{ label: 'sheet footer', selector: '.sheet > footer' }
+						],
+						async () => {
+							await popup.setViewportSize({ width, height });
+							await expect(popup.locator('.sheet-tabs')).toBeVisible();
+							await expect(popup.locator('.sheet-body')).toBeVisible();
+							await expect
+								.poll(
+									() =>
+										popup.locator('.sheet').evaluate((node) => {
+											const rect = node.getBoundingClientRect();
+											return {
+												width: Math.round(rect.width),
+												height: Math.round(rect.height)
+											};
+										}),
+									{ timeout: remainingTestBudget(testInfo) }
+								)
+								.toEqual({ width, height });
+						},
+						() => `resize to ${width}x${height} and await exact panel bounds`
+					);
 					const layout = await popup.locator('.sheet').evaluate((node) => {
 						const body = node.querySelector<HTMLElement>('.sheet-body')!;
 						const header = node.querySelector<HTMLElement>('header')!;
