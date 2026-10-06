@@ -88,15 +88,15 @@ jobs:
       - if: always()
         run: supabase stop --no-backup
   e2e:
-    name: E2E authenticated (optional)
-    outputs:
-      e2e_status: ${{ steps.configure-auth-state.outputs.result == 'skipped' && 'skipped' || steps.run-e2e.outcome }}
+    name: Hosted authenticated E2E (disabled until staging exists)
+    # Keep this job and its specs available for reactivation when an isolated hosted staging environment exists.
+    if: ${{ false }}
     needs: [frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://maismorras.vercel.app' }}
-      E2E_API_BASE: ${{ vars.E2E_API_BASE || 'https://maismorras-api-454646414754.southamerica-east1.run.app' }}
+      E2E_BASE_URL: ${{ vars.E2E_BASE_URL }}
+      E2E_API_BASE: ${{ vars.E2E_API_BASE }}
       E2E_STORAGE_STATE_B64: ${{ secrets.E2E_STORAGE_STATE_B64 }}
       E2E_SCENE_URL: ${{ vars.E2E_SCENE_URL }}
       E2E_PLAYER_STORAGE_STATE_B64: ${{ secrets.E2E_PLAYER_STORAGE_STATE_B64 }}
@@ -106,6 +106,7 @@ jobs:
       E2E_GM_PASSWORD: ${{ secrets.E2E_GM_PASSWORD }}
       E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
       E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
+      E2E_TIMINGS_FILE: ${{ github.workspace }}/artifacts/release-e2e-test-durations.jsonl
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -121,6 +122,12 @@ jobs:
         shell: pwsh
         working-directory: frontend
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:E2E_BASE_URL) -or [string]::IsNullOrWhiteSpace($env:E2E_API_BASE)) {
+            throw 'Full release E2E requires explicit E2E_BASE_URL and E2E_API_BASE values for an isolated test deployment.'
+          }
+          if ($env:E2E_BASE_URL -match '(?i)maismorras\.vercel\.app' -or $env:E2E_API_BASE -match '(?i)maismorras-api-454646414754\.southamerica-east1\.run\.app') {
+            throw 'Full release E2E must target an isolated test deployment, not the production application or API.'
+          }
           $loginValues = @($env:E2E_SUPABASE_URL, $env:E2E_SUPABASE_PUBLISHABLE_KEY, $env:E2E_GM_EMAIL, $env:E2E_GM_PASSWORD, $env:E2E_PLAYER_EMAIL, $env:E2E_PLAYER_PASSWORD)
           $loginCount = @($loginValues | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
           if ($loginCount -eq $loginValues.Count) {
@@ -140,39 +147,65 @@ jobs:
             "result=configured" >> $env:GITHUB_OUTPUT
             Write-Warning 'Using legacy static browser state; configure E2E login credentials to remove manual refreshes.'
           } else {
-            "No E2E accounts configured; skipping authenticated E2E." | Out-File e2e-skip.txt
-            "result=skipped" >> $env:GITHUB_OUTPUT
-            exit 0
+            throw 'Full release E2E requires authenticated GM and player credentials or both legacy storage-state secrets; the suite will not be silently skipped.'
           }
       - name: Run Playwright E2E
         id: run-e2e
         shell: pwsh
         working-directory: frontend
         run: |
-          if (Test-Path e2e-skip.txt) { Write-Host 'Authenticated E2E skipped.'; exit 0 }
+          New-Item -ItemType Directory -Force (Split-Path $env:E2E_TIMINGS_FILE) | Out-Null
           npx playwright install --with-deps chromium
-          npm run test:e2e
+          npx playwright test --global-timeout=600000
+      - name: Report sanitized release E2E timings
+        if: always()
+        shell: pwsh
+        run: |
+          $summary = @('### Full release E2E timing (sanitized metadata)', '')
+          $timingFile = Join-Path $env:GITHUB_WORKSPACE 'artifacts/release-e2e-test-durations.jsonl'
+          if (-not (Test-Path -LiteralPath $timingFile)) {
+            $summary += 'Playwright timing data was not produced.'
+          } else {
+            $summary += '| Test | Attempt | Result | Duration |'
+            $summary += '|---|---:|---|---:|'
+            foreach ($line in Get-Content -LiteralPath $timingFile) {
+              try {
+                $record = $line | ConvertFrom-Json
+                $safeTitle = [regex]::Replace([string]$record.test, '[^\p{L}\p{N} .,:;()_/-]', '')
+                $summary += "| $safeTitle | $([int]$record.retry + 1) | $($record.status) | $([int]$record.durationMs) ms |"
+                foreach ($step in $record.steps | Where-Object { $_.depth -eq 0 }) {
+                  $safePhase = [regex]::Replace([string]$step.name, '[^\p{L}\p{N} .,:;()_/-]', '')
+                  $summary += "| ↳ $safePhase | $([int]$record.retry + 1) | phase | $([int]$step.durationMs) ms |"
+                }
+              } catch { $summary += '| Unreadable timing record | — | unavailable | — |' }
+            }
+          }
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+      - name: Upload allow-listed sanitized release diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-e2e-sanitized-diagnostics
+          path: |
+            artifacts/release-e2e-test-durations.jsonl
+            frontend/test-results/**/attachments/sanitized-ui-failure-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Remove session state
         if: always()
         shell: pwsh
         working-directory: frontend
         run: Remove-Item -Force -ErrorAction SilentlyContinue e2e-storage-state.json, e2e-player-storage-state.json
-      - name: Report authenticated E2E status
-        if: always()
-        shell: pwsh
-        env:
-          E2E_CONFIGURED: ${{ steps.configure-auth-state.outputs.result }}
-          E2E_OUTCOME: ${{ steps.run-e2e.outcome }}
-        run: |
-          if ($env:E2E_CONFIGURED -eq 'skipped') {
-            "### Authenticated E2E: SKIPPED`n`nNo automated E2E login credentials or legacy storage-state secret were configured; no authenticated browser tests ran." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          } else {
-            "### Authenticated E2E: $($env:E2E_OUTCOME.ToUpperInvariant())" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          }
   local-authenticated-e2e:
-    name: Mandatory local authenticated E2E
+    name: ${{ matrix.suite == 'routine' && 'Mandatory local authenticated E2E' || format('Release local authenticated E2E ({0})', matrix.suite) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["release-core","release-map-sheet"]' || '["routine"]') }}
+    env:
+      E2E_SUITE_MODE: ${{ matrix.suite }}
     permissions:
       contents: read
     steps:
@@ -262,6 +295,11 @@ jobs:
           $phaseDurations = [ordered]@{}
           $phaseWatch = [Diagnostics.Stopwatch]::StartNew()
           $playwrightResults = @()
+          $suiteScope = switch ($env:E2E_SUITE_MODE) {
+            'release-core' { 'release: local authorization and audio suite' }
+            'release-map-sheet' { 'release: local map and character-sheet suite' }
+            default { 'routine: @routine-gate critical smoke suite' }
+          }
           try {
             $apiBinary = Join-Path (Get-Location).Path 'artifacts/maismorras-api'
             Push-Location backend
@@ -292,9 +330,17 @@ jobs:
             Push-Location frontend
             try {
               $phaseWatch.Restart()
-              npx playwright test e2e/local-authenticated.spec.ts e2e/local-authenticated-audio.spec.ts e2e/local-authenticated-map-sheet.spec.ts --project=chromium --workers=1
+              if ($env:E2E_SUITE_MODE -eq 'release-core') {
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', '--project=chromium', '--workers=1', '--global-timeout=600000', '--output=test-results/release-core')
+              } elseif ($env:E2E_SUITE_MODE -eq 'release-map-sheet') {
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1', '--global-timeout=600000', '--output=test-results/release-map-sheet')
+              } else {
+                $playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1')
+                $playwrightArgs += @('--grep=@routine-gate', '--global-timeout=300000')
+              }
+              & npx @playwrightArgs
               $phaseDurations['Playwright suite'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
-              if ($LASTEXITCODE -ne 0) { throw 'Mandatory authenticated E2E failed.' }
+              if ($LASTEXITCODE -ne 0) { throw "Authenticated E2E suite '$suiteScope' failed." }
             } finally { Pop-Location }
           } finally {
             $phaseWatch.Restart()
@@ -302,7 +348,7 @@ jobs:
               if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
             }
             $phaseDurations['Process shutdown'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
-            $summary = @('### Local authenticated E2E phase timing', '', '| Phase | Duration |', '|---|---:|')
+            $summary = @('### Local authenticated E2E phase timing', '', "- Suite scope: $suiteScope", '', '| Phase | Duration |', '|---|---:|')
             foreach ($phase in $phaseDurations.GetEnumerator()) { $summary += "| $($phase.Key) | $($phase.Value) ms |" }
             $summary += ''
             $timingFile = Join-Path (Get-Location).Path 'artifacts/e2e-test-durations.jsonl'
@@ -378,18 +424,10 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: local-authenticated-e2e-diagnostics
+          name: local-authenticated-e2e-diagnostics-${{ matrix.suite }}
           path: |
-            artifacts/*.log
             artifacts/e2e-test-durations.jsonl
-            frontend/test-results/
-            frontend/playwright-report/
-            !frontend/test-results/**/*.zip
-            !frontend/test-results/**/*trace*
-            !frontend/test-results/**/*network*
-            !frontend/playwright-report/**/*.zip
-            !frontend/playwright-report/**/*trace*
-            !frontend/playwright-report/**/*network*
+            frontend/test-results/**/attachments/sanitized-ui-failure-diagnostics.json
           if-no-files-found: ignore
           retention-days: 7
       - name: Stop isolated Supabase stack
@@ -399,7 +437,7 @@ jobs:
         run: supabase stop --no-backup
   verify-migrations:
     name: Require latest Supabase migration applied
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -421,13 +459,12 @@ jobs:
           .\ops\verify-supabase-migrations.ps1 -ProjectRef $env:SUPABASE_PROJECT_REF
   deploy-production:
     name: Deploy production (Cloud Run → Vercel)
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       [
         backend,
         frontend,
         database-security,
-        e2e,
         local-authenticated-e2e,
         verify-migrations,
       ]
@@ -565,7 +602,6 @@ jobs:
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.deployment_url }}
           VERCEL_HEALTH: ${{ steps.verify-vercel.outputs.http_status }}
           COMMIT_SHA: ${{ github.sha }}
-          E2E_STATUS: ${{ needs.e2e.outputs.e2e_status }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           $summary = @"
@@ -575,8 +611,6 @@ jobs:
           | --- | --- | --- | --- |
           | Cloud Run | $env:CLOUD_RUN_OUTCOME | $env:CLOUD_RUN_URL | $env:CLOUD_RUN_REVISION / HTTP $env:CLOUD_RUN_HEALTH |
           | Vercel | $env:VERCEL_OUTCOME | $env:VERCEL_DEPLOYMENT_URL | produção: https://maismorras.vercel.app / HTTP $env:VERCEL_HEALTH |
-
-          Authenticated E2E: **$env:E2E_STATUS**
 
           Commit: $env:COMMIT_SHA
           [Execução completa do workflow]($env:RUN_URL)

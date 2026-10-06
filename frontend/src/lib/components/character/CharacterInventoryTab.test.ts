@@ -53,6 +53,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 				itemEntries: entries,
 				visibleItems: [],
 				totalWeight: 0,
+				money: { cp: 2, sp: 3, ep: 4, gp: 5, pp: 6 },
+				onMoneyChange: vi.fn(),
 				inventoryFilter: 'all',
 				optionLabel: (entry) => entry.name,
 				onAddCompendiumItem: vi.fn(),
@@ -69,5 +71,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html.indexOf('value="a"')).toBeLessThan(html.indexOf('value="b"'));
 		expect(html).toContain('value="shield"');
 		expect(html).toContain('value="other"');
+		expect(html).toContain('Dinheiro');
+		expect(html).toContain('aria-label="PC · Cobre"');
+		expect(html).toContain('value="5"');
 	});
 });

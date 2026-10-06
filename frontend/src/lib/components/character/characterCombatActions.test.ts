@@ -60,7 +60,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		author: 'Heroína',
 		payload: { expressao: args[2], dados: [15], total: 20 }
 	}));
-	const castMySpell = vi.fn(async () => ({
+	const castMySpell = vi.fn<CharacterCombatActionDependencies['castMySpell']>(async () => ({
 		eventId: 8,
 		sheet,
 		spellName: 'Mísseis mágicos',
@@ -262,12 +262,62 @@ describe('character combat actions', () => {
 		test.controller.chooseSpellSlot(0, 2);
 		await test.controller.castSpell(test.getSheet().spells[0], 0);
 
-		expect(test.castMySpell).toHaveBeenCalledWith(expect.anything(), 'campaign-1', 0, 2);
+		expect(test.castMySpell).toHaveBeenCalledWith(expect.anything(), 'campaign-1', 0, 2, undefined);
 		expect(test.setSheet).toHaveBeenCalledOnce();
 		expect(test.appendChat).toHaveBeenCalledOnce();
 		expect(test.getSheet().name).toBe('Ficha após conjuração');
 		expect(test.getSheet().spellSlots[1].current).toBe(0);
 		expect(test.appendChat.mock.calls[0][0].texto).toContain('espaço usado 2');
+	});
+
+	it('conjura magia de talento com uso gratuito sem enviar valores de uso como autoridade', async () => {
+		const test = setup();
+		test.getSheet().spellSlots[0].current = 0;
+		const grant = {
+			grantId: 'magic-initiate-1',
+			entryId: 'shield',
+			freeCast: true
+		};
+		const returnedSheet = {
+			...test.getSheet(),
+			spellSlots: [{ level: 1, current: 0, max: 1 }],
+			featSpellGrants: [
+				{
+					id: grant.grantId,
+					featId: 'magic-initiate',
+					spellList: 'wizard',
+					ability: 'intelligence' as const,
+					cantripEntryIds: ['light', 'mage-hand'],
+					firstLevelSpellEntryId: 'shield',
+					freeCastsRemaining: 0,
+					active: true
+				}
+			]
+		};
+		vi.mocked(test.castMySpell).mockResolvedValueOnce({
+			eventId: 10,
+			sheet: returnedSheet,
+			spellName: 'Shield',
+			baseLevel: 1,
+			slotLevel: 0,
+			effect: 'Protection',
+			spellcastingAbility: 'intelligence',
+			freeCastRemaining: 0
+		});
+
+		await test.controller.castSpell(
+			{ name: 'Shield', entryId: 'shield', level: 1, notes: '' },
+			-1,
+			grant
+		);
+
+		expect(test.castMySpell).toHaveBeenCalledWith(expect.anything(), 'campaign-1', -1, 0, grant);
+		expect(test.setSheet).toHaveBeenCalledWith(returnedSheet);
+		expect(test.getSheet().spellSlots[0].current).toBe(0);
+		expect(test.getSheet().featSpellGrants?.[0].freeCastsRemaining).toBe(0);
+		expect(test.appendChat.mock.calls[0][0].texto).toContain(
+			'uso gratuito do talento · restantes 0'
+		);
 	});
 
 	it.each([

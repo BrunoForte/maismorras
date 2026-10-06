@@ -25,6 +25,18 @@ export type CompendiumDraft = Pick<
 	CompendiumEntry,
 	'name' | 'summary' | 'rules' | 'translations' | 'isPublished'
 >;
+export type Dnd2024Ability = 'intelligence' | 'wisdom' | 'charisma';
+export type CampaignFeatSpellDefinition = {
+	spellEntryId: string;
+	canUseExistingSlots: boolean;
+	freeUses: number;
+	recovery: 'none' | 'short' | 'long';
+	abilityOptions: Dnd2024Ability[];
+};
+export type CampaignFeatSpellRule = {
+	enabled: boolean;
+	spells: CampaignFeatSpellDefinition[];
+};
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
 	return httpRequest<T>(session, path, init);
 }
@@ -78,6 +90,17 @@ export const updateCompendiumEntry = (
 		session,
 		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}`,
 		{ method: 'PUT', body: JSON.stringify(entry) }
+	);
+export const updateCampaignFeatSpellRule = (
+	session: Session,
+	campaignId: string,
+	entryId: string,
+	rule: CampaignFeatSpellRule
+) =>
+	request<CompendiumEntry>(
+		session,
+		`/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}/campaign-feat-spell-rule`,
+		{ method: 'PUT', body: JSON.stringify(rule) }
 	);
 export const deleteCompendiumEntry = (session: Session, campaignId: string, entryId: string) =>
 	request<void>(session, `/api/v1/campaigns/${campaignId}/compendium/entries/${entryId}`, {

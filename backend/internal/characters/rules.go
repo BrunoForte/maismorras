@@ -53,10 +53,30 @@ func resolveDnd2024RulesForReference(ref systems.Ref) (systems.Dnd2024CharacterR
 // may show a local preview while editing, but values sent by clients are not
 // trusted when the sheet is persisted or used for a roll.
 func normalizeDerivedFields(sheet Sheet, rules systems.Dnd2024CharacterRules) Sheet {
+	if sheet.Spells == nil {
+		sheet.Spells = []Spell{}
+	}
+	if sheet.FeatSpellGrants == nil {
+		sheet.FeatSpellGrants = []FeatSpellGrant{}
+	}
 	sheet.ProficiencyBonus = proficiencyBonus(sheet.Level, rules)
 	sheet.ArmorClass = calculateArmorClass(sheet, rules)
 	sheet.PassivePerception = passivePerception(sheet, rules)
 	return sheet
+}
+
+// MovementLimitSquares converts the canonical character speed (stored in
+// metres) to 1.5 m battle-map grid squares. Legacy integer speeds are naturally
+// compatible because they use the same metric unit.
+func MovementLimitSquares(speed float64) int {
+	if speed <= 0 {
+		return 6
+	}
+	squares := int(math.Ceil(speed / 1.5))
+	if squares > 30 {
+		return 30
+	}
+	return squares
 }
 
 func proficiencyBonus(level int, rules systems.Dnd2024CharacterRules) int {

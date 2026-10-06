@@ -19,6 +19,21 @@ func TestProficiencyBonusFromCharacterLevel(t *testing.T) {
 	}
 }
 
+func TestMovementLimitSquaresUsesCanonicalMetricSpeed(t *testing.T) {
+	cases := map[float64]int{
+		0:    6, // safe legacy/default movement
+		9:    6, // 30 ft species
+		10.5: 7, // Goliath and Forest Elf
+		7.5:  5,
+		300:  30, // constrained by the scene token contract
+	}
+	for speed, want := range cases {
+		if got := MovementLimitSquares(speed); got != want {
+			t.Errorf("MovementLimitSquares(%v) = %d, want %d", speed, got, want)
+		}
+	}
+}
+
 func TestNormalizeDerivedFieldsIgnoresClientValues(t *testing.T) {
 	sheet := validSheet()
 	sheet.Level = 5

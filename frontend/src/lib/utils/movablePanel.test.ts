@@ -29,6 +29,7 @@ function makeHarness(
 	};
 	const documentMock = {
 		documentElement: {},
+		body: {},
 		querySelector: vi.fn((selector: string) => {
 			const rect = obstacleRects[selector];
 			return rect ? { getBoundingClientRect: () => rect } : null;
@@ -39,12 +40,35 @@ function makeHarness(
 		removeEventListener: vi.fn((name: string) => documentListeners.delete(name))
 	};
 	class FakeElement {
+		className = '';
+		matches(selector: string) {
+			return selector === `.${this.className}`;
+		}
+		querySelector() {
+			return null;
+		}
 		closest(selector: string) {
 			return selector === '.titlebar' ? this : null;
 		}
 	}
 	const nodeListeners = new Map<string, (event: PointerEvent) => void>();
 	const nodeStyle: Record<string, string> = {};
+	let resizeObserverCallback: ResizeObserverCallback | undefined;
+	let mutationObserverCallback: MutationCallback | undefined;
+	class FakeResizeObserver {
+		constructor(callback: ResizeObserverCallback) {
+			resizeObserverCallback = callback;
+		}
+		observe = vi.fn();
+		disconnect = vi.fn();
+	}
+	class FakeMutationObserver {
+		constructor(callback: MutationCallback) {
+			mutationObserverCallback = callback;
+		}
+		observe = vi.fn();
+		disconnect = vi.fn();
+	}
 	const styleApi = Object.assign(nodeStyle, {
 		setProperty: (name: string, value: string) => {
 			nodeStyle[name] = value;
@@ -63,19 +87,18 @@ function makeHarness(
 		),
 		removeEventListener: vi.fn((name: string) => nodeListeners.delete(name)),
 		getBoundingClientRect() {
-			return {
-				left: Number.parseFloat(nodeStyle.left ?? '') || 100,
-				top: Number.parseFloat(nodeStyle.top ?? '') || 100,
-				right: (Number.parseFloat(nodeStyle.left ?? '') || 100) + size.width,
-				bottom: (Number.parseFloat(nodeStyle.top ?? '') || 100) + size.height,
-				width: size.width,
-				height: size.height
-			};
+			const left = Number.parseFloat(nodeStyle.left ?? '') || 100;
+			const top = Number.parseFloat(nodeStyle.top ?? '') || 100;
+			const width = Number.parseFloat(nodeStyle.width ?? '') || size.width;
+			const height = Number.parseFloat(nodeStyle.height ?? '') || size.height;
+			return { left, top, right: left + width, bottom: top + height, width, height };
 		}
 	} as unknown as HTMLElement;
 	installGlobal('window', windowMock);
 	installGlobal('document', documentMock);
 	installGlobal('Element', FakeElement);
+	installGlobal('ResizeObserver', FakeResizeObserver);
+	installGlobal('MutationObserver', FakeMutationObserver);
 	installGlobal('getComputedStyle', () => ({ getPropertyValue: () => '68px' }));
 	installGlobal('localStorage', {
 		getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -89,7 +112,18 @@ function makeHarness(
 		storage,
 		windowMock,
 		documentMock,
-		obstacleRects
+		obstacleRects,
+		triggerResize() {
+			resizeObserverCallback?.([], {} as ResizeObserver);
+		},
+		triggerDOMChange() {
+			const insertedObstacle = new FakeElement();
+			insertedObstacle.className = 'token-inspector';
+			mutationObserverCallback?.(
+				[{ addedNodes: [insertedObstacle], removedNodes: [] } as unknown as MutationRecord],
+				{} as MutationObserver
+			);
+		}
 	};
 }
 
@@ -103,6 +137,36 @@ afterEach(() => {
 });
 
 describe('movablePanel', () => {
+	it('allows a larger panel to use available viewport width when requested', () => {
+		const h = makeHarness();
+		const action = movablePanel(h.node, {
+			storageKey: 'large-sheet-panel',
+			handleSelector: '.titlebar',
+			maxWidth: 1280
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-width']).toBe('min(1280px, calc(100vw - 32px))');
+		action.destroy();
+	});
+
+	it('keeps a resized sheet inside the right viewport edge', () => {
+		const h = makeHarness({ width: 832, height: 526 });
+		h.windowMock.innerWidth = 1280;
+		h.storage.set('maismorras:moved-panel:sheet-edge', JSON.stringify({ left: 452, top: 104 }));
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-edge',
+			handleSelector: '.titlebar',
+			constrainToViewport: true
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		style.width = '832px';
+		h.triggerResize();
+		const rect = h.node.getBoundingClientRect();
+		expect(rect.right).toBeLessThanOrEqual(1264);
+		expect(Number.parseFloat(style.left)).toBeLessThan(452);
+		action.destroy();
+	});
+
 	it('moves by the title bar, persists per key, and restores the position', () => {
 		const h = makeHarness();
 		const action = movablePanel(h.node, {
@@ -307,6 +371,57 @@ describe('movablePanel', () => {
 		expect(
 			(h.node as unknown as { style: Record<string, string> }).style['--mm-panel-right-inset']
 		).toBe('278px');
+		action.destroy();
+	});
+
+	it('caps a resized sheet before a right-side map inspector', () => {
+		const h = makeHarness(
+			{ width: 1000, height: 520 },
+			{
+				'.token-inspector': {
+					left: 900,
+					top: 120,
+					right: 1180,
+					bottom: 540,
+					width: 280,
+					height: 420
+				}
+			}
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-with-token-inspector',
+			handleSelector: '.titlebar',
+			avoidRightSelectors: ['.token-inspector']
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-safe-max-width']).toBe('780px');
+		expect(style['--mm-panel-safe-min-width']).toBe('440px');
+		action.destroy();
+	});
+
+	it('moves a saved panel left when a map inspector appears over it', () => {
+		const h = makeHarness(
+			{ width: 600, height: 420 },
+			{
+				'.token-inspector': {
+					left: 900,
+					top: 120,
+					right: 1180,
+					bottom: 540,
+					width: 280,
+					height: 420
+				}
+			}
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-with-inspector',
+			handleSelector: '.titlebar',
+			avoidRightSelectors: ['.token-inspector']
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		style.left = '500px';
+		h.triggerDOMChange();
+		expect(style.left).toBe('288px');
 		action.destroy();
 	});
 

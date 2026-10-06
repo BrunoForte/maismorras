@@ -1,14 +1,25 @@
 <script lang="ts">
-	import type { CharacterSheet } from '$lib/services/characterApi';
+	import type {
+		CampaignFeatSpellGrant,
+		CharacterSheet,
+		Dnd2024FeatSpellGrant
+	} from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import { appLocale } from '$lib/stores/locale';
+	import CharacterFeatSpellGrants from './CharacterFeatSpellGrants.svelte';
+	import CharacterCampaignFeatSpellGrants from './CharacterCampaignFeatSpellGrants.svelte';
 
 	let {
 		sheet,
 		feats,
 		featEntries,
+		spellEntries,
+		featSpellGrants,
+		campaignFeatSpellGrants,
 		optionLabel,
 		onFeatsChange,
+		onFeatSpellGrantsChange,
+		onCampaignFeatSpellGrantsChange,
 		onSpellcastingOverride,
 		onFeaturesChange,
 		onEquipmentChange
@@ -16,8 +27,13 @@
 		sheet: CharacterSheet;
 		feats: string[];
 		featEntries: CompendiumEntry[];
+		spellEntries: CompendiumEntry[];
+		featSpellGrants: Dnd2024FeatSpellGrant[];
+		campaignFeatSpellGrants: CampaignFeatSpellGrant[];
 		optionLabel: (entry: CompendiumEntry) => string;
 		onFeatsChange: (feats: string) => void;
+		onFeatSpellGrantsChange: (grants: Dnd2024FeatSpellGrant[]) => void;
+		onCampaignFeatSpellGrantsChange: (grants: CampaignFeatSpellGrant[]) => void;
 		onSpellcastingOverride: (enabled: boolean) => void;
 		onFeaturesChange: (features: string) => void;
 		onEquipmentChange: (equipment: string) => void;
@@ -129,6 +145,22 @@
 			</p>
 		</aside>
 	</div>
+	<CharacterFeatSpellGrants
+		{feats}
+		{featEntries}
+		{spellEntries}
+		grants={featSpellGrants}
+		{optionLabel}
+		onChange={onFeatSpellGrantsChange}
+	/>
+	<CharacterCampaignFeatSpellGrants
+		{feats}
+		{featEntries}
+		{spellEntries}
+		grants={campaignFeatSpellGrants}
+		{optionLabel}
+		onChange={onCampaignFeatSpellGrantsChange}
+	/>
 	<label>
 		{$appLocale === 'en' ? 'Features' : 'Características'}
 		<textarea
@@ -144,8 +176,8 @@
 			value={sheet.equipment}
 			oninput={(event) => onEquipmentChange(event.currentTarget.value)}
 			placeholder={$appLocale === 'en'
-				? 'Coins, charges, pack contents, and notes.'
-				: 'Moedas, cargas, conteúdo de mochilas e observações.'}></textarea>
+				? 'Charges, pack contents, and notes.'
+				: 'Cargas, conteúdo de mochilas e observações.'}></textarea>
 	</label>
 </section>
 

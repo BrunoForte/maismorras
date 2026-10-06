@@ -251,7 +251,7 @@ describe('scene character summary controller', () => {
 		await test.controller.loadSelectedCharacter();
 		expect(test.getMine).toHaveBeenCalledOnce();
 		await test.controller.combatActions.castSpell(spell(1), 1);
-		expect(test.cast).toHaveBeenCalledWith(refreshedSession, 'campaign-a', 1, 1);
+		expect(test.cast).toHaveBeenCalledWith(refreshedSession, 'campaign-a', 1, 1, undefined);
 	});
 
 	it('ignores a sheet response started with the old token after a session refresh', async () => {
@@ -316,7 +316,13 @@ describe('scene character summary controller', () => {
 		const test = setup();
 		await test.controller.loadSelectedCharacter();
 		await test.controller.combatActions.castSpell(spell(1), 1);
-		expect(test.cast).toHaveBeenCalledWith(test.deps.getContext().session, 'campaign-a', 1, 1);
+		expect(test.cast).toHaveBeenCalledWith(
+			test.deps.getContext().session,
+			'campaign-a',
+			1,
+			1,
+			undefined
+		);
 		expect(test.controller.state.sheetsByActor['actor-a']?.spellSlots[0].current).toBe(0);
 		expect(test.chat).toHaveBeenCalledOnce();
 	});

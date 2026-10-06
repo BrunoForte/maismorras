@@ -77,7 +77,7 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if err != nil {
 		return Token{}, err
 	}
-	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: color, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: movementSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
+	t := Token{ActorID: &actorID, OwnerID: &owner, Name: name, ImageURL: portrait, Color: color, X: 70, Y: 70, Size: 1, HPCurrent: sheet.HitPointsCurrent, HPMax: sheet.HitPointsMax, ArmorClass: sheet.ArmorClass, MovementLimit: characters.MovementLimitSquares(sheet.Speed), Statuses: []string{}, Visibility: Visibility{ShowName: true}}
 	statuses, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
 	if err = tx.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, ownerID, name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID); err != nil {
@@ -528,16 +528,6 @@ func abilityModifier(score int) int {
 		return (score - 10) / 2
 	}
 	return (score - 11) / 2
-}
-
-// movementSquares converts the speed stored by a character sheet in feet into
-// grid squares. A missing speed keeps the table's safe default of 6.
-func movementSquares(speed int) int {
-	if speed <= 0 {
-		return 6
-	}
-
-	return int(math.Ceil(float64(speed) / 5))
 }
 
 // recordTurnMovement keeps the combat budget in a dedicated table, so moving

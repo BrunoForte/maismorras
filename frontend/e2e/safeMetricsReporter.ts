@@ -7,7 +7,13 @@ type SafeTestTiming = {
 	status: string;
 	retry: number;
 	durationMs: number;
-	steps: Array<{ name: string; durationMs: number; depth: number }>;
+	steps: Array<{
+		name: string;
+		durationMs: number;
+		depth: number;
+		failed: boolean;
+		failureType: 'TimeoutError' | 'Error' | null;
+	}>;
 };
 
 function safeLabel(value: string) {
@@ -28,7 +34,13 @@ function collectSteps(steps: TestResult['steps'], depth = 0): SafeTestTiming['st
 			{
 				name: safeLabel(step.title),
 				durationMs: Math.max(0, Math.round(step.duration)),
-				depth
+				depth,
+				failed: Boolean(step.error),
+				failureType: step.error
+					? step.error.name === 'TimeoutError'
+						? 'TimeoutError'
+						: 'Error'
+					: null
 			},
 			...children
 		];

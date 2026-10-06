@@ -21,6 +21,10 @@ export class GameEngine {
 	private wallLayer: Graphics | null = null;
 	private wallPreview: Graphics | null = null;
 	private gridLayer: Graphics | null = null;
+	private appInitPromise: Promise<void> | null = null;
+	private appInitialized = false;
+	private appDestroyed = false;
+	private destroyed = false;
 	private drawingWall = false;
 	private wallStart: { x: number; y: number } | null = null;
 	private pings = new Set<Graphics>();
@@ -39,13 +43,19 @@ export class GameEngine {
 	}
 
 	async init(canvas: HTMLCanvasElement) {
-		await this.app.init({
+		this.appInitPromise = this.app.init({
 			canvas: canvas,
 			width: Math.max(canvas.clientWidth, 320),
 			height: Math.max(canvas.clientHeight, 320),
 			backgroundColor: 0x222222,
 			antialias: true
 		});
+		await this.appInitPromise;
+		this.appInitialized = true;
+		if (this.destroyed) {
+			this.destroyApplication();
+			return;
+		}
 
 		this.camera = new Camera(this.app);
 
@@ -146,6 +156,7 @@ export class GameEngine {
 	}
 
 	resize(width: number, height: number) {
+		if (this.destroyed || !this.appInitialized) return;
 		this.app.renderer.resize(Math.max(width, 320), Math.max(height, 320));
 	}
 
@@ -158,6 +169,8 @@ export class GameEngine {
 	}
 
 	destroy() {
+		if (this.destroyed) return;
+		this.destroyed = true;
 		this.unsubscribers.forEach((unsubscribe) => unsubscribe());
 		this.unsubscribers = [];
 		this.tokens.forEach((token) => token.destroy());
@@ -172,6 +185,20 @@ export class GameEngine {
 		this.rulerManager?.destroy();
 		this.mapManager?.destroy();
 		this.camera?.destroy();
+		if (this.appInitialized) this.destroyApplication();
+		else if (this.appInitPromise) {
+			void this.appInitPromise.then(
+				() => {
+					this.appInitialized = true;
+					this.destroyApplication();
+				},
+				() => undefined
+			);
+		}
+	}
+	private destroyApplication() {
+		if (!this.appInitialized || this.appDestroyed) return;
+		this.appDestroyed = true;
 		this.app.destroy(true, { children: true, texture: false, textureSource: false });
 	}
 	setAreas(areas: SceneArea[]) {

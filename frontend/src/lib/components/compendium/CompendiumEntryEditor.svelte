@@ -1,11 +1,19 @@
 <script lang="ts">
 	import { appLocale } from '$lib/stores/locale';
-	import type { CompendiumSource } from '$lib/services/compendiumApi';
+	import type {
+		CompendiumEntry,
+		CompendiumSource,
+		Dnd2024Ability
+	} from '$lib/services/compendiumApi';
 	import {
 		COMPENDIUM_ENTRY_TYPES,
 		type CompendiumEditorModel,
 		type CompendiumEntryType
 	} from '$lib/utils/compendium/compendiumRules';
+	import {
+		DND2024_SPELLCASTING_ABILITIES,
+		type CampaignFeatSpellRuleDraft
+	} from '$lib/utils/compendium/campaignFeatSpellRule';
 
 	let {
 		model = $bindable<CompendiumEditorModel>(),
@@ -14,7 +22,11 @@
 		isGM,
 		editing,
 		busy,
-		actions
+		actions,
+		campaignFeatRuleEntry = null,
+		campaignFeatRuleDraft = $bindable<CampaignFeatSpellRuleDraft | null>(null),
+		spellEntries = [],
+		campaignRuleSaving = false
 	}: {
 		model: CompendiumEditorModel;
 		sources: CompendiumSource[];
@@ -22,6 +34,10 @@
 		isGM: boolean;
 		editing: boolean;
 		busy: { saving: boolean; importing: boolean; uploadingArt: boolean };
+		campaignFeatRuleEntry?: CompendiumEntry | null;
+		campaignFeatRuleDraft?: CampaignFeatSpellRuleDraft | null;
+		spellEntries?: CompendiumEntry[];
+		campaignRuleSaving?: boolean;
 		actions: {
 			save: () => void;
 			cancel: () => void;
@@ -30,6 +46,8 @@
 			uploadArt: (event: Event) => void;
 			addFeature: () => void;
 			removeFeature: (id: string) => void;
+			saveCampaignFeatRule: (draft: CampaignFeatSpellRuleDraft) => void;
+			closeCampaignFeatRule: () => void;
 		};
 	} = $props();
 
@@ -37,6 +55,35 @@
 	const updateEntryType = (value: string) => {
 		model.entryType = value as CompendiumEntryType;
 	};
+	function addCampaignSpell() {
+		if (!campaignFeatRuleDraft) return;
+		campaignFeatRuleDraft.spells = [
+			...campaignFeatRuleDraft.spells,
+			{
+				draftId: crypto.randomUUID(),
+				spellEntryId: '',
+				canUseExistingSlots: false,
+				freeUses: 0,
+				recovery: 'none',
+				abilityOptions: []
+			}
+		];
+	}
+	function removeCampaignSpell(draftId: string) {
+		if (campaignFeatRuleDraft)
+			campaignFeatRuleDraft.spells = campaignFeatRuleDraft.spells.filter(
+				(spell) => spell.draftId !== draftId
+			);
+	}
+	function toggleAbility(draftId: string, ability: Dnd2024Ability, enabled: boolean) {
+		if (!campaignFeatRuleDraft) return;
+		campaignFeatRuleDraft.spells = campaignFeatRuleDraft.spells.map((spell) => {
+			if (spell.draftId !== draftId) return spell;
+			const selected = spell.abilityOptions.filter((option) => option !== ability);
+			if (enabled) selected.push(ability);
+			return { ...spell, abilityOptions: selected };
+		});
+	}
 </script>
 
 {#if isGM}<section class="assistant">
@@ -224,6 +271,117 @@
 	</section>
 {/if}
 
+{#if isGM && campaignFeatRuleEntry && campaignFeatRuleDraft}
+	<section class="feat-spell-rule" aria-labelledby="campaign-feat-spell-heading">
+		<header>
+			<div>
+				<p>{$appLocale === 'en' ? 'CAMPAIGN RULE OVERRIDE' : 'REGRA ESPECÍFICA DA CAMPANHA'}</p>
+				<h3 id="campaign-feat-spell-heading">
+					{$appLocale === 'en' ? 'Spells granted by' : 'Magias concedidas por'}
+					{campaignFeatRuleEntry.translations?.['pt-BR'] || campaignFeatRuleEntry.name}
+				</h3>
+				<small>
+					{$appLocale === 'en'
+						? 'This affects only this campaign. A spell never grants extra slots by itself; configure existing slots and limited free casts separately for each spell.'
+						: 'Esta configuração vale somente para esta campanha. Conceder uma magia não adiciona espaços: defina separadamente o uso de espaços existentes e conjurações gratuitas limitadas.'}
+				</small>
+			</div>
+			<button type="button" class="ghost" onclick={actions.closeCampaignFeatRule}>
+				{$appLocale === 'en' ? 'Close' : 'Fechar'}
+			</button>
+		</header>
+		<label class="enabled-rule">
+			<input type="checkbox" bind:checked={campaignFeatRuleDraft.enabled} />
+			{$appLocale === 'en'
+				? 'Use this explicit campaign rule instead of the default mapping'
+				: 'Usar esta regra explícita no lugar do mapeamento padrão'}
+		</label>
+		{#each campaignFeatRuleDraft.spells as spell (spell.draftId)}
+			<fieldset class="feat-spell-row">
+				<legend
+					>{$appLocale === 'en' ? 'Granted spell or cantrip' : 'Magia ou truque concedido'}</legend
+				>
+				<div class="feat-spell-grid">
+					<label>
+						{$appLocale === 'en' ? 'Compendium spell' : 'Magia do compêndio'}
+						<select bind:value={spell.spellEntryId} required>
+							<option value=""
+								>{$appLocale === 'en' ? 'Choose a spell…' : 'Selecione uma magia…'}</option
+							>
+							{#each spellEntries as entry (entry.id)}
+								<option value={entry.id}>
+									{entry.translations?.['pt-BR'] || entry.name} · {Number(
+										entry.rules.level ?? 0
+									) === 0
+										? $appLocale === 'en'
+											? 'Cantrip'
+											: 'Truque'
+										: `${$appLocale === 'en' ? 'Level' : 'Círculo'} ${entry.rules.level}`}
+								</option>
+							{/each}
+						</select>
+					</label>
+					<label class="check-rule">
+						<input type="checkbox" bind:checked={spell.canUseExistingSlots} />
+						{$appLocale === 'en' ? 'Can use existing spell slots' : 'Pode usar espaços existentes'}
+					</label>
+					<label>
+						{$appLocale === 'en' ? 'Free casts' : 'Conjurações gratuitas'}
+						<input type="number" min="0" max="100" step="1" bind:value={spell.freeUses} />
+					</label>
+					<label>
+						{$appLocale === 'en' ? 'Recover free casts on' : 'Recuperar usos em'}
+						<select bind:value={spell.recovery}>
+							<option value="none">{$appLocale === 'en' ? 'No recovery' : 'Não recupera'}</option>
+							<option value="short">{$appLocale === 'en' ? 'Short rest' : 'Descanso curto'}</option>
+							<option value="long">{$appLocale === 'en' ? 'Long rest' : 'Descanso longo'}</option>
+						</select>
+					</label>
+					<fieldset class="ability-options">
+						<legend
+							>{$appLocale === 'en'
+								? 'Allowed spellcasting abilities'
+								: 'Habilidades de conjuração permitidas'}</legend
+						>
+						{#each DND2024_SPELLCASTING_ABILITIES as ability (ability)}
+							<label
+								><input
+									type="checkbox"
+									checked={spell.abilityOptions.includes(ability)}
+									onchange={(event) =>
+										toggleAbility(spell.draftId, ability, event.currentTarget.checked)}
+								/>{ability.toUpperCase()}</label
+							>
+						{/each}
+					</fieldset>
+					<button type="button" class="ghost" onclick={() => removeCampaignSpell(spell.draftId)}>
+						{$appLocale === 'en' ? 'Remove spell' : 'Remover magia'}
+					</button>
+				</div>
+			</fieldset>
+		{/each}
+		<div class="campaign-rule-actions">
+			<button type="button" class="ghost" onclick={addCampaignSpell}
+				>+ {$appLocale === 'en' ? 'Add granted spell' : 'Adicionar magia concedida'}</button
+			>
+			<button
+				type="button"
+				class="primary"
+				onclick={() => actions.saveCampaignFeatRule(campaignFeatRuleDraft!)}
+				disabled={campaignRuleSaving}
+			>
+				{campaignRuleSaving
+					? $appLocale === 'en'
+						? 'Saving…'
+						: 'Salvando…'
+					: $appLocale === 'en'
+						? 'Save campaign rule'
+						: 'Salvar regra da campanha'}
+			</button>
+		</div>
+	</section>
+{/if}
+
 <style>
 	.assistant {
 		display: grid;
@@ -368,6 +526,95 @@
 		}
 		.level-feature-row textarea {
 			grid-column: 1 / -1;
+		}
+		.feat-spell-rule {
+			display: grid;
+			gap: 0.75rem;
+			padding: 1rem;
+			border: 1px solid #8c6a3f;
+			border-radius: 10px;
+			background: #1d1918;
+		}
+		.feat-spell-rule > header,
+		.campaign-rule-actions {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+		}
+		.feat-spell-rule header p {
+			margin: 0 0 0.3rem;
+			color: #d8ad67;
+			font-size: 0.65rem;
+			letter-spacing: 0.1em;
+		}
+		.feat-spell-rule h3 {
+			margin: 0 0 0.3rem;
+			color: #f0d29d;
+		}
+		.feat-spell-rule small {
+			color: #bcae9e;
+			line-height: 1.45;
+		}
+		.enabled-rule {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			color: #eadfce;
+		}
+		.feat-spell-row {
+			min-width: 0;
+			border: 1px solid #59483b;
+			border-radius: 8px;
+			padding: 0.75rem;
+		}
+		.feat-spell-row legend {
+			color: #e7c98c;
+			padding: 0 0.35rem;
+		}
+		.feat-spell-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+			gap: 0.65rem;
+			align-items: end;
+		}
+		.feat-spell-grid > label {
+			display: grid;
+			gap: 0.3rem;
+			color: #cdbfae;
+			font-size: 0.75rem;
+		}
+		.feat-spell-grid select,
+		.feat-spell-grid input[type='number'] {
+			width: 100%;
+			min-width: 0;
+		}
+		.feat-spell-grid .check-rule {
+			display: flex;
+			align-items: center;
+			gap: 0.4rem;
+		}
+		.ability-options {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.6rem;
+			border: 1px solid #59483b;
+			border-radius: 6px;
+		}
+		.ability-options legend {
+			color: #cdbfae;
+			font-size: 0.72rem;
+		}
+		.ability-options label {
+			display: flex;
+			align-items: center;
+			gap: 0.25rem;
+			color: #cdbfae;
+			font-size: 0.7rem;
+		}
+		.campaign-rule-actions {
+			justify-content: flex-end;
+			flex-wrap: wrap;
 		}
 	}
 </style>

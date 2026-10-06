@@ -1,5 +1,65 @@
 # Mandatory local authenticated E2E: timing and diagnosis
 
+## Routine gate and release suite
+
+The required check remains named **Mandatory local authenticated E2E** so the
+repository's existing required status check is preserved. On pull requests and
+pushes, it runs only the tests tagged `@routine-gate`, against the local
+Supabase, API, and frontend stack, in Chromium with one worker:
+
+- `GM campaign permissions and player token realtime reads fresh state`: GM
+  authority, a forbidden player mutation, persisted token movement, and a fresh
+  read/realtime reconciliation by the other participant;
+- `player quick roll 1d4`: the server-authored roll is checked in the player's
+  visual result and chat and is also received in the narrator's campaign chat;
+- `standalone sheet uses authenticated session, enforces ownership and stays
+isolated`: own-sheet access, forbidden access to another player's sheet, and
+  authorized narrator access in the isolated sheet page.
+
+These remain full tests, not reduced assertions. The player roll is exercised
+with both participants connected before the roll. Each test keeps its own
+users, campaign, scene, and browser contexts. The routine Playwright run has a
+five-minute suite-level cap; the existing per-test timeout and CI retry policy
+are unchanged. The required job's overall runner limit is 15 minutes, including
+dependency installation and local Supabase startup. The workflow summary and
+safe metrics reporter record phase and per-attempt durations.
+
+The complete local authenticated suite (all three local-authenticated spec
+files, including audio, map menus, panels, sheet, spells, overlay, and narrow
+viewports) runs on `workflow_dispatch` as two parallel jobs with independent
+temporary Supabase/API/frontend stacks: authorization and audio, plus map and
+character sheet. Each job uses Chromium, one worker, the standard 30-second
+per-test timeout, the existing CI retry policy, and the existing ten-minute
+Playwright suite cap. Both jobs must pass; neither filters out tests. Each
+runner executes the full specs assigned to it with unique per-test campaign
+data. The jobs do not share database state and do not require
+`E2E_BASE_URL`, `E2E_API_BASE`, or `E2E_SCENE_URL`. Before a substantial
+release, dispatch the workflow against the candidate SHA, review every gate
+and both complete-suite jobs, and retain the run URL with the release record.
+The manual event is validation only: production migration verification and
+deployment are conditioned only on a push to `main`; manual dispatch cannot
+deploy production.
+
+The separate hosted-browser E2E job and its specs are retained but explicitly
+skipped until an isolated hosted staging environment is available. Re-enable
+that job only after configuring its staging frontend/API URLs and associated
+test-scene authentication; those hosted settings are not needed for the
+complete local suite.
+
+The routine gate still blocks the production deployment because it remains a
+dependency of that job. Backend, frontend, bundle-budget, database/RLS, and
+migration gates are unchanged. The full suite is additional release confidence,
+not a replacement for any security or build gate.
+
+Failure artifacts are allow-listed sanitized timing JSONL and the specific
+`sanitized-ui-failure-diagnostics.json` attachments. Traces, HAR, screenshots,
+cookies, tokens, storage state, network captures, and general Playwright output
+are not uploaded by the release E2E job. The complete local job retains its
+existing sanitizer and excludes traces/network captures before artifact upload.
+
+The revised routine/release split is committed locally but has not yet run on a
+GitHub runner. Do not treat local measurements below as runner measurements.
+
 ## Workflow timing baseline
 
 Workflow run #232 ran on the Linux GitHub Actions runner at commit `52f2923`. The job took about 19m12s. The relevant measured step boundaries in its logs were:

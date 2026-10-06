@@ -70,6 +70,10 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 		return RestResult{}, err
 	}
 	sheet = normalizeDerivedFields(sheet, rules)
+	sheet.CampaignFeatSpellGrants, err = recoverCampaignFeatSpellGrantUses(ctx, tx, campaignID, kind, sheet.CampaignFeatSpellGrants)
+	if err != nil {
+		return RestResult{}, fmt.Errorf("recover campaign feat spell uses: %w", err)
+	}
 	result := RestResult{Sheet: sheet, Kind: kind}
 	if kind == "short" {
 		if sheet.HitDiceSpent >= sheet.Level {
@@ -159,6 +163,19 @@ func applyRestRecovery(sheet Sheet, kind string, hitPointHealing int, rules syst
 		sheet.HitPointsCurrent = sheet.HitPointsMax
 		sheet.TemporaryHP = 0
 		sheet.HitDiceSpent = 0
+		sheet.FeatSpellGrants = recoverFeatSpellGrantUses(sheet.FeatSpellGrants, kind)
 	}
 	return normalizeDerivedFields(sheet, rules)
+}
+
+func recoverFeatSpellGrantUses(grants []FeatSpellGrant, kind string) []FeatSpellGrant {
+	if kind != "long" {
+		return grants
+	}
+	for i := range grants {
+		if rule, ok := dnd2024FeatSpellRules[grants[i].FeatID]; ok && rule.Recovery == kind {
+			grants[i].FreeCastsRemaining = rule.FreeCasts
+		}
+	}
+	return grants
 }

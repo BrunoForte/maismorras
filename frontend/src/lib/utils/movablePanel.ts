@@ -5,10 +5,13 @@ export type MovablePanelOptions = {
 	layoutKey?: string;
 	handleSelector: string;
 	minTop?: number;
+	maxWidth?: number;
 	avoidSelectors?: string[];
 	avoidLeftSelectors?: string[];
 	avoidRightSelectors?: string[];
 	avoidBottomSelectors?: string[];
+	/** Keep a small right-side gutter when clamping this panel after a resize. */
+	constrainToViewport?: boolean;
 	enabled?: boolean;
 };
 
@@ -52,12 +55,20 @@ function readPosition(key: string): PanelPosition | null {
 	return null;
 }
 
-function clampPosition(node: HTMLElement, position: PanelPosition, minTop: number): PanelPosition {
+function clampPosition(
+	node: HTMLElement,
+	position: PanelPosition,
+	minTop: number,
+	rightGutter = 0
+): PanelPosition {
 	const width = node.getBoundingClientRect().width || node.offsetWidth;
 	const height = node.getBoundingClientRect().height || node.offsetHeight;
 	const footerOffset = readCssLengthInPixels(node, '--mm-audio-footer-offset', 68) || 68;
 	return {
-		left: Math.max(0, Math.min(position.left, Math.max(0, window.innerWidth - width))),
+		left: Math.max(
+			0,
+			Math.min(position.left, Math.max(0, window.innerWidth - width - rightGutter))
+		),
 		top: Math.max(
 			minTop,
 			Math.min(position.top, Math.max(minTop, window.innerHeight - footerOffset - height - 8))
@@ -117,13 +128,18 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 				right = Math.max(right, window.innerWidth - rect.left + 12);
 			}
 		}
+		const panel = node.getBoundingClientRect();
+		const panelLeft = Math.max(panel.left, left ?? 16);
+		const usableWidth = Math.max(0, window.innerWidth - right - panelLeft - 8);
 		node.style.setProperty('--mm-panel-left-inset', left === null ? 'auto' : `${left}px`);
 		node.style.setProperty('--mm-panel-right-inset', `${right}px`);
+		node.style.setProperty('--mm-panel-safe-max-width', `${usableWidth}px`);
+		node.style.setProperty('--mm-panel-safe-min-width', `${Math.min(440, usableWidth)}px`);
 		node.style.setProperty(
 			'--mm-panel-width',
 			left === null
-				? 'min(920px, calc(100vw - 450px))'
-				: `min(920px, calc(100vw - ${left}px - ${right}px - 1rem))`
+				? `min(${options.maxWidth ?? 920}px, calc(100vw - ${options.maxWidth ? 32 : 450}px))`
+				: `min(${options.maxWidth ?? 920}px, calc(100vw - ${left}px - ${right}px - 1rem))`
 		);
 		node.style.setProperty(
 			'--mm-panel-min-width',
@@ -131,7 +147,6 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 				? 'min(440px, calc(100vw - 2rem))'
 				: `min(440px, calc(100vw - ${left}px - ${right}px - 1rem))`
 		);
-		const panel = node.getBoundingClientRect();
 		for (const selector of options.avoidBottomSelectors ?? []) {
 			const obstacle = document.querySelector(selector);
 			if (!obstacle) continue;
@@ -152,15 +167,37 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		node.style.setProperty('--mm-panel-available-height', `${available}px`);
 	};
 	const apply = (position: PanelPosition, persist = false) => {
-		updateViewportConstraints();
-		const bounded = clampPosition(node, position, minTop());
+		const bounded = clampPosition(node, position, minTop(), options.constrainToViewport ? 16 : 0);
 		node.style.left = `${bounded.left}px`;
 		node.style.top = `${bounded.top}px`;
 		node.style.right = 'auto';
 		node.style.bottom = 'auto';
+		updateViewportConstraints();
 		if (persist) {
 			hasCustomPosition = true;
 			savePosition(options.storageKey, bounded);
+		}
+	};
+	const relocateFromRightObstacles = () => {
+		if (options.enabled === false) return;
+		const panel = node.getBoundingClientRect();
+		for (const selector of options.avoidRightSelectors ?? []) {
+			const obstacle = document.querySelector(selector);
+			if (!obstacle) continue;
+			const rect = obstacle.getBoundingClientRect();
+			const overlaps =
+				rect.width > 0 &&
+				rect.height > 0 &&
+				panel.left < rect.left &&
+				panel.right > rect.left &&
+				panel.top < rect.bottom &&
+				panel.bottom > rect.top;
+			if (!overlaps) continue;
+			const left = rect.left - panel.width - 12;
+			if (left >= 8) {
+				apply({ left, top: panel.top }, true);
+				return;
+			}
 		}
 	};
 	const applyDefaultPosition = () => {
@@ -239,19 +276,28 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 	const onResize = () => {
 		if (!hasCustomPosition && options.enabled !== false) {
 			applyDefaultPosition();
+			relocateFromRightObstacles();
 			return;
 		}
 		updateViewportConstraints();
 		const rect = node.getBoundingClientRect();
-		const bounded = clampPosition(node, { left: rect.left, top: rect.top }, minTop());
+		const bounded = clampPosition(
+			node,
+			{ left: rect.left, top: rect.top },
+			minTop(),
+			options.constrainToViewport ? 16 : 0
+		);
 		if (options.enabled !== false && node.style.left) apply(bounded, true);
+		relocateFromRightObstacles();
 	};
 	const observer =
 		typeof ResizeObserver === 'undefined'
 			? null
 			: new ResizeObserver(() => {
 					updateViewportConstraints();
-					if (options.enabled !== false && node.style.left) onResize();
+					if (options.enabled !== false && (node.style.left || options.constrainToViewport)) {
+						onResize();
+					}
 				});
 	observer?.observe(node);
 	const refreshObservedObstacles = () => {
@@ -267,6 +313,29 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		}
 	};
 	refreshObservedObstacles();
+	const obstacleMutationObserver =
+		typeof MutationObserver === 'undefined'
+			? null
+			: new MutationObserver((records) => {
+					const selectors = options.avoidRightSelectors ?? [];
+					const relevant = records.some((record) =>
+						[...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(
+							(changed) => {
+								if (!(changed instanceof Element)) return false;
+								return selectors.some(
+									(selector) =>
+										changed.matches(selector) || changed.querySelector(selector) !== null
+								);
+							}
+						)
+					);
+					if (!relevant) return;
+					refreshObservedObstacles();
+					updateViewportConstraints();
+					relocateFromRightObstacles();
+				});
+	if (document.body)
+		obstacleMutationObserver?.observe(document.body, { childList: true, subtree: true });
 	node.addEventListener('pointerdown', onPointerDown);
 	node.addEventListener('keydown', onKeyDown);
 	window.addEventListener('resize', onResize);
@@ -297,11 +366,13 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 			} else if (changedLayout && !hasCustomPosition && options.enabled !== false) {
 				applyDefaultPosition();
 			} else if (options.enabled !== false) keepBelowNavigation();
+			relocateFromRightObstacles();
 		},
 		destroy() {
 			node.removeEventListener('pointerdown', onPointerDown);
 			node.removeEventListener('keydown', onKeyDown);
 			observer?.disconnect();
+			obstacleMutationObserver?.disconnect();
 			window.removeEventListener('resize', onResize);
 			document.removeEventListener('pointermove', onPointerMove);
 			document.removeEventListener('pointerup', onPointerUp);

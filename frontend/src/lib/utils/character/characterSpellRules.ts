@@ -1,10 +1,47 @@
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
-import type { Spell, SpellSlot } from '$lib/services/characterApi';
+import type {
+	CampaignFeatSpellGrant,
+	Dnd2024FeatSpellGrant,
+	Spell,
+	SpellSlot
+} from '$lib/services/characterApi';
+import type { CampaignFeatSpellRule } from '$lib/services/compendiumApi';
 import { canonicalClass } from '$lib/data/classProgression';
+import { DND2024_FEAT_SPELL_RULES } from '$lib/data/dnd2024FeatSpells';
+import { campaignFeatSpellRuleFromEntryRules } from '$lib/utils/compendium/campaignFeatSpellRule';
 import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 
 export type SpellOrigin = NonNullable<Spell['origin']>;
-export type SpellCircleEntry = { spell: Spell; index: number };
+export type SpellFeatGrantProjection = {
+	id: string;
+	featId: string;
+	featName: string;
+	spellEntryId: string;
+	spellList?: string;
+	ability?: string;
+	freeCastsRemaining: number;
+	freeUses: number;
+	canUseExistingSlots: boolean;
+	recovery: string;
+	campaignConfigured: boolean;
+};
+export type SpellCircleEntry = {
+	spell: Spell;
+	index: number;
+	key?: string;
+	featGrants?: SpellFeatGrantProjection[];
+	origins?: SpellOrigin[];
+};
+
+export function hasActiveFeatGrantedSpells(
+	curatedGrants: readonly Dnd2024FeatSpellGrant[] = [],
+	campaignGrants: readonly CampaignFeatSpellGrant[] = []
+): boolean {
+	return (
+		curatedGrants.some((grant) => grant.active !== false) ||
+		campaignGrants.some((grant) => grant.active !== false)
+	);
+}
 export type SpellSourceText = { origin: Exclude<SpellOrigin, 'class'>; text: string };
 
 export type SpellbookProjection = {
@@ -36,7 +73,11 @@ export type SpellTabActions = {
 	change: (index: number, changes: Partial<Spell>) => void;
 	present: (spell: Spell) => void;
 	rollEffect: (spell: Spell) => void;
-	cast: (spell: Spell, index: number) => void;
+	cast: (
+		spell: Spell,
+		index: number,
+		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+	) => void;
 };
 
 export function normalizeSpellName(value: string): string {
@@ -92,6 +133,134 @@ export function addableSpellCircles(slots: readonly SpellSlot[]): number[] {
 
 export function groupSpellsByCircle(spells: readonly Spell[], circle: number): SpellCircleEntry[] {
 	return spells.flatMap((spell, index) => (spell.level === circle ? [{ spell, index }] : []));
+}
+
+/** Adds curated feat-granted spells to the display without duplicating a spell
+ * already on the class spell list; a card retains every source and grant. */
+export function projectCharacterSpells(
+	spells: readonly Spell[],
+	grants: readonly Dnd2024FeatSpellGrant[],
+	entries: readonly CompendiumEntry[],
+	label: (entry: CompendiumEntry) => string = (entry) => entry.name,
+	campaignGrants: readonly CampaignFeatSpellGrant[] = [],
+	featEntries: readonly CompendiumEntry[] = []
+): SpellCircleEntry[] {
+	const result: SpellCircleEntry[] = spells.map((spell, index) => ({
+		spell,
+		index,
+		key: `sheet:${spell.entryId ?? normalizeSpellName(spell.name)}:${index}`,
+		featGrants: [],
+		origins: [resolveSpellOrigin(spell)]
+	}));
+	let virtualIndex = -1;
+	for (const grant of grants.filter((item) => item.active !== false)) {
+		const entryIds = [...grant.cantripEntryIds, grant.firstLevelSpellEntryId].filter(Boolean);
+		for (const entryId of entryIds) {
+			const featRule =
+				DND2024_FEAT_SPELL_RULES[grant.featId as keyof typeof DND2024_FEAT_SPELL_RULES];
+			if (!featRule) continue;
+			const firstLevel = entryId === grant.firstLevelSpellEntryId;
+			addGrantedSpell(
+				result,
+				entries,
+				label,
+				{
+					id: grant.id,
+					featId: grant.featId,
+					featName: featRule.name,
+					spellEntryId: entryId,
+					spellList: grant.spellList,
+					ability: grant.ability,
+					freeCastsRemaining: firstLevel ? grant.freeCastsRemaining : 0,
+					freeUses: firstLevel ? featRule.freeCasts : 0,
+					canUseExistingSlots: featRule.canUseExistingSlots,
+					recovery: firstLevel ? featRule.recovery : 'none',
+					campaignConfigured: false
+				},
+				virtualIndex--
+			);
+		}
+	}
+	for (const grant of campaignGrants.filter((item) => item.active !== false)) {
+		const feat = featEntries.find(
+			(entry) => entry.id === grant.featEntryId && entry.entryType === 'feat'
+		);
+		if (!feat) continue;
+		const rule: CampaignFeatSpellRule = campaignFeatSpellRuleFromEntryRules(feat.rules);
+		if (!rule.enabled) continue;
+		for (const configuredSpell of rule.spells) {
+			const ability = grant.spellcastingAbilities?.[configuredSpell.spellEntryId];
+			addGrantedSpell(
+				result,
+				entries,
+				label,
+				{
+					id: grant.id,
+					featId: grant.featEntryId,
+					featName: label(feat),
+					spellEntryId: configuredSpell.spellEntryId,
+					ability,
+					freeCastsRemaining:
+						grant.freeCastsRemaining?.[configuredSpell.spellEntryId] ?? configuredSpell.freeUses,
+					freeUses: configuredSpell.freeUses,
+					canUseExistingSlots: configuredSpell.canUseExistingSlots,
+					recovery: configuredSpell.recovery,
+					campaignConfigured: true
+				},
+				virtualIndex--
+			);
+		}
+	}
+	return result;
+}
+
+function addGrantedSpell(
+	result: SpellCircleEntry[],
+	entries: readonly CompendiumEntry[],
+	label: (entry: CompendiumEntry) => string,
+	grant: SpellFeatGrantProjection,
+	virtualIndex: number
+) {
+	const compendium = entries.find(
+		(entry) => entry.id === grant.spellEntryId && entry.entryType === 'spell'
+	);
+	if (!compendium) return;
+	const displayName = label(compendium);
+	const level = Number(compendium.rules.level);
+	if (!Number.isInteger(level) || level < 0 || level > 9) return;
+	const existing = result.find(
+		({ spell }) =>
+			spell.entryId === compendium.id ||
+			[compendium.name, displayName].some(
+				(name) => normalizeSpellName(spell.name) === normalizeSpellName(name)
+			)
+	);
+	if (existing) {
+		existing.featGrants = [...(existing.featGrants ?? []), grant];
+		existing.origins = [...new Set([...(existing.origins ?? []), 'feat' as const])];
+		return;
+	}
+	result.push({
+		spell: {
+			entryId: compendium.id,
+			name: displayName,
+			level,
+			notes: '',
+			description: String(compendium.rules.description ?? compendium.summary ?? ''),
+			origin: 'feat'
+		},
+		index: virtualIndex,
+		key: `feat:${grant.id}:${grant.spellEntryId}`,
+		featGrants: [grant],
+		origins: ['feat']
+	});
+}
+
+export function groupCharacterSpellsByCircle(
+	entries: readonly SpellCircleEntry[],
+	circle: number
+): SpellCircleEntry[] {
+	return entries.filter(({ spell }) => spell.level === circle);
 }
 
 export function compatibleSpellSlots(spell: Spell, slots: readonly SpellSlot[]): SpellSlot[] {

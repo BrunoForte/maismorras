@@ -3,6 +3,7 @@ package characters
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strings"
 
@@ -99,13 +100,19 @@ func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {
-		SpellIndex int `json:"spellIndex"`
-		SlotLevel  int `json:"slotLevel"`
+		SpellIndex int    `json:"spellIndex"`
+		SlotLevel  int    `json:"slotLevel"`
+		GrantID    string `json:"grantId"`
+		EntryID    string `json:"entryId"`
+		FreeCast   bool   `json:"freeCast"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_SPELL_CAST", "Conjuração inválida.")
 	}
-	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, in.SpellIndex, in.SlotLevel)
+	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, SpellCastInput{
+		SpellIndex: in.SpellIndex, SlotLevel: in.SlotLevel, GrantID: strings.TrimSpace(in.GrantID),
+		EntryID: strings.TrimSpace(in.EntryID), FreeCast: in.FreeCast,
+	})
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não participa desta campanha.")
 	}
@@ -209,7 +216,7 @@ func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
 func validate(sheet Sheet) error {
 	// ArmorClass, proficiencyBonus and passivePerception are server-derived;
 	// ignore client values and recompute them before persistence.
-	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || sheet.Speed < 0 || sheet.Speed > 300 {
+	if sheet.Name == "" || len([]rune(sheet.Name)) > 120 || sheet.Level < 1 || sheet.Level > 20 || sheet.HitPointsMax < 1 || sheet.HitPointsCurrent < 0 || sheet.HitPointsCurrent > sheet.HitPointsMax || math.IsNaN(sheet.Speed) || math.IsInf(sheet.Speed, 0) || sheet.Speed < 0 || sheet.Speed > 300 {
 		return apperror.BadRequest("INVALID_SHEET", "Confira nome, nível, PV e deslocamento da ficha.")
 	}
 	if len([]rune(strings.TrimSpace(sheet.SpeciesLineage))) > 80 {
@@ -222,6 +229,17 @@ func validate(sheet Sheet) error {
 	}
 	if len(sheet.Inventory) > 200 {
 		return apperror.BadRequest("INVALID_SHEET", "A ficha pode ter no máximo 200 itens.")
+	}
+	for _, coins := range []int64{sheet.Money.CP, sheet.Money.SP, sheet.Money.EP, sheet.Money.GP, sheet.Money.PP} {
+		if coins < 0 || coins > 9007199254740991 {
+			return apperror.BadRequest("INVALID_SHEET", "Valores de moedas devem ser inteiros não negativos.")
+		}
+	}
+	if len(sheet.FeatSpellGrants) > 20 {
+		return apperror.BadRequest("INVALID_SHEET", "A ficha possui concessões de magia demais.")
+	}
+	if len(sheet.CampaignFeatSpellGrants) > 20 {
+		return apperror.BadRequest("INVALID_SHEET", "A ficha possui concessões de magia demais.")
 	}
 	for _, item := range sheet.Inventory {
 		if strings.TrimSpace(item.Name) == "" || len([]rune(item.Name)) > 120 || item.Quantity < 0 || item.Quantity > 9999 {

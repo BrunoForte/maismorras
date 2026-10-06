@@ -851,7 +851,8 @@
 		window.addEventListener('maismorras:map-tool', mapToolHandler);
 		window.addEventListener('maismorras:toggle-map-signal', signalHandler);
 		window.addEventListener('maismorras:close-map-tools', closeHandler);
-		motor = new GameEngine(
+		let disposed = false;
+		const currentMotor = new GameEngine(
 			(tokenId) => (tokenSelecionadoId = tokenId),
 			(tokenId, x, y) => {
 				const personagem = $personagens.find((item) => item.id === tokenId);
@@ -875,23 +876,35 @@
 			(tokenId) => void atualizarImagemTokenComFalha(tokenId),
 			scene.gridSize
 		);
+		motor = currentMotor;
 		const observer = new ResizeObserver(([entry]) => {
-			motor?.resize(entry.contentRect.width, entry.contentRect.height);
+			if (!disposed && motor === currentMotor)
+				currentMotor.resize(entry.contentRect.width, entry.contentRect.height);
 		});
-		void motor.init(canvasMesa).then(async () => {
-			motor?.setMapSize(scene.mapWidthCells, scene.mapHeightCells, scene.gridSize);
-			observer.observe(container);
-			try {
-				const saved = sessionStorage.getItem(`maismorras:camera:${scene.id}`);
-				if (saved) motor?.camera.setView(JSON.parse(saved));
-				cameraZoom = motor?.camera.zoom ?? 1;
-			} catch {
-				/* ignore malformed or unavailable local state */
-			}
-			await carregarTokens();
-			await carregarEfeitos();
-			await carregarNPCs();
-		});
+		void currentMotor
+			.init(canvasMesa)
+			.then(async () => {
+				if (disposed || motor !== currentMotor) return;
+				currentMotor.setMapSize(scene.mapWidthCells, scene.mapHeightCells, scene.gridSize);
+				observer.observe(container);
+				try {
+					const saved = sessionStorage.getItem(`maismorras:camera:${scene.id}`);
+					if (saved) currentMotor.camera.setView(JSON.parse(saved));
+					cameraZoom = currentMotor.camera.zoom ?? 1;
+				} catch {
+					/* ignore malformed or unavailable local state */
+				}
+				await carregarTokens();
+				if (disposed) return;
+				await carregarEfeitos();
+				if (disposed) return;
+				await carregarNPCs();
+			})
+			.catch((error: unknown) => {
+				if (!disposed)
+					persistenceError =
+						error instanceof Error ? error.message : 'Não foi possível iniciar o mapa.';
+			});
 		const cameraPersistenceTimer = window.setInterval(persistirVisaoDaCamera, 700);
 		const unsubscribe = personagens.subscribe((lista) => {
 			if (!isGM) return;
@@ -920,6 +933,7 @@
 		});
 
 		return () => {
+			disposed = true;
 			window.removeEventListener('maismorras:map-tool', mapToolHandler);
 			window.removeEventListener('maismorras:toggle-map-signal', signalHandler);
 			window.removeEventListener('maismorras:close-map-tools', closeHandler);

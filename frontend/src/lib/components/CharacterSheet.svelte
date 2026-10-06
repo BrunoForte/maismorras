@@ -51,10 +51,12 @@
 		addableSpellCircles as projectAddableSpellCircles,
 		deriveGrantedSpells,
 		eligibleSpellEntries,
-		groupSpellsByCircle,
+		groupCharacterSpellsByCircle,
+		hasActiveFeatGrantedSpells,
 		hasAISpellTranslation,
 		localizedSpellField,
 		normalizeSpellName,
+		projectCharacterSpells,
 		removeSpellFromSheet,
 		resolveSpellOrigin,
 		updateSpellOnSheet
@@ -112,6 +114,10 @@
 	import type { CustomInventoryItemDraft } from '$lib/components/character/inventoryTypes';
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
 	import CharacterLevelUpModal from '$lib/components/character/CharacterLevelUpModal.svelte';
+	import {
+		synchronizeCampaignFeatSpellGrants,
+		synchronizeDndFeatGrantActivation
+	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
@@ -338,6 +344,11 @@
 		onCompendiumLoaded: (sources, entries) => {
 			compendiumSources = sources;
 			compendiumEntries = entries;
+			sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+				sheet.feats,
+				sheet.campaignFeatSpellGrants ?? [],
+				entries.filter((entry) => entry.entryType === 'feat')
+			);
 			syncProgression();
 		},
 		getCharacterForGM,
@@ -366,6 +377,11 @@
 			});
 			sheet.inventory ??= [];
 			sheet.resources ??= [];
+			sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+				sheet.feats,
+				sheet.campaignFeatSpellGrants ?? [],
+				compendiumEntries.filter((entry) => entry.entryType === 'feat')
+			);
 			sheet.spellSlots ??= [];
 			sheet.skillExpertise ??= [];
 			previousLevel = sheet.level;
@@ -643,11 +659,14 @@
 					entry.name.toLowerCase() === sheet.class.toLowerCase())
 		);
 	const shouldShowSpellcasting = () => {
-		return spellcastingEnabled(
-			sheet.class,
-			sheet.level,
-			compendiumClass()?.rules.spellcasting,
-			sheet.spellcastingOverride
+		return (
+			spellcastingEnabled(
+				sheet.class,
+				sheet.level,
+				compendiumClass()?.rules.spellcasting,
+				sheet.spellcastingOverride
+			) ||
+			hasActiveFeatGrantedSpells(sheet.featSpellGrants ?? [], sheet.campaignFeatSpellGrants ?? [])
 		);
 	};
 	const compendiumSubclassOptions = () =>
@@ -797,30 +816,50 @@
 	}
 	const spellEntries = (circle?: number) =>
 		eligibleSpellEntries(compendiumEntries, sheet.spells, optionLabel, sheet.class, circle);
-	const availableSpellCircles = () => projectAvailableSpellCircles(sheet.spellSlots, sheet.spells);
+	const projectedCharacterSpells = () =>
+		projectCharacterSpells(
+			sheet.spells,
+			sheet.featSpellGrants ?? [],
+			optionsFor('spell'),
+			optionLabel,
+			sheet.campaignFeatSpellGrants ?? [],
+			optionsFor('feat')
+		);
+	const availableSpellCircles = () =>
+		projectAvailableSpellCircles(
+			sheet.spellSlots,
+			projectedCharacterSpells().map(({ spell }) => spell)
+		);
 	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
-	const spellsForCircle = (circle: number) => groupSpellsByCircle(sheet.spells, circle);
+	const spellsForCircle = (circle: number) =>
+		groupCharacterSpellsByCircle(projectedCharacterSpells(), circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
 		return resolveSpellOrigin(spell, spellCompendiumEntry(spell)?.rules);
 	};
 	const grantedSpells = () => {
-		const sourceTexts = [
-			{
-				origin: 'species' as const,
-				text: getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).join(' ')
-			},
-			...featList().flatMap((feat) => {
-				const entry = optionsFor('feat').find(
-					(candidate) =>
-						optionLabel(candidate).toLowerCase() === feat.toLowerCase() ||
-						candidate.name.toLowerCase() === feat.toLowerCase()
-				);
-				return entry ? [{ origin: 'feat' as const, text: JSON.stringify(entry.rules) }] : [];
-			})
-		];
-		return deriveGrantedSpells(sheet.spells, compendiumEntries, sourceTexts, optionLabel);
+		const speciesGrants = deriveGrantedSpells(
+			sheet.spells,
+			compendiumEntries,
+			[
+				{
+					origin: 'species',
+					text: getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).join(' ')
+				}
+			],
+			optionLabel
+		);
+		const curatedFeatGrants = projectedCharacterSpells()
+			.filter(({ origins }) => origins?.includes('feat'))
+			.map(({ spell }) => spell);
+		const seen: string[] = [];
+		return [...speciesGrants, ...curatedFeatGrants].filter((spell) => {
+			const key = spell.entryId ?? normalizeSpellName(spell.name);
+			if (seen.includes(key)) return false;
+			seen.push(key);
+			return true;
+		});
 	};
 	const circleLabel = (circle: number) =>
 		circle === 0
@@ -1001,17 +1040,23 @@
 			layoutKey: actorPanelVisible ? 'map-panels' : 'campaign-panels',
 			handleSelector: 'header',
 			minTop: 56,
+			maxWidth: 1280,
 			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs', '.sheet-picker'],
 			avoidLeftSelectors: ['.floating-chat.sheet-open:not(.closed)'],
-			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
+			avoidRightSelectors: [
+				...(actorPanelVisible ? ['.actor-drawer.sheet-open'] : []),
+				'.token-inspector'
+			],
 			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
+			constrainToViewport: true,
 			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
 			collapsed: !standalone && minimized,
 			headerSelector: 'header',
+			fillViewport: standalone,
 			minWidth: 300,
-			storageKey: sheetPanelKey
+			storageKey: standalone ? undefined : sheetPanelKey
 		}}
 		class="sheet"
 		class:minimized
@@ -1025,68 +1070,74 @@
 				? 'Move character sheet with pointer or arrow keys'
 				: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
 		>
-			<div class="sheet-heading">
-				<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
-				<div>
-					<p>D&D 2024 · MVP</p>
-					{#if characterOwnerName}<small
-							>{$appLocale === 'en'
-								? `Character of ${characterOwnerName}`
-								: `Personagem de ${characterOwnerName}`}</small
-						>{/if}
+			<div class="sheet-header-content">
+				<div class="sheet-title-row">
+					<div class="sheet-heading">
+						<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
+						{#if !standalone}
+							<div class="sheet-primary-actions">
+								<button
+									type="button"
+									onclick={() => onDockChange(!docked)}
+									aria-label={docked
+										? $appLocale === 'en'
+											? 'Float character sheet'
+											: 'Flutuar ficha'
+										: $appLocale === 'en'
+											? 'Dock character sheet'
+											: 'Fixar ficha'}
+									>{docked
+										? $appLocale === 'en'
+											? 'Float'
+											: 'Flutuar'
+										: $appLocale === 'en'
+											? 'Dock'
+											: 'Fixar'}</button
+								><button
+									type="button"
+									onclick={() =>
+										onOpenNewWindow(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
+									disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+									aria-label={$appLocale === 'en'
+										? 'Pop out character sheet to an auxiliary window'
+										: 'Destacar ficha em janela auxiliar'}
+									>{$appLocale === 'en' ? 'Pop out' : 'Destacar'}</button
+								>
+							</div>
+						{/if}
+					</div>
+					<div class="sheet-actions">
+						{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
+								{docked
+									? $appLocale === 'en'
+										? 'Docked'
+										: 'Acoplada'
+									: $appLocale === 'en'
+										? 'Floating'
+										: 'Flutuante'}
+							</span><button
+								type="button"
+								onclick={() => (minimized = !minimized)}
+								aria-label={minimized
+									? $appLocale === 'en'
+										? 'Restore character sheet'
+										: 'Restaurar ficha'
+									: $appLocale === 'en'
+										? 'Minimize character sheet'
+										: 'Minimizar ficha'}>{minimized ? '▸' : '−'}</button
+							>{/if}<button
+							type="button"
+							onclick={onclose}
+							aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button
+						>
+					</div>
 				</div>
 			</div>
-			<div class="sheet-actions">
-				{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
-						{docked
-							? $appLocale === 'en'
-								? 'Docked'
-								: 'Acoplada'
-							: $appLocale === 'en'
-								? 'Floating'
-								: 'Flutuante'}
-					</span><button
-						type="button"
-						onclick={() => onDockChange(!docked)}
-						aria-label={docked
-							? $appLocale === 'en'
-								? 'Float character sheet'
-								: 'Destacar ficha'
-							: $appLocale === 'en'
-								? 'Dock character sheet'
-								: 'Fixar ficha'}
-						>{docked
-							? $appLocale === 'en'
-								? 'Float'
-								: 'Destacar'
-							: $appLocale === 'en'
-								? 'Dock'
-								: 'Fixar'}</button
-					><button
-						type="button"
-						onclick={() =>
-							onOpenNewWindow(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
-						disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
-						aria-label={$appLocale === 'en'
-							? 'Open sheet in auxiliary window'
-							: 'Abrir ficha em janela auxiliar'}
-						>{$appLocale === 'en' ? 'Auxiliary window' : 'Janela auxiliar'}</button
-					><button
-						type="button"
-						onclick={() => (minimized = !minimized)}
-						aria-label={minimized
-							? $appLocale === 'en'
-								? 'Restore character sheet'
-								: 'Restaurar ficha'
-							: $appLocale === 'en'
-								? 'Minimize character sheet'
-								: 'Minimizar ficha'}>{minimized ? '▸' : '−'}</button
-					>{/if}<button
-					type="button"
-					onclick={onclose}
-					aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button
-				>
-			</div>
+			{#if characterOwnerName}<small class="sheet-owner"
+					>{$appLocale === 'en'
+						? `Character of ${characterOwnerName}`
+						: `Personagem de ${characterOwnerName}`}</small
+				>{/if}
 		</header>
 		{#if !loading && !minimized}<nav
 				class="sheet-tabs"
@@ -1226,6 +1277,8 @@
 						itemEntries={itemEntries()}
 						visibleItems={visibleInventory()}
 						totalWeight={inventoryWeight()}
+						money={sheet.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }}
+						onMoneyChange={(money) => (sheet.money = money)}
 						bind:inventoryFilter
 						{optionLabel}
 						onAddCompendiumItem={addInventoryItem}
@@ -1276,7 +1329,7 @@
 							change: updateSpell,
 							present: (spell) => void combatActions.presentSpell(spell),
 							rollEffect: (spell) => void combatActions.rollSpellDamage(spell),
-							cast: (spell, index) => void combatActions.castSpell(spell, index)
+							cast: (spell, index, grant) => void combatActions.castSpell(spell, index, grant)
 						}}
 					/>
 				{/if}
@@ -1285,8 +1338,25 @@
 						{sheet}
 						feats={featList()}
 						featEntries={optionsFor('feat')}
+						spellEntries={optionsFor('spell')}
+						featSpellGrants={sheet.featSpellGrants ?? []}
+						campaignFeatSpellGrants={sheet.campaignFeatSpellGrants ?? []}
 						{optionLabel}
-						onFeatsChange={(feats) => (sheet.feats = feats)}
+						onFeatsChange={(feats) => {
+							sheet.feats = feats;
+							sheet.featSpellGrants = synchronizeDndFeatGrantActivation(
+								feats,
+								sheet.featSpellGrants ?? [],
+								optionsFor('feat')
+							);
+							sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+								feats,
+								sheet.campaignFeatSpellGrants ?? [],
+								optionsFor('feat')
+							);
+						}}
+						onFeatSpellGrantsChange={(grants) => (sheet.featSpellGrants = grants)}
+						onCampaignFeatSpellGrantsChange={(grants) => (sheet.campaignFeatSpellGrants = grants)}
 						onSpellcastingOverride={(enabled) => (sheet.spellcastingOverride = enabled)}
 						onFeaturesChange={(features) => (sheet.features = features)}
 						onEquipmentChange={(equipment) => (sheet.equipment = equipment)}
@@ -1364,7 +1434,7 @@
 		bottom: var(--mm-panel-bottom-offset, calc(var(--mm-audio-footer-offset, 4.25rem) + 0.55rem));
 		left: 1rem;
 		right: var(--mm-panel-right-inset, 1rem);
-		width: min(780px, calc(100vw - var(--mm-panel-right-inset, 1rem) - 2rem));
+		width: min(1280px, calc(100vw - var(--mm-panel-right-inset, 1rem) - 2rem));
 		min-width: min(640px, calc(100vw - var(--mm-panel-right-inset, 1rem) - 2rem));
 		max-width: calc(100vw - var(--mm-panel-right-inset, 1rem) - 1rem);
 		min-height: min(320px, var(--mm-panel-available-height, 320px));
@@ -1373,7 +1443,7 @@
 			calc(100dvh - 6.35rem - var(--mm-audio-footer-offset, 4.25rem))
 		);
 		resize: none;
-		overflow: auto;
+		overflow: hidden;
 		pointer-events: auto;
 		box-shadow: 0 18px 48px #000a;
 	}
@@ -1383,14 +1453,17 @@
 		bottom: auto;
 		right: var(--mm-panel-right-inset, 1rem);
 		left: var(--mm-panel-left-inset, 1rem);
-		width: var(--mm-panel-width, min(920px, calc(100vw - 450px)));
-		height: min(780px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
-		min-width: var(--mm-panel-min-width, min(440px, calc(100vw - 2rem)));
-		max-width: calc(100vw - 1rem);
+		width: var(--mm-panel-width, min(1280px, calc(100vw - 450px)));
+		height: min(900px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
+		min-width: min(
+			var(--mm-panel-min-width, min(440px, calc(100vw - 2rem))),
+			var(--mm-panel-safe-min-width, 440px)
+		);
+		max-width: min(calc(100vw - 1rem), var(--mm-panel-safe-max-width, calc(100vw - 1rem)));
 		min-height: min(400px, var(--mm-panel-available-height, 400px));
 		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
 		resize: both;
-		overflow: auto;
+		overflow: hidden;
 		pointer-events: auto;
 	}
 	@media (max-width: 880px) {
@@ -1404,8 +1477,8 @@
 			left: 0.5rem;
 			right: 0.5rem;
 			width: calc(100vw - 1rem);
-			min-width: min(320px, calc(100vw - 2rem));
-			max-width: calc(100vw - 1rem);
+			min-width: min(320px, calc(100vw - 2rem), var(--mm-panel-safe-min-width, 320px));
+			max-width: min(calc(100vw - 1rem), var(--mm-panel-safe-max-width, calc(100vw - 1rem)));
 			min-height: min(
 				320px,
 				max(
@@ -1441,6 +1514,7 @@
 		width: 100vw;
 		height: 100dvh;
 		max-height: 100dvh;
+		max-width: 100vw;
 		border: 0;
 		border-radius: 0;
 	}
@@ -1494,11 +1568,13 @@
 	.sheet > footer {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 1rem 1.25rem;
+		padding: 0.55rem 0.85rem;
 		border-bottom: 1px solid #403536;
 	}
 	.sheet > header {
+		display: grid;
+		gap: 0.28rem;
+		flex: 0 0 auto;
 		cursor: move;
 		touch-action: none;
 	}
@@ -1506,46 +1582,69 @@
 		cursor: pointer;
 		touch-action: manipulation;
 	}
+	.sheet > header .sheet-primary-actions button {
+		border: 1px solid #765d3d;
+		font-size: 0.7rem;
+	}
 	.sheet > header:focus-visible {
 		outline: 2px solid #e0b86f;
 		outline-offset: -2px;
 	}
 	.sheet > footer {
 		position: relative;
+		flex: 0 0 auto;
 		justify-content: flex-end;
+		align-items: center;
 		gap: 0.5rem;
 		border-top: 1px solid #403536;
+		border-bottom: 0;
+	}
+	.sheet-header-content,
+	.sheet-title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		min-width: 0;
+		width: 100%;
 	}
 	.sheet-heading {
-		display: grid;
-		gap: 0.42rem;
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
 		min-width: 0;
 	}
 	.sheet-heading h2 {
+		min-width: 0;
 		overflow: hidden;
 		color: #f2e6d7;
 		font:
-			600 1.42rem Georgia,
+			600 clamp(1rem, 2.2vw, 1.28rem) Georgia,
 			serif;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.sheet-heading > div {
+	.sheet-primary-actions {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.45rem 0.7rem;
+		flex: 0 0 auto;
+		gap: 0.35rem;
 	}
-	.sheet-heading p {
-		margin: 0 0 0.25rem;
-		color: #d8ad67;
-		font-size: 0.65rem;
-		font-weight: 800;
-		letter-spacing: 0.12em;
+	.sheet-primary-actions button {
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.28rem 0.5rem;
+		color: #e7d1ae;
+		background: #2b211e;
+		font: inherit;
+		font-size: 0.7rem;
+		white-space: nowrap;
+		cursor: pointer;
 	}
-	.sheet-heading small {
+	.sheet-owner {
 		color: #a99c91;
-		font-size: 0.75rem;
+		font-size: 0.68rem;
+		line-height: 1.2;
 	}
 	h2 {
 		margin: 0;
@@ -1559,12 +1658,16 @@
 	}
 	.sheet-body {
 		display: grid;
+		flex: 1 1 auto;
 		gap: 1rem;
 		align-content: start;
 		min-width: 0;
+		min-height: 0;
 		width: 100%;
 		box-sizing: border-box;
-		overflow: auto;
+		overflow-x: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 1.25rem;
 		container-type: inline-size;
 	}
@@ -1606,10 +1709,8 @@
 		color: #f2d49a;
 		background: #38281f;
 	}
-	footer {
-		border-top: 1px solid #403536;
-		border-bottom: 0;
-		min-height: 64px;
+	.sheet > footer {
+		min-height: 48px;
 	}
 	footer span {
 		position: absolute;
@@ -1658,13 +1759,34 @@
 			border: 0;
 			border-radius: 0;
 		}
-		header,
-		footer {
-			padding: 0.8rem 1rem;
+		.sheet > header,
+		.sheet > footer {
+			padding: 0.5rem 0.65rem;
 		}
-		footer {
-			position: sticky;
-			bottom: 0;
+		.sheet-title-row {
+			align-items: flex-start;
+		}
+		.sheet-heading {
+			flex-wrap: wrap;
+			gap: 0.25rem 0.5rem;
+		}
+		.sheet-heading h2 {
+			max-width: 100%;
+		}
+		.sheet-primary-actions button {
+			padding: 0.24rem 0.35rem;
+			font-size: 0.64rem;
+		}
+		.sheet-actions {
+			gap: 0.2rem;
+		}
+		.sheet-tabs {
+			padding: 0.45rem 0.65rem;
+		}
+		.sheet-body {
+			padding: 0.75rem;
+		}
+		.sheet > footer {
 			gap: 0.4rem;
 			background: #1b171a;
 		}

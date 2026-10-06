@@ -75,6 +75,22 @@ func (h *Handler) UpdateEntry(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusOK, updated)
 }
 
+func (h *Handler) UpdateCampaignFeatSpellRule(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var rule CampaignFeatSpellRule
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&rule); err != nil {
+		return apperror.BadRequest("INVALID_FEAT_SPELL_RULE", "Configuração de magias do talento inválida.")
+	}
+	updated, err := h.repo.SetCampaignFeatSpellRule(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("entryID"), rule)
+	if err != nil {
+		if errors.Is(err, ErrInvalidFeatSpellRule) {
+			return apperror.BadRequest("INVALID_FEAT_SPELL_RULE", "Confira as magias, limites e condições de conjuração do talento.")
+		}
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, updated)
+}
+
 func (h *Handler) DeleteEntry(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteEntry(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("entryID")); err != nil {

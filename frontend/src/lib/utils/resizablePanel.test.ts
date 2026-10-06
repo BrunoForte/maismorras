@@ -14,16 +14,77 @@ function fakeStyle(): FakeStyle {
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 const originalObserver = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
+const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 
 afterEach(() => {
 	if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
 	else Reflect.deleteProperty(globalThis, 'window');
 	if (originalObserver) Object.defineProperty(globalThis, 'ResizeObserver', originalObserver);
 	else Reflect.deleteProperty(globalThis, 'ResizeObserver');
+	if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+	else Reflect.deleteProperty(globalThis, 'localStorage');
 	vi.restoreAllMocks();
 });
 
 describe('resizablePanel', () => {
+	it('fills and tracks the auxiliary window viewport without reading or saving page preferences', () => {
+		let width = 1180;
+		let height = 820;
+		let onResize: (() => void) | undefined;
+		const storage = {
+			getItem: vi.fn(() => JSON.stringify({ collapsed: true, size: { width: 520, height: 460 } })),
+			setItem: vi.fn()
+		};
+		Object.defineProperty(globalThis, 'window', {
+			configurable: true,
+			value: {
+				get innerWidth() {
+					return width;
+				},
+				get innerHeight() {
+					return height;
+				},
+				addEventListener: vi.fn((name: string, handler: () => void) => {
+					if (name === 'resize') onResize = handler;
+				}),
+				removeEventListener: vi.fn()
+			}
+		});
+		Object.defineProperty(globalThis, 'ResizeObserver', {
+			configurable: true,
+			value: class {
+				constructor(callback: () => void) {
+					onResize = callback;
+				}
+				observe() {}
+				disconnect() {}
+			}
+		});
+		Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+		const node = {
+			style: fakeStyle(),
+			getBoundingClientRect: () => ({ width: 520, height: 460 }),
+			querySelector: () => null
+		} as unknown as HTMLElement;
+		const action = resizablePanel(node, {
+			collapsed: false,
+			headerSelector: 'header',
+			fillViewport: true,
+			storageKey: 'main-page-sheet-size'
+		});
+
+		expect(node.style.width).toBe('1180px');
+		expect(node.style.height).toBe('820px');
+		expect(storage.getItem).not.toHaveBeenCalled();
+		width = 390;
+		height = 720;
+		onResize?.();
+		expect(node.style.width).toBe('390px');
+		expect(node.style.height).toBe('720px');
+		action.destroy();
+		expect(storage.setItem).not.toHaveBeenCalled();
+	});
+
 	it('collapses physically after resize and restores the last expanded dimensions', () => {
 		let size = { width: 340, height: 420 };
 		let onResize: (() => void) | undefined;

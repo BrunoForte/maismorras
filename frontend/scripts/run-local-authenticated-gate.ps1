@@ -1,6 +1,7 @@
 param(
 	[ValidateRange(1, 10)][int]$Runs = 1,
-	[ValidateRange(0, 2)][int]$Retries = 0
+	[ValidateRange(0, 2)][int]$Retries = 0,
+	[string]$Grep
 )
 
 $ErrorActionPreference = 'Stop'
@@ -87,7 +88,9 @@ try {
 			$output = Join-Path $tempRoot "run-$run-results"
 			$env:E2E_TIMINGS_FILE = $timings
 			$playwrightWatch = [Diagnostics.Stopwatch]::StartNew()
-			npx playwright test e2e/local-authenticated.spec.ts e2e/local-authenticated-audio.spec.ts e2e/local-authenticated-map-sheet.spec.ts --project=chromium --workers=1 --retries=$Retries --output=$output
+			$playwrightArgs = @('playwright', 'test', 'e2e/local-authenticated.spec.ts', 'e2e/local-authenticated-audio.spec.ts', 'e2e/local-authenticated-map-sheet.spec.ts', '--project=chromium', '--workers=1', "--retries=$Retries", "--output=$output")
+			if (-not [string]::IsNullOrWhiteSpace($Grep)) { $playwrightArgs += @('--grep', $Grep) }
+			npx @playwrightArgs
 			$testExitCode = $LASTEXITCODE
 			$playwrightMs = [Math]::Round($playwrightWatch.Elapsed.TotalMilliseconds)
 			"Run ${run}: Playwright ${playwrightMs} ms; exit=$testExitCode; configured retries=$Retries"

@@ -9,7 +9,7 @@ import {
 test.describe('local authenticated authorization E2E', () => {
 	test.skip(!localStackEnabled, 'Runs only against the isolated local Supabase stack in CI.');
 
-	test('GM campaign permissions and player token realtime reads fresh state', async ({
+	test('GM campaign permissions and player token realtime reads fresh state @routine-gate', async ({
 		browser
 	}, testInfo) => {
 		test.skip(

@@ -120,7 +120,8 @@ export type CharacterCombatActionDependencies = {
 		session: Session,
 		campaignId: string,
 		spellIndex: number,
-		slotLevel: number
+		slotLevel: number,
+		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
 	) => Promise<SpellCast>;
 	savePresentation: (
 		session: Session,
@@ -857,12 +858,20 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		state.spellSlotChoice[index] = value;
 	}
 
-	async function castSpell(spell: Spell, index: number) {
+	async function castSpell(
+		spell: Spell,
+		index: number,
+		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+	) {
 		if (!deps.getCanCastSelectedCharacter()) {
 			deps.setMessage('Só é possível lançar magias da sua própria ficha.');
 			return;
 		}
-		if (state.castingSpell !== null || (spell.level > 0 && !compatibleSlots(spell).length)) return;
+		if (
+			state.castingSpell !== null ||
+			(spell.level > 0 && !compatibleSlots(spell).length && !featGrant?.freeCast)
+		)
+			return;
 		const operation = captureOperation();
 		const context = deps.getContext();
 		state.castingSpell = index;
@@ -871,7 +880,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				context.session,
 				context.campaignId,
 				index,
-				spell.level === 0 ? 0 : selectedSlot(spell, index)
+				spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index),
+				featGrant
 			);
 			if (!isCurrent(operation)) return;
 			deps.setSheet(result.sheet);
@@ -879,7 +889,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			addChat({
 				id: String(result.eventId),
 				autor: sheet.name || 'Personagem',
-				texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
+				texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
 				tipo: 'rolagem',
 				canal: 'combat',
 				detalhesRolagem: {
