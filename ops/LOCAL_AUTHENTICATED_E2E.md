@@ -26,14 +26,20 @@ safe metrics reporter record phase and per-attempt durations.
 
 The complete local authenticated suite (all three local-authenticated spec
 files, including audio, map menus, panels, sheet, spells, overlay, and narrow
-viewports) runs on `workflow_dispatch`, with a ten-minute suite-level cap. The
-separate full browser E2E job also runs only on manual dispatch, requires its
-authenticated configuration, and fails instead of silently skipping when
-credentials are absent. Before a substantial release, dispatch the workflow
-against the candidate SHA, review every gate and the complete-suite result, and
-retain the run URL with the release record. The manual event is validation
-only: production migration verification and deployment are conditioned only
-on a push to `main`; manual dispatch cannot deploy production.
+viewports) runs on `workflow_dispatch`, with a ten-minute suite-level cap. It
+starts its own temporary Supabase, backend, and frontend stack; it does not
+require `E2E_BASE_URL`, `E2E_API_BASE`, or `E2E_SCENE_URL`. Before a substantial
+release, dispatch the workflow against the candidate SHA, review every gate
+and the complete-suite result, and retain the run URL with the release record.
+The manual event is validation only: production migration verification and
+deployment are conditioned only on a push to `main`; manual dispatch cannot
+deploy production.
+
+The separate hosted-browser E2E job and its specs are retained but explicitly
+skipped until an isolated hosted staging environment is available. Re-enable
+that job only after configuring its staging frontend/API URLs and associated
+test-scene authentication; those hosted settings are not needed for the
+complete local suite.
 
 The routine gate still blocks the production deployment because it remains a
 dependency of that job. Backend, frontend, bundle-budget, database/RLS, and
@@ -45,13 +51,6 @@ Failure artifacts are allow-listed sanitized timing JSONL and the specific
 cookies, tokens, storage state, network captures, and general Playwright output
 are not uploaded by the release E2E job. The complete local job retains its
 existing sanitizer and excludes traces/network captures before artifact upload.
-
-The workflow dispatch itself requires explicit `E2E_BASE_URL` and
-`E2E_API_BASE` variables for an isolated test deployment, plus the configured
-GM/player login secrets or both legacy authenticated storage-state secrets.
-The known production Vercel and Cloud Run URLs are rejected. If any required
-configuration is missing, the remote release E2E job fails visibly; it does
-not report a skipped suite.
 
 The revised routine/release split is committed locally but has not yet run on a
 GitHub runner. Do not treat local measurements below as runner measurements.

@@ -88,8 +88,9 @@ jobs:
       - if: always()
         run: supabase stop --no-backup
   e2e:
-    name: E2E authenticated (optional)
-    if: github.event_name == 'workflow_dispatch'
+    name: Hosted authenticated E2E (disabled until staging exists)
+    # Keep this job and its specs available for reactivation when an isolated hosted staging environment exists.
+    if: ${{ false }}
     needs: [frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 15
