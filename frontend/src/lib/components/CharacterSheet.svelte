@@ -1043,7 +1043,10 @@
 			maxWidth: 1280,
 			avoidSelectors: ['.app-header', '.game-header', '.workspace-tabs', '.sheet-picker'],
 			avoidLeftSelectors: ['.floating-chat.sheet-open:not(.closed)'],
-			avoidRightSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
+			avoidRightSelectors: [
+				...(actorPanelVisible ? ['.actor-drawer.sheet-open'] : []),
+				'.token-inspector'
+			],
 			avoidBottomSelectors: actorPanelVisible ? ['.actor-drawer.sheet-open'] : [],
 			constrainToViewport: true,
 			enabled: !docked && !standalone
@@ -1452,8 +1455,11 @@
 		left: var(--mm-panel-left-inset, 1rem);
 		width: var(--mm-panel-width, min(1280px, calc(100vw - 450px)));
 		height: min(900px, var(--mm-panel-available-height, calc(100dvh - 10rem)));
-		min-width: var(--mm-panel-min-width, min(440px, calc(100vw - 2rem)));
-		max-width: calc(100vw - 1rem);
+		min-width: min(
+			var(--mm-panel-min-width, min(440px, calc(100vw - 2rem))),
+			var(--mm-panel-safe-min-width, 440px)
+		);
+		max-width: min(calc(100vw - 1rem), var(--mm-panel-safe-max-width, calc(100vw - 1rem)));
 		min-height: min(400px, var(--mm-panel-available-height, 400px));
 		max-height: var(--mm-panel-available-height, calc(100dvh - 10rem));
 		resize: both;
@@ -1471,8 +1477,8 @@
 			left: 0.5rem;
 			right: 0.5rem;
 			width: calc(100vw - 1rem);
-			min-width: min(320px, calc(100vw - 2rem));
-			max-width: calc(100vw - 1rem);
+			min-width: min(320px, calc(100vw - 2rem), var(--mm-panel-safe-min-width, 320px));
+			max-width: min(calc(100vw - 1rem), var(--mm-panel-safe-max-width, calc(100vw - 1rem)));
 			min-height: min(
 				320px,
 				max(

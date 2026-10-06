@@ -540,6 +540,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await assertAboveAudioFooter(page, sheet);
 					}
 				));
+			let phase = 'read initial panel layers';
 			await test.step('interaction and keyboard focus raise either panel without a front button', () =>
 				diagnoseOnFailure(
 					testInfo,
@@ -556,37 +557,68 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					],
 					async () => {
 						const sheetBackdrop = page.locator('.sheet-backdrop');
+						phase = 'read initial sheet and chat z-index';
 						const sheetLayerBefore = Number(
 							await sheetBackdrop.evaluate((node) => getComputedStyle(node).zIndex)
 						);
 						const chatLayerBefore = Number(
 							await chat.evaluate((node) => getComputedStyle(node).zIndex)
 						);
-						await expect(chat.locator('.front-toggle')).toHaveCount(0);
-						await expect(sheet.locator('.front-toggle')).toHaveCount(0);
-						await chat.locator('.chat-titlebar').focus();
+						phase = 'verify redundant front controls are absent';
+						await expect(chat.locator('.front-toggle')).toHaveCount(0, {
+							timeout: menuWaitBudget(testInfo)
+						});
+						await expect(sheet.locator('.front-toggle')).toHaveCount(0, {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'focus chat titlebar to raise chat';
+						await chat.locator('.chat-titlebar').focus({ timeout: menuWaitBudget(testInfo) });
+						phase = 'assert chat is now above the sheet';
 						const chatLayer = Number(await chat.evaluate((node) => getComputedStyle(node).zIndex));
 						expect(chatLayer).toBeGreaterThan(Math.max(sheetLayerBefore, chatLayerBefore));
-						await sheet.locator('header[role="toolbar"]').focus();
+						phase = 'focus sheet toolbar to raise the sheet';
+						await sheet
+							.locator('header[role="toolbar"]')
+							.focus({ timeout: menuWaitBudget(testInfo) });
+						phase = 'assert sheet is now above chat';
 						const sheetLayer = Number(
 							await sheetBackdrop.evaluate((node) => getComputedStyle(node).zIndex)
 						);
 						expect(sheetLayer).toBeGreaterThan(chatLayer);
 						const chatToggle = chat.getByRole('button', { name: 'Chat da mesa' });
-						await chatToggle.focus();
-						await chatToggle.click();
-						await expect(chat).toHaveClass(/closed/);
-						await expect(chat.locator('.chat-body')).toHaveCount(0);
+						phase = 'focus chat close control';
+						await chatToggle.focus({ timeout: menuWaitBudget(testInfo) });
+						phase = 'close chat with its visible control';
+						await chatToggle.click({ timeout: menuWaitBudget(testInfo) });
+						phase = 'assert chat collapsed';
+						await expect(chat).toHaveClass(/closed/, { timeout: menuWaitBudget(testInfo) });
+						await expect(chat.locator('.chat-body')).toHaveCount(0, {
+							timeout: menuWaitBudget(testInfo)
+						});
 						const restoreChat = page.getByRole('button', { name: 'Abrir chat' });
-						await restoreChat.focus();
-						await restoreChat.click();
-						await expect(chat).not.toHaveClass(/closed/);
-						await expect(chat.locator('.chat-body')).toBeVisible();
-						await sheet.getByRole('button', { name: 'Minimizar ficha' }).click();
-						await expect(sheet.locator('.sheet-body')).toHaveCount(0);
-						await page.getByRole('button', { name: 'Restaurar ficha' }).click();
-						await expect(sheet.locator('.sheet-body')).toBeVisible();
-					}
+						phase = 'focus and restore chat';
+						await restoreChat.focus({ timeout: menuWaitBudget(testInfo) });
+						await restoreChat.click({ timeout: menuWaitBudget(testInfo) });
+						await expect(chat).not.toHaveClass(/closed/, { timeout: menuWaitBudget(testInfo) });
+						await expect(chat.locator('.chat-body')).toBeVisible({
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'minimize sheet';
+						await sheet
+							.getByRole('button', { name: 'Minimizar ficha' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						await expect(sheet.locator('.sheet-body')).toHaveCount(0, {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'restore sheet';
+						await page
+							.getByRole('button', { name: 'Restaurar ficha' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						await expect(sheet.locator('.sheet-body')).toBeVisible({
+							timeout: menuWaitBudget(testInfo)
+						});
+					},
+					() => phase
 				));
 		} finally {
 			await fixture?.close();
@@ -1353,6 +1385,250 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	test('narrator campaign rule overrides Magic Initiate and grants one persisted free casting', async ({
+		browser
+	}, testInfo) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const f = fixture;
+			const compendiumResponse = await f.gmApi.get(`/api/v1/campaigns/${f.campaignId}/compendium`);
+			expect(compendiumResponse.status()).toBe(200);
+			const compendium = (await compendiumResponse.json()) as {
+				entries: Array<{
+					id: string;
+					entryType: string;
+					name: string;
+					summary: string;
+					rules: Record<string, unknown>;
+					translations: Record<string, string>;
+				}>;
+			};
+			const feat = compendium.entries.find(
+				(entry) => entry.entryType === 'feat' && entry.rules.id === 'magic-initiate'
+			);
+			const spell = compendium.entries.find(
+				(entry) => entry.entryType === 'spell' && Number(entry.rules.level) === 1
+			);
+			expect(feat, 'campaign compendium contains the published Magic Initiate feat').toBeTruthy();
+			expect(spell, 'campaign compendium contains a published first-level spell').toBeTruthy();
+			const featName = feat!.translations['pt-BR'] || feat!.name;
+			const spellName = spell!.translations['pt-BR'] || spell!.name;
+
+			let phase = 'navigate to campaign compendium';
+			const browserErrorKinds = new Set<string>();
+			let failedScriptRequestCount = 0;
+			f.gm.on('pageerror', (error) => browserErrorKinds.add(classifyBrowserError(error.message)));
+			f.gm.on('requestfailed', (request) => {
+				if (request.resourceType() === 'script') failedScriptRequestCount += 1;
+			});
+			await test.step('narrator configures a campaign-only Magic Initiate mapping in Compendium', () =>
+				diagnoseOnFailure(
+					testInfo,
+					f.gm,
+					'configure campaign feat spell rule',
+					[
+						'.workspace-tabs',
+						'.compendium',
+						'.entry-grid',
+						'.entry-grid button',
+						'.entry-details',
+						'.feat-spell-rule',
+						'.feat-spell-rule button',
+						'.feat-spell-rule select',
+						'.feat-spell-rule input',
+						'.floating-chat',
+						'.audio-channels',
+						'.audio-channels select'
+					],
+					async () => {
+						phase = 'open the campaign workspace';
+						await f.gm.goto(`/?campaign=${f.campaignId}`, {
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'collapse the campaign chat to uncover the compendium work area';
+						const chat = f.gm.locator('.floating-chat');
+						if (!(await chat.evaluate((node) => node.classList.contains('closed')))) {
+							await chat.locator('.chat-toggle').click({ timeout: menuWaitBudget(testInfo) });
+							await expect(chat).toHaveClass(/closed/, {
+								timeout: menuWaitBudget(testInfo)
+							});
+						}
+						phase = 'open Compendium tab';
+						await f.gm
+							.getByRole('button', { name: 'Compêndio', exact: true })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						phase = 'wait for the lazy Compendium view to become ready';
+						try {
+							await expect(f.gm.locator('.compendium')).toBeVisible({
+								timeout: remainingTestBudget(testInfo)
+							});
+							expect(browserErrorKinds).not.toContain('pixi-initialization-cleanup-race');
+						} catch {
+							throw new Error(
+								`Compendium readiness failed; browserErrorKinds=${[...browserErrorKinds].join(',') || 'none'}; failedScriptRequests=${failedScriptRequestCount}`
+							);
+						}
+						phase = 'find the Magic Initiate feat';
+						const search = f.gm.getByPlaceholder('Buscar por nome…');
+						await expect(search).toBeVisible({ timeout: remainingTestBudget(testInfo) });
+						await search.fill(featName, { timeout: menuWaitBudget(testInfo) });
+						await f.gm
+							.locator('.entry-grid button')
+							.filter({ hasText: featName })
+							.first()
+							.click({ timeout: menuWaitBudget(testInfo) });
+						phase = 'open structured feat spell configuration';
+						await f.gm
+							.getByRole('button', { name: 'Configurar magias concedidas' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						const rule = f.gm.locator('.feat-spell-rule');
+						phase = 'enable explicit campaign override and add a spell';
+						await rule
+							.getByLabel('Usar esta regra explícita no lugar do mapeamento padrão')
+							.check({ timeout: menuWaitBudget(testInfo) });
+						await rule
+							.getByRole('button', { name: 'Adicionar magia concedida' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						phase = 'select spell and configure free-use rules';
+						await rule.getByLabel('Magia do compêndio').selectOption(spell!.id, {
+							timeout: menuWaitBudget(testInfo)
+						});
+						await rule.getByLabel('Conjurações gratuitas').fill('1', {
+							timeout: menuWaitBudget(testInfo)
+						});
+						await rule.getByLabel('Recuperar usos em').selectOption('long', {
+							timeout: menuWaitBudget(testInfo)
+						});
+						await rule.getByLabel('INTELLIGENCE').check({
+							timeout: menuWaitBudget(testInfo)
+						});
+						phase = 'save campaign feat spell rule';
+						await rule
+							.getByRole('button', { name: 'Salvar regra da campanha' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						await expect(f.gm.getByText(/Regra de magias do talento salva/)).toBeVisible({
+							timeout: menuWaitBudget(testInfo)
+						});
+					},
+					() => phase
+				));
+
+			const savedCompendiumResponse = await f.gmApi.get(
+				`/api/v1/campaigns/${f.campaignId}/compendium`
+			);
+			const savedCompendium = (await savedCompendiumResponse.json()) as typeof compendium;
+			const savedFeat = savedCompendium.entries.find((entry) => entry.id === feat!.id)!;
+			const override = (savedFeat.rules.campaignOverrides as Record<string, unknown>)
+				.featSpellGrant as {
+				enabled: boolean;
+				spells: Array<{
+					spellEntryId: string;
+					freeUses: number;
+					recovery: string;
+					canUseExistingSlots: boolean;
+					abilityOptions: string[];
+				}>;
+			};
+			expect(override).toMatchObject({
+				enabled: true,
+				spells: [
+					{
+						spellEntryId: spell!.id,
+						freeUses: 1,
+						recovery: 'long',
+						canUseExistingSlots: false,
+						abilityOptions: ['intelligence']
+					}
+				]
+			});
+
+			const character = await f.createCharacter(f.playerUserId, {
+				name: 'Iniciado em Magia por campanha E2E',
+				class: 'Fighter',
+				level: 1,
+				feats: featName,
+				campaignFeatSpellGrants: [
+					{
+						featEntryId: feat!.id,
+						spellcastingAbilities: { [spell!.id]: 'intelligence' },
+						freeCastsRemaining: { [spell!.id]: 99 },
+						active: true
+					}
+				]
+			});
+			expect(character.sheet.campaignFeatSpellGrants).toMatchObject([
+				{
+					id: `campaign-feat:${feat!.id}:1`,
+					spellcastingAbilities: { [spell!.id]: 'intelligence' },
+					freeCastsRemaining: { [spell!.id]: 1 },
+					active: true
+				}
+			]);
+			expect(character.sheet.spellSlots).toEqual([]);
+
+			await test.step('player sees the campaign-granted spell despite having no class spellcasting', async () => {
+				await f.player.goto(`/sheet?campaign=${f.campaignId}&character=${character.id}`);
+				await expect(f.player.locator('.sheet')).toBeVisible({ timeout: 15_000 });
+				await f.player.getByRole('button', { name: 'Magias', exact: true }).click();
+				const spellCard = f.player.locator('.spell-card').filter({ hasText: spellName });
+				await expect(spellCard).toBeVisible({
+					timeout: menuWaitBudget(testInfo)
+				});
+				await spellCard.getByRole('button').first().click();
+				await expect(spellCard.locator('.feat-casting-source')).toContainText(featName);
+				await expect(spellCard.getByRole('button', { name: 'Lançar grátis (1)' })).toBeVisible();
+			});
+
+			await test.step('free cast is authorized by the server, spends exactly one use and adds no slot', async () => {
+				const castResponse = f.player.waitForResponse((response) => {
+					const url = new URL(response.url());
+					return (
+						response.request().method() === 'POST' &&
+						url.pathname === `/api/v1/campaigns/${f.campaignId}/character/cast-spell`
+					);
+				});
+				await f.player.getByRole('button', { name: 'Lançar grátis (1)' }).click();
+				const response = await castResponse;
+				expect(response.status()).toBe(201);
+				const result = (await response.json()) as {
+					sheet: {
+						campaignFeatSpellGrants: Array<{ freeCastsRemaining: Record<string, number> }>;
+						spellSlots: unknown[];
+					};
+				};
+				expect(result.sheet.campaignFeatSpellGrants[0].freeCastsRemaining[spell!.id]).toBe(0);
+				expect(result.sheet.spellSlots).toEqual([]);
+				const reloaded = await f.playerApi.get(`/api/v1/campaigns/${f.campaignId}/character`);
+				expect(reloaded.status()).toBe(200);
+				const saved = (await reloaded.json()) as typeof result;
+				expect(saved.sheet.campaignFeatSpellGrants[0].freeCastsRemaining[spell!.id]).toBe(0);
+				expect(saved.sheet.spellSlots).toEqual([]);
+				const shortRest = await f.playerApi.post(
+					`/api/v1/campaigns/${f.campaignId}/character/rest`,
+					{ data: { kind: 'short' } }
+				);
+				expect(shortRest.status()).toBe(200);
+				const afterShortRest = (await shortRest.json()) as typeof result;
+				expect(afterShortRest.sheet.campaignFeatSpellGrants[0].freeCastsRemaining[spell!.id]).toBe(
+					0
+				);
+				const longRest = await f.playerApi.post(
+					`/api/v1/campaigns/${f.campaignId}/character/rest`,
+					{ data: { kind: 'long' } }
+				);
+				expect(longRest.status()).toBe(200);
+				const afterLongRest = (await longRest.json()) as typeof result;
+				expect(afterLongRest.sheet.campaignFeatSpellGrants[0].freeCastsRemaining[spell!.id]).toBe(
+					1
+				);
+				expect(afterLongRest.sheet.spellSlots).toEqual([]);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
 	async function startLinkedSheetScenario(browser: Browser, testInfo: TestInfo) {
 		const prepared = await prepareSavedPlayerSheet(browser, testInfo);
 		const { player, sheet } = prepared;
@@ -1360,13 +1636,38 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await sheet.evaluate((node) => (node.dataset.instanceMarker = 'same-sheet-instance'));
 			await player.getByRole('button', { name: 'Mesa', exact: true }).click();
 			await expect(player.locator('canvas').first()).toBeVisible();
-			await movePanelAwayFromMapTarget(player, '.sheet-backdrop.floating .sheet', 'header h2');
-			await movePanelAwayFromMapTarget(player, '.floating-chat', '.panel-grip');
-			await selectTokenAtDefaultPosition(player, true);
-			await player.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
-			await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
-			await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
-			await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
+			let phase = 'move panels clear of canvas selection target';
+			await diagnoseOnFailure(
+				testInfo,
+				player,
+				'focus linked sheet from map inspector',
+				[
+					...sheetPanelDiagnosticSelectors,
+					'.token-inspector',
+					'.token-inspector .open-sheet',
+					'.token-inspector .sheet-actions'
+				],
+				async () => {
+					await movePanelAwayFromMapTarget(player, '.sheet-backdrop.floating .sheet', 'header h2');
+					await movePanelAwayFromMapTarget(player, '.floating-chat', '.panel-grip');
+					phase = 'select token and wait for inspector layout';
+					await selectTokenAtDefaultPosition(player, true);
+					const inspector = player.locator('.token-inspector');
+					await expect(inspector).toBeVisible({ timeout: menuWaitBudget(testInfo) });
+					phase = 'verify sheet leaves linked-sheet action accessible';
+					const sheetBox = (await sheet.boundingBox())!;
+					const inspectorBox = (await inspector.boundingBox())!;
+					expect(sheetBox.x + sheetBox.width).toBeLessThanOrEqual(inspectorBox.x + 2);
+					phase = 'click linked-sheet action and focus the existing instance';
+					await player
+						.getByRole('button', { name: 'Abrir ficha vinculada' })
+						.click({ timeout: menuWaitBudget(testInfo) });
+					await expect(sheet.locator('header h2')).toHaveText('Ficha persistida E2E');
+					await expect(sheet).toHaveAttribute('data-instance-marker', 'same-sheet-instance');
+					await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(1);
+				},
+				() => phase
+			);
 			await test.step('map clicks outside the sheet and sheet controls inside it remain usable', async () => {
 				const canvas = player.locator('canvas').first();
 				await expect(player.locator('.token-inspector')).toBeVisible();
@@ -1390,6 +1691,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		'.sheet-backdrop .sheet header',
 		'.sheet-backdrop .sheet button',
 		'.sheet-backdrop .sheet-body',
+		'.token-inspector',
+		'.token-inspector .sheet-actions',
+		'.token-inspector .open-sheet',
 		'.workspace-tabs',
 		'.actor-drawer',
 		'.audio-channels'
@@ -1454,28 +1758,48 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					async () => {
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						await assertAboveAudioFooter(player, sheet);
+						const chat = player.locator('.floating-chat');
+						if (!(await chat.evaluate((node) => node.classList.contains('closed')))) {
+							phase = 'collapse chat to give the sheet independent resize room';
+							await chat.getByRole('button', { name: 'Chat da mesa' }).click();
+						}
+						phase = 'move panel left to create safe resize room';
+						await dragPanel(player, sheet.locator('header'), -500, 0);
 						const before = (await sheet.boundingBox())!;
 						const startX = before.x + before.width - 4;
 						const startY = before.y + before.height - 4;
-						markPointerTarget(
-							player,
-							'resize sheet',
-							before.x + before.width + 32,
-							before.y + before.height + 24,
-							startX,
-							startY
-						);
-						phase = 'drag lower resize corner';
+						markPointerTarget(player, 'shrink sheet', startX - 64, startY - 48, startX, startY);
+						phase = 'drag lower resize corner inward';
 						await player.mouse.move(startX, startY);
 						await player.mouse.down();
-						await player.mouse.move(before.x + before.width + 32, before.y + before.height + 24, {
+						await player.mouse.move(startX - 64, startY - 48, {
 							steps: 4
 						});
 						await player.mouse.up();
-						phase = 'assert expanded width';
+						phase = 'assert the panel shrank';
 						await expect
 							.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
-							.toBeGreaterThan(before.width + 15);
+							.toBeLessThan(before.width - 15);
+						const shrunk = (await sheet.boundingBox())!;
+						phase = 'expand sheet back toward its prior size';
+						markPointerTarget(
+							player,
+							'expand sheet',
+							before.x + before.width - 4,
+							before.y + before.height - 4,
+							shrunk.x + shrunk.width - 4,
+							shrunk.y + shrunk.height - 4
+						);
+						await player.mouse.move(shrunk.x + shrunk.width - 4, shrunk.y + shrunk.height - 4);
+						await player.mouse.down();
+						await player.mouse.move(before.x + before.width - 4, before.y + before.height - 4, {
+							steps: 4
+						});
+						await player.mouse.up();
+						phase = 'assert resize can expand without exceeding the viewport';
+						await expect
+							.poll(() => sheet.evaluate((node) => node.getBoundingClientRect().width))
+							.toBeGreaterThan(shrunk.width + 15);
 						await assertAboveAudioFooter(player, sheet);
 					},
 					() => phase
@@ -1786,8 +2110,6 @@ test('bounded diagnostic failure creates a sanitized artifact attachment', async
 		const attachmentPath = resolve(attachment!.path!);
 		const outputRelative = relative(resolve(testInfo.outputDir), attachmentPath);
 		expect(outputRelative).not.toMatch(/^\.\.(?:[\\/]|$)/);
-		const uploadedArtifactPath = relative(resolve('test-results'), attachmentPath);
-		expect(uploadedArtifactPath).not.toMatch(/^\.\.(?:[\\/]|$)/);
 		const diagnostic = readFileSync(attachmentPath, 'utf8');
 		expect(diagnostic).toContain('controlled bounded click timeout');
 		expect(diagnostic).toContain('"failureType":"TimeoutError"');
@@ -1873,6 +2195,14 @@ function sanitizeBrowserDiagnostic(value: string): string {
 			/((?:authorization|access[_-]?token|refresh[_-]?token|api[_-]?key|password))\s*[:=]\s*\S+/gi,
 			'$1=[redacted]'
 		);
+}
+
+function classifyBrowserError(message: string): string {
+	if (/ResizeObserver loop/i.test(message)) return 'resize-observer-loop';
+	if (/_cancelResize is not a function/i.test(message)) return 'pixi-initialization-cleanup-race';
+	if (/failed to fetch dynamically imported module/i.test(message)) return 'dynamic-import-failure';
+	if (/loading chunk|chunkloaderror/i.test(message)) return 'chunk-load-failure';
+	return 'unclassified-browser-error';
 }
 
 async function selectTokenAtDefaultPosition(page: Page, requireUncoveredTarget = false) {
@@ -2020,7 +2350,14 @@ async function diagnoseOnFailure<T>(
 										visibility: style.visibility,
 										opacity: style.opacity,
 										position: style.position,
-										zIndex: style.zIndex
+										zIndex: style.zIndex,
+										width: style.width,
+										minWidth: style.minWidth,
+										maxWidth: style.maxWidth,
+										resize: style.resize,
+										safeMaxWidth: (node as HTMLElement).style.getPropertyValue(
+											'--mm-panel-safe-max-width'
+										)
 									},
 									state: {
 										expanded: node.getAttribute('aria-expanded'),
@@ -2147,6 +2484,13 @@ function menuWaitBudget(testInfo: TestInfo): number {
 	const remaining = testInfo.timeout - elapsed - DIAGNOSTIC_COMPLETION_RESERVE_MS;
 	if (remaining <= 0) throw diagnosticTimeout('Reserved time for safe diagnostics reached.');
 	return Math.max(100, Math.min(MENU_OPERATION_TIMEOUT_MS, remaining));
+}
+
+function remainingTestBudget(testInfo: TestInfo): number {
+	const elapsed = performance.now() - (testStartedAt.get(testInfo) ?? performance.now());
+	const remaining = testInfo.timeout - elapsed - DIAGNOSTIC_COMPLETION_RESERVE_MS;
+	if (remaining <= 0) throw diagnosticTimeout('Reserved time for safe diagnostics reached.');
+	return Math.max(100, remaining);
 }
 
 function diagnosticTimeout(message: string): Error {

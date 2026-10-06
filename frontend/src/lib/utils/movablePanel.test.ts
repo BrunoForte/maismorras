@@ -29,6 +29,7 @@ function makeHarness(
 	};
 	const documentMock = {
 		documentElement: {},
+		body: {},
 		querySelector: vi.fn((selector: string) => {
 			const rect = obstacleRects[selector];
 			return rect ? { getBoundingClientRect: () => rect } : null;
@@ -39,6 +40,13 @@ function makeHarness(
 		removeEventListener: vi.fn((name: string) => documentListeners.delete(name))
 	};
 	class FakeElement {
+		className = '';
+		matches(selector: string) {
+			return selector === `.${this.className}`;
+		}
+		querySelector() {
+			return null;
+		}
 		closest(selector: string) {
 			return selector === '.titlebar' ? this : null;
 		}
@@ -46,9 +54,17 @@ function makeHarness(
 	const nodeListeners = new Map<string, (event: PointerEvent) => void>();
 	const nodeStyle: Record<string, string> = {};
 	let resizeObserverCallback: ResizeObserverCallback | undefined;
+	let mutationObserverCallback: MutationCallback | undefined;
 	class FakeResizeObserver {
 		constructor(callback: ResizeObserverCallback) {
 			resizeObserverCallback = callback;
+		}
+		observe = vi.fn();
+		disconnect = vi.fn();
+	}
+	class FakeMutationObserver {
+		constructor(callback: MutationCallback) {
+			mutationObserverCallback = callback;
 		}
 		observe = vi.fn();
 		disconnect = vi.fn();
@@ -82,6 +98,7 @@ function makeHarness(
 	installGlobal('document', documentMock);
 	installGlobal('Element', FakeElement);
 	installGlobal('ResizeObserver', FakeResizeObserver);
+	installGlobal('MutationObserver', FakeMutationObserver);
 	installGlobal('getComputedStyle', () => ({ getPropertyValue: () => '68px' }));
 	installGlobal('localStorage', {
 		getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -98,6 +115,14 @@ function makeHarness(
 		obstacleRects,
 		triggerResize() {
 			resizeObserverCallback?.([], {} as ResizeObserver);
+		},
+		triggerDOMChange() {
+			const insertedObstacle = new FakeElement();
+			insertedObstacle.className = 'token-inspector';
+			mutationObserverCallback?.(
+				[{ addedNodes: [insertedObstacle], removedNodes: [] } as unknown as MutationRecord],
+				{} as MutationObserver
+			);
 		}
 	};
 }
@@ -346,6 +371,57 @@ describe('movablePanel', () => {
 		expect(
 			(h.node as unknown as { style: Record<string, string> }).style['--mm-panel-right-inset']
 		).toBe('278px');
+		action.destroy();
+	});
+
+	it('caps a resized sheet before a right-side map inspector', () => {
+		const h = makeHarness(
+			{ width: 1000, height: 520 },
+			{
+				'.token-inspector': {
+					left: 900,
+					top: 120,
+					right: 1180,
+					bottom: 540,
+					width: 280,
+					height: 420
+				}
+			}
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-with-token-inspector',
+			handleSelector: '.titlebar',
+			avoidRightSelectors: ['.token-inspector']
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		expect(style['--mm-panel-safe-max-width']).toBe('780px');
+		expect(style['--mm-panel-safe-min-width']).toBe('440px');
+		action.destroy();
+	});
+
+	it('moves a saved panel left when a map inspector appears over it', () => {
+		const h = makeHarness(
+			{ width: 600, height: 420 },
+			{
+				'.token-inspector': {
+					left: 900,
+					top: 120,
+					right: 1180,
+					bottom: 540,
+					width: 280,
+					height: 420
+				}
+			}
+		);
+		const action = movablePanel(h.node, {
+			storageKey: 'sheet-with-inspector',
+			handleSelector: '.titlebar',
+			avoidRightSelectors: ['.token-inspector']
+		});
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		style.left = '500px';
+		h.triggerDOMChange();
+		expect(style.left).toBe('288px');
 		action.destroy();
 	});
 
