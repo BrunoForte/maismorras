@@ -872,7 +872,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('standalone sheet uses authenticated session, enforces ownership and stays isolated', async ({
+	test('standalone sheet uses authenticated session, enforces ownership and stays isolated @routine-gate', async ({
 		browser
 	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -1937,7 +1937,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		['gm', 3, 6],
 		['gm', 100, 6]
 	] as const) {
-		test(`${role} quick roll ${quantity}d${sides} matches authoritative chat and visual result`, async ({
+		const routineTag = role === 'player' && quantity === 1 ? ' @routine-gate' : '';
+		test(`${role} quick roll ${quantity}d${sides} matches authoritative chat and visual result${routineTag}`, async ({
 			browser
 		}) => {
 			let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -1946,11 +1947,20 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					fixture = await createLocalAuthenticatedFixture(browser);
 				});
 				const page = role === 'gm' ? fixture!.gm : fixture!.player;
+				const receivingParticipant = role === 'player' && quantity === 1 ? fixture!.gm : null;
 				const formula = `${quantity}d${sides}`;
 				let authoritativeResult: { expressao: string; dados: number[]; total: number } | null =
 					null;
 				let authoritativeEventId = '';
 				await test.step('submit the quick roll and verify the authoritative server result', async () => {
+					if (receivingParticipant) {
+						await openMap(receivingParticipant, fixture!.campaignId, fixture!.sceneId);
+						const receiverChat = receivingParticipant.locator('.floating-chat');
+						if (await receiverChat.evaluate((node) => node.classList.contains('closed'))) {
+							await receiverChat.locator('.chat-toggle').click();
+						}
+						await expect(receiverChat.locator('.chat-body')).toBeVisible();
+					}
 					await openMap(page, fixture!.campaignId, fixture!.sceneId);
 					await page.locator('.table-tools button[title="Dados"]').click();
 					await page.getByLabel('Quantidade de dados').fill(String(quantity));
@@ -1999,6 +2009,19 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					await expect(chatRoll.locator('.roll em')).toContainText(
 						authoritativeResult!.dados.join(', ')
 					);
+					if (receivingParticipant) {
+						const receiverRoll = receivingParticipant.locator(
+							`.floating-chat [data-event-id="${authoritativeEventId}"]`
+						);
+						await expect(receiverRoll).toBeVisible();
+						await expect(receiverRoll.locator('.roll small')).toContainText(formula);
+						await expect(receiverRoll.locator('.roll b')).toHaveText(
+							String(authoritativeResult!.total)
+						);
+						await expect(receiverRoll.locator('.roll em')).toContainText(
+							authoritativeResult!.dados.join(', ')
+						);
+					}
 				});
 			} finally {
 				await fixture?.close();
