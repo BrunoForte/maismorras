@@ -872,18 +872,15 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('standalone sheet uses authenticated session, enforces ownership and stays isolated @routine-gate', async ({
+	test('standalone sheet enforces ownership and remains isolated @routine-gate', async ({
 		browser
-	}, testInfo) => {
+	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			await test.step('prepare independent player and narrator character sheets', async () => {
 				fixture = await createLocalAuthenticatedFixture(browser);
-				const own = await fixture.createCharacter(fixture.playerUserId, {
-					name: 'Ficha própria E2E'
-				});
+				await fixture.createCharacter(fixture.playerUserId, { name: 'Ficha própria E2E' });
 				await fixture.createCharacter(fixture.gmUserId, { name: 'Ficha alheia E2E' });
-				await fixture.createCharacterToken(own.id);
 			});
 			const f = fixture!;
 			const roster = await f.gmApi.get(`/api/v1/campaigns/${f.campaignId}/participants`);
@@ -898,139 +895,6 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			)?.character;
 			expect(playerCharacter).toBeTruthy();
 			expect(gmCharacter).toBeTruthy();
-			await test.step('popup opens the isolated own sheet without auth credentials in its URL', async () => {
-				await test.step('select own token on an uncovered map point', async () => {
-					await openMap(f.player, f.campaignId, f.sceneId);
-					await movePanelAwayFromMapTarget(f.player, '.floating-chat', '.panel-grip');
-					await selectTokenAtDefaultPosition(f.player, true);
-				});
-				const auxiliaryButton = f.player.getByRole('button', {
-					name: 'Destacar ficha',
-					exact: true
-				});
-				const popup =
-					await test.step('trigger and observe the auxiliary popup from the own-token action', async () => {
-						await expect(auxiliaryButton).toBeVisible();
-						const popupEvent = f.player.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
-						await auxiliaryButton.click({ timeout: 5_000 });
-						const openedPopup = await popupEvent;
-						if (!openedPopup) {
-							const fallbackVisible = (await f.player.getByRole('alert').count()) > 0;
-							throw new Error(
-								`Auxiliary popup was not observed; browser-block feedback visible=${fallbackVisible}.`
-							);
-						}
-						return openedPopup;
-					});
-				await test.step('load authorized isolated sheet in popup', async () => {
-					await expect(popup.locator('.sheet')).toBeVisible({ timeout: 20_000 });
-				});
-				await test.step('verify popup route and secret-free URL', async () => {
-					expect(new URL(popup.url()).pathname).toBe('/sheet');
-					expect(popup.url()).toContain(`campaign=${f.campaignId}`);
-					expect(popup.url()).toContain(`character=${playerCharacter!.id}`);
-					expect(popup.url()).toContain('auxiliary=1');
-					expect(popup.url()).not.toMatch(/access_token|refresh_token|authorization|jwt/i);
-				});
-				const popupState = await test.step('check safe popup window features', () =>
-					popup.evaluate(() => ({
-						name: window.name,
-						openerIsNull: window.opener === null,
-						width: window.outerWidth,
-						height: window.outerHeight
-					})));
-				expect(popupState.name).toContain(
-					`maismorras-sheet-${f.campaignId}-${playerCharacter!.id}`
-				);
-				expect(popupState.openerIsNull).toBe(true);
-				expect(popupState.width).toBeGreaterThan(600);
-				expect(popupState.height).toBeGreaterThan(500);
-				const assertPopupUsesItsViewport = async (width: number, height: number) => {
-					await diagnoseOnFailure(
-						testInfo,
-						popup,
-						`standalone sheet viewport ${width}x${height}`,
-						[
-							{ label: 'sheet backdrop', selector: '.sheet-backdrop' },
-							{ label: 'standalone sheet panel', selector: '.sheet' },
-							{ label: 'sheet header', selector: '.sheet > header' },
-							{ label: 'sheet tabs', selector: '.sheet-tabs' },
-							{ label: 'sheet body', selector: '.sheet-body' },
-							{ label: 'sheet footer', selector: '.sheet > footer' }
-						],
-						async () => {
-							await popup.setViewportSize({ width, height });
-							await expect(popup.locator('.sheet-tabs')).toBeVisible();
-							await expect(popup.locator('.sheet-body')).toBeVisible();
-							await expect
-								.poll(
-									() =>
-										popup.locator('.sheet').evaluate((node) => {
-											const rect = node.getBoundingClientRect();
-											return {
-												width: Math.round(rect.width),
-												height: Math.round(rect.height)
-											};
-										}),
-									{ timeout: remainingTestBudget(testInfo) }
-								)
-								.toEqual({ width, height });
-						},
-						() => `resize to ${width}x${height} and await exact panel bounds`
-					);
-					const layout = await popup.locator('.sheet').evaluate((node) => {
-						const body = node.querySelector<HTMLElement>('.sheet-body')!;
-						const header = node.querySelector<HTMLElement>('header')!;
-						const tabs = node.querySelector<HTMLElement>('.sheet-tabs')!;
-						const footer = node.querySelector<HTMLElement>('footer')!;
-						const sheetStyle = getComputedStyle(node);
-						const bodyStyle = getComputedStyle(body);
-						const verticalScrollers = [node, ...node.querySelectorAll<HTMLElement>('*')]
-							.filter((element) => {
-								const style = getComputedStyle(element);
-								const rect = element.getBoundingClientRect();
-								return (
-									rect.width > 0 &&
-									rect.height > 0 &&
-									['auto', 'scroll'].includes(style.overflowY) &&
-									element.scrollHeight > element.clientHeight + 1
-								);
-							})
-							.map((element) => (element === body ? '.sheet-body' : element.tagName.toLowerCase()));
-						return {
-							viewport: { width: window.innerWidth, height: window.innerHeight },
-							sheet: { width: node.clientWidth, height: node.clientHeight },
-							sheetOverflowY: sheetStyle.overflowY,
-							bodyOverflowY: bodyStyle.overflowY,
-							verticalScrollers,
-							fixedRegionsVisible: [header, tabs, footer].every((element) => {
-								const rect = element.getBoundingClientRect();
-								return rect.top >= 0 && rect.bottom <= window.innerHeight;
-							})
-						};
-					});
-					expect(layout.viewport).toEqual({ width, height });
-					expect(layout.sheet).toEqual({ width, height });
-					expect(layout.sheetOverflowY).toBe('hidden');
-					expect(layout.bodyOverflowY).toBe('auto');
-					expect(layout.verticalScrollers).toEqual(['.sheet-body']);
-					expect(layout.fixedRegionsVisible).toBe(true);
-					await expect(popup.locator('.sheet-tabs')).toBeVisible();
-					await expect(
-						popup.getByRole('button', { name: /Salvar ficha|Save character sheet/ })
-					).toBeVisible();
-				};
-				await assertPopupUsesItsViewport(1280, 900);
-				await assertPopupUsesItsViewport(390, 720);
-				await expect(
-					popup.locator('canvas, .app-header, .floating-chat, .actor-drawer, .audio-channels')
-				).toHaveCount(0);
-				const pageCount = f.player.context().pages().length;
-				await auxiliaryButton.click({ timeout: 5_000 });
-				await expect.poll(() => f.player.context().pages().length).toBe(pageCount);
-				await expect(popup.locator('.sheet')).toBeVisible();
-				await popup.close();
-			});
 			await test.step('player opens only their isolated sheet and cannot substitute another character', async () => {
 				await f.player.goto(`/sheet?campaign=${f.campaignId}&character=${playerCharacter!.id}`);
 				await expect(f.player.locator('.sheet')).toBeVisible({ timeout: 20_000 });
@@ -1056,6 +920,60 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await fixture?.close();
 		}
 	});
+
+	test('own-token action opens and reuses one authorized auxiliary sheet @routine-gate', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const own = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Ficha popup própria E2E'
+			});
+			await fixture.createCharacterToken(own.id);
+			const f = fixture;
+			const popup = await openOwnCharacterPopup(f, own.id);
+			await expect(popup.locator('.sheet')).toContainText('Ficha popup própria E2E');
+			await expect(
+				popup.locator('canvas, .app-header, .floating-chat, .actor-drawer, .audio-channels')
+			).toHaveCount(0);
+			const pageCount = f.player.context().pages().length;
+			await f.player.getByRole('button', { name: 'Destacar ficha', exact: true }).click();
+			await expect.poll(() => f.player.context().pages().length).toBe(pageCount);
+			await expect(popup.locator('.sheet')).toBeVisible();
+			await popup.close();
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	for (const viewport of [
+		{ name: 'desktop', width: 1280, height: 900 },
+		{ name: 'narrow', width: 390, height: 720 }
+	] as const) {
+		test(`auxiliary sheet fills its own ${viewport.name} viewport`, async ({
+			browser
+		}, testInfo) => {
+			let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+			try {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const own = await fixture.createCharacter(fixture.playerUserId, {
+					name: `Ficha popup ${viewport.name} E2E`
+				});
+				await fixture.createCharacterToken(own.id);
+				const popup = await openOwnCharacterPopup(fixture, own.id);
+				await test.step(`resize popup to ${viewport.width}x${viewport.height} and verify sheet layout`, async () => {
+					await assertPopupUsesItsViewport(popup, testInfo, viewport.width, viewport.height);
+				});
+				await expect(
+					popup.locator('canvas, .app-header, .floating-chat, .actor-drawer, .audio-channels')
+				).toHaveCount(0);
+				await popup.close();
+			} finally {
+				await fixture?.close();
+			}
+		});
+	}
 
 	test('player summary updates HP, rolls weapon actions, casts own spell and publishes it to campaign chat', async ({
 		browser
@@ -2285,6 +2203,135 @@ async function selectTokenAtDefaultPosition(page: Page, requireUncoveredTarget =
 		await chat.locator('.chat-toggle').click();
 	}
 	await expect(page.locator('.token-inspector')).toBeVisible({ timeout: 10_000 });
+}
+
+async function openOwnCharacterPopup(
+	fixture: LocalAuthenticatedFixture,
+	characterId: string
+): Promise<Page> {
+	await test.step('select own token on an uncovered map point', async () => {
+		await openMap(fixture.player, fixture.campaignId, fixture.sceneId);
+		await movePanelAwayFromMapTarget(fixture.player, '.floating-chat', '.panel-grip');
+		await selectTokenAtDefaultPosition(fixture.player, true);
+	});
+	const auxiliaryButton = fixture.player.getByRole('button', {
+		name: 'Destacar ficha',
+		exact: true
+	});
+	const popup =
+		await test.step('trigger and observe the auxiliary popup from the own-token action', async () => {
+			await expect(auxiliaryButton).toBeVisible();
+			const popupEvent = fixture.player.waitForEvent('popup', { timeout: 5_000 }).catch(() => null);
+			await auxiliaryButton.click({ timeout: 5_000 });
+			const openedPopup = await popupEvent;
+			if (!openedPopup) {
+				const fallbackVisible = (await fixture.player.getByRole('alert').count()) > 0;
+				throw new Error(
+					`Auxiliary popup was not observed; browser-block feedback visible=${fallbackVisible}.`
+				);
+			}
+			return openedPopup;
+		});
+	await test.step('load authorized isolated sheet in popup', async () => {
+		await expect(popup.locator('.sheet')).toBeVisible({ timeout: 20_000 });
+	});
+	await test.step('verify popup route, authorization identity, and secret-free URL', async () => {
+		expect(new URL(popup.url()).pathname).toBe('/sheet');
+		expect(popup.url()).toContain(`campaign=${fixture.campaignId}`);
+		expect(popup.url()).toContain(`character=${characterId}`);
+		expect(popup.url()).toContain('auxiliary=1');
+		expect(popup.url()).not.toMatch(/access_token|refresh_token|authorization|jwt/i);
+	});
+	const popupState = await test.step('check safe popup window features', () =>
+		popup.evaluate(() => ({
+			name: window.name,
+			openerIsNull: window.opener === null,
+			width: window.outerWidth,
+			height: window.outerHeight
+		})));
+	expect(popupState.name).toContain(`maismorras-sheet-${fixture.campaignId}-${characterId}`);
+	expect(popupState.openerIsNull).toBe(true);
+	expect(popupState.width).toBeGreaterThan(600);
+	expect(popupState.height).toBeGreaterThan(500);
+	return popup;
+}
+
+async function assertPopupUsesItsViewport(
+	popup: Page,
+	testInfo: TestInfo,
+	width: number,
+	height: number
+) {
+	await diagnoseOnFailure(
+		testInfo,
+		popup,
+		`standalone sheet viewport ${width}x${height}`,
+		[
+			{ label: 'sheet backdrop', selector: '.sheet-backdrop' },
+			{ label: 'standalone sheet panel', selector: '.sheet' },
+			{ label: 'sheet header', selector: '.sheet > header' },
+			{ label: 'sheet tabs', selector: '.sheet-tabs' },
+			{ label: 'sheet body', selector: '.sheet-body' },
+			{ label: 'sheet footer', selector: '.sheet > footer' }
+		],
+		async () => {
+			await popup.setViewportSize({ width, height });
+			await expect(popup.locator('.sheet-tabs')).toBeVisible();
+			await expect(popup.locator('.sheet-body')).toBeVisible();
+			await expect
+				.poll(
+					() =>
+						popup.locator('.sheet').evaluate((node) => {
+							const rect = node.getBoundingClientRect();
+							return { width: Math.round(rect.width), height: Math.round(rect.height) };
+						}),
+					{ timeout: remainingTestBudget(testInfo) }
+				)
+				.toEqual({ width, height });
+		},
+		() => `resize to ${width}x${height} and await exact panel bounds`
+	);
+	const layout = await popup.locator('.sheet').evaluate((node) => {
+		const body = node.querySelector<HTMLElement>('.sheet-body')!;
+		const header = node.querySelector<HTMLElement>('header')!;
+		const tabs = node.querySelector<HTMLElement>('.sheet-tabs')!;
+		const footer = node.querySelector<HTMLElement>('footer')!;
+		const sheetStyle = getComputedStyle(node);
+		const bodyStyle = getComputedStyle(body);
+		const verticalScrollers = [node, ...node.querySelectorAll<HTMLElement>('*')]
+			.filter((element) => {
+				const style = getComputedStyle(element);
+				const rect = element.getBoundingClientRect();
+				return (
+					rect.width > 0 &&
+					rect.height > 0 &&
+					['auto', 'scroll'].includes(style.overflowY) &&
+					element.scrollHeight > element.clientHeight + 1
+				);
+			})
+			.map((element) => (element === body ? '.sheet-body' : element.tagName.toLowerCase()));
+		return {
+			viewport: { width: window.innerWidth, height: window.innerHeight },
+			sheet: { width: node.clientWidth, height: node.clientHeight },
+			sheetOverflowY: sheetStyle.overflowY,
+			bodyOverflowY: bodyStyle.overflowY,
+			verticalScrollers,
+			fixedRegionsVisible: [header, tabs, footer].every((element) => {
+				const rect = element.getBoundingClientRect();
+				return rect.top >= 0 && rect.bottom <= window.innerHeight;
+			})
+		};
+	});
+	expect(layout.viewport).toEqual({ width, height });
+	expect(layout.sheet).toEqual({ width, height });
+	expect(layout.sheetOverflowY).toBe('hidden');
+	expect(layout.bodyOverflowY).toBe('auto');
+	expect(layout.verticalScrollers).toEqual(['.sheet-body']);
+	expect(layout.fixedRegionsVisible).toBe(true);
+	await expect(popup.locator('.sheet-tabs')).toBeVisible();
+	await expect(
+		popup.getByRole('button', { name: /Salvar ficha|Save character sheet/ })
+	).toBeVisible();
 }
 
 async function movePanelAwayFromMapTarget(
