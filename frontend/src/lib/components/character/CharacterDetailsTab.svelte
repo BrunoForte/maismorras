@@ -1,8 +1,13 @@
 <script lang="ts">
-	import type { CharacterSheet, Dnd2024FeatSpellGrant } from '$lib/services/characterApi';
+	import type {
+		CampaignFeatSpellGrant,
+		CharacterSheet,
+		Dnd2024FeatSpellGrant
+	} from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import { appLocale } from '$lib/stores/locale';
 	import CharacterFeatSpellGrants from './CharacterFeatSpellGrants.svelte';
+	import CharacterCampaignFeatSpellGrants from './CharacterCampaignFeatSpellGrants.svelte';
 
 	let {
 		sheet,
@@ -10,9 +15,11 @@
 		featEntries,
 		spellEntries,
 		featSpellGrants,
+		campaignFeatSpellGrants,
 		optionLabel,
 		onFeatsChange,
 		onFeatSpellGrantsChange,
+		onCampaignFeatSpellGrantsChange,
 		onSpellcastingOverride,
 		onFeaturesChange,
 		onEquipmentChange
@@ -22,9 +29,11 @@
 		featEntries: CompendiumEntry[];
 		spellEntries: CompendiumEntry[];
 		featSpellGrants: Dnd2024FeatSpellGrant[];
+		campaignFeatSpellGrants: CampaignFeatSpellGrant[];
 		optionLabel: (entry: CompendiumEntry) => string;
 		onFeatsChange: (feats: string) => void;
 		onFeatSpellGrantsChange: (grants: Dnd2024FeatSpellGrant[]) => void;
+		onCampaignFeatSpellGrantsChange: (grants: CampaignFeatSpellGrant[]) => void;
 		onSpellcastingOverride: (enabled: boolean) => void;
 		onFeaturesChange: (features: string) => void;
 		onEquipmentChange: (equipment: string) => void;
@@ -143,6 +152,14 @@
 		grants={featSpellGrants}
 		{optionLabel}
 		onChange={onFeatSpellGrantsChange}
+	/>
+	<CharacterCampaignFeatSpellGrants
+		{feats}
+		{featEntries}
+		{spellEntries}
+		grants={campaignFeatSpellGrants}
+		{optionLabel}
+		onChange={onCampaignFeatSpellGrantsChange}
 	/>
 	<label>
 		{$appLocale === 'en' ? 'Features' : 'Características'}

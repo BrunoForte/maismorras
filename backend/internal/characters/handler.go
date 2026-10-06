@@ -238,6 +238,9 @@ func validate(sheet Sheet) error {
 	if len(sheet.FeatSpellGrants) > 20 {
 		return apperror.BadRequest("INVALID_SHEET", "A ficha possui concessões de magia demais.")
 	}
+	if len(sheet.CampaignFeatSpellGrants) > 20 {
+		return apperror.BadRequest("INVALID_SHEET", "A ficha possui concessões de magia demais.")
+	}
 	for _, item := range sheet.Inventory {
 		if strings.TrimSpace(item.Name) == "" || len([]rune(item.Name)) > 120 || item.Quantity < 0 || item.Quantity > 9999 {
 			return apperror.BadRequest("INVALID_SHEET", "Confira nome e quantidade dos itens.")

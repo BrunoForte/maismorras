@@ -16,6 +16,7 @@
 		actions: {
 			close: () => void;
 			edit: (entry: CompendiumEntry) => void;
+			configureFeatSpellRule: (entry: CompendiumEntry) => void;
 			remove: (entry: CompendiumEntry) => void;
 			translate: (entry: CompendiumEntry) => void;
 			copyToCampaign: (entry: CompendiumEntry) => void;
@@ -46,6 +47,13 @@
 			<button class="danger" onclick={() => actions.remove(entry)}
 				>{$appLocale === 'en' ? 'Delete' : 'Excluir'}</button
 			>
+		</div>
+	{/if}
+	{#if view.isGM && view.canConfigureFeatSpellRule}
+		<div class="entry-actions">
+			<button class="ghost" onclick={() => actions.configureFeatSpellRule(entry)}>
+				{$appLocale === 'en' ? 'Configure granted spells' : 'Configurar magias concedidas'}
+			</button>
 		</div>
 	{/if}
 	<h3>{view.displayName}</h3>

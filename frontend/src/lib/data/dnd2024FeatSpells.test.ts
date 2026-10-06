@@ -8,6 +8,7 @@ import {
 	eligibleDnd2024FeatSpells,
 	isDnd2024MagicInitiate,
 	normalizeDndFeatKey,
+	synchronizeCampaignFeatSpellGrants,
 	synchronizeDndFeatGrantActivation
 } from './dnd2024FeatSpells';
 
@@ -120,5 +121,73 @@ describe('D&D 2024 curated feat spell mappings', () => {
 			{ id: 'two', active: false, freeCastsRemaining: 1 }
 		]);
 		expect(synchronizeDndFeatGrantActivation('', grants).every(({ active }) => !active)).toBe(true);
+	});
+
+	it('synchronizes campaign feat grants from explicit rules and preserves only valid choices and uses', () => {
+		const configuredFeat: CompendiumEntry = {
+			...spell('feat-id', 0, []),
+			entryType: 'feat',
+			name: 'Adept Arcano',
+			translations: { 'pt-BR': 'Adept Arcano' },
+			rules: {
+				campaignOverrides: {
+					featSpellGrant: {
+						enabled: true,
+						spells: [
+							{
+								spellEntryId: 'shield',
+								canUseExistingSlots: true,
+								freeUses: 2,
+								recovery: 'long',
+								abilityOptions: ['intelligence', 'wisdom']
+							}
+						]
+					}
+				}
+			}
+		};
+		const previous = [
+			{
+				id: 'campaign-feat:feat-id:1',
+				featEntryId: 'feat-id',
+				active: true,
+				spellcastingAbilities: { shield: 'wisdom' as const },
+				freeCastsRemaining: { shield: 1 }
+			}
+		];
+		const grants = synchronizeCampaignFeatSpellGrants('Adept Arcano', previous, [configuredFeat]);
+		expect(grants).toEqual([{ ...previous[0], active: true }]);
+		expect(synchronizeCampaignFeatSpellGrants('', grants, [configuredFeat])[0]).toMatchObject({
+			active: false,
+			freeCastsRemaining: { shield: 1 }
+		});
+	});
+
+	it('treats a campaign override as explicit and prevents the hard-coded Magic Initiate mapping from also activating', () => {
+		const entry: CompendiumEntry = {
+			...spell('magic', 0, []),
+			entryType: 'feat',
+			name: 'Magic Initiate',
+			rules: {
+				id: 'magic-initiate',
+				campaignOverrides: {
+					featSpellGrant: {
+						enabled: true,
+						spells: [
+							{
+								spellEntryId: 'wizard-light',
+								canUseExistingSlots: false,
+								freeUses: 0,
+								recovery: 'none',
+								abilityOptions: []
+							}
+						]
+					}
+				}
+			}
+		};
+		expect(isDnd2024MagicInitiate(entry)).toBe(false);
+		const mapped = synchronizeDndFeatGrantActivation('Magic Initiate', [grant('old')], [entry]);
+		expect(mapped[0].active).toBe(false);
 	});
 });

@@ -235,10 +235,11 @@
 									</label>
 								{/if}
 								<div class="spell-actions">
-									{#each featGrants.filter((grant) => grant.firstLevelSpellEntryId === spell.entryId) as grant (grant.id)}
+									{#each featGrants.filter((grant) => grant.spellEntryId === spell.entryId) as grant (grant.id)}
 										<small class="feat-casting-source">
-											{$appLocale === 'en' ? 'Magic Initiate' : 'Iniciado em Magia'} · {grant.spellList}
-											· {grant.ability}
+											{grant.featName}{grant.spellList ? ` · ${grant.spellList}` : ''}{grant.ability
+												? ` · ${grant.ability}`
+												: ''}
 										</small>
 										{#if grant.freeCastsRemaining > 0}<button
 												class="free-cast"
@@ -263,10 +264,12 @@
 											onclick={() => actions.rollEffect(spell)}
 											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
-									{#if spell.level === 0 && index < 0 && featGrants[0]}
+									{#if spell.level === 0 && index < 0 && featGrants.find((grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0)}
+										{@const atWillGrant = featGrants.find(
+											(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
+										)}
 										<small class="feat-casting-source">
-											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {featGrants[0]
-												.spellList} · {featGrants[0].ability}
+											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant?.featName}
 										</small>
 										<button
 											class="cast-spell"
@@ -274,46 +277,52 @@
 											disabled={castingSpell === index}
 											onclick={() =>
 												actions.cast(spell, index, {
-													grantId: featGrants[0].id,
+													grantId: atWillGrant?.id ?? '',
 													entryId: spell.entryId ?? '',
 													freeCast: false
 												})}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
 										>
 									{/if}
 									{#if spell.level > 0}
-										<select
-											value={spellbook.selectedSlot(spell, index)}
-											onchange={(event) =>
-												actions.chooseSlot(index, Number(event.currentTarget.value))}
-											aria-label="Espaço de magia"
-										>
-											{#each spellbook.compatibleSlots(spell) as slot (slot.level)}<option
-													value={slot.level}
-													>{presentation.circleLabel(slot.level)} · {slot.current}/{slot.max}</option
-												>{/each}
-										</select>
-										<button
-											class="cast-spell"
-											type="button"
-											disabled={castingSpell === index || !spellbook.compatibleSlots(spell).length}
-											onclick={() =>
-												actions.cast(
-													spell,
-													index,
-													index < 0 && featGrants[0]
-														? {
-																grantId: featGrants[0].id,
-																entryId: spell.entryId ?? '',
-																freeCast: false
-															}
-														: undefined
-												)}
-											>{castingSpell === index
-												? '…'
-												: $appLocale === 'en'
-													? 'Cast'
-													: 'Lançar'}</button
-										>
+										{@const spellGrant = featGrants.find(
+											(grant) => grant.spellEntryId === spell.entryId && grant.canUseExistingSlots
+										)}
+										{#if index >= 0 || spellGrant}
+											<select
+												value={spellbook.selectedSlot(spell, index)}
+												onchange={(event) =>
+													actions.chooseSlot(index, Number(event.currentTarget.value))}
+												aria-label="Espaço de magia"
+											>
+												{#each spellbook.compatibleSlots(spell) as slot (slot.level)}<option
+														value={slot.level}
+														>{presentation.circleLabel(slot.level)} · {slot.current}/{slot.max}</option
+													>{/each}
+											</select>
+											<button
+												class="cast-spell"
+												type="button"
+												disabled={castingSpell === index ||
+													!spellbook.compatibleSlots(spell).length}
+												onclick={() =>
+													actions.cast(
+														spell,
+														index,
+														index < 0 && spellGrant
+															? {
+																	grantId: spellGrant.id,
+																	entryId: spell.entryId ?? '',
+																	freeCast: false
+																}
+															: undefined
+													)}
+												>{castingSpell === index
+													? '…'
+													: $appLocale === 'en'
+														? 'Cast'
+														: 'Lançar'}</button
+											>
+										{/if}
 									{/if}
 									{#if index >= 0}<button type="button" onclick={() => actions.remove(index)}
 											>{$appLocale === 'en' ? 'Remove' : 'Remover'}</button

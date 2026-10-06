@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"vtt-backend/internal/compendium"
 )
 
 // These are the only D&D 2024 SRD feats currently curated to grant specific
@@ -23,6 +24,172 @@ type dnd2024FeatSpellRule struct {
 	FreeCastSpellLevel  int
 	CanUseExistingSlots bool
 	Recovery            string
+}
+
+type campaignFeatRuleData struct {
+	Name  string
+	Names []string
+	Rule  compendium.CampaignFeatSpellRule
+}
+
+func loadCampaignFeatSpellRule(ctx context.Context, queryer campaignReferenceQuerier, campaignID, featEntryID string) (campaignFeatRuleData, error) {
+	var data campaignFeatRuleData
+	var translationsRaw, rulesRaw []byte
+	err := queryer.QueryRow(ctx, `select name,translations,rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='feat' and is_published=true`, featEntryID, campaignID).Scan(&data.Name, &translationsRaw, &rulesRaw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return campaignFeatRuleData{}, fmt.Errorf("campaign feat is not available")
+	}
+	if err != nil {
+		return campaignFeatRuleData{}, err
+	}
+	var translations map[string]string
+	if err = json.Unmarshal(translationsRaw, &translations); err != nil && len(translationsRaw) > 0 {
+		return campaignFeatRuleData{}, err
+	}
+	data.Names = []string{data.Name}
+	if translated := strings.TrimSpace(translations["pt-BR"]); translated != "" {
+		data.Names = append(data.Names, translated)
+	}
+	var rules map[string]any
+	if err = json.Unmarshal(rulesRaw, &rules); err != nil {
+		return campaignFeatRuleData{}, err
+	}
+	overrides, _ := rules["campaignOverrides"].(map[string]any)
+	rawOverride, ok := overrides["featSpellGrant"]
+	if !ok {
+		return campaignFeatRuleData{}, fmt.Errorf("campaign feat spell rule is not configured")
+	}
+	encoded, err := json.Marshal(rawOverride)
+	if err != nil {
+		return campaignFeatRuleData{}, err
+	}
+	if err = json.Unmarshal(encoded, &data.Rule); err != nil {
+		return campaignFeatRuleData{}, err
+	}
+	if !data.Rule.Enabled {
+		return campaignFeatRuleData{}, fmt.Errorf("campaign feat spell rule is disabled")
+	}
+	levels := make(map[string]int, len(data.Rule.Spells))
+	for _, spell := range data.Rule.Spells {
+		choice, choiceErr := loadCompendiumSpellChoice(ctx, queryer, campaignID, spell.SpellEntryID)
+		if choiceErr != nil {
+			return campaignFeatRuleData{}, choiceErr
+		}
+		levels[spell.SpellEntryID] = choice.Level
+	}
+	if err = compendium.ValidateCampaignFeatSpellRule(data.Rule, levels); err != nil {
+		return campaignFeatRuleData{}, err
+	}
+	return data, nil
+}
+
+// reconcileCampaignFeatSpellGrants derives mechanics from published campaign
+// entries and accepts only ability choices permitted by each saved rule.
+func reconcileCampaignFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuerier, campaignID string, sheet Sheet, previous Sheet) ([]CampaignFeatSpellGrant, error) {
+	requested := sheet.CampaignFeatSpellGrants
+	if len(requested) > 20 {
+		return nil, fmt.Errorf("too many campaign feat spell grants")
+	}
+	previousByID := make(map[string]CampaignFeatSpellGrant, len(previous.CampaignFeatSpellGrants))
+	for _, old := range previous.CampaignFeatSpellGrants {
+		previousByID[old.ID] = old
+	}
+	occurrences := make(map[string]int)
+	seenIDs := make(map[string]bool)
+	active := make([]CampaignFeatSpellGrant, 0, len(requested))
+	for _, input := range requested {
+		data, err := loadCampaignFeatSpellRule(ctx, queryer, campaignID, input.FeatEntryID)
+		if err != nil {
+			return nil, err
+		}
+		count := featOccurrenceCountForNames(sheet.Feats, data.Names)
+		occurrences[input.FeatEntryID]++
+		occurrence := occurrences[input.FeatEntryID]
+		if count < occurrence {
+			return nil, fmt.Errorf("feat granting these spells is not on the sheet")
+		}
+		id := fmt.Sprintf("campaign-feat:%s:%d", input.FeatEntryID, occurrence)
+		if seenIDs[id] {
+			return nil, fmt.Errorf("duplicate campaign feat spell grant")
+		}
+		seenIDs[id] = true
+		grant := CampaignFeatSpellGrant{ID: id, FeatEntryID: input.FeatEntryID, Active: true,
+			SpellcastingAbilities: make(map[string]string), FreeCastsRemaining: make(map[string]int)}
+		old, hasOld := previousByID[id]
+		for _, spell := range data.Rule.Spells {
+			options := spell.AbilityOptions
+			ability := ""
+			if len(options) == 1 {
+				ability = options[0]
+			} else if len(options) > 1 {
+				ability = input.SpellcastingAbilities[spell.SpellEntryID]
+				if !containsString(options, ability) {
+					return nil, fmt.Errorf("choose an allowed spellcasting ability")
+				}
+			}
+			if ability != "" {
+				grant.SpellcastingAbilities[spell.SpellEntryID] = ability
+			}
+			remaining := spell.FreeUses
+			if hasOld {
+				if current, ok := old.FreeCastsRemaining[spell.SpellEntryID]; ok {
+					remaining = clampFreeUses(current, spell.FreeUses)
+				}
+			}
+			grant.FreeCastsRemaining[spell.SpellEntryID] = remaining
+		}
+		active = append(active, grant)
+	}
+	for _, old := range previous.CampaignFeatSpellGrants {
+		if seenIDs[old.ID] {
+			continue
+		}
+		old.Active = false
+		active = append(active, old)
+	}
+	if len(active) > 40 {
+		return nil, fmt.Errorf("too many historical campaign feat spell grants")
+	}
+	return active, nil
+}
+
+func featOccurrenceCountForNames(feats string, names []string) int {
+	allowed := make(map[string]bool, len(names))
+	for _, name := range names {
+		allowed[normalizeDndFeatName(name)] = true
+	}
+	count := 0
+	for _, feat := range strings.FieldsFunc(feats, func(r rune) bool { return r == '\n' || r == ',' }) {
+		if allowed[normalizeDndFeatName(feat)] {
+			count++
+		}
+	}
+	return count
+}
+
+func recoverCampaignFeatSpellGrantUses(ctx context.Context, queryer campaignReferenceQuerier, campaignID, kind string, grants []CampaignFeatSpellGrant) ([]CampaignFeatSpellGrant, error) {
+	if kind != "short" && kind != "long" {
+		return grants, nil
+	}
+	for index := range grants {
+		grant := &grants[index]
+		if !grant.Active {
+			continue
+		}
+		data, err := loadCampaignFeatSpellRule(ctx, queryer, campaignID, grant.FeatEntryID)
+		if err != nil {
+			return nil, err
+		}
+		for _, spell := range data.Rule.Spells {
+			if spell.Recovery == kind {
+				if grant.FreeCastsRemaining == nil {
+					grant.FreeCastsRemaining = make(map[string]int)
+				}
+				grant.FreeCastsRemaining[spell.SpellEntryID] = spell.FreeUses
+			}
+		}
+	}
+	return grants, nil
 }
 
 var dnd2024FeatSpellRules = map[string]dnd2024FeatSpellRule{
@@ -107,6 +274,15 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 		if !ok || input.FeatID != rule.ID {
 			return nil, fmt.Errorf("unsupported D&D 2024 feat spell grant")
 		}
+		overridden, overrideErr := campaignFeatSpellOverrideEnabled(ctx, queryer, campaignID, rule)
+		if overrideErr != nil {
+			return nil, overrideErr
+		}
+		if overridden {
+			// An explicit narrator rule replaces the built-in mapping. The old
+			// record remains in history below, inactive, so choices are not erased.
+			continue
+		}
 		requestedByFeat[input.FeatID]++
 		if len(input.ID) < 1 || len(input.ID) > 80 || seenIDs[input.ID] || requestedByFeat[input.FeatID] > featOccurrenceCount(sheet.Feats, rule.Names) {
 			return nil, fmt.Errorf("feat granting these spells is not on the sheet")
@@ -188,6 +364,19 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 		return nil, fmt.Errorf("too many historical feat spell grants")
 	}
 	return active, nil
+}
+
+func campaignFeatSpellOverrideEnabled(ctx context.Context, queryer campaignReferenceQuerier, campaignID string, rule dnd2024FeatSpellRule) (bool, error) {
+	names := make([]string, 0, len(rule.Names))
+	for _, name := range rule.Names {
+		names = append(names, normalizeDndFeatName(name))
+	}
+	var enabled bool
+	err := queryer.QueryRow(ctx, `select exists(select 1 from compendium_entries where campaign_id=$1 and entry_type='feat' and is_published=true and (rules->>'id'=$2 or lower(name)=any($3::text[]) or lower(coalesce(translations->>'pt-BR',''))=any($3::text[])) and rules#>>'{campaignOverrides,featSpellGrant,enabled}'='true')`, campaignID, rule.ID, names).Scan(&enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return enabled, err
 }
 
 func clampFreeUses(current, maximum int) int {

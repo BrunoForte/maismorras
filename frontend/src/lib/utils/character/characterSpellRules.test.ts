@@ -10,6 +10,7 @@ import {
 	eligibleSpellEntries,
 	groupSpellsByCircle,
 	groupCharacterSpellsByCircle,
+	hasActiveFeatGrantedSpells,
 	hasAISpellTranslation,
 	normalizeSpellName,
 	removeSpellFromSheet,
@@ -42,6 +43,38 @@ const slots: SpellSlot[] = [
 ];
 
 describe('character spell rules', () => {
+	it('keeps the Spells tab available for active campaign-configured feat spells', () => {
+		expect(hasActiveFeatGrantedSpells([], [])).toBe(false);
+		expect(
+			hasActiveFeatGrantedSpells(
+				[],
+				[
+					{
+						id: 'campaign-feat:feat-id:1',
+						featEntryId: 'feat-id',
+						spellcastingAbilities: {},
+						freeCastsRemaining: {},
+						active: true
+					}
+				]
+			)
+		).toBe(true);
+		expect(
+			hasActiveFeatGrantedSpells(
+				[],
+				[
+					{
+						id: 'campaign-feat:feat-id:1',
+						featEntryId: 'feat-id',
+						spellcastingAbilities: {},
+						freeCastsRemaining: {},
+						active: false
+					}
+				]
+			)
+		).toBe(false);
+	});
+
 	it('projects known and unlocked circles and groups spells without losing source indexes', () => {
 		const spells = [spell({ level: 0 }), spell(), spell({ name: 'Escudo', level: 1 })];
 		expect(availableSpellCircles(slots, spells)).toEqual([0, 1, 2, 3]);
@@ -106,9 +139,68 @@ describe('character spell rules', () => {
 		).toMatchObject({
 			index: 0,
 			origins: ['class', 'feat'],
-			featGrants: [grant]
+			featGrants: [{ id: grant.id, spellEntryId: 'fireball', featName: 'Magic Initiate' }]
 		});
 		expect(groupCharacterSpellsByCircle(projection, 0)).toHaveLength(1);
+	});
+
+	it('projects campaign-configured feat spells, merges duplicate origins and keeps mechanics separate', () => {
+		const feat = entry({
+			id: 'feat-initiate',
+			entryType: 'feat',
+			name: 'Magic Initiate',
+			rules: {
+				campaignOverrides: {
+					featSpellGrant: {
+						enabled: true,
+						spells: [
+							{
+								spellEntryId: 'fireball',
+								canUseExistingSlots: false,
+								freeUses: 2,
+								recovery: 'long',
+								abilityOptions: ['intelligence', 'wisdom']
+							}
+						]
+					}
+				}
+			}
+		});
+		const saved = spell({ entryId: 'fireball', level: 3, origin: 'class' });
+		const grant = {
+			id: 'campaign-feat:feat-initiate:1',
+			featEntryId: 'feat-initiate',
+			active: true,
+			spellcastingAbilities: { fireball: 'wisdom' as const },
+			freeCastsRemaining: { fireball: 1 }
+		};
+		const projection = projectCharacterSpells(
+			[saved],
+			[],
+			[entry()],
+			(item) => item.name,
+			[grant],
+			[feat]
+		);
+		expect(projection).toHaveLength(1);
+		expect(projection[0]).toMatchObject({
+			index: 0,
+			origins: ['class', 'feat'],
+			featGrants: [
+				{
+					id: grant.id,
+					featName: 'Magic Initiate',
+					spellEntryId: 'fireball',
+					ability: 'wisdom',
+					freeCastsRemaining: 1,
+					freeUses: 2,
+					canUseExistingSlots: false,
+					recovery: 'long',
+					campaignConfigured: true
+				}
+			]
+		});
+		expect(saved.name).toBe('Bola de Fogo');
 	});
 
 	it('projects only active curated choices as virtual spells without mutating the sheet', () => {

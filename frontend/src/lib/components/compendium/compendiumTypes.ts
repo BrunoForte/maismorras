@@ -11,6 +11,7 @@ export type CompendiumDetailsView = {
 	sourceReadOnly: boolean;
 	hasPrivateSource: boolean;
 	isGM: boolean;
+	canConfigureFeatSpellRule: boolean;
 	canTranslate: boolean;
 	translationStatus: 'pending' | 'ai' | 'official' | 'manual' | 'complete';
 	canPlace: boolean;

@@ -52,6 +52,7 @@
 		deriveGrantedSpells,
 		eligibleSpellEntries,
 		groupCharacterSpellsByCircle,
+		hasActiveFeatGrantedSpells,
 		hasAISpellTranslation,
 		localizedSpellField,
 		normalizeSpellName,
@@ -113,7 +114,10 @@
 	import type { CustomInventoryItemDraft } from '$lib/components/character/inventoryTypes';
 	import CharacterCombatTab from '$lib/components/character/CharacterCombatTab.svelte';
 	import CharacterLevelUpModal from '$lib/components/character/CharacterLevelUpModal.svelte';
-	import { synchronizeDndFeatGrantActivation } from '$lib/data/dnd2024FeatSpells';
+	import {
+		synchronizeCampaignFeatSpellGrants,
+		synchronizeDndFeatGrantActivation
+	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
@@ -340,6 +344,11 @@
 		onCompendiumLoaded: (sources, entries) => {
 			compendiumSources = sources;
 			compendiumEntries = entries;
+			sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+				sheet.feats,
+				sheet.campaignFeatSpellGrants ?? [],
+				entries.filter((entry) => entry.entryType === 'feat')
+			);
 			syncProgression();
 		},
 		getCharacterForGM,
@@ -368,6 +377,11 @@
 			});
 			sheet.inventory ??= [];
 			sheet.resources ??= [];
+			sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+				sheet.feats,
+				sheet.campaignFeatSpellGrants ?? [],
+				compendiumEntries.filter((entry) => entry.entryType === 'feat')
+			);
 			sheet.spellSlots ??= [];
 			sheet.skillExpertise ??= [];
 			previousLevel = sheet.level;
@@ -651,7 +665,8 @@
 				sheet.level,
 				compendiumClass()?.rules.spellcasting,
 				sheet.spellcastingOverride
-			) || (sheet.featSpellGrants ?? []).some((grant) => grant.active !== false)
+			) ||
+			hasActiveFeatGrantedSpells(sheet.featSpellGrants ?? [], sheet.campaignFeatSpellGrants ?? [])
 		);
 	};
 	const compendiumSubclassOptions = () =>
@@ -806,7 +821,9 @@
 			sheet.spells,
 			sheet.featSpellGrants ?? [],
 			optionsFor('spell'),
-			optionLabel
+			optionLabel,
+			sheet.campaignFeatSpellGrants ?? [],
+			optionsFor('feat')
 		);
 	const availableSpellCircles = () =>
 		projectAvailableSpellCircles(
@@ -1320,15 +1337,23 @@
 						featEntries={optionsFor('feat')}
 						spellEntries={optionsFor('spell')}
 						featSpellGrants={sheet.featSpellGrants ?? []}
+						campaignFeatSpellGrants={sheet.campaignFeatSpellGrants ?? []}
 						{optionLabel}
 						onFeatsChange={(feats) => {
 							sheet.feats = feats;
 							sheet.featSpellGrants = synchronizeDndFeatGrantActivation(
 								feats,
-								sheet.featSpellGrants ?? []
+								sheet.featSpellGrants ?? [],
+								optionsFor('feat')
+							);
+							sheet.campaignFeatSpellGrants = synchronizeCampaignFeatSpellGrants(
+								feats,
+								sheet.campaignFeatSpellGrants ?? [],
+								optionsFor('feat')
 							);
 						}}
 						onFeatSpellGrantsChange={(grants) => (sheet.featSpellGrants = grants)}
+						onCampaignFeatSpellGrantsChange={(grants) => (sheet.campaignFeatSpellGrants = grants)}
 						onSpellcastingOverride={(enabled) => (sheet.spellcastingOverride = enabled)}
 						onFeaturesChange={(features) => (sheet.features = features)}
 						onEquipmentChange={(equipment) => (sheet.equipment = equipment)}

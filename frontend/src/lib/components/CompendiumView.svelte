@@ -8,6 +8,8 @@
 		importCompendiumEntries,
 		translateCompendiumEntry,
 		updateCompendiumEntry,
+		updateCampaignFeatSpellRule,
+		type CampaignFeatSpellRule,
 		type CompendiumDraft,
 		type CompendiumEntry,
 		type CompendiumSource
@@ -39,6 +41,12 @@
 		type CompendiumEditorModel
 	} from '$lib/utils/compendium/compendiumRules';
 	import type { CompendiumDetailsView } from '$lib/components/compendium/compendiumTypes';
+	import {
+		campaignFeatSpellRuleFromEntryRules,
+		emptyCampaignFeatSpellRuleDraft,
+		serializeCampaignFeatSpellRuleDraft,
+		type CampaignFeatSpellRuleDraft
+	} from '$lib/utils/compendium/campaignFeatSpellRule';
 
 	let {
 		campaignId,
@@ -77,6 +85,9 @@
 	let artRequestRevision = 0;
 	let editingEntryId = $state<string | null>(null);
 	let uploadingMonsterArt = $state(false);
+	let campaignFeatRuleEntry = $state<CompendiumEntry | null>(null);
+	let campaignFeatRuleDraft = $state<CampaignFeatSpellRuleDraft>(emptyCampaignFeatSpellRuleDraft());
+	let campaignRuleSaving = $state(false);
 	let draft = $state<CompendiumEditorModel>(emptyCompendiumEditorModel());
 	const selectedEntry = $derived(entries.find((entry) => entry.id === selectedEntryId) ?? null);
 	const privateSources = () => sources.filter((source) => !source.readOnly);
@@ -219,6 +230,37 @@
 		if (sources.find((source) => source.id === entry.sourceId)?.readOnly) return;
 		editingEntryId = entry.id;
 		draft = editorModelFromEntry(entry);
+	}
+	function configureCampaignFeatRule(entry: CompendiumEntry) {
+		if (!isGM || entry.entryType !== 'feat') return;
+		campaignFeatRuleEntry = entry;
+		campaignFeatRuleDraft = campaignFeatSpellRuleFromEntryRules(entry.rules);
+		window.setTimeout(
+			() => document.querySelector('.feat-spell-rule')?.scrollIntoView({ behavior: 'smooth' }),
+			0
+		);
+	}
+	async function saveCampaignFeatRule(draft: CampaignFeatSpellRuleDraft) {
+		const entry = campaignFeatRuleEntry;
+		if (!isGM || !entry || campaignRuleSaving) return;
+		campaignRuleSaving = true;
+		message = '';
+		try {
+			const rule: CampaignFeatSpellRule = serializeCampaignFeatSpellRuleDraft(draft);
+			const updated = await updateCampaignFeatSpellRule(session, campaignId, entry.id, rule);
+			entries = entries.map((item) => (item.id === updated.id ? updated : item));
+			campaignFeatRuleEntry = updated;
+			campaignFeatRuleDraft = campaignFeatSpellRuleFromEntryRules(updated.rules);
+			message =
+				$appLocale === 'en'
+					? 'Campaign feat spell rule saved. Existing feat descriptions and translations were preserved.'
+					: 'Regra de magias do talento salva nesta campanha. Descrições e traduções existentes foram preservadas.';
+		} catch (error) {
+			message =
+				error instanceof Error ? error.message : 'Não foi possível salvar a regra do talento.';
+		} finally {
+			campaignRuleSaving = false;
+		}
 	}
 	function copyMonsterForCampaign(entry: CompendiumEntry) {
 		const source = privateSources()[0];
@@ -433,6 +475,7 @@
 						sources.find((source) => source.id === selectedEntry.sourceId)?.readOnly ?? false,
 					hasPrivateSource: privateSources().length > 0,
 					isGM,
+					canConfigureFeatSpellRule: selectedEntry.entryType === 'feat',
 					canTranslate: $appLocale === 'pt-BR' && hasPendingCompendiumTranslation(selectedEntry),
 					translationStatus: compendiumEntryTranslationStatus(selectedEntry),
 					canPlace: Boolean(sceneId),
@@ -459,11 +502,14 @@
 		importFile,
 		uploadArt: uploadMonsterArt,
 		addFeature: addLevelFeature,
-		removeFeature: removeLevelFeature
+		removeFeature: removeLevelFeature,
+		saveCampaignFeatRule: (rule: CampaignFeatSpellRuleDraft) => void saveCampaignFeatRule(rule),
+		closeCampaignFeatRule: () => (campaignFeatRuleEntry = null)
 	};
 	const detailActions = {
 		close: () => (selectedEntryId = null),
 		edit: editEntry,
+		configureFeatSpellRule: configureCampaignFeatRule,
 		remove: (entry: CompendiumEntry) => void removeEntry(entry),
 		translate: (entry: CompendiumEntry) => void translate(entry),
 		copyToCampaign: copyMonsterForCampaign,
@@ -566,6 +612,10 @@
 			{isGM}
 			editing={Boolean(editingEntryId)}
 			busy={editorBusy}
+			{campaignFeatRuleEntry}
+			bind:campaignFeatRuleDraft
+			spellEntries={entries.filter((entry) => entry.entryType === 'spell' && entry.isPublished)}
+			{campaignRuleSaving}
 			actions={editorActions}
 		/>
 	{/if}

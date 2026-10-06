@@ -70,6 +70,10 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 		return RestResult{}, err
 	}
 	sheet = normalizeDerivedFields(sheet, rules)
+	sheet.CampaignFeatSpellGrants, err = recoverCampaignFeatSpellGrantUses(ctx, tx, campaignID, kind, sheet.CampaignFeatSpellGrants)
+	if err != nil {
+		return RestResult{}, fmt.Errorf("recover campaign feat spell uses: %w", err)
+	}
 	result := RestResult{Sheet: sheet, Kind: kind}
 	if kind == "short" {
 		if sheet.HitDiceSpent >= sheet.Level {

@@ -5,6 +5,10 @@ import CompendiumEntryEditor from './CompendiumEntryEditor.svelte';
 import CompendiumCatalogPanel from './CompendiumCatalogPanel.svelte';
 import { emptyCompendiumEditorModel } from '$lib/utils/compendium/compendiumRules';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
+import {
+	emptyCampaignFeatSpellRuleDraft,
+	type CampaignFeatSpellRuleDraft
+} from '$lib/utils/compendium/campaignFeatSpellRule';
 
 const monster: CompendiumEntry = {
 	id: 'ogre',
@@ -71,6 +75,7 @@ describe('compendium panels', () => {
 			sourceReadOnly: false,
 			hasPrivateSource: true,
 			isGM: true,
+			canConfigureFeatSpellRule: false,
 			canTranslate: true,
 			translationStatus: 'pending' as const,
 			canPlace: true,
@@ -80,6 +85,7 @@ describe('compendium panels', () => {
 		const actions = {
 			close: vi.fn(),
 			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
 			remove: vi.fn(),
 			translate: vi.fn(),
 			copyToCampaign: vi.fn(),
@@ -118,6 +124,7 @@ describe('compendium panels', () => {
 			sourceReadOnly: true,
 			hasPrivateSource: false,
 			isGM: true,
+			canConfigureFeatSpellRule: false,
 			canTranslate: false,
 			translationStatus: 'ai' as const,
 			canPlace: false,
@@ -127,6 +134,7 @@ describe('compendium panels', () => {
 		const actions = {
 			close: vi.fn(),
 			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
 			remove: vi.fn(),
 			translate: vi.fn(),
 			copyToCampaign: vi.fn(),
@@ -163,7 +171,9 @@ describe('compendium panels', () => {
 				importFile: vi.fn(),
 				uploadArt: vi.fn(),
 				addFeature: vi.fn(),
-				removeFeature: vi.fn()
+				removeFeature: vi.fn(),
+				saveCampaignFeatRule: vi.fn(),
+				closeCampaignFeatRule: vi.fn()
 			}
 		};
 		const gmHtml = render(CompendiumEntryEditor, { props }).body;
@@ -172,5 +182,67 @@ describe('compendium panels', () => {
 		expect(gmHtml).toContain('Importar');
 		expect(playerHtml).not.toContain('Cadastro privado estruturado');
 		expect(playerHtml).not.toContain('Importar');
+	});
+
+	it('offers structured campaign-scoped spell mapping only to the GM', () => {
+		const feat: CompendiumEntry = {
+			...monster,
+			id: 'feat-id',
+			entryType: 'feat',
+			name: 'Magic Initiate',
+			rules: {}
+		};
+		const draft = emptyCampaignFeatSpellRuleDraft();
+		const campaignDraft: CampaignFeatSpellRuleDraft = {
+			...draft,
+			spells: [
+				{
+					draftId: 'row-1',
+					spellEntryId: 'spell-id',
+					canUseExistingSlots: false,
+					freeUses: 1,
+					recovery: 'long',
+					abilityOptions: []
+				}
+			]
+		};
+		const props = {
+			model: emptyCompendiumEditorModel(),
+			sources: [],
+			typeName: (value: string) => value,
+			isGM: true,
+			editing: false,
+			busy: { saving: false, importing: false, uploadingArt: false },
+			campaignFeatRuleEntry: feat,
+			campaignFeatRuleDraft: campaignDraft,
+			spellEntries: [
+				{
+					...monster,
+					id: 'spell-id',
+					entryType: 'spell',
+					name: 'Detect Magic',
+					rules: { level: 1 }
+				}
+			],
+			actions: {
+				save: vi.fn(),
+				cancel: vi.fn(),
+				downloadTemplate: vi.fn(),
+				importFile: vi.fn(),
+				uploadArt: vi.fn(),
+				addFeature: vi.fn(),
+				removeFeature: vi.fn(),
+				saveCampaignFeatRule: vi.fn(),
+				closeCampaignFeatRule: vi.fn()
+			}
+		};
+		const gmHtml = render(CompendiumEntryEditor, { props }).body;
+		const playerHtml = render(CompendiumEntryEditor, { props: { ...props, isGM: false } }).body;
+		expect(gmHtml).toContain('Magias concedidas por');
+		expect(gmHtml).toContain('Magia do compêndio');
+		expect(gmHtml).toContain('Pode usar espaços existentes');
+		expect(gmHtml).toContain('Conjurações gratuitas');
+		expect(gmHtml).toContain('Descanso longo');
+		expect(playerHtml).not.toContain('REGRA ESPECÍFICA DA CAMPANHA');
 	});
 });

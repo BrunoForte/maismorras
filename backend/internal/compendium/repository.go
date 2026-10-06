@@ -210,6 +210,76 @@ func (r *Repository) UpdateEntry(ctx context.Context, campaignID, userID string,
 	return item, err
 }
 
+// SetCampaignFeatSpellRule updates only the campaign override namespace on an
+// existing feat. The SRD text, translations, visibility, and other campaign
+// rules are retained verbatim.
+func (r *Repository) SetCampaignFeatSpellRule(ctx context.Context, campaignID, userID, entryID string, rule CampaignFeatSpellRule) (Entry, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Entry{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var role string
+	if err = tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role); errors.Is(err, pgx.ErrNoRows) || (err == nil && role != "gm") {
+		return Entry{}, ErrForbidden
+	} else if err != nil {
+		return Entry{}, err
+	}
+	var item Entry
+	if err = tx.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2 for update`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished); errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, ErrNotFound
+	} else if err != nil {
+		return Entry{}, err
+	}
+	if item.EntryType != "feat" {
+		return Entry{}, ErrNotFound
+	}
+	levels := make(map[string]int, len(rule.Spells))
+	for _, spell := range rule.Spells {
+		var raw []byte
+		if err = tx.QueryRow(ctx, `select rules from compendium_entries where campaign_id=$1 and id=$2 and entry_type='spell' and is_published=true`, campaignID, spell.SpellEntryID).Scan(&raw); errors.Is(err, pgx.ErrNoRows) {
+			return Entry{}, fmt.Errorf("%w: spell reference is not available in this campaign", ErrInvalidFeatSpellRule)
+		} else if err != nil {
+			return Entry{}, err
+		}
+		var spellRules map[string]any
+		if err = json.Unmarshal(raw, &spellRules); err != nil {
+			return Entry{}, err
+		}
+		level, ok := spellRules["level"].(float64)
+		if !ok || level < 0 || level > 9 || level != float64(int(level)) {
+			return Entry{}, fmt.Errorf("%w: invalid compendium spell level", ErrInvalidFeatSpellRule)
+		}
+		levels[spell.SpellEntryID] = int(level)
+	}
+	if err = ValidateCampaignFeatSpellRule(rule, levels); err != nil {
+		return Entry{}, err
+	}
+	var rules map[string]any
+	if len(item.Rules) == 0 {
+		rules = map[string]any{}
+	} else if err = json.Unmarshal(item.Rules, &rules); err != nil {
+		return Entry{}, err
+	}
+	overrides, _ := rules["campaignOverrides"].(map[string]any)
+	if overrides == nil {
+		overrides = map[string]any{}
+	}
+	overrides["featSpellGrant"] = rule
+	rules["campaignOverrides"] = overrides
+	encoded, err := json.Marshal(rules)
+	if err != nil {
+		return Entry{}, err
+	}
+	if err = tx.QueryRow(ctx, `update compendium_entries set rules=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished); err != nil {
+		return Entry{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Entry{}, err
+	}
+	return item, nil
+}
+
 func (r *Repository) DeleteEntry(ctx context.Context, campaignID, userID, entryID string) error {
 	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
 		return err

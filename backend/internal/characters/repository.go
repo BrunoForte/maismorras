@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"vtt-backend/internal/compendium"
 	"vtt-backend/internal/systems"
 )
 
@@ -27,46 +28,47 @@ var (
 // Features, attacks and spells are user-authored notes, allowing the sheet to stay
 // compact while still retaining the practical information used at the table.
 type Sheet struct {
-	Name                  string           `json:"name"`
-	PortraitPath          string           `json:"portraitPath"`
-	TokenPortraitPath     string           `json:"tokenPortraitPath"`
-	Class                 string           `json:"class"`
-	Subclass              string           `json:"subclass"`
-	Level                 int              `json:"level"`
-	Species               string           `json:"species"`
-	SpeciesLineage        string           `json:"speciesLineage"`
-	Background            string           `json:"background"`
-	Alignment             string           `json:"alignment"`
-	AbilityScores         AbilityScores    `json:"abilityScores"`
-	ProficiencyBonus      int              `json:"proficiencyBonus"`
-	SavingThrows          []string         `json:"savingThrows"`
-	SkillProficiencies    []string         `json:"skillProficiencies"`
-	SkillExpertise        []string         `json:"skillExpertise"`
-	ArmorClass            int              `json:"armorClass"`
-	Initiative            int              `json:"initiative"`
-	InitiativeAdvantage   bool             `json:"initiativeAdvantage"`
-	Speed                 float64          `json:"speed"`
-	HitPointsCurrent      int              `json:"hitPointsCurrent"`
-	HitPointsMax          int              `json:"hitPointsMax"`
-	TemporaryHP           int              `json:"temporaryHP"`
-	HitDice               string           `json:"hitDice"`
-	HitDiceSpent          int              `json:"hitDiceSpent"`
-	PassivePerception     int              `json:"passivePerception"`
-	Attacks               []Attack         `json:"attacks"`
-	Spells                []Spell          `json:"spells"`
-	SpellcastingOverride  bool             `json:"spellcastingOverride"`
-	Features              string           `json:"features"`
-	Feats                 string           `json:"feats"`
-	Equipment             string           `json:"equipment"`
-	Inventory             []InventoryItem  `json:"inventory"`
-	Resources             []Resource       `json:"resources"`
-	SpellSlots            []SpellSlot      `json:"spellSlots"`
-	Money                 Dnd2024Money     `json:"money"`
-	FeatSpellGrants       []FeatSpellGrant `json:"featSpellGrants,omitempty"`
-	VisibleRolls          []string         `json:"visibleRolls"`
-	Resistances           []string         `json:"resistances,omitempty"`
-	AutomaticTraits       []string         `json:"automaticTraits,omitempty"`
-	SpeciesHPBonusApplied int              `json:"speciesHPBonusApplied,omitempty"`
+	Name                    string                   `json:"name"`
+	PortraitPath            string                   `json:"portraitPath"`
+	TokenPortraitPath       string                   `json:"tokenPortraitPath"`
+	Class                   string                   `json:"class"`
+	Subclass                string                   `json:"subclass"`
+	Level                   int                      `json:"level"`
+	Species                 string                   `json:"species"`
+	SpeciesLineage          string                   `json:"speciesLineage"`
+	Background              string                   `json:"background"`
+	Alignment               string                   `json:"alignment"`
+	AbilityScores           AbilityScores            `json:"abilityScores"`
+	ProficiencyBonus        int                      `json:"proficiencyBonus"`
+	SavingThrows            []string                 `json:"savingThrows"`
+	SkillProficiencies      []string                 `json:"skillProficiencies"`
+	SkillExpertise          []string                 `json:"skillExpertise"`
+	ArmorClass              int                      `json:"armorClass"`
+	Initiative              int                      `json:"initiative"`
+	InitiativeAdvantage     bool                     `json:"initiativeAdvantage"`
+	Speed                   float64                  `json:"speed"`
+	HitPointsCurrent        int                      `json:"hitPointsCurrent"`
+	HitPointsMax            int                      `json:"hitPointsMax"`
+	TemporaryHP             int                      `json:"temporaryHP"`
+	HitDice                 string                   `json:"hitDice"`
+	HitDiceSpent            int                      `json:"hitDiceSpent"`
+	PassivePerception       int                      `json:"passivePerception"`
+	Attacks                 []Attack                 `json:"attacks"`
+	Spells                  []Spell                  `json:"spells"`
+	SpellcastingOverride    bool                     `json:"spellcastingOverride"`
+	Features                string                   `json:"features"`
+	Feats                   string                   `json:"feats"`
+	Equipment               string                   `json:"equipment"`
+	Inventory               []InventoryItem          `json:"inventory"`
+	Resources               []Resource               `json:"resources"`
+	SpellSlots              []SpellSlot              `json:"spellSlots"`
+	Money                   Dnd2024Money             `json:"money"`
+	FeatSpellGrants         []FeatSpellGrant         `json:"featSpellGrants,omitempty"`
+	CampaignFeatSpellGrants []CampaignFeatSpellGrant `json:"campaignFeatSpellGrants,omitempty"`
+	VisibleRolls            []string                 `json:"visibleRolls"`
+	Resistances             []string                 `json:"resistances,omitempty"`
+	AutomaticTraits         []string                 `json:"automaticTraits,omitempty"`
+	SpeciesHPBonusApplied   int                      `json:"speciesHPBonusApplied,omitempty"`
 }
 
 // Dnd2024Money is the D&D 2024 coin purse, separate from carried inventory.
@@ -89,6 +91,16 @@ type FeatSpellGrant struct {
 	FirstLevelSpellEntryID string   `json:"firstLevelSpellEntryId"`
 	FreeCastsRemaining     int      `json:"freeCastsRemaining"`
 	Active                 bool     `json:"active,omitempty"`
+}
+
+// CampaignFeatSpellGrant stores character choices and remaining uses only.
+// Granted spells and mechanics are reloaded from the validated campaign rule.
+type CampaignFeatSpellGrant struct {
+	ID                    string            `json:"id"`
+	FeatEntryID           string            `json:"featEntryId"`
+	SpellcastingAbilities map[string]string `json:"spellcastingAbilities,omitempty"`
+	FreeCastsRemaining    map[string]int    `json:"freeCastsRemaining,omitempty"`
+	Active                bool              `json:"active,omitempty"`
 }
 
 type AbilityScores struct {
@@ -341,6 +353,8 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 	var spell Spell
 	var rules map[string]any
 	var selectedGrant *FeatSpellGrant
+	var selectedCampaignGrant *CampaignFeatSpellGrant
+	var campaignGrantRule *compendium.CampaignFeatSpellDefinition
 	if input.GrantID != "" {
 		if input.EntryID == "" || input.SpellIndex >= 0 {
 			return SpellCastResult{}, fmt.Errorf("invalid feat spell cast")
@@ -360,18 +374,50 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			selectedGrant = grant
 			break
 		}
-		if selectedGrant == nil {
-			return SpellCastResult{}, fmt.Errorf("feat spell grant not found")
+		if selectedGrant != nil {
+			choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
+			if choiceErr != nil {
+				return SpellCastResult{}, choiceErr
+			}
+			if choiceErr = validateFeatGrantedSpellChoice(*selectedGrant, choice); choiceErr != nil {
+				return SpellCastResult{}, choiceErr
+			}
+			spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feat"}
+			rules = choice.Rules
+		} else {
+			for i := range sheet.CampaignFeatSpellGrants {
+				grant := &sheet.CampaignFeatSpellGrants[i]
+				if grant.ID == input.GrantID && grant.Active {
+					selectedCampaignGrant = grant
+					break
+				}
+			}
+			if selectedCampaignGrant == nil {
+				return SpellCastResult{}, fmt.Errorf("campaign feat spell grant not found")
+			}
+			data, ruleErr := loadCampaignFeatSpellRule(ctx, tx, campaignID, selectedCampaignGrant.FeatEntryID)
+			if ruleErr != nil || featOccurrenceCountForNames(sheet.Feats, data.Names) == 0 {
+				return SpellCastResult{}, fmt.Errorf("campaign feat spell grant is not authorized")
+			}
+			for i := range data.Rule.Spells {
+				if data.Rule.Spells[i].SpellEntryID == input.EntryID {
+					campaignGrantRule = &data.Rule.Spells[i]
+					break
+				}
+			}
+			if campaignGrantRule == nil {
+				return SpellCastResult{}, fmt.Errorf("spell is not granted by this campaign feat")
+			}
+			if len(campaignGrantRule.AbilityOptions) > 1 && !containsString(campaignGrantRule.AbilityOptions, selectedCampaignGrant.SpellcastingAbilities[input.EntryID]) {
+				return SpellCastResult{}, fmt.Errorf("campaign spellcasting ability is invalid")
+			}
+			choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
+			if choiceErr != nil {
+				return SpellCastResult{}, choiceErr
+			}
+			spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feat"}
+			rules = choice.Rules
 		}
-		choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
-		if choiceErr != nil {
-			return SpellCastResult{}, choiceErr
-		}
-		if choiceErr = validateFeatGrantedSpellChoice(*selectedGrant, choice); choiceErr != nil {
-			return SpellCastResult{}, choiceErr
-		}
-		spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feat"}
-		rules = choice.Rules
 	} else {
 		if input.FreeCast || input.EntryID != "" || input.SpellIndex >= len(sheet.Spells) {
 			return SpellCastResult{}, fmt.Errorf("spell not found")
@@ -379,11 +425,31 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		spell = sheet.Spells[input.SpellIndex]
 	}
 	slotLevel := input.SlotLevel
-	freeCast := input.FreeCast && selectedGrant != nil
-	if input.FreeCast && selectedGrant == nil {
+	freeCast := input.FreeCast && (selectedGrant != nil || selectedCampaignGrant != nil)
+	if input.FreeCast && selectedGrant == nil && selectedCampaignGrant == nil {
 		return SpellCastResult{}, fmt.Errorf("free casting requires an authorized feat grant")
 	}
-	if freeCast {
+	if selectedCampaignGrant != nil {
+		remaining := selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+		if freeCast {
+			if campaignGrantRule.FreeUses <= 0 || remaining <= 0 || slotLevel != 0 {
+				return SpellCastResult{}, fmt.Errorf("no free campaign feat casting available")
+			}
+			selectedCampaignGrant.FreeCastsRemaining[input.EntryID] = remaining - 1
+		} else if spell.Level > 0 {
+			if !campaignGrantRule.CanUseExistingSlots || slotLevel < spell.Level {
+				return SpellCastResult{}, fmt.Errorf("campaign feat spell cannot use this slot")
+			}
+			if !consumeCharacterSpellSlot(&sheet, slotLevel) {
+				return SpellCastResult{}, fmt.Errorf("no compatible spell slot")
+			}
+		} else if slotLevel != 0 || campaignGrantRule.FreeUses > 0 {
+			if campaignGrantRule.FreeUses > 0 {
+				return SpellCastResult{}, fmt.Errorf("limited feat cantrip requires its free use")
+			}
+			return SpellCastResult{}, fmt.Errorf("cantrips do not consume spell slots")
+		}
+	} else if freeCast {
 		rule := dnd2024FeatSpellRules[selectedGrant.FeatID]
 		if spell.Level != rule.FreeCastSpellLevel || selectedGrant.FreeCastsRemaining <= 0 || slotLevel != 0 {
 			return SpellCastResult{}, fmt.Errorf("no free feat casting available")
@@ -396,15 +462,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		if slotLevel < spell.Level {
 			return SpellCastResult{}, fmt.Errorf("incompatible spell slot")
 		}
-		found := false
-		for i := range sheet.SpellSlots {
-			if sheet.SpellSlots[i].Level == slotLevel && sheet.SpellSlots[i].Current > 0 {
-				sheet.SpellSlots[i].Current--
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !consumeCharacterSpellSlot(&sheet, slotLevel) {
 			return SpellCastResult{}, fmt.Errorf("no compatible spell slot")
 		}
 	} else if slotLevel != 0 {
@@ -448,10 +506,18 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 	castingAbility := ""
 	if selectedGrant != nil {
 		castingAbility = selectedGrant.Ability
+	} else if selectedCampaignGrant != nil {
+		castingAbility = selectedCampaignGrant.SpellcastingAbilities[input.EntryID]
 	}
 	castCost := "nenhum"
 	if freeCast {
-		castCost = fmt.Sprintf("uso gratuito do talento · restantes %d", selectedGrant.FreeCastsRemaining)
+		remaining := 0
+		if selectedGrant != nil {
+			remaining = selectedGrant.FreeCastsRemaining
+		} else if selectedCampaignGrant != nil {
+			remaining = selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+		}
+		castCost = fmt.Sprintf("uso gratuito do talento · restantes %d", remaining)
 	} else if slotLevel > 0 {
 		castCost = fmt.Sprintf("1 espaço de nível %d", slotLevel)
 	}
@@ -466,8 +532,20 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 	remaining := 0
 	if selectedGrant != nil {
 		remaining = selectedGrant.FreeCastsRemaining
+	} else if selectedCampaignGrant != nil {
+		remaining = selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
 	}
 	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, Expression: expression, Dice: dice, Modifier: modifier, Total: total, SpellcastingAbility: castingAbility, FreeCastRemaining: remaining}, nil
+}
+
+func consumeCharacterSpellSlot(sheet *Sheet, slotLevel int) bool {
+	for i := range sheet.SpellSlots {
+		if sheet.SpellSlots[i].Level == slotLevel && sheet.SpellSlots[i].Current > 0 {
+			sheet.SpellSlots[i].Current--
+			return true
+		}
+	}
+	return false
 }
 
 // customSpellRules derives mechanics exclusively from the custom spell stored
@@ -680,6 +758,10 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err != nil {
 		return Character{}, fmt.Errorf("validate feat spell grants: %w", err)
 	}
+	sheet.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
+	if err != nil {
+		return Character{}, fmt.Errorf("validate campaign feat spell grants: %w", err)
+	}
 	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
 	sheet = normalizeDerivedFields(sheet, rules)
 	raw, err := json.Marshal(sheet)
@@ -770,6 +852,10 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	sheet.FeatSpellGrants, err = reconcileFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
 	if err != nil {
 		return Character{}, fmt.Errorf("validate feat spell grants: %w", err)
+	}
+	sheet.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
+	if err != nil {
+		return Character{}, fmt.Errorf("validate campaign feat spell grants: %w", err)
 	}
 	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
 	sheet = normalizeDerivedFields(sheet, rules)

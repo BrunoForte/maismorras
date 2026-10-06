@@ -1,5 +1,6 @@
-import type { Dnd2024FeatSpellGrant } from '$lib/services/characterApi';
+import type { CampaignFeatSpellGrant, Dnd2024FeatSpellGrant } from '$lib/services/characterApi';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
+import { campaignFeatSpellRuleFromEntryRules } from '$lib/utils/compendium/campaignFeatSpellRule';
 
 /** Reviewed spell-grant rules for D&D 2024 feats present in SRD 5.2.1. */
 export const DND2024_FEAT_SPELL_RULES = {
@@ -60,7 +61,79 @@ export function eligibleDnd2024FeatSpells(
 }
 
 export function isDnd2024MagicInitiate(entry: CompendiumEntry): boolean {
-	return entry.entryType === 'feat' && entry.rules.id === 'magic-initiate';
+	return (
+		entry.entryType === 'feat' &&
+		entry.rules.id === 'magic-initiate' &&
+		!campaignFeatSpellRuleFromEntryRules(entry.rules).enabled
+	);
+}
+
+export function campaignFeatSpellRuleEntries(entries: readonly CompendiumEntry[]) {
+	return entries.flatMap((entry) => {
+		if (entry.entryType !== 'feat') return [];
+		const rule = campaignFeatSpellRuleFromEntryRules(entry.rules);
+		return rule.enabled ? [{ entry, rule }] : [];
+	});
+}
+
+export function synchronizeCampaignFeatSpellGrants(
+	featsText: string,
+	grants: readonly CampaignFeatSpellGrant[],
+	featEntries: readonly CompendiumEntry[]
+): CampaignFeatSpellGrant[] {
+	const featCounts = new Map<string, number>();
+	for (const feat of String(featsText ?? '').split(/[\n,]/)) {
+		const key = normalizeDndFeatKey(feat);
+		if (key) featCounts.set(key, (featCounts.get(key) ?? 0) + 1);
+	}
+	const previousById = new Map(grants.map((grant) => [grant.id, grant]));
+	const active: CampaignFeatSpellGrant[] = [];
+	const matched = new Set<string>();
+	for (const { entry, rule } of campaignFeatSpellRuleEntries(featEntries)) {
+		const names = [entry.name, entry.translations?.['pt-BR'] ?? ''].filter(Boolean);
+		const count = names.reduce(
+			(maximum, name) => Math.max(maximum, featCounts.get(normalizeDndFeatKey(name)) ?? 0),
+			0
+		);
+		for (let occurrence = 1; occurrence <= count; occurrence += 1) {
+			const id = `campaign-feat:${entry.id}:${occurrence}`;
+			const previous = previousById.get(id);
+			matched.add(id);
+			const spellcastingAbilities: CampaignFeatSpellGrant['spellcastingAbilities'] = {};
+			const freeCastsRemaining: CampaignFeatSpellGrant['freeCastsRemaining'] = {};
+			for (const spell of rule.spells) {
+				const choices = spell.abilityOptions;
+				if (choices.length === 1) spellcastingAbilities[spell.spellEntryId] = choices[0];
+				else if (choices.length > 1) {
+					const previousAbility = previous?.spellcastingAbilities?.[spell.spellEntryId];
+					if (previousAbility && choices.includes(previousAbility)) {
+						spellcastingAbilities[spell.spellEntryId] = previousAbility;
+					}
+				}
+				const maximum = Math.max(0, Math.min(100, Math.trunc(spell.freeUses)));
+				freeCastsRemaining[spell.spellEntryId] = Math.max(
+					0,
+					Math.min(
+						maximum,
+						Math.trunc(previous?.freeCastsRemaining?.[spell.spellEntryId] ?? maximum)
+					)
+				);
+			}
+			active.push({
+				id,
+				featEntryId: entry.id,
+				spellcastingAbilities,
+				freeCastsRemaining,
+				active: true
+			});
+		}
+	}
+	return [
+		...active,
+		...grants
+			.filter((grant) => !matched.has(grant.id))
+			.map((grant) => ({ ...grant, active: false }))
+	];
 }
 
 export function newMagicInitiateGrant(): Dnd2024FeatSpellGrant {
@@ -98,7 +171,8 @@ export function availableDndFeatSpellLists(
 /** Deactivates excess mappings when a character removes/reduces a repeatable feat. */
 export function synchronizeDndFeatGrantActivation(
 	featsText: string,
-	grants: readonly Dnd2024FeatSpellGrant[]
+	grants: readonly Dnd2024FeatSpellGrant[],
+	featEntries: readonly CompendiumEntry[] = []
 ): Dnd2024FeatSpellGrant[] {
 	const featCounts = new Map<string, number>();
 	for (const feat of String(featsText ?? '').split(/[\n,]/)) {
@@ -118,9 +192,19 @@ export function synchronizeDndFeatGrantActivation(
 	return grants.map((grant) => {
 		if (grant.active === false) return { ...grant, active: false };
 		const rule = dnd2024FeatSpellRule(grant.featId);
+		const hasCampaignOverride = campaignFeatSpellRuleEntries(featEntries).some(
+			({ entry }) =>
+				entry.rules.id === grant.featId || namesMatch(entry, rule?.localizedNames ?? [])
+		);
+		if (hasCampaignOverride) return { ...grant, active: false };
 		const count = rule ? (remaining.get(grant.featId) ?? 0) : 0;
 		if (count <= 0) return { ...grant, active: false };
 		remaining.set(grant.featId, count - 1);
 		return { ...grant, active: true };
 	});
+}
+
+function namesMatch(entry: CompendiumEntry, names: readonly string[]) {
+	const entryNames = [entry.name, entry.translations?.['pt-BR'] ?? ''].map(normalizeDndFeatKey);
+	return names.some((name) => entryNames.includes(normalizeDndFeatKey(name)));
 }

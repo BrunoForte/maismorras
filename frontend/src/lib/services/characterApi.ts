@@ -55,6 +55,13 @@ export type Dnd2024FeatSpellGrant = {
 	freeCastsRemaining: number;
 	active?: boolean;
 };
+export type CampaignFeatSpellGrant = {
+	id: string;
+	featEntryId: string;
+	spellcastingAbilities: Record<string, 'intelligence' | 'wisdom' | 'charisma'>;
+	freeCastsRemaining: Record<string, number>;
+	active?: boolean;
+};
 export type InventoryItem = {
 	entryId: string;
 	name: string;
@@ -99,6 +106,7 @@ export type CharacterSheet = {
 	spellSlots: SpellSlot[];
 	money?: Dnd2024Money;
 	featSpellGrants?: Dnd2024FeatSpellGrant[];
+	campaignFeatSpellGrants?: CampaignFeatSpellGrant[];
 	visibleRolls?: string[];
 	resistances?: string[];
 	automaticTraits?: string[];
@@ -134,6 +142,7 @@ function normalizeCharacter(character: Character): Character {
 		spellSlots: character.sheet.spellSlots ?? [],
 		money: normalizeDnd2024Money(character.sheet.money),
 		featSpellGrants: character.sheet.featSpellGrants ?? [],
+		campaignFeatSpellGrants: character.sheet.campaignFeatSpellGrants ?? [],
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
 		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
@@ -312,6 +321,7 @@ export function createEmptySheet(): CharacterSheet {
 		spellSlots: [],
 		money: { ...EMPTY_DND2024_MONEY },
 		featSpellGrants: [],
+		campaignFeatSpellGrants: [],
 		visibleRolls: [],
 		resistances: [],
 		automaticTraits: [],
