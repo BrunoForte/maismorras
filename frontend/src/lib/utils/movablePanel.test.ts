@@ -374,6 +374,28 @@ describe('movablePanel', () => {
 		action.destroy();
 	});
 
+	it('does not reserve the chat horizontally when a sheet stacks below it on a narrow viewport', () => {
+		const h = makeHarness(
+			{ width: 320, height: 260 },
+			{
+				'.floating-chat': { left: 16, top: 180, right: 376, bottom: 620, width: 360, height: 440 }
+			}
+		);
+		h.windowMock.innerWidth = 390;
+		h.windowMock.innerHeight = 844;
+		const style = (h.node as unknown as { style: Record<string, string> }).style;
+		style.left = '8px';
+		style.top = '338px';
+		const action = movablePanel(h.node, {
+			storageKey: 'narrow-stacked-sheet',
+			handleSelector: '.titlebar',
+			avoidLeftSelectors: ['.floating-chat']
+		});
+		expect(style['--mm-panel-left-inset']).toBe('auto');
+		expect(style['--mm-panel-safe-max-width']).toBe('350px');
+		action.destroy();
+	});
+
 	it('caps a resized sheet before a right-side map inspector', () => {
 		const h = makeHarness(
 			{ width: 1000, height: 520 },
