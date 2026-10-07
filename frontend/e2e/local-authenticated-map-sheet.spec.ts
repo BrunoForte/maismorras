@@ -949,6 +949,74 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	for (const viewport of [
+		{ name: 'narrow', width: 390, height: 844 },
+		{ name: 'desktop', width: 1440, height: 900 }
+	] as const) {
+		test(`player sheet stays usable after reopen on ${viewport.name} viewport with chat open`, async ({
+			browser
+		}) => {
+			let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+			try {
+				fixture = await createLocalAuthenticatedFixture(browser);
+				const character = await fixture.createCharacter(fixture.playerUserId, {
+					name: `Ficha ${viewport.name} E2E`
+				});
+				await fixture.createCharacterToken(character.id);
+				const player = fixture.player;
+				await player.setViewportSize({ width: viewport.width, height: viewport.height });
+				await openMap(player, fixture.campaignId, fixture.sceneId);
+				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				const sheet = player.locator('.sheet-backdrop.floating .sheet');
+				await expect(sheet).toBeVisible();
+
+				const expectUsableGeometry = async () => {
+					const box = await sheet.boundingBox();
+					expect(box).not.toBeNull();
+					expect(box!.width).toBeGreaterThan(300);
+					expect(box!.x).toBeGreaterThanOrEqual(0);
+					expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+				};
+				await expectUsableGeometry();
+
+				await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(player.locator('canvas').first()).toBeVisible();
+				await player.locator('.table-tools button[title="Dados"]').click();
+				const rollResponse = player.waitForResponse((response) => {
+					const request = response.request();
+					return (
+						request.url().includes(`/api/v1/campaigns/${fixture!.campaignId}/events`) &&
+						request.method() === 'POST' &&
+						request.postData()?.includes('"expression":"1d20"') === true
+					);
+				});
+				await player.getByRole('button', { name: 'Rolar 1d20' }).click();
+				const roll = (await (await rollResponse).json()) as { id: string | number };
+				await expect(
+					player.locator(`.dice-overlay article[data-roll-id="${roll.id}"]`)
+				).toBeVisible();
+				await expectUsableGeometry();
+
+				await player.getByRole('button', { name: 'Minimizar ficha' }).click();
+				await expect(sheet).toHaveClass(/minimized/);
+				await expect(sheet.locator('.sheet-body')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Restaurar ficha' }).click();
+				await expect(sheet.locator('.sheet-body')).toBeVisible();
+				await expectUsableGeometry();
+
+				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await player.getByRole('button', { name: 'Fechar ficha' }).click();
+				await expect(player.locator('.sheet-backdrop')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				await expect(sheet).toBeVisible();
+				await expectUsableGeometry();
+			} finally {
+				await fixture?.close();
+			}
+		});
+	}
+
 	test('GM actor panel retains minimized state and restores after map remount', async ({
 		browser
 	}) => {

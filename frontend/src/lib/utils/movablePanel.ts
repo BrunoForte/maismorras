@@ -114,11 +114,15 @@ export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
 		let bottom = footerOffset + 8;
 		let left: number | null = null;
 		let right = 16;
-		for (const selector of options.avoidLeftSelectors ?? []) {
-			const obstacle = document.querySelector(selector);
-			if (!obstacle) continue;
-			const rect = obstacle.getBoundingClientRect();
-			if (rect.width > 0 && rect.height > 0) left = Math.max(left ?? 16, rect.right + 12);
+		// At narrow widths the sheet is stacked below the chat, so reserving the
+		// chat's horizontal space can collapse the sheet to zero width.
+		if (window.innerWidth > 880) {
+			for (const selector of options.avoidLeftSelectors ?? []) {
+				const obstacle = document.querySelector(selector);
+				if (!obstacle) continue;
+				const rect = obstacle.getBoundingClientRect();
+				if (rect.width > 0 && rect.height > 0) left = Math.max(left ?? 16, rect.right + 12);
+			}
 		}
 		for (const selector of options.avoidRightSelectors ?? []) {
 			const obstacle = document.querySelector(selector);
