@@ -20,6 +20,12 @@ export type CompendiumEntry = {
 	rules: Record<string, unknown>;
 	translations: Record<string, string>;
 	isPublished: boolean;
+	catalogEntryId?: string;
+};
+export type CompendiumList = {
+	sources: CompendiumSource[];
+	entries: CompendiumEntry[];
+	canTranslateSharedSrd: boolean;
 };
 export type CompendiumDraft = Pick<
 	CompendiumEntry,
@@ -41,10 +47,7 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 	return httpRequest<T>(session, path, init);
 }
 export const getCompendium = (session: Session, campaignId: string) =>
-	request<{ sources: CompendiumSource[]; entries: CompendiumEntry[] }>(
-		session,
-		`/api/v1/campaigns/${campaignId}/compendium`
-	);
+	request<CompendiumList>(session, `/api/v1/campaigns/${campaignId}/compendium`);
 export const createCompendiumEntry = (
 	session: Session,
 	campaignId: string,

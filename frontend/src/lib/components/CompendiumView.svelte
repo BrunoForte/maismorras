@@ -34,6 +34,7 @@
 		editorModelFromEntry,
 		emptyCompendiumEditorModel,
 		compendiumEntryTranslationStatus,
+		canInitiateCompendiumTranslation,
 		hasPendingCompendiumTranslation,
 		isCompendiumTranslationPending,
 		translatedCompendiumText,
@@ -65,6 +66,7 @@
 	const types = COMPENDIUM_ENTRY_TYPES;
 	let sources = $state<CompendiumSource[]>([]);
 	let entries = $state<CompendiumEntry[]>([]);
+	let canTranslateSharedSrd = $state(false);
 	let filters = $state<CompendiumCatalogFilters>({
 		query: '',
 		entryType: 'all',
@@ -166,6 +168,7 @@
 			const data = await getCompendium(session, campaignId);
 			sources = data.sources;
 			entries = data.entries;
+			canTranslateSharedSrd = data.canTranslateSharedSrd === true;
 			if (!editingEntryId)
 				draft.sourceId = data.sources.find((source) => !source.readOnly)?.id ?? '';
 		} catch (error) {
@@ -420,7 +423,16 @@
 		}
 	}
 	async function translate(entry: CompendiumEntry) {
-		if (!isGM || !hasPendingCompendiumTranslation(entry)) return;
+		if (
+			!canInitiateCompendiumTranslation(
+				entry,
+				sources.find((source) => source.id === entry.sourceId),
+				canTranslateSharedSrd,
+				isGM
+			) ||
+			!hasPendingCompendiumTranslation(entry)
+		)
+			return;
 		translating = entry.id;
 		message = '';
 		try {
@@ -442,7 +454,7 @@
 		}
 	}
 	async function translateSRDPending() {
-		if (!isGM || $appLocale !== 'pt-BR' || batchTranslating) return;
+		if (!canTranslateSharedSrd || $appLocale !== 'pt-BR' || batchTranslating) return;
 		const pending = entries.filter(
 			(entry) =>
 				sources.find((source) => source.id === entry.sourceId)?.kind === 'srd' &&
@@ -476,7 +488,15 @@
 					hasPrivateSource: privateSources().length > 0,
 					isGM,
 					canConfigureFeatSpellRule: selectedEntry.entryType === 'feat',
-					canTranslate: $appLocale === 'pt-BR' && hasPendingCompendiumTranslation(selectedEntry),
+					canTranslate:
+						$appLocale === 'pt-BR' &&
+						hasPendingCompendiumTranslation(selectedEntry) &&
+						canInitiateCompendiumTranslation(
+							selectedEntry,
+							sources.find((source) => source.id === selectedEntry.sourceId),
+							canTranslateSharedSrd,
+							isGM
+						),
 					translationStatus: compendiumEntryTranslationStatus(selectedEntry),
 					canPlace: Boolean(sceneId),
 					translating: translating === selectedEntry.id,
@@ -563,10 +583,10 @@
 			>
 		</div>
 		<div class="header-actions">
-			{#if isGM && $appLocale === 'pt-BR'}<button
+			{#if canTranslateSharedSrd && $appLocale === 'pt-BR'}<button
 					onclick={() => void translateSRDPending()}
 					disabled={!canResumeTranslationQueue({
-						isGM,
+						isGM: canTranslateSharedSrd,
 						locale: $appLocale,
 						isRunning: batchTranslating,
 						pendingCount: pendingSrdCount

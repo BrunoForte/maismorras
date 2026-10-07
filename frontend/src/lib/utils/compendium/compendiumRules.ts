@@ -58,6 +58,16 @@ export type CompendiumCatalogFilters = {
 	sortMode: CompendiumSortMode;
 };
 
+/** UI capability only; the backend repeats this authorization for every write. */
+export function canInitiateCompendiumTranslation(
+	entry: CompendiumEntry,
+	source: CompendiumSource | undefined,
+	canTranslateSharedSrd: boolean,
+	isGM: boolean
+): boolean {
+	return source?.kind === 'srd' ? canTranslateSharedSrd : isGM;
+}
+
 export function emptyCompendiumEditorModel(sourceId = ''): CompendiumEditorModel {
 	return {
 		sourceId,

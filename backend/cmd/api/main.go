@@ -114,7 +114,7 @@ func main() {
 		}()
 	}
 	logger.Info("realtime broker initialized", "event", "realtime.broker.initialized", "broker_mode", brokerMode, "origin_instance_id", instanceID)
-	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool), hub), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub), overlayaccess.NewHandler(pool, cfg), hub)
+	handler := apphttp.NewRouter(cfg, logger, tokens.NewHandler(imageService, tokens.NewPostgresGenerationPolicy(pool)), campaigns.NewHandler(campaigns.NewRepository(pool)), scenes.NewHandler(scenes.NewRepository(pool), hub), characters.NewHandler(characters.NewRepository(pool)), compendium.NewHandler(compendium.NewRepository(pool, cfg.MaisMorrasOwnerUserID), translationService), notes.NewHandler(pool), npcs.NewHandler(npcs.NewRepository(pool)), events.NewHandler(pool), library.NewHandler(pool, cfg, hub), realtime.NewHandler(cfg, pool, hub), overlayaccess.NewHandler(pool, cfg), hub)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

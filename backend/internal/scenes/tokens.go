@@ -220,7 +220,9 @@ func (r *Repository) CreateTokenFromCompendiumMonster(ctx context.Context, scene
 	}
 	var name string
 	var raw []byte
-	err = r.pool.QueryRow(ctx, `select e.name,e.rules from compendium_entries e join scenes s on s.campaign_id=e.campaign_id where e.id=$1 and s.id=$2 and e.entry_type='other' and coalesce(e.rules->>'kind', e.rules->>'catalog')='monster'`, entryID, sceneID).Scan(&name, &raw)
+	err = r.pool.QueryRow(ctx, `select e.name,e.rules from srd_catalog_entries e join srd_catalog_sources src on src.id=e.source_id join scenes s on s.id=$2 join campaign_srd_catalog_sources cs on cs.campaign_id=s.campaign_id and cs.source_id=e.source_id where e.id::text=$1 and src.slug='dnd-srd' and e.entry_type='other' and coalesce(e.rules->>'kind',e.rules->>'catalog')='monster'
+		union all select e.name,e.rules from compendium_entries e join scenes s on s.campaign_id=e.campaign_id where e.id::text=$1 and s.id=$2 and e.entry_type='other' and coalesce(e.rules->>'kind',e.rules->>'catalog')='monster'
+		union all select e.name,e.rules from srd_catalog_entry_aliases a join srd_catalog_entries e on e.id=a.catalog_entry_id join scenes s on s.campaign_id=a.campaign_id where a.legacy_entry_id::text=$1 and s.id=$2 and e.entry_type='other' and coalesce(e.rules->>'kind',e.rules->>'catalog')='monster' limit 1`, entryID, sceneID).Scan(&name, &raw)
 	if err != nil {
 		return Token{}, fmt.Errorf("load compendium monster: %w", err)
 	}
