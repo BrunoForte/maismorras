@@ -144,7 +144,7 @@ func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string,
 	_, err = r.pool.Exec(ctx, `insert into srd_catalog_entry_aliases(campaign_id,legacy_entry_id,catalog_entry_id)
 		select $1, old.id, shared.id
 		from compendium_entries old
-		join compendium_sources old_source on old_source.id=old.source_id and old_source.campaign_id=old.campaign_id and old_source.slug='dnd-srd-5-2-1'
+		join compendium_sources old_source on old_source.id=old.source_id and old_source.campaign_id=old.campaign_id and old_source.slug='dnd-srd-5-2-1' and old.campaign_id=$1
 		join srd_catalog_entries shared on shared.source_id=$2 and shared.entry_type=old.entry_type and shared.name=old.name
 		on conflict(campaign_id,legacy_entry_id) do nothing`, campaignID, sourceID)
 	if err != nil {
@@ -224,7 +224,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 		return nil, nil, err
 	}
 	var sharedSource Source
-	if err := r.pool.QueryRow(ctx, `select s.id::text,s.slug,s.title,'srd',s.version,s.attribution,s.license_url,true from srd_catalog_sources s join campaign_srd_catalog_sources cs on cs.source_id=s.id where cs.campaign_id=$1`, campaignID).Scan(&sharedSource.ID, &sharedSource.Slug, &sharedSource.Title, &sharedSource.Version, &sharedSource.Attribution, &sharedSource.LicenseURL, &sharedSource.ReadOnly); err != nil {
+	if err := r.pool.QueryRow(ctx, `select s.id::text,s.slug,s.title,'srd',s.version,s.attribution,s.license_url,true from srd_catalog_sources s join campaign_srd_catalog_sources cs on cs.source_id=s.id where cs.campaign_id=$1`, campaignID).Scan(&sharedSource.ID, &sharedSource.Slug, &sharedSource.Title, &sharedSource.Kind, &sharedSource.Version, &sharedSource.Attribution, &sharedSource.LicenseURL, &sharedSource.ReadOnly); err != nil {
 		return nil, nil, fmt.Errorf("load campaign SRD source: %w", err)
 	}
 	sources = append(sources, sharedSource)

@@ -96,7 +96,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	shieldA := findEntryByName(entriesA, "spell", "Shield")
 	shieldB := findEntryByName(entriesB, "spell", "Shield")
 	if decodeTranslations(shieldA.Translations)["pt-BR"] != "Proteção legada da campanha A" || decodeTranslations(shieldB.Translations)["pt-BR"] == "Proteção legada da campanha A" {
-		t.Fatal("legacy manual translation was not preserved only in its campaign projection")
+		t.Fatalf("legacy manual translation was not preserved only in its campaign projection: A=%v B=%v", decodeTranslations(shieldA.Translations), decodeTranslations(shieldB.Translations))
 	}
 	var canonicalShieldTranslations json.RawMessage
 	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, shieldA.ID).Scan(&canonicalShieldTranslations); err != nil {
@@ -195,7 +195,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	translatedB := findEntryByName(entriesB, "spell", "Fireball")
-	if translatedB.ID != sharedA.ID || decodeTranslations(translatedB.Translations)["pt-BR.summary"] != "Resumo oficial" || decodeTranslations(translatedB.Translations)["pt-BR"] != decodeTranslations(sharedA.Translations)["pt-BR"] {
+	if translatedB.ID != sharedA.ID || decodeTranslations(translatedB.Translations)["pt-BR.summary"] != "Resumo oficial" || decodeTranslations(translatedB.Translations)["pt-BR"] != "PT: Fireball" {
 		t.Fatalf("campaign B did not see safe shared translation: %#v", decodeTranslations(translatedB.Translations))
 	}
 	_, err = repo.TranslateShared(ctx, campaignB, sharedB.ID, owner, func(context.Context, map[string]string) (map[string]string, error) {
@@ -232,7 +232,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}()
 
 	for _, name := range []string{"Spear", "Lance", "Pike"} {
-		if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR',$1,'pt-BR.source','ai') where source_id=$2 and entry_type='item' and name=$3`, "tradução IA antiga de "+name, sharedSourceID, name); err != nil {
+		if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR',$1::text,'pt-BR.source','ai') where source_id=$2 and entry_type='item' and name=$3`, "tradução IA antiga de "+name, sharedSourceID, name); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -278,8 +278,8 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if got := decodeTranslations(syncedSpear)["pt-BR.source"]; got != "reviewed" {
 		t.Fatalf("canonical provenance = %q, want reviewed", got)
 	}
-	if translations := decodeTranslations(syncedSpear); translations["pt-BR.summary"] != "Resumo IA não revisado" || translations["pt-BR.summary.source"] != "ai" {
-		t.Fatalf("field without an approved package translation was changed: %v", translations)
+	if translations := decodeTranslations(syncedSpear); translations["pt-BR.summary"] != "Arma simples de combate corpo a corpo." || translations["pt-BR.summary.source"] != "reviewed" {
+		t.Fatalf("approved item summary was not synchronized: %v", translations)
 	}
 
 	// Explicitly protected canonical values remain untouched by another sync.

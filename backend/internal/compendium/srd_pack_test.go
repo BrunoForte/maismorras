@@ -69,6 +69,42 @@ func TestSRDWeaponTranslationsAreReviewedAndDistinct(t *testing.T) {
 	}
 }
 
+func TestSRDItemTranslationBatchIsCompleteAndReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "item" || decodeTranslations(entry.Translations)["pt-BR.source"] != "reviewed" {
+			continue
+		}
+		items++
+		translations := decodeTranslations(entry.Translations)
+		if translations["pt-BR"] == "" || translations["pt-BR.source"] != "reviewed" {
+			t.Errorf("%s name translation is missing or not reviewed: %v", entry.Name, translations)
+		}
+		if entry.Rules != nil && string(entry.Rules) != "null" {
+			var rules map[string]any
+			if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+				t.Fatalf("decode %s rules: %v", entry.Name, err)
+			}
+			if _, ok := rules["name"]; ok && (translations["pt-BR.rules.name"] != translations["pt-BR"] || translations["pt-BR.rules.name.source"] != "reviewed") {
+				t.Errorf("%s rules.name localization is missing or not reviewed", entry.Name)
+			}
+			if _, ok := rules["description"]; ok && (translations["pt-BR.rules.description"] == "" || translations["pt-BR.rules.description.source"] != "reviewed") {
+				t.Errorf("%s rules.description localization is missing or not reviewed", entry.Name)
+			}
+		}
+		if translations["pt-BR.summary"] == "" || translations["pt-BR.summary.source"] != "reviewed" {
+			t.Errorf("%s summary localization is missing or not reviewed", entry.Name)
+		}
+	}
+	if items != 95 {
+		t.Fatalf("translated item count = %d, want 95", items)
+	}
+}
+
 func TestApplyReviewedTranslationProvenance(t *testing.T) {
 	entry := srdEntry{
 		EntryType:    "item",
