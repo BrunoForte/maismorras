@@ -191,7 +191,8 @@ func (r *Repository) auditCampaignTranslationOverrides(ctx context.Context, camp
 			if key != "pt-BR" && !strings.HasPrefix(key, "pt-BR.") || strings.HasSuffix(key, ".source") || strings.TrimSpace(override[key]) == "" {
 				continue
 			}
-			if !strings.EqualFold(strings.TrimSpace(override[key+".source"]), "ai") && !translationSourceIsProtected(override, key) {
+			source := strings.ToLower(strings.TrimSpace(override[key+".source"]))
+			if source != "ai" && source != "" && !translationSourceIsProtected(override, key) {
 				unresolved = append(unresolved, entry.EntryType+":"+entry.Name+" "+key)
 			}
 		}
@@ -351,6 +352,9 @@ func (r *Repository) syncReviewedTranslations(ctx context.Context, sourceID stri
 
 func applyReviewedTranslation(current map[string]string, entry srdEntry) (bool, []string, []string) {
 	approved := decodeTranslations(entry.Translations)
+	if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+		return false, nil, nil
+	}
 	changed := false
 	var updated, unresolved []string
 	for key, value := range approved {
@@ -359,16 +363,10 @@ func applyReviewedTranslation(current map[string]string, entry srdEntry) (bool, 
 		}
 		field := entry.EntryType + ":" + entry.Name + " " + key
 		provenance := strings.ToLower(strings.TrimSpace(current[key+".source"]))
-		old := current[key]
 		switch {
-		case provenance == "ai":
-			current[key] = value
-			current[key+".source"] = "reviewed"
-			changed = true
-			updated = append(updated, field)
 		case translationSourceIsProtected(current, key):
 			// Explicit official or human-reviewed translations remain authoritative.
-		case old == "", old == entry.Name:
+		case provenance == "ai" || provenance == "":
 			current[key] = value
 			current[key+".source"] = "reviewed"
 			changed = true

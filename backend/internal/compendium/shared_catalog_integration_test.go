@@ -236,6 +236,12 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Tradução antiga sem marcador') where source_id=$1 and entry_type='item' and name='Lance'`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=translations || jsonb_build_object('pt-BR.summary','Resumo IA não revisado','pt-BR.summary.source','ai') where source_id=$1 and entry_type='item' and name='Spear'`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
 	spear := findEntryByName(entriesA, "item", "Spear")
 	if _, err = pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,translations,updated_by) values($1,$2,$3,$4),($5,$2,$6,$4) on conflict(campaign_id,catalog_entry_id) do update set translations=excluded.translations`, campaignA, spear.ID, json.RawMessage(`{"pt-BR":"Lança IA antiga A","pt-BR.source":"ai"}`), owner, campaignB, json.RawMessage(`{"pt-BR":"Lança manual B","pt-BR.source":"manual"}`)); err != nil {
 		t.Fatal(err)
@@ -272,12 +278,15 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if got := decodeTranslations(syncedSpear)["pt-BR.source"]; got != "reviewed" {
 		t.Fatalf("canonical provenance = %q, want reviewed", got)
 	}
+	if translations := decodeTranslations(syncedSpear); translations["pt-BR.summary"] != "Resumo IA não revisado" || translations["pt-BR.summary.source"] != "ai" {
+		t.Fatalf("field without an approved package translation was changed: %v", translations)
+	}
 
 	// Explicitly protected canonical values remain untouched by another sync.
 	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Lança oficial','pt-BR.source','official') where source_id=$1 and entry_type='item' and name='Lance'`, sharedSourceID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Pique legado sem origem') where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID); err != nil {
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Pique legado de origem externa','pt-BR.source','external') where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID); err != nil {
 		t.Fatal(err)
 	}
 	pack, err := loadSRDPack()
@@ -298,7 +307,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID).Scan(&pikeTranslations); err != nil {
 		t.Fatal(err)
 	}
-	if decodeTranslations(lanceTranslations)["pt-BR"] != "Lança oficial" || decodeTranslations(pikeTranslations)["pt-BR"] != "Pique legado sem origem" {
+	if decodeTranslations(lanceTranslations)["pt-BR"] != "Lança oficial" || decodeTranslations(pikeTranslations)["pt-BR"] != "Pique legado de origem externa" {
 		t.Fatal("protected or unmarked canonical translation was overwritten")
 	}
 	secondReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, uniqueEntries(pack.Entries))
@@ -309,8 +318,8 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 		t.Fatalf("repeated sync was not idempotent: %+v", secondReport)
 	}
 
-	// An unmarked campaign override is retained in storage, reported, and cannot
-	// conceal the reviewed canonical value. AI values are ignored the same way.
+	// An unmarked campaign override is treated as legacy AI for the approved
+	// field: it remains stored but cannot conceal the reviewed canonical value.
 	if _, err = pool.Exec(ctx, `update campaign_srd_entry_overrides set translations=$1 where campaign_id=$2 and catalog_entry_id=$3`, json.RawMessage(`{"pt-BR":"Rótulo sem proveniência"}`), campaignA, spear.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -318,8 +327,8 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(unresolvedOverrides) != 1 || unresolvedOverrides[0] != "item:Spear pt-BR" {
-		t.Fatalf("campaign override audit = %v, want [item:Spear pt-BR]", unresolvedOverrides)
+	if len(unresolvedOverrides) != 0 {
+		t.Fatalf("unmarked campaign override was incorrectly reported as unknown: %v", unresolvedOverrides)
 	}
 	_, auditedEntries, err := repo.List(ctx, campaignA, owner)
 	if err != nil {
@@ -334,6 +343,16 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}
 	if decodeTranslations(retainedOverride)["pt-BR"] != "Rótulo sem proveniência" {
 		t.Fatal("unknown campaign override was silently deleted")
+	}
+	if _, err = pool.Exec(ctx, `update campaign_srd_entry_overrides set translations=$1 where campaign_id=$2 and catalog_entry_id=$3`, json.RawMessage(`{"pt-BR":"Rótulo de origem desconhecida","pt-BR.source":"external"}`), campaignA, spear.ID); err != nil {
+		t.Fatal(err)
+	}
+	unresolvedOverrides, err = repo.auditCampaignTranslationOverrides(ctx, campaignA, sharedSourceID, uniqueEntries(pack.Entries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unresolvedOverrides) != 1 || unresolvedOverrides[0] != "item:Spear pt-BR" {
+		t.Fatalf("explicit unknown source audit = %v, want [item:Spear pt-BR]", unresolvedOverrides)
 	}
 }
 

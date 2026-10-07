@@ -86,6 +86,13 @@ func TestApplyReviewedTranslationProvenance(t *testing.T) {
 			t.Fatal("second sync changed the already reviewed translation")
 		}
 	})
+	t.Run("replaces non-empty value without provenance", func(t *testing.T) {
+		current := map[string]string{"pt-BR": "Lança antiga"}
+		changed, updated, unresolved := applyReviewedTranslation(current, entry)
+		if !changed || current["pt-BR"] != "Lança" || current["pt-BR.source"] != "reviewed" || len(updated) != 1 || len(unresolved) != 0 {
+			t.Fatalf("unmarked legacy translation handling: changed=%t current=%v updated=%v unresolved=%v", changed, current, updated, unresolved)
+		}
+	})
 	for _, source := range []string{"official", "manual", "human", "user", "reviewed"} {
 		t.Run("preserves "+source, func(t *testing.T) {
 			current := map[string]string{"pt-BR": "Valor protegido", "pt-BR.source": source}
@@ -96,10 +103,22 @@ func TestApplyReviewedTranslationProvenance(t *testing.T) {
 		})
 	}
 	t.Run("preserves and reports unknown provenance", func(t *testing.T) {
-		current := map[string]string{"pt-BR": "Valor sem origem"}
+		current := map[string]string{"pt-BR": "Valor de origem desconhecida", "pt-BR.source": "external"}
 		changed, _, unresolved := applyReviewedTranslation(current, entry)
-		if changed || current["pt-BR"] != "Valor sem origem" || len(unresolved) != 1 || unresolved[0] != "item:Spear pt-BR" {
+		if changed || current["pt-BR"] != "Valor de origem desconhecida" || len(unresolved) != 1 || unresolved[0] != "item:Spear pt-BR" {
 			t.Fatalf("unknown provenance handling: changed=%t current=%v unresolved=%v", changed, current, unresolved)
+		}
+	})
+	t.Run("does not touch unreviewed package fields", func(t *testing.T) {
+		unreviewed := srdEntry{
+			EntryType:    "item",
+			Name:         "Spear",
+			Translations: json.RawMessage(`{"pt-BR":"Lança"}`),
+		}
+		current := map[string]string{"pt-BR": "Gerada", "pt-BR.source": "ai"}
+		changed, updated, unresolved := applyReviewedTranslation(current, unreviewed)
+		if changed || len(updated) != 0 || len(unresolved) != 0 || current["pt-BR"] != "Gerada" || current["pt-BR.source"] != "ai" {
+			t.Fatalf("unreviewed field was changed or audited: changed=%t current=%v updated=%v unresolved=%v", changed, current, updated, unresolved)
 		}
 	})
 }
