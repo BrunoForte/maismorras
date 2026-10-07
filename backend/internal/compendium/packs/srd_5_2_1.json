@@ -1,6 +1,6 @@
 {
   "version": "5.2.1",
-  "revision": "cartridge-import-1",
+  "revision": "cartridge-import-2",
   "attribution": "D&D System Reference Document 5.2.1 © Wizards of the Coast LLC, CC-BY-4.0. Structured cartridge: NatOneApp/sdr-5.2.1.",
   "entries": [
     {
@@ -3882,7 +3882,8 @@
       "name": "Lance",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Lance"
+        "pt-BR": "Lança de cavalaria",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4157,7 +4158,8 @@
       "name": "Pike",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pike"
+        "pt-BR": "Pique",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4678,7 +4680,8 @@
       "name": "Spear",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Spear"
+        "pt-BR": "Lança",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",

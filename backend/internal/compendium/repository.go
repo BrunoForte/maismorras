@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log/slog"
 	"strings"
 	"vtt-backend/internal/observability"
 )
@@ -95,7 +96,7 @@ func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) erro
 func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string, pack srdPack) error {
 	var sourceID string
 	var storedRevision string
-	if err := r.pool.QueryRow(ctx, `insert into srd_catalog_sources(slug,version,revision,title,attribution,license_url) values('dnd-srd', $1,$2,'D&D System Reference Document',$3,'https://www.dndbeyond.com/srd') on conflict(slug,version) do update set revision=excluded.revision,title=excluded.title,attribution=excluded.attribution,license_url=excluded.license_url,updated_at=case when srd_catalog_sources.revision is distinct from excluded.revision then now() else srd_catalog_sources.updated_at end returning id::text,revision`, pack.Version, pack.Revision, pack.Attribution).Scan(&sourceID, &storedRevision); err != nil {
+	if err := r.pool.QueryRow(ctx, `insert into srd_catalog_sources(slug,version,revision,title,attribution,license_url) values('dnd-srd', $1,$2,'D&D System Reference Document',$3,'https://www.dndbeyond.com/srd') on conflict(slug,version) do update set title=excluded.title,attribution=excluded.attribution,license_url=excluded.license_url,updated_at=case when srd_catalog_sources.revision is distinct from excluded.revision then now() else srd_catalog_sources.updated_at end returning id::text,revision`, pack.Version, pack.Revision, pack.Attribution).Scan(&sourceID, &storedRevision); err != nil {
 		return err
 	}
 	if _, err := r.pool.Exec(ctx, `insert into campaign_srd_catalog_sources(campaign_id,source_id) values($1,$2) on conflict do nothing`, campaignID, sourceID); err != nil {
@@ -128,7 +129,19 @@ func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string,
 			return err
 		}
 	}
-	_, err := r.pool.Exec(ctx, `insert into srd_catalog_entry_aliases(campaign_id,legacy_entry_id,catalog_entry_id)
+	if storedRevision != pack.Revision {
+		if _, err := r.pool.Exec(ctx, `update srd_catalog_sources set revision=$1,updated_at=now() where id=$2`, pack.Revision, sourceID); err != nil {
+			return fmt.Errorf("update SRD catalog revision: %w", err)
+		}
+	}
+	report, err := r.syncReviewedTranslations(ctx, sourceID, entries)
+	if err != nil {
+		return fmt.Errorf("sync reviewed SRD translations: %w", err)
+	}
+	if len(report.Unresolved) > 0 {
+		slog.Warn("SRD translation sync preserved values with unknown provenance", "source", "dnd-srd", "version", pack.Version, "count", len(report.Unresolved), "entries", report.Unresolved)
+	}
+	_, err = r.pool.Exec(ctx, `insert into srd_catalog_entry_aliases(campaign_id,legacy_entry_id,catalog_entry_id)
 		select $1, old.id, shared.id
 		from compendium_entries old
 		join compendium_sources old_source on old_source.id=old.source_id and old_source.campaign_id=old.campaign_id and old_source.slug='dnd-srd-5-2-1'
@@ -145,7 +158,45 @@ func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string,
 		join campaigns c on c.id=a.campaign_id
 		where a.campaign_id=$1 and (coalesce(e.rules->'campaignOverrides','{}'::jsonb) <> '{}'::jsonb or coalesce(e.translations,'{}'::jsonb) <> '{}'::jsonb)
 		on conflict(campaign_id,catalog_entry_id) do update set translations=case when campaign_srd_entry_overrides.translations='{}'::jsonb then excluded.translations else campaign_srd_entry_overrides.translations end,updated_at=now()`, campaignID)
+	if err != nil {
+		return err
+	}
+	unresolved, err := r.auditCampaignTranslationOverrides(ctx, campaignID, sourceID, entries)
+	if err != nil {
+		return fmt.Errorf("audit campaign SRD translation overrides: %w", err)
+	}
+	if len(unresolved) > 0 {
+		slog.Warn("SRD campaign translation overrides preserved with unknown provenance", "campaign_id", campaignID, "count", len(unresolved), "entries", unresolved)
+	}
 	return err
+}
+
+func (r *Repository) auditCampaignTranslationOverrides(ctx context.Context, campaignID, sourceID string, entries []srdEntry) ([]string, error) {
+	var unresolved []string
+	for _, entry := range entries {
+		approved := decodeTranslations(entry.Translations)
+		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+			continue
+		}
+		var raw json.RawMessage
+		err := r.pool.QueryRow(ctx, `select o.translations from campaign_srd_entry_overrides o join srd_catalog_entries e on e.id=o.catalog_entry_id where o.campaign_id=$1 and e.source_id=$2 and e.entry_type=$3 and e.name=$4`, campaignID, sourceID, entry.EntryType, entry.Name).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return unresolved, err
+		}
+		override := decodeTranslations(raw)
+		for key := range approved {
+			if key != "pt-BR" && !strings.HasPrefix(key, "pt-BR.") || strings.HasSuffix(key, ".source") || strings.TrimSpace(override[key]) == "" {
+				continue
+			}
+			if !strings.EqualFold(strings.TrimSpace(override[key+".source"]), "ai") && !translationSourceIsProtected(override, key) {
+				unresolved = append(unresolved, entry.EntryType+":"+entry.Name+" "+key)
+			}
+		}
+	}
+	return unresolved, nil
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Source, []Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
@@ -227,6 +278,15 @@ func mergeCampaignTranslations(canonical, campaign json.RawMessage) json.RawMess
 		return canonical
 	}
 	for key, value := range scoped {
+		if !strings.HasSuffix(key, ".source") && canonicalTranslationTakesPrecedence(translations, scoped, key) {
+			continue
+		}
+		if strings.HasSuffix(key, ".source") {
+			field := strings.TrimSuffix(key, ".source")
+			if canonicalTranslationTakesPrecedence(translations, scoped, field) {
+				continue
+			}
+		}
 		translations[key] = value
 	}
 	encoded, err := json.Marshal(translations)
@@ -234,6 +294,90 @@ func mergeCampaignTranslations(canonical, campaign json.RawMessage) json.RawMess
 		return canonical
 	}
 	return encoded
+}
+
+func canonicalTranslationTakesPrecedence(canonical, campaign map[string]string, key string) bool {
+	canonicalSource := strings.ToLower(strings.TrimSpace(canonical[key+".source"]))
+	if canonicalSource != "reviewed" && !translationSourceIsProtected(canonical, key) && !strings.EqualFold(strings.TrimSpace(campaign[key+".source"]), "ai") {
+		return false
+	}
+	return !translationSourceIsProtected(campaign, key)
+}
+
+type TranslationSyncReport struct {
+	Updated    []string
+	Unresolved []string
+}
+
+func (r *Repository) syncReviewedTranslations(ctx context.Context, sourceID string, entries []srdEntry) (TranslationSyncReport, error) {
+	report := TranslationSyncReport{}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return report, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, entry := range entries {
+		approved := decodeTranslations(entry.Translations)
+		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+			continue
+		}
+		var raw json.RawMessage
+		err = tx.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type=$2 and name=$3 for update`, sourceID, entry.EntryType, entry.Name).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return report, err
+		}
+		current := decodeTranslations(raw)
+		changed, updated, unresolved := applyReviewedTranslation(current, entry)
+		report.Updated = append(report.Updated, updated...)
+		report.Unresolved = append(report.Unresolved, unresolved...)
+		if changed {
+			encoded, marshalErr := json.Marshal(current)
+			if marshalErr != nil {
+				return report, marshalErr
+			}
+			if _, err = tx.Exec(ctx, `update srd_catalog_entries set translations=$1,updated_at=now() where source_id=$2 and entry_type=$3 and name=$4`, encoded, sourceID, entry.EntryType, entry.Name); err != nil {
+				return report, err
+			}
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return report, err
+	}
+	return report, nil
+}
+
+func applyReviewedTranslation(current map[string]string, entry srdEntry) (bool, []string, []string) {
+	approved := decodeTranslations(entry.Translations)
+	changed := false
+	var updated, unresolved []string
+	for key, value := range approved {
+		if (key != "pt-BR" && !strings.HasPrefix(key, "pt-BR.")) || strings.HasSuffix(key, ".source") {
+			continue
+		}
+		field := entry.EntryType + ":" + entry.Name + " " + key
+		provenance := strings.ToLower(strings.TrimSpace(current[key+".source"]))
+		old := current[key]
+		switch {
+		case provenance == "ai":
+			current[key] = value
+			current[key+".source"] = "reviewed"
+			changed = true
+			updated = append(updated, field)
+		case translationSourceIsProtected(current, key):
+			// Explicit official or human-reviewed translations remain authoritative.
+		case old == "", old == entry.Name:
+			current[key] = value
+			current[key+".source"] = "reviewed"
+			changed = true
+			updated = append(updated, field)
+		default:
+			unresolved = append(unresolved, field)
+		}
+	}
+	return changed, updated, unresolved
 }
 
 func packVersion() string { pack, _ := loadSRDPack(); return pack.Version }

@@ -208,6 +208,133 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if providerCalls.Load() != 1 {
 		t.Fatal("completed shared translation was requested again")
 	}
+
+	// Simulate an existing catalog and campaign overrides written by prior AI
+	// translation runs, plus protected and unmarked legacy values.
+	sharedSourceID := sharedA.SourceID
+	var originalRevision string
+	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSourceID).Scan(&originalRevision); err != nil {
+		t.Fatal(err)
+	}
+	originalTranslations := map[string]json.RawMessage{}
+	for _, name := range []string{"Spear", "Lance", "Pike"} {
+		var saved json.RawMessage
+		if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type='item' and name=$2`, sharedSourceID, name).Scan(&saved); err != nil {
+			t.Fatal(err)
+		}
+		originalTranslations[name] = saved
+	}
+	defer func() {
+		for name, translations := range originalTranslations {
+			_, _ = pool.Exec(context.Background(), `update srd_catalog_entries set translations=$1 where source_id=$2 and entry_type='item' and name=$3`, translations, sharedSourceID, name)
+		}
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_sources set revision=$1 where id=$2`, originalRevision, sharedSourceID)
+	}()
+
+	for _, name := range []string{"Spear", "Lance", "Pike"} {
+		if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR',$1,'pt-BR.source','ai') where source_id=$2 and entry_type='item' and name=$3`, "tradução IA antiga de "+name, sharedSourceID, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	spear := findEntryByName(entriesA, "item", "Spear")
+	if _, err = pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,translations,updated_by) values($1,$2,$3,$4),($5,$2,$6,$4) on conflict(campaign_id,catalog_entry_id) do update set translations=excluded.translations`, campaignA, spear.ID, json.RawMessage(`{"pt-BR":"Lança IA antiga A","pt-BR.source":"ai"}`), owner, campaignB, json.RawMessage(`{"pt-BR":"Lança manual B","pt-BR.source":"manual"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-1' where id=$1`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	_, syncedA, err := repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, syncedB, err := repo.List(ctx, campaignB, gmB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(findEntryByName(syncedA, "item", "Spear").Translations)["pt-BR"]; got != "Lança" {
+		t.Fatalf("AI canonical/campaign translation was not replaced: %q", got)
+	}
+	if got := decodeTranslations(findEntryByName(syncedB, "item", "Spear").Translations)["pt-BR"]; got != "Lança manual B" {
+		t.Fatalf("campaign B manual translation was not preserved: %q", got)
+	}
+	for _, name := range []string{"Lance", "Pike"} {
+		gotA := decodeTranslations(findEntryByName(syncedA, "item", name).Translations)["pt-BR"]
+		gotB := decodeTranslations(findEntryByName(syncedB, "item", name).Translations)["pt-BR"]
+		want := map[string]string{"Lance": "Lança de cavalaria", "Pike": "Pique"}[name]
+		if gotA != want || gotB != want {
+			t.Errorf("campaigns do not share corrected %s translation: A=%q B=%q want=%q", name, gotA, gotB, want)
+		}
+	}
+	var syncedSpear json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, spear.ID).Scan(&syncedSpear); err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(syncedSpear)["pt-BR.source"]; got != "reviewed" {
+		t.Fatalf("canonical provenance = %q, want reviewed", got)
+	}
+
+	// Explicitly protected canonical values remain untouched by another sync.
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Lança oficial','pt-BR.source','official') where source_id=$1 and entry_type='item' and name='Lance'`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Pique legado sem origem') where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	syncReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, uniqueEntries(pack.Entries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(syncReport.Unresolved) != 1 || syncReport.Unresolved[0] != "item:Pike pt-BR" {
+		t.Fatalf("unknown canonical provenance report = %v, want [item:Pike pt-BR]", syncReport.Unresolved)
+	}
+	var lanceTranslations, pikeTranslations json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type='item' and name='Lance'`, sharedSourceID).Scan(&lanceTranslations); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID).Scan(&pikeTranslations); err != nil {
+		t.Fatal(err)
+	}
+	if decodeTranslations(lanceTranslations)["pt-BR"] != "Lança oficial" || decodeTranslations(pikeTranslations)["pt-BR"] != "Pique legado sem origem" {
+		t.Fatal("protected or unmarked canonical translation was overwritten")
+	}
+	secondReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, uniqueEntries(pack.Entries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondReport.Updated) != 0 || len(secondReport.Unresolved) != 1 {
+		t.Fatalf("repeated sync was not idempotent: %+v", secondReport)
+	}
+
+	// An unmarked campaign override is retained in storage, reported, and cannot
+	// conceal the reviewed canonical value. AI values are ignored the same way.
+	if _, err = pool.Exec(ctx, `update campaign_srd_entry_overrides set translations=$1 where campaign_id=$2 and catalog_entry_id=$3`, json.RawMessage(`{"pt-BR":"Rótulo sem proveniência"}`), campaignA, spear.ID); err != nil {
+		t.Fatal(err)
+	}
+	unresolvedOverrides, err := repo.auditCampaignTranslationOverrides(ctx, campaignA, sharedSourceID, uniqueEntries(pack.Entries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unresolvedOverrides) != 1 || unresolvedOverrides[0] != "item:Spear pt-BR" {
+		t.Fatalf("campaign override audit = %v, want [item:Spear pt-BR]", unresolvedOverrides)
+	}
+	_, auditedEntries, err := repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(findEntryByName(auditedEntries, "item", "Spear").Translations)["pt-BR"]; got != "Lança" {
+		t.Fatalf("unmarked campaign override hid canonical translation: %q", got)
+	}
+	var retainedOverride json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from campaign_srd_entry_overrides where campaign_id=$1 and catalog_entry_id=$2`, campaignA, spear.ID).Scan(&retainedOverride); err != nil {
+		t.Fatal(err)
+	}
+	if decodeTranslations(retainedOverride)["pt-BR"] != "Rótulo sem proveniência" {
+		t.Fatal("unknown campaign override was silently deleted")
+	}
 }
 
 func findEntryByName(entries []Entry, kind, name string) Entry {

@@ -48,6 +48,101 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	}
 }
 
+func TestSRDWeaponTranslationsAreReviewedAndDistinct(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"Spear": "Lança", "Lance": "Lança de cavalaria", "Pike": "Pique"}
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "item" || want[entry.Name] == "" {
+			continue
+		}
+		translations := decodeTranslations(entry.Translations)
+		if translations["pt-BR"] != want[entry.Name] || translations["pt-BR.source"] != "reviewed" {
+			t.Errorf("%s translation = %q (%q), want %q marked reviewed", entry.Name, translations["pt-BR"], translations["pt-BR.source"], want[entry.Name])
+		}
+		delete(want, entry.Name)
+	}
+	if len(want) > 0 {
+		t.Errorf("missing weapon translations: %v", want)
+	}
+}
+
+func TestApplyReviewedTranslationProvenance(t *testing.T) {
+	entry := srdEntry{
+		EntryType:    "item",
+		Name:         "Spear",
+		Translations: json.RawMessage(`{"pt-BR":"Lança","pt-BR.source":"reviewed"}`),
+	}
+	t.Run("replaces AI and is idempotent", func(t *testing.T) {
+		current := map[string]string{"pt-BR": "Lança gerada", "pt-BR.source": "ai"}
+		changed, updated, unresolved := applyReviewedTranslation(current, entry)
+		if !changed || current["pt-BR"] != "Lança" || current["pt-BR.source"] != "reviewed" || len(updated) != 1 || len(unresolved) != 0 {
+			t.Fatalf("sync result: changed=%t current=%v updated=%v unresolved=%v", changed, current, updated, unresolved)
+		}
+		changed, _, _ = applyReviewedTranslation(current, entry)
+		if changed {
+			t.Fatal("second sync changed the already reviewed translation")
+		}
+	})
+	for _, source := range []string{"official", "manual", "human", "user", "reviewed"} {
+		t.Run("preserves "+source, func(t *testing.T) {
+			current := map[string]string{"pt-BR": "Valor protegido", "pt-BR.source": source}
+			changed, _, _ := applyReviewedTranslation(current, entry)
+			if changed || current["pt-BR"] != "Valor protegido" || current["pt-BR.source"] != source {
+				t.Fatalf("protected translation was changed: %v", current)
+			}
+		})
+	}
+	t.Run("preserves and reports unknown provenance", func(t *testing.T) {
+		current := map[string]string{"pt-BR": "Valor sem origem"}
+		changed, _, unresolved := applyReviewedTranslation(current, entry)
+		if changed || current["pt-BR"] != "Valor sem origem" || len(unresolved) != 1 || unresolved[0] != "item:Spear pt-BR" {
+			t.Fatalf("unknown provenance handling: changed=%t current=%v unresolved=%v", changed, current, unresolved)
+		}
+	})
+}
+
+func TestReviewedCanonicalTranslationOverridesOnlyUnprotectedCampaignValues(t *testing.T) {
+	canonical := map[string]string{"pt-BR": "Lança", "pt-BR.source": "reviewed"}
+	for _, tc := range []struct {
+		name, value, source, want string
+	}{
+		{name: "AI", value: "Lança antiga", source: "ai", want: "Lança"},
+		{name: "unknown", value: "Sem proveniência", want: "Lança"},
+		{name: "manual", value: "Lança da campanha", source: "manual", want: "Lança da campanha"},
+		{name: "official", value: "Lança oficial", source: "official", want: "Lança oficial"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scoped := map[string]string{"pt-BR": tc.value}
+			if tc.source != "" {
+				scoped["pt-BR.source"] = tc.source
+			}
+			merged := decodeTranslations(mergeCampaignTranslations(mustJSON(t, canonical), mustJSON(t, scoped)))
+			if merged["pt-BR"] != tc.want {
+				t.Fatalf("merged translation = %q, want %q", merged["pt-BR"], tc.want)
+			}
+			if tc.source == "manual" || tc.source == "official" {
+				if merged["pt-BR.source"] != tc.source {
+					t.Fatalf("protected provenance = %q, want %q", merged["pt-BR.source"], tc.source)
+				}
+			} else if merged["pt-BR.source"] != "reviewed" {
+				t.Fatalf("canonical provenance = %q, want reviewed", merged["pt-BR.source"])
+			}
+		})
+	}
+}
+
+func mustJSON(t *testing.T, value any) json.RawMessage {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
 func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {
