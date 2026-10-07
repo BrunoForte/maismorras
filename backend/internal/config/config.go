@@ -31,6 +31,7 @@ type Config struct {
 	SupabaseSecretKey         string
 	RealtimeBroker            string
 	RealtimeBrokerDatabaseURL string
+	MaisMorrasOwnerUserID     string
 }
 
 // TranslationProvider reports the configured backend provider without exposing credentials.
@@ -52,6 +53,10 @@ func (c Config) ImageProvider() string {
 func Load() Config {
 	// Local development convenience. Production values continue to come from the host environment.
 	_ = godotenv.Load()
+	ownerID := strings.ToLower(strings.TrimSpace(os.Getenv("MAISMORRAS_OWNER_USER_ID")))
+	if !validUUID(ownerID) {
+		ownerID = ""
+	}
 	return Config{
 		Port:                      env("PORT", "8080"),
 		CORSOrigin:                env("CORS_ORIGIN", "http://localhost:5173"),
@@ -73,7 +78,26 @@ func Load() Config {
 		SupabaseSecretKey:         firstEnv("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
 		RealtimeBroker:            strings.ToLower(strings.TrimSpace(os.Getenv("REALTIME_BROKER"))),
 		RealtimeBrokerDatabaseURL: strings.TrimSpace(os.Getenv("REALTIME_BROKER_DATABASE_URL")),
+		MaisMorrasOwnerUserID:     ownerID,
 	}
+}
+
+func validUUID(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for i, c := range value {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+			continue
+		}
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func firstEnv(keys ...string) string {

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log/slog"
 	"strings"
+	"vtt-backend/internal/observability"
 )
 
 var (
@@ -26,18 +28,28 @@ type Source struct {
 	ReadOnly    bool   `json:"readOnly"`
 }
 type Entry struct {
-	ID           string          `json:"id"`
-	SourceID     string          `json:"sourceId"`
-	EntryType    string          `json:"entryType"`
-	Name         string          `json:"name"`
-	Summary      string          `json:"summary"`
-	Rules        json.RawMessage `json:"rules"`
-	Translations json.RawMessage `json:"translations"`
-	IsPublished  bool            `json:"isPublished"`
+	ID             string          `json:"id"`
+	SourceID       string          `json:"sourceId"`
+	CatalogEntryID string          `json:"catalogEntryId,omitempty"`
+	EntryType      string          `json:"entryType"`
+	Name           string          `json:"name"`
+	Summary        string          `json:"summary"`
+	Rules          json.RawMessage `json:"rules"`
+	Translations   json.RawMessage `json:"translations"`
+	IsPublished    bool            `json:"isPublished"`
 }
-type Repository struct{ pool *pgxpool.Pool }
+type Repository struct {
+	pool            *pgxpool.Pool
+	platformOwnerID string
+}
 
-func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
+func NewRepository(pool *pgxpool.Pool, platformOwnerIDs ...string) *Repository {
+	ownerID := ""
+	if len(platformOwnerIDs) > 0 && observability.IsUUID(platformOwnerIDs[0]) {
+		ownerID = strings.ToLower(platformOwnerIDs[0])
+	}
+	return &Repository{pool: pool, platformOwnerID: ownerID}
+}
 func (r *Repository) role(ctx context.Context, campaignID, userID string) (string, error) {
 	var role string
 	err := r.pool.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, userID).Scan(&role)
@@ -47,6 +59,23 @@ func (r *Repository) role(ctx context.Context, campaignID, userID string) (strin
 	return role, err
 }
 
+func (r *Repository) CanTranslateSharedSRD(ctx context.Context, campaignID, userID string) bool {
+	if !r.isPlatformOwner(userID) {
+		return false
+	}
+	_, err := r.role(ctx, campaignID, userID)
+	return err == nil
+}
+
+func (r *Repository) isPlatformOwner(userID string) bool {
+	return r.platformOwnerID != "" && strings.EqualFold(r.platformOwnerID, userID)
+}
+
+func (r *Repository) IsSharedSRD(ctx context.Context, campaignID, entryID string) bool {
+	_, found, err := r.sharedEntry(ctx, r.pool, campaignID, entryID, false)
+	return err == nil && found
+}
+
 // This creates a private source and a read-only SRD attribution marker. It never
 // claims that paid-book content is shipped with the VTT.
 func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) error {
@@ -54,48 +83,121 @@ func (r *Repository) ensureDefaults(ctx context.Context, campaignID string) erro
 	if err != nil {
 		return fmt.Errorf("load SRD pack: %w", err)
 	}
-	sourceVersion := pack.Version
-	if pack.Revision != "" {
-		sourceVersion += " · " + pack.Revision
-	}
-	_, err = r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false),($1,'dnd-srd-5-2-1','D&D System Reference Document','srd',$2,$3,'https://www.dndbeyond.com/srd',true) on conflict (campaign_id,slug) do nothing`, campaignID, sourceVersion, pack.Attribution)
+	_, err = r.pool.Exec(ctx, `insert into compendium_sources(campaign_id,slug,title,kind,version,attribution,license_url,is_read_only) values ($1,'campaign-private','Compêndio privado da campanha','private','','Conteúdo cadastrado privadamente pelo narrador.','',false) on conflict (campaign_id,slug) do nothing`, campaignID)
 	if err != nil {
 		return err
 	}
-	var sourceID, ownerID, storedVersion string
-	if err = r.pool.QueryRow(ctx, `select s.id::text,c.owner_id::text,s.version from compendium_sources s join campaigns c on c.id=s.campaign_id where s.campaign_id=$1 and s.slug='dnd-srd-5-2-1'`, campaignID).Scan(&sourceID, &ownerID, &storedVersion); err != nil {
+	return r.ensureSharedCatalog(ctx, campaignID, pack)
+}
+
+// ensureSharedCatalog upserts the embedded, versioned SRD into one canonical
+// catalog and records aliases for legacy campaign-specific IDs. It never reads
+// or copies translations from legacy campaign rows.
+func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string, pack srdPack) error {
+	var sourceID string
+	var storedRevision string
+	if err := r.pool.QueryRow(ctx, `insert into srd_catalog_sources(slug,version,revision,title,attribution,license_url) values('dnd-srd', $1,$2,'D&D System Reference Document',$3,'https://www.dndbeyond.com/srd') on conflict(slug,version) do update set title=excluded.title,attribution=excluded.attribution,license_url=excluded.license_url,updated_at=case when srd_catalog_sources.revision is distinct from excluded.revision then now() else srd_catalog_sources.updated_at end returning id::text,revision`, pack.Version, pack.Revision, pack.Attribution).Scan(&sourceID, &storedRevision); err != nil {
+		return err
+	}
+	if _, err := r.pool.Exec(ctx, `insert into campaign_srd_catalog_sources(campaign_id,source_id) values($1,$2) on conflict do nothing`, campaignID, sourceID); err != nil {
 		return err
 	}
 	entries := uniqueEntries(pack.Entries)
-	// Importing the pack is a one-time operation for a given data revision. A
-	// changed revision deliberately replays the idempotent upsert once, allowing
-	// existing campaigns to replace index-only SRD cards with usable stat blocks.
-	var importedCount int
-	if err = r.pool.QueryRow(ctx, `select count(*) from compendium_entries where source_id=$1`, sourceID).Scan(&importedCount); err != nil {
+	var storedCount int
+	if err := r.pool.QueryRow(ctx, `select count(*) from srd_catalog_entries where source_id=$1`, sourceID).Scan(&storedCount); err != nil {
 		return err
 	}
-	if storedVersion == sourceVersion && importedCount >= len(entries) {
-		return nil
-	}
-	batch := &pgx.Batch{}
-	for _, entry := range entries {
-		if len(entry.Rules) == 0 {
-			entry.Rules = json.RawMessage(`{}`)
+	if storedRevision != pack.Revision || storedCount < len(entries) {
+		batch := &pgx.Batch{}
+		for _, entry := range entries {
+			if len(entry.Rules) == 0 {
+				entry.Rules = json.RawMessage(`{}`)
+			}
+			if len(entry.Translations) == 0 {
+				entry.Translations = json.RawMessage(`{}`)
+			}
+			batch.Queue(`insert into srd_catalog_entries(source_id,entry_type,name,summary,rules,translations,is_published) values($1,$2,$3,$4,$5,$6,true) on conflict(source_id,entry_type,name) do update set summary=excluded.summary,rules=case when srd_catalog_entries.rules='{}'::jsonb or (excluded.rules->>'catalog'='monster' and not (srd_catalog_entries.rules ? 'hpMax')) then excluded.rules else srd_catalog_entries.rules end,updated_at=now()`, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations)
 		}
-		if len(entry.Translations) == 0 {
-			entry.Translations = json.RawMessage(`{}`)
+		br := r.pool.SendBatch(ctx, batch)
+		for range entries {
+			if _, err := br.Exec(); err != nil {
+				_ = br.Close()
+				return fmt.Errorf("seed shared SRD: %w", err)
+			}
 		}
-		batch.Queue(`insert into compendium_entries(campaign_id,source_id,entry_type,name,summary,rules,translations,is_published,created_by) values($1,$2,$3,$4,$5,$6,$7,true,$8) on conflict (source_id,entry_type,name) do update set summary=excluded.summary,translations=excluded.translations,rules=case when compendium_entries.rules='{}'::jsonb or (excluded.rules->>'catalog'='monster' and not (compendium_entries.rules ? 'hpMax')) then excluded.rules else compendium_entries.rules end,updated_at=now()`, campaignID, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations, ownerID)
-	}
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-	for range entries {
-		if _, err = br.Exec(); err != nil {
-			return fmt.Errorf("import SRD: %w", err)
+		if err := br.Close(); err != nil {
+			return err
 		}
 	}
-	_, err = r.pool.Exec(ctx, `update compendium_sources set version=$1,attribution=$2,license_url='https://www.dndbeyond.com/srd' where id=$3`, sourceVersion, pack.Attribution, sourceID)
+	if storedRevision != pack.Revision {
+		if _, err := r.pool.Exec(ctx, `update srd_catalog_sources set revision=$1,updated_at=now() where id=$2`, pack.Revision, sourceID); err != nil {
+			return fmt.Errorf("update SRD catalog revision: %w", err)
+		}
+	}
+	report, err := r.syncReviewedTranslations(ctx, sourceID, entries)
+	if err != nil {
+		return fmt.Errorf("sync reviewed SRD translations: %w", err)
+	}
+	if len(report.Unresolved) > 0 {
+		slog.Warn("SRD translation sync preserved values with unknown provenance", "source", "dnd-srd", "version", pack.Version, "count", len(report.Unresolved), "entries", report.Unresolved)
+	}
+	_, err = r.pool.Exec(ctx, `insert into srd_catalog_entry_aliases(campaign_id,legacy_entry_id,catalog_entry_id)
+		select $1, old.id, shared.id
+		from compendium_entries old
+		join compendium_sources old_source on old_source.id=old.source_id and old_source.campaign_id=old.campaign_id and old_source.slug='dnd-srd-5-2-1' and old.campaign_id=$1
+		join srd_catalog_entries shared on shared.source_id=$2 and shared.entry_type=old.entry_type and shared.name=old.name
+		on conflict(campaign_id,legacy_entry_id) do nothing`, campaignID, sourceID)
+	if err != nil {
+		return err
+	}
+	// Preserve campaign feat rules in their isolated namespace without promoting
+	// any campaign text or translation into the canonical catalog.
+	_, err = r.pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,rules,translations,updated_by)
+		select $1,a.catalog_entry_id,coalesce(e.rules->'campaignOverrides','{}'::jsonb),coalesce(e.translations,'{}'::jsonb),c.owner_id
+		from srd_catalog_entry_aliases a join compendium_entries e on e.id=a.legacy_entry_id
+		join campaigns c on c.id=a.campaign_id
+		where a.campaign_id=$1 and (coalesce(e.rules->'campaignOverrides','{}'::jsonb) <> '{}'::jsonb or coalesce(e.translations,'{}'::jsonb) <> '{}'::jsonb)
+		on conflict(campaign_id,catalog_entry_id) do update set translations=case when campaign_srd_entry_overrides.translations='{}'::jsonb then excluded.translations else campaign_srd_entry_overrides.translations end,updated_at=now()`, campaignID)
+	if err != nil {
+		return err
+	}
+	unresolved, err := r.auditCampaignTranslationOverrides(ctx, campaignID, sourceID, entries)
+	if err != nil {
+		return fmt.Errorf("audit campaign SRD translation overrides: %w", err)
+	}
+	if len(unresolved) > 0 {
+		slog.Warn("SRD campaign translation overrides preserved with unknown provenance", "campaign_id", campaignID, "count", len(unresolved), "entries", unresolved)
+	}
 	return err
+}
+
+func (r *Repository) auditCampaignTranslationOverrides(ctx context.Context, campaignID, sourceID string, entries []srdEntry) ([]string, error) {
+	var unresolved []string
+	for _, entry := range entries {
+		approved := decodeTranslations(entry.Translations)
+		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+			continue
+		}
+		var raw json.RawMessage
+		err := r.pool.QueryRow(ctx, `select o.translations from campaign_srd_entry_overrides o join srd_catalog_entries e on e.id=o.catalog_entry_id where o.campaign_id=$1 and e.source_id=$2 and e.entry_type=$3 and e.name=$4`, campaignID, sourceID, entry.EntryType, entry.Name).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return unresolved, err
+		}
+		override := decodeTranslations(raw)
+		for key := range approved {
+			if key != "pt-BR" && !strings.HasPrefix(key, "pt-BR.") || strings.HasSuffix(key, ".source") || strings.TrimSpace(override[key]) == "" {
+				continue
+			}
+			source := strings.ToLower(strings.TrimSpace(override[key+".source"]))
+			if source != "ai" && source != "" && !translationSourceIsProtected(override, key) {
+				unresolved = append(unresolved, entry.EntryType+":"+entry.Name+" "+key)
+			}
+		}
+	}
+	return unresolved, nil
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Source, []Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
@@ -105,7 +207,7 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 	if err = r.ensureDefaults(ctx, campaignID); err != nil {
 		return nil, nil, fmt.Errorf("ensure compendium: %w", err)
 	}
-	srcRows, err := r.pool.Query(ctx, `select id::text,slug,title,kind,version,attribution,license_url,is_read_only from compendium_sources where campaign_id=$1 order by is_read_only,title`, campaignID)
+	srcRows, err := r.pool.Query(ctx, `select id::text,slug,title,kind,version,attribution,license_url,is_read_only from compendium_sources where campaign_id=$1 and slug <> 'dnd-srd-5-2-1' order by is_read_only,title`, campaignID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,7 +223,12 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 	if err := srcRows.Err(); err != nil {
 		return nil, nil, err
 	}
-	q := `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1`
+	var sharedSource Source
+	if err := r.pool.QueryRow(ctx, `select s.id::text,s.slug,s.title,'srd',s.version,s.attribution,s.license_url,true from srd_catalog_sources s join campaign_srd_catalog_sources cs on cs.source_id=s.id where cs.campaign_id=$1`, campaignID).Scan(&sharedSource.ID, &sharedSource.Slug, &sharedSource.Title, &sharedSource.Kind, &sharedSource.Version, &sharedSource.Attribution, &sharedSource.LicenseURL, &sharedSource.ReadOnly); err != nil {
+		return nil, nil, fmt.Errorf("load campaign SRD source: %w", err)
+	}
+	sources = append(sources, sharedSource)
+	q := `select e.id::text,e.source_id::text,e.entry_type,e.name,e.summary,e.rules,e.translations,e.is_published from compendium_entries e join compendium_sources s on s.id=e.source_id where e.campaign_id=$1 and s.slug <> 'dnd-srd-5-2-1'`
 	if role != "gm" {
 		q += ` and is_published=true`
 	}
@@ -139,7 +246,162 @@ func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Sou
 		}
 		entries = append(entries, e)
 	}
-	return sources, entries, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	sharedRows, err := r.pool.Query(ctx, `select e.id::text,e.source_id::text,e.entry_type,e.name,e.summary,e.rules,e.translations,e.is_published,coalesce(o.rules,'{}'::jsonb),coalesce(o.translations,'{}'::jsonb)
+		from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id
+		join campaign_srd_catalog_sources cs on cs.source_id=s.id and cs.campaign_id=$1
+		left join campaign_srd_entry_overrides o on o.catalog_entry_id=e.id and o.campaign_id=$1
+		where e.is_published order by e.entry_type,e.name`, campaignID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sharedRows.Close()
+	for sharedRows.Next() {
+		var e Entry
+		var override, campaignTranslations json.RawMessage
+		if err := sharedRows.Scan(&e.ID, &e.SourceID, &e.EntryType, &e.Name, &e.Summary, &e.Rules, &e.Translations, &e.IsPublished, &override, &campaignTranslations); err != nil {
+			return nil, nil, err
+		}
+		e.CatalogEntryID = e.ID
+		e.Rules = mergeCampaignOverrides(e.Rules, override)
+		e.Translations = mergeCampaignTranslations(e.Translations, campaignTranslations)
+		entries = append(entries, e)
+	}
+	return sources, entries, sharedRows.Err()
+}
+
+func mergeCampaignTranslations(canonical, campaign json.RawMessage) json.RawMessage {
+	translations := decodeTranslations(canonical)
+	var scoped map[string]string
+	if json.Unmarshal(campaign, &scoped) != nil {
+		return canonical
+	}
+	for key, value := range scoped {
+		if !strings.HasSuffix(key, ".source") && canonicalTranslationTakesPrecedence(translations, scoped, key) {
+			continue
+		}
+		if strings.HasSuffix(key, ".source") {
+			field := strings.TrimSuffix(key, ".source")
+			if canonicalTranslationTakesPrecedence(translations, scoped, field) {
+				continue
+			}
+		}
+		translations[key] = value
+	}
+	encoded, err := json.Marshal(translations)
+	if err != nil {
+		return canonical
+	}
+	return encoded
+}
+
+func canonicalTranslationTakesPrecedence(canonical, campaign map[string]string, key string) bool {
+	canonicalSource := strings.ToLower(strings.TrimSpace(canonical[key+".source"]))
+	if canonicalSource != "reviewed" && !translationSourceIsProtected(canonical, key) && !strings.EqualFold(strings.TrimSpace(campaign[key+".source"]), "ai") {
+		return false
+	}
+	return !translationSourceIsProtected(campaign, key)
+}
+
+type TranslationSyncReport struct {
+	Updated    []string
+	Unresolved []string
+}
+
+func (r *Repository) syncReviewedTranslations(ctx context.Context, sourceID string, entries []srdEntry) (TranslationSyncReport, error) {
+	report := TranslationSyncReport{}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return report, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, entry := range entries {
+		approved := decodeTranslations(entry.Translations)
+		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+			continue
+		}
+		var raw json.RawMessage
+		err = tx.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type=$2 and name=$3 for update`, sourceID, entry.EntryType, entry.Name).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return report, err
+		}
+		current := decodeTranslations(raw)
+		changed, updated, unresolved := applyReviewedTranslation(current, entry)
+		report.Updated = append(report.Updated, updated...)
+		report.Unresolved = append(report.Unresolved, unresolved...)
+		if changed {
+			encoded, marshalErr := json.Marshal(current)
+			if marshalErr != nil {
+				return report, marshalErr
+			}
+			if _, err = tx.Exec(ctx, `update srd_catalog_entries set translations=$1,updated_at=now() where source_id=$2 and entry_type=$3 and name=$4`, encoded, sourceID, entry.EntryType, entry.Name); err != nil {
+				return report, err
+			}
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return report, err
+	}
+	return report, nil
+}
+
+func applyReviewedTranslation(current map[string]string, entry srdEntry) (bool, []string, []string) {
+	approved := decodeTranslations(entry.Translations)
+	if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+		return false, nil, nil
+	}
+	changed := false
+	var updated, unresolved []string
+	for key, value := range approved {
+		if (key != "pt-BR" && !strings.HasPrefix(key, "pt-BR.")) || strings.HasSuffix(key, ".source") {
+			continue
+		}
+		field := entry.EntryType + ":" + entry.Name + " " + key
+		provenance := strings.ToLower(strings.TrimSpace(current[key+".source"]))
+		switch {
+		case translationSourceIsProtected(current, key):
+			// Explicit official or human-reviewed translations remain authoritative.
+		case provenance == "ai" || provenance == "":
+			current[key] = value
+			current[key+".source"] = "reviewed"
+			changed = true
+			updated = append(updated, field)
+		default:
+			unresolved = append(unresolved, field)
+		}
+	}
+	return changed, updated, unresolved
+}
+
+func packVersion() string { pack, _ := loadSRDPack(); return pack.Version }
+
+func mergeCampaignOverrides(raw, override json.RawMessage) json.RawMessage {
+	var rules map[string]any
+	if json.Unmarshal(raw, &rules) != nil || rules == nil {
+		rules = map[string]any{}
+	}
+	var scoped map[string]any
+	if json.Unmarshal(override, &scoped) != nil || len(scoped) == 0 {
+		return raw
+	}
+	current, _ := rules["campaignOverrides"].(map[string]any)
+	if current == nil {
+		current = map[string]any{}
+	}
+	for key, value := range scoped {
+		current[key] = value
+	}
+	rules["campaignOverrides"] = current
+	encoded, err := json.Marshal(rules)
+	if err != nil {
+		return raw
+	}
+	return encoded
 }
 func (r *Repository) CreateEntry(ctx context.Context, campaignID, userID string, item Entry) (Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
@@ -225,6 +487,54 @@ func (r *Repository) SetCampaignFeatSpellRule(ctx context.Context, campaignID, u
 	} else if err != nil {
 		return Entry{}, err
 	}
+	if sharedItem, shared, sharedErr := r.sharedEntry(ctx, tx, campaignID, entryID, true); sharedErr != nil {
+		return Entry{}, sharedErr
+	} else if shared {
+		if sharedItem.EntryType != "feat" {
+			return Entry{}, ErrNotFound
+		}
+		levels := make(map[string]int, len(rule.Spells))
+		for _, spell := range rule.Spells {
+			var raw []byte
+			err = tx.QueryRow(ctx, `select rules from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id join campaign_srd_catalog_sources cs on cs.source_id=e.source_id and cs.campaign_id=$1 where e.id::text=$2 and s.slug='dnd-srd' and s.version=$3 and e.entry_type='spell' and e.is_published
+				union all select e.rules from compendium_entries e where e.campaign_id=$1 and e.id::text=$2 and e.entry_type='spell' and e.is_published
+				union all select e.rules from srd_catalog_entry_aliases a join srd_catalog_entries e on e.id=a.catalog_entry_id where a.campaign_id=$1 and a.legacy_entry_id::text=$2 and e.entry_type='spell' and e.is_published limit 1`, campaignID, spell.SpellEntryID, packVersion()).Scan(&raw)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return Entry{}, fmt.Errorf("%w: spell reference is not available in this campaign", ErrInvalidFeatSpellRule)
+			}
+			if err != nil {
+				return Entry{}, err
+			}
+			var spellRules map[string]any
+			if err = json.Unmarshal(raw, &spellRules); err != nil {
+				return Entry{}, err
+			}
+			level, ok := spellRules["level"].(float64)
+			if !ok || level < 0 || level > 9 || level != float64(int(level)) {
+				return Entry{}, fmt.Errorf("%w: invalid compendium spell level", ErrInvalidFeatSpellRule)
+			}
+			levels[spell.SpellEntryID] = int(level)
+		}
+		if err = ValidateCampaignFeatSpellRule(rule, levels); err != nil {
+			return Entry{}, err
+		}
+		encoded, marshalErr := json.Marshal(rule)
+		if marshalErr != nil {
+			return Entry{}, marshalErr
+		}
+		if _, err = tx.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,rules,updated_by) values($1,$2,jsonb_build_object('featSpellGrant',$3::jsonb),$4) on conflict(campaign_id,catalog_entry_id) do update set rules=jsonb_set(campaign_srd_entry_overrides.rules,'{featSpellGrant}',$3::jsonb,true),updated_by=$4,updated_at=now()`, campaignID, sharedItem.ID, encoded, userID); err != nil {
+			return Entry{}, err
+		}
+		var override json.RawMessage
+		if err = tx.QueryRow(ctx, `select rules from campaign_srd_entry_overrides where campaign_id=$1 and catalog_entry_id=$2`, campaignID, sharedItem.ID).Scan(&override); err != nil {
+			return Entry{}, err
+		}
+		sharedItem.Rules = mergeCampaignOverrides(sharedItem.Rules, override)
+		if err = tx.Commit(ctx); err != nil {
+			return Entry{}, err
+		}
+		return sharedItem, nil
+	}
 	var item Entry
 	if err = tx.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2 for update`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished); errors.Is(err, pgx.ErrNoRows) {
 		return Entry{}, ErrNotFound
@@ -308,6 +618,12 @@ func (r *Repository) Entry(ctx context.Context, campaignID, entryID, userID stri
 	if err != nil {
 		return Entry{}, err
 	}
+	if item, found, sharedErr := r.sharedEntry(ctx, r.pool, campaignID, entryID, false); found || sharedErr != nil {
+		if sharedErr != nil {
+			return Entry{}, sharedErr
+		}
+		return item, nil
+	}
 	var item Entry
 	query := `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2`
 	if role != "gm" {
@@ -321,15 +637,88 @@ func (r *Repository) Entry(ctx context.Context, campaignID, entryID, userID stri
 }
 
 func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID, userID string) (map[string]string, error) {
-	if _, err := r.requireGM(ctx, campaignID, userID); err != nil {
-		return nil, err
-	}
-	item, err := r.entryForGM(ctx, campaignID, entryID)
+	role, err := r.role(ctx, campaignID, userID)
 	if err != nil {
 		return nil, err
 	}
-	translations := map[string]string{}
-	_ = json.Unmarshal(item.Translations, &translations)
+	if err = r.ensureDefaults(ctx, campaignID); err != nil {
+		return nil, fmt.Errorf("ensure compendium before translation: %w", err)
+	}
+	item, shared, err := r.sharedEntry(ctx, r.pool, campaignID, entryID, false)
+	if err != nil {
+		return nil, err
+	}
+	if shared {
+		if !r.CanTranslateSharedSRD(ctx, campaignID, userID) {
+			return nil, ErrForbidden
+		}
+		if err = r.pool.QueryRow(ctx, `select rules,translations from srd_catalog_entries where id=$1`, item.ID).Scan(&item.Rules, &item.Translations); err != nil {
+			return nil, err
+		}
+	} else {
+		if role != "gm" {
+			return nil, ErrForbidden
+		}
+		item, err = r.entryForGM(ctx, campaignID, entryID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return missingTranslationFields(item), nil
+}
+
+// TranslateShared runs provider work while holding a row lock on the canonical
+// entry. Concurrent campaigns therefore share one idempotent translation run.
+func (r *Repository) TranslateShared(ctx context.Context, campaignID, entryID, userID string, translate func(context.Context, map[string]string) (map[string]string, error)) (Entry, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Entry{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var role string
+	if err = tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role); err != nil {
+		return Entry{}, ErrForbidden
+	}
+	item, shared, err := r.sharedEntry(ctx, tx, campaignID, entryID, true)
+	if err != nil {
+		return Entry{}, err
+	}
+	if !shared {
+		return Entry{}, ErrNotSharedSRD
+	}
+	if !r.isPlatformOwner(userID) {
+		return Entry{}, ErrForbidden
+	}
+	if err = tx.QueryRow(ctx, `select rules,translations from srd_catalog_entries where id=$1`, item.ID).Scan(&item.Rules, &item.Translations); err != nil {
+		return Entry{}, err
+	}
+	fields := missingTranslationFields(item)
+	if len(fields) == 0 {
+		if err = tx.Commit(ctx); err != nil {
+			return Entry{}, err
+		}
+		return item, nil
+	}
+	translated, err := translate(ctx, fields)
+	if err != nil {
+		return Entry{}, err
+	}
+	if mergeAITranslations(&item, fields, translated) {
+		if err = tx.QueryRow(ctx, `update srd_catalog_entries set translations=$1,updated_at=now() where id=$2 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, item.Translations, item.ID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished); err != nil {
+			return Entry{}, err
+		}
+		item.CatalogEntryID = item.ID
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Entry{}, err
+	}
+	return r.Entry(ctx, campaignID, item.ID, userID)
+}
+
+var ErrNotSharedSRD = errors.New("not a shared SRD entry")
+
+func missingTranslationFields(item Entry) map[string]string {
+	translations := decodeTranslations(item.Translations)
 	fields := map[string]string{}
 	if isTranslationPending(item.Name, translations, "pt-BR") {
 		fields["pt-BR"] = item.Name
@@ -341,7 +730,30 @@ func (r *Repository) TranslationFields(ctx context.Context, campaignID, entryID,
 	if json.Unmarshal(item.Rules, &ruleData) == nil {
 		collectMissingTranslationFields(fields, translations, "pt-BR.rules", ruleData)
 	}
-	return fields, nil
+	return fields
+}
+
+func mergeAITranslations(item *Entry, sourceFields, translated map[string]string) bool {
+	translations := decodeTranslations(item.Translations)
+	pending := missingTranslationFields(*item)
+	changed := false
+	for key, original := range sourceFields {
+		current, ok := pending[key]
+		value := strings.TrimSpace(translated[key])
+		if !ok || current != original || value == "" {
+			continue
+		}
+		translations[key] = value
+		translations[key+".source"] = "ai"
+		changed = true
+	}
+	if changed {
+		encoded, err := json.Marshal(translations)
+		if err == nil {
+			item.Translations = encoded
+		}
+	}
+	return changed
 }
 
 func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID, userID string, sourceFields, translated map[string]string) (Entry, error) {
@@ -353,20 +765,36 @@ func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID
 
 	var role string
 	err = tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && role != "gm") {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Entry{}, ErrForbidden
 	}
 	if err != nil {
 		return Entry{}, err
 	}
 
-	var item Entry
-	err = tx.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2 for update`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Entry{}, ErrNotFound
-	}
+	item, shared, err := r.sharedEntry(ctx, tx, campaignID, entryID, true)
 	if err != nil {
 		return Entry{}, err
+	}
+	if shared && !r.isPlatformOwner(userID) {
+		return Entry{}, ErrForbidden
+	}
+	if shared {
+		if err = tx.QueryRow(ctx, `select rules,translations from srd_catalog_entries where id=$1`, item.ID).Scan(&item.Rules, &item.Translations); err != nil {
+			return Entry{}, err
+		}
+	}
+	if !shared {
+		if role != "gm" {
+			return Entry{}, ErrForbidden
+		}
+		err = tx.QueryRow(ctx, `select id::text,source_id::text,entry_type,name,summary,rules,translations,is_published from compendium_entries where campaign_id=$1 and id=$2 for update`, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Entry{}, ErrNotFound
+		}
+		if err != nil {
+			return Entry{}, err
+		}
 	}
 
 	translations := decodeTranslations(item.Translations)
@@ -397,7 +825,11 @@ func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID
 		if marshalErr != nil {
 			return Entry{}, fmt.Errorf("encode translations: %w", marshalErr)
 		}
-		err = tx.QueryRow(ctx, `update compendium_entries set translations=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+		if shared {
+			err = tx.QueryRow(ctx, `update srd_catalog_entries set translations=$1,updated_at=now() where id=$2 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, item.ID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+		} else {
+			err = tx.QueryRow(ctx, `update compendium_entries set translations=$1,updated_at=now() where campaign_id=$2 and id=$3 returning id::text,source_id::text,entry_type,name,summary,rules,translations,is_published`, encoded, campaignID, item.ID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+		}
 		if err != nil {
 			return Entry{}, err
 		}
@@ -405,7 +837,41 @@ func (r *Repository) SaveAITranslations(ctx context.Context, campaignID, entryID
 	if err := tx.Commit(ctx); err != nil {
 		return Entry{}, err
 	}
+	if shared {
+		return r.Entry(ctx, campaignID, item.ID, userID)
+	}
 	return item, nil
+}
+
+func (r *Repository) sharedEntry(ctx context.Context, queryer interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, campaignID, entryID string, lock bool) (Entry, bool, error) {
+	var item Entry
+	query := `select e.id::text,e.source_id::text,e.entry_type,e.name,e.summary,e.rules,e.translations,e.is_published
+		from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id
+		join campaign_srd_catalog_sources cs on cs.source_id=s.id and cs.campaign_id=$1
+		where e.is_published and (e.id::text=$2
+			or exists(select 1 from srd_catalog_entry_aliases a where a.campaign_id=$1 and a.legacy_entry_id::text=$2 and a.catalog_entry_id=e.id)
+			or exists(select 1 from compendium_entries old join compendium_sources old_source on old_source.id=old.source_id where old.campaign_id=$1 and old.id::text=$2 and old.entry_type=e.entry_type and old.name=e.name and old_source.slug='dnd-srd-5-2-1'))`
+	if lock {
+		query += ` for update of e`
+	}
+	err := queryer.QueryRow(ctx, query, campaignID, entryID).Scan(&item.ID, &item.SourceID, &item.EntryType, &item.Name, &item.Summary, &item.Rules, &item.Translations, &item.IsPublished)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, false, nil
+	}
+	if err != nil {
+		return Entry{}, false, err
+	}
+	item.CatalogEntryID = item.ID
+	var override, campaignTranslations json.RawMessage
+	if err := queryer.QueryRow(ctx, `select rules,translations from campaign_srd_entry_overrides where campaign_id=$1 and catalog_entry_id=$2`, campaignID, item.ID).Scan(&override, &campaignTranslations); err == nil {
+		item.Rules = mergeCampaignOverrides(item.Rules, override)
+		item.Translations = mergeCampaignTranslations(item.Translations, campaignTranslations)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return Entry{}, false, err
+	}
+	return item, true, nil
 }
 
 func (r *Repository) requireGM(ctx context.Context, campaignID, userID string) (string, error) {

@@ -37,6 +37,32 @@ func loadCampaignFeatSpellRule(ctx context.Context, queryer campaignReferenceQue
 	var translationsRaw, rulesRaw []byte
 	err := queryer.QueryRow(ctx, `select name,translations,rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='feat' and is_published=true`, featEntryID, campaignID).Scan(&data.Name, &translationsRaw, &rulesRaw)
 	if errors.Is(err, pgx.ErrNoRows) {
+		var overrideRaw []byte
+		err = queryer.QueryRow(ctx, `select e.name,e.translations,e.rules,o.rules->'featSpellGrant'
+			from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id join campaign_srd_catalog_sources cs on cs.source_id=e.source_id and cs.campaign_id=$2
+			left join campaign_srd_entry_overrides o on o.catalog_entry_id=e.id and o.campaign_id=$2
+			where e.id::text=$1 and s.slug='dnd-srd' and e.entry_type='feat' and e.is_published
+			union all select e.name,e.translations,e.rules,o.rules->'featSpellGrant'
+			from srd_catalog_entry_aliases a join srd_catalog_entries e on e.id=a.catalog_entry_id join srd_catalog_sources s on s.id=e.source_id
+			left join campaign_srd_entry_overrides o on o.catalog_entry_id=e.id and o.campaign_id=a.campaign_id
+			where a.legacy_entry_id::text=$1 and a.campaign_id=$2 and s.slug='dnd-srd' and e.entry_type='feat' and e.is_published limit 1`, featEntryID, campaignID).Scan(&data.Name, &translationsRaw, &rulesRaw, &overrideRaw)
+		if err == nil && len(overrideRaw) > 0 {
+			var rules map[string]any
+			if err = json.Unmarshal(rulesRaw, &rules); err == nil {
+				var grant any
+				if json.Unmarshal(overrideRaw, &grant) == nil {
+					overrides, _ := rules["campaignOverrides"].(map[string]any)
+					if overrides == nil {
+						overrides = map[string]any{}
+					}
+					overrides["featSpellGrant"] = grant
+					rules["campaignOverrides"] = overrides
+					rulesRaw, err = json.Marshal(rules)
+				}
+			}
+		}
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
 		return campaignFeatRuleData{}, fmt.Errorf("campaign feat is not available")
 	}
 	if err != nil {
@@ -372,7 +398,7 @@ func campaignFeatSpellOverrideEnabled(ctx context.Context, queryer campaignRefer
 		names = append(names, normalizeDndFeatName(name))
 	}
 	var enabled bool
-	err := queryer.QueryRow(ctx, `select exists(select 1 from compendium_entries where campaign_id=$1 and entry_type='feat' and is_published=true and (rules->>'id'=$2 or lower(name)=any($3::text[]) or lower(coalesce(translations->>'pt-BR',''))=any($3::text[])) and rules#>>'{campaignOverrides,featSpellGrant,enabled}'='true')`, campaignID, rule.ID, names).Scan(&enabled)
+	err := queryer.QueryRow(ctx, `select exists(select 1 from compendium_entries where campaign_id=$1 and entry_type='feat' and is_published=true and (rules->>'id'=$2 or lower(name)=any($3::text[]) or lower(coalesce(translations->>'pt-BR',''))=any($3::text[])) and rules#>>'{campaignOverrides,featSpellGrant,enabled}'='true') or exists(select 1 from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id join campaign_srd_catalog_sources cs on cs.source_id=e.source_id and cs.campaign_id=$1 join campaign_srd_entry_overrides o on o.catalog_entry_id=e.id and o.campaign_id=$1 where s.slug='dnd-srd' and e.entry_type='feat' and e.is_published and (e.rules->>'id'=$2 or lower(e.name)=any($3::text[]) or lower(coalesce(e.translations->>'pt-BR',''))=any($3::text[])) and o.rules#>>'{featSpellGrant,enabled}'='true')`, campaignID, rule.ID, names).Scan(&enabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -401,7 +427,9 @@ func allowedFeatSpellAbility(ability string) bool {
 func loadCompendiumSpellChoice(ctx context.Context, queryer campaignReferenceQuerier, campaignID, entryID string) (compendiumSpellChoice, error) {
 	var choice compendiumSpellChoice
 	var raw []byte
-	err := queryer.QueryRow(ctx, `select id::text,name,rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='spell' and is_published=true`, entryID, campaignID).Scan(&choice.ID, &choice.Name, &raw)
+	err := queryer.QueryRow(ctx, `select e.id::text,e.name,e.rules from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id join campaign_srd_catalog_sources cs on cs.source_id=e.source_id and cs.campaign_id=$2 where s.slug='dnd-srd' and e.id::text=$1 and e.entry_type='spell' and e.is_published
+		union all select e.id::text,e.name,e.rules from compendium_entries e where e.id::text=$1 and e.campaign_id=$2 and e.entry_type='spell' and e.is_published
+		union all select e.id::text,e.name,e.rules from srd_catalog_entry_aliases a join srd_catalog_entries e on e.id=a.catalog_entry_id where a.campaign_id=$2 and a.legacy_entry_id::text=$1 and e.entry_type='spell' and e.is_published limit 1`, entryID, campaignID).Scan(&choice.ID, &choice.Name, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return compendiumSpellChoice{}, fmt.Errorf("feat spell is not available in this campaign")
 	}

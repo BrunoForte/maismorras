@@ -60,3 +60,20 @@ direciona as operações cobertas. Cada domínio precisa migrar com testes de
 paridade antes de qualquer novo formato de ficha, compêndio, conteúdo ou
 interface ser ativado. Até lá, `dnd2024@1.0.0` é uma preparação versionada, não
 uma arquitetura agnóstica de ponta a ponta.
+
+## Catálogo SRD compartilhado
+
+O SRD D&D 5.2.1 usa as tabelas `srd_catalog_*`, com origem/versão canônica e
+associação explícita por campanha. A API deixa de provisionar novas cópias SRD
+por mesa. UUIDs das cópias legadas são resolvidos por
+`srd_catalog_entry_aliases`; as linhas antigas não são apagadas e suas
+traduções revisadas permanecem em overrides isolados, sem promoção automática.
+Regras de campanha (incluindo
+concessões de magia configuradas em talentos) ficam em
+`campaign_srd_entry_overrides`, sem alterar o conteúdo canônico. A tradução
+global é negada por padrão e requer `MAISMORRAS_OWNER_USER_ID` no backend;
+nenhum papel da Data API recebe acesso direto às tabelas.
+
+O compêndio, as referências de magias da ficha/talentos e a criação de tokens
+de monstros leem IDs canônicos ou aliases ligados à campanha. Outros domínios
+de regras e sistemas continuam fora do escopo desta integração.

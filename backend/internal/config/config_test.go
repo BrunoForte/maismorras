@@ -6,7 +6,7 @@ import (
 )
 
 func TestLoadUsesSafeDefaults(t *testing.T) {
-	for _, key := range []string{"PORT", "CORS_ORIGIN", "UPSTREAM_TIMEOUT", "TRANSLATION_TIMEOUT", "MAX_IMAGE_BYTES", "SUPABASE_URL", "DEEPL_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "REALTIME_BROKER", "REALTIME_BROKER_DATABASE_URL"} {
+	for _, key := range []string{"PORT", "CORS_ORIGIN", "UPSTREAM_TIMEOUT", "TRANSLATION_TIMEOUT", "MAX_IMAGE_BYTES", "SUPABASE_URL", "DEEPL_API_KEY", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "REALTIME_BROKER", "REALTIME_BROKER_DATABASE_URL", "MAISMORRAS_OWNER_USER_ID"} {
 		t.Setenv(key, "")
 	}
 	cfg := Load()
@@ -21,6 +21,17 @@ func TestLoadUsesSafeDefaults(t *testing.T) {
 	}
 	if cfg.DeepLTranslateURL != "https://api-free.deepl.com/v2/translate" || cfg.CloudflareImageModel != "@cf/black-forest-labs/flux-1-schnell" {
 		t.Fatalf("unexpected AI provider defaults: %+v", cfg)
+	}
+}
+
+func TestOwnerUserIDDefaultsToDenyAndNormalizesOnlyUUID(t *testing.T) {
+	t.Setenv("MAISMORRAS_OWNER_USER_ID", "not-an-id")
+	if got := Load().MaisMorrasOwnerUserID; got != "" {
+		t.Fatalf("invalid owner must fail closed, got %q", got)
+	}
+	t.Setenv("MAISMORRAS_OWNER_USER_ID", "A0B1C2D3-E4F5-4678-9ABC-DEF012345678")
+	if got := Load().MaisMorrasOwnerUserID; got != "a0b1c2d3-e4f5-4678-9abc-def012345678" {
+		t.Fatalf("valid owner UUID not normalized: %q", got)
 	}
 }
 

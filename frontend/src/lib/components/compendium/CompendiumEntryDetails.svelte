@@ -92,7 +92,7 @@
 				? 'No summary is available for this entry.'
 				: 'Sem resumo cadastrado para esta entrada.')}
 	</p>
-	{#if view.isGM && view.canTranslate}
+	{#if view.canTranslate}
 		<button class="translate" onclick={() => actions.translate(entry)} disabled={view.translating}>
 			{view.translating
 				? 'Traduzindo…'

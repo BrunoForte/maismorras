@@ -1,6 +1,6 @@
 {
   "version": "5.2.1",
-  "revision": "cartridge-import-1",
+  "revision": "cartridge-import-2",
   "attribution": "D&D System Reference Document 5.2.1 © Wizards of the Coast LLC, CC-BY-4.0. Structured cartridge: NatOneApp/sdr-5.2.1.",
   "entries": [
     {
@@ -3001,7 +3001,14 @@
       "name": "Arcane Focus",
       "summary": "An arcane focus for spellcasting.",
       "translations": {
-        "pt-BR": "Arcane Focus"
+        "pt-BR": "Foco arcano",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Foco arcano",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Foco arcano usado para conjurar magias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Foco arcano usado para conjurar magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3018,7 +3025,14 @@
       "name": "Backpack",
       "summary": "Holds 30 pounds or 1 cubic foot of gear.",
       "translations": {
-        "pt-BR": "Backpack"
+        "pt-BR": "Mochila",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Mochila",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Comporta 30 libras ou 1 pé cúbico de equipamento.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Comporta 30 libras ou 1 pé cúbico de equipamento.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3035,7 +3049,12 @@
       "name": "Battleaxe",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Battleaxe"
+        "pt-BR": "Machado de batalha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Machado de batalha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3057,7 +3076,14 @@
       "name": "Bead of Nourishment",
       "summary": "This spongy, flavorless, gelatinous bead dissolves in liquid. If consumed, it provides as much nourishment as 1 day of rations.",
       "translations": {
-        "pt-BR": "Bead of Nourishment"
+        "pt-BR": "Pérola da nutrição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pérola da nutrição",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Esta pérola gelatinosa, esponjosa e sem sabor se dissolve em líquido. Se consumida, fornece nutrição equivalente a 1 dia de rações.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esta pérola gelatinosa, esponjosa e sem sabor se dissolve em líquido. Se consumida, fornece nutrição equivalente a 1 dia de rações.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3074,7 +3100,14 @@
       "name": "Bedroll",
       "summary": "A portable sleeping mat.",
       "translations": {
-        "pt-BR": "Bedroll"
+        "pt-BR": "Saco de dormir",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Saco de dormir",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Colchonete portátil para dormir.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Colchonete portátil para dormir.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3091,7 +3124,12 @@
       "name": "Blowgun",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Blowgun"
+        "pt-BR": "Zarabatana",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Zarabatana",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3114,7 +3152,12 @@
       "name": "Breastplate",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Breastplate"
+        "pt-BR": "Peitoral",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Peitoral",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura média.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3133,7 +3176,12 @@
       "name": "Burglar's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Burglar's Pack"
+        "pt-BR": "Kit do ladrão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do ladrão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para ladrão.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3164,7 +3212,12 @@
       "name": "Chain Mail",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Chain Mail"
+        "pt-BR": "Cota de malha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Cota de malha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura pesada.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3184,7 +3237,12 @@
       "name": "Chain Shirt",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Chain Shirt"
+        "pt-BR": "Camisão de malha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Camisão de malha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura média.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3203,7 +3261,14 @@
       "name": "Cloak of Invisibility",
       "summary": "While wearing this cloak, you can pull its hood over your head to make yourself Invisible. While you are Invisible, anything you carry or wear is also Invisible. You become visible when you cease wearing the hood or take a Hostile action.",
       "translations": {
-        "pt-BR": "Cloak of Invisibility"
+        "pt-BR": "Manto da invisibilidade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Manto da invisibilidade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Enquanto veste este manto, você pode puxar o capuz sobre a cabeça para ficar Invisível. Enquanto estiver Invisível, tudo o que carregar ou vestir também ficará Invisível. Você se torna visível quando deixa de usar o capuz ou realiza uma ação Hostil.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Enquanto veste este manto, você pode puxar o capuz sobre a cabeça para ficar Invisível. Enquanto estiver Invisível, tudo o que carregar ou vestir também ficará Invisível. Você se torna visível quando deixa de usar o capuz ou realiza uma ação Hostil.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3220,7 +3285,12 @@
       "name": "Club",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Club"
+        "pt-BR": "Clava",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Clava",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3242,7 +3312,14 @@
       "name": "Component Pouch",
       "summary": "Holds material components for spellcasting.",
       "translations": {
-        "pt-BR": "Component Pouch"
+        "pt-BR": "Bolsa de componentes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Bolsa de componentes",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Guarda componentes materiais usados para conjurar magias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Guarda componentes materiais usados para conjurar magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3259,7 +3336,14 @@
       "name": "Crowbar",
       "summary": "Using a crowbar grants Advantage on Strength checks where leverage can be applied.",
       "translations": {
-        "pt-BR": "Crowbar"
+        "pt-BR": "Pé de cabra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pé de cabra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Usar um pé de cabra concede Vantagem em testes de Força nos quais seja possível aplicar alavanca.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Usar um pé de cabra concede Vantagem em testes de Força nos quais seja possível aplicar alavanca.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3276,7 +3360,12 @@
       "name": "Dagger",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dagger"
+        "pt-BR": "Adaga",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Adaga",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3300,7 +3389,12 @@
       "name": "Dart",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dart"
+        "pt-BR": "Dardo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Dardo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3323,7 +3417,12 @@
       "name": "Diplomat's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Diplomat's Pack"
+        "pt-BR": "Kit do diplomata",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do diplomata",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para diplomata.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3351,7 +3450,14 @@
       "name": "Dragon Orb",
       "summary": "Ages past, elves and humans waged a terrible war against evil dragons. When the world seemed doomed, powerful wizards came together and worked their greatest magic, producing five Dragon Orbs to help them defeat the dragons.",
       "translations": {
-        "pt-BR": "Dragon Orb"
+        "pt-BR": "Orbe do Dragão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Orbe do Dragão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Há eras, elfos e humanos travaram uma guerra terrível contra dragões malignos. Quando o mundo parecia condenado, poderosos magos se uniram e realizaram sua maior obra de magia: criaram cinco Orbes do Dragão para ajudá-los a derrotar os dragões.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Há eras, elfos e humanos travaram uma guerra terrível contra dragões malignos. Quando o mundo parecia condenado, poderosos magos se uniram e realizaram sua maior obra de magia: criaram cinco Orbes do Dragão para ajudá-los a derrotar os dragões.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3368,7 +3474,14 @@
       "name": "Druidic Focus",
       "summary": "A druidic focus for spellcasting.",
       "translations": {
-        "pt-BR": "Druidic Focus"
+        "pt-BR": "Foco druídico",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Foco druídico",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Foco druídico usado para conjurar magias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Foco druídico usado para conjurar magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3385,7 +3498,12 @@
       "name": "Dungeoneer's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dungeoneer's Pack"
+        "pt-BR": "Kit do explorador de masmorras",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do explorador de masmorras",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para explorador de masmorras.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3411,7 +3529,14 @@
       "name": "Elixir of Health",
       "summary": "When you drink this elixir, it cures any disease afflicting you, and it removes the Blinded, Deafened, Paralyzed, and Poisoned conditions. The clear red liquid has tiny bubbles of light in it.",
       "translations": {
-        "pt-BR": "Elixir of Health"
+        "pt-BR": "Elixir da saúde",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Elixir da saúde",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Ao beber este elixir, você se cura de qualquer doença que o afete e remove as condições Cego, Surdo, Paralisado e Envenenado. O líquido vermelho e transparente contém pequenas bolhas luminosas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Ao beber este elixir, você se cura de qualquer doença que o afete e remove as condições Cego, Surdo, Paralisado e Envenenado. O líquido vermelho e transparente contém pequenas bolhas luminosas.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3428,7 +3553,14 @@
       "name": "Energy Bow",
       "summary": "This magic weapon functions as a Shortbow or Longbow. When you pull back its string, an arrow of pure energy forms. When you hit with an attack roll using this bow, the target takes an extra 1d6 Force damage.",
       "translations": {
-        "pt-BR": "Energy Bow"
+        "pt-BR": "Arco de energia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Arco de energia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Esta arma mágica funciona como um arco curto ou longo. Ao puxar a corda, forma-se uma flecha de pura energia. Quando você acerta um ataque com este arco, o alvo sofre 1d6 de dano adicional de Força.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esta arma mágica funciona como um arco curto ou longo. Ao puxar a corda, forma-se uma flecha de pura energia. Quando você acerta um ataque com este arco, o alvo sofre 1d6 de dano adicional de Força.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3445,7 +3577,12 @@
       "name": "Entertainer's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Entertainer's Pack"
+        "pt-BR": "Kit do artista",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do artista",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para artista.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3469,7 +3606,12 @@
       "name": "Explorer's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Explorer's Pack"
+        "pt-BR": "Kit do explorador",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do explorador",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para explorador.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3494,7 +3636,12 @@
       "name": "Flail",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Flail"
+        "pt-BR": "Mangual",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Mangual",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3514,7 +3661,12 @@
       "name": "Glaive",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Glaive"
+        "pt-BR": "Glaive",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Glaive",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3538,7 +3690,14 @@
       "name": "Gloves of Thievery",
       "summary": "These gloves are invisible while worn. While wearing them, you have a +5 bonus to Dexterity (Sleight of Hand) checks and Dexterity checks made to pick locks.",
       "translations": {
-        "pt-BR": "Gloves of Thievery"
+        "pt-BR": "Luvas de ladinagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Luvas de ladinagem",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Estas luvas ficam invisíveis enquanto vestidas. Enquanto as usa, você recebe +5 em testes de Destreza (Prestidigitação) e em testes de Destreza feitos para abrir fechaduras.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Estas luvas ficam invisíveis enquanto vestidas. Enquanto as usa, você recebe +5 em testes de Destreza (Prestidigitação) e em testes de Destreza feitos para abrir fechaduras.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3555,7 +3714,14 @@
       "name": "Grappling Hook",
       "summary": "A hook for climbing.",
       "translations": {
-        "pt-BR": "Grappling Hook"
+        "pt-BR": "Gancho de escalada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Gancho de escalada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Gancho usado para escalar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Gancho usado para escalar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3572,7 +3738,12 @@
       "name": "Greataxe",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Greataxe"
+        "pt-BR": "Machado grande",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Machado grande",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3595,7 +3766,12 @@
       "name": "Greatclub",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Greatclub"
+        "pt-BR": "Clava grande",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Clava grande",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3617,7 +3793,12 @@
       "name": "Greatsword",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Greatsword"
+        "pt-BR": "Espada grande",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Espada grande",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3640,7 +3821,12 @@
       "name": "Halberd",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Halberd"
+        "pt-BR": "Alabarda",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Alabarda",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3664,7 +3850,12 @@
       "name": "Half Plate",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Half Plate"
+        "pt-BR": "Meia-armadura de placas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Meia-armadura de placas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura média.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3683,7 +3874,14 @@
       "name": "Hammer",
       "summary": "A standard hammer.",
       "translations": {
-        "pt-BR": "Hammer"
+        "pt-BR": "Martelo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Martelo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Um martelo comum.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Um martelo comum.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3700,7 +3898,12 @@
       "name": "Hand Crossbow",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hand Crossbow"
+        "pt-BR": "Besta de mão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Besta de mão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3724,7 +3927,12 @@
       "name": "Handaxe",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Handaxe"
+        "pt-BR": "Machadinha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Machadinha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3747,7 +3955,14 @@
       "name": "Hat of Many Spells",
       "summary": "This hat has 3 charges. While wearing it, you can expend 1 charge as a Magic action to pull a random spell scroll from it. Roll 1d6 to determine the spell scroll's level (1-2: level 1, 3-4: level 2, 5-6: level 3). The hat regains all expended charges daily at dawn.",
       "translations": {
-        "pt-BR": "Hat of Many Spells"
+        "pt-BR": "Chapéu de muitas magias",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Chapéu de muitas magias",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Este chapéu tem 3 cargas. Enquanto o usa, você pode gastar 1 carga com uma ação Mágica para retirar dele um pergaminho de magia aleatório. Role 1d6 para determinar o nível do pergaminho (1–2: nível 1, 3–4: nível 2, 5–6: nível 3). O chapéu recupera diariamente, ao amanhecer, todas as cargas gastas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Este chapéu tem 3 cargas. Enquanto o usa, você pode gastar 1 carga com uma ação Mágica para retirar dele um pergaminho de magia aleatório. Role 1d6 para determinar o nível do pergaminho (1–2: nível 1, 3–4: nível 2, 5–6: nível 3). O chapéu recupera diariamente, ao amanhecer, todas as cargas gastas.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3765,7 +3980,14 @@
       "name": "Healer's Kit",
       "summary": "This kit has 10 uses. As a Utilize action, you can expend one use to stabilize a creature that has 0 Hit Points.",
       "translations": {
-        "pt-BR": "Healer's Kit"
+        "pt-BR": "Kit de curandeiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit de curandeiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Este kit tem 10 usos. Com uma ação Utilizar, você pode gastar um uso para estabilizar uma criatura que tenha 0 Pontos de Vida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Este kit tem 10 usos. Com uma ação Utilizar, você pode gastar um uso para estabilizar uma criatura que tenha 0 Pontos de Vida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3782,7 +4004,12 @@
       "name": "Heavy Crossbow",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Heavy Crossbow"
+        "pt-BR": "Besta pesada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Besta pesada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3807,7 +4034,12 @@
       "name": "Hide",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hide"
+        "pt-BR": "Armadura de peles",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura de peles",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura média.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3826,7 +4058,14 @@
       "name": "Holy Symbol",
       "summary": "A divine focus for spellcasting.",
       "translations": {
-        "pt-BR": "Holy Symbol"
+        "pt-BR": "Símbolo sagrado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Símbolo sagrado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Foco divino usado para conjurar magias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Foco divino usado para conjurar magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3843,7 +4082,14 @@
       "name": "Hooded Lantern",
       "summary": "Casts Bright Light in a 30-foot radius and Dim Light for an additional 30 feet.",
       "translations": {
-        "pt-BR": "Hooded Lantern"
+        "pt-BR": "Lanterna furta-fogo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Lanterna furta-fogo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Emite Luz plena em um raio de 30 pés e Luz fraca por mais 30 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Emite Luz plena em um raio de 30 pés e Luz fraca por mais 30 pés.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3860,7 +4106,12 @@
       "name": "Javelin",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Javelin"
+        "pt-BR": "Azagaia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Azagaia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3882,7 +4133,12 @@
       "name": "Lance",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Lance"
+        "pt-BR": "Lança de cavalaria",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Lança de cavalaria",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3905,7 +4161,12 @@
       "name": "Leather",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Leather"
+        "pt-BR": "Armadura de couro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura de couro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura leve.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3924,7 +4185,12 @@
       "name": "Light Crossbow",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Light Crossbow"
+        "pt-BR": "Besta leve",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Besta leve",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3948,7 +4214,12 @@
       "name": "Light Hammer",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Light Hammer"
+        "pt-BR": "Martelo leve",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Martelo leve",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3971,7 +4242,12 @@
       "name": "Longbow",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Longbow"
+        "pt-BR": "Arco longo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Arco longo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -3995,7 +4271,12 @@
       "name": "Longsword",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Longsword"
+        "pt-BR": "Espada longa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Espada longa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4017,7 +4298,12 @@
       "name": "Mace",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mace"
+        "pt-BR": "Maça",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Maça",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4037,7 +4323,12 @@
       "name": "Maul",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Maul"
+        "pt-BR": "Malho",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Malho",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4060,7 +4351,12 @@
       "name": "Morningstar",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Morningstar"
+        "pt-BR": "Maça-estrela",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Maça-estrela",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4080,7 +4376,12 @@
       "name": "Musket",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Musket"
+        "pt-BR": "Mosquete",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Mosquete",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4104,7 +4405,14 @@
       "name": "Mysterious Deck",
       "summary": "Usually found in a box or pouch, this deck contains a number of cards made of ivory or vellum. Most (75 percent) of these decks have only thirteen cards, but the rest have twenty-two. Before you draw a card, you must declare how many cards you intend to draw and then draw them randomly.",
       "translations": {
-        "pt-BR": "Mysterious Deck"
+        "pt-BR": "Baralho misterioso",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Baralho misterioso",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Este baralho, geralmente encontrado em uma caixa ou bolsa, contém cartas de marfim ou pergaminho. A maioria (75 por cento) tem apenas treze cartas; os demais têm vinte e duas. Antes de comprar uma carta, você deve declarar quantas pretende comprar e então comprá-las aleatoriamente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Este baralho, geralmente encontrado em uma caixa ou bolsa, contém cartas de marfim ou pergaminho. A maioria (75 por cento) tem apenas treze cartas; os demais têm vinte e duas. Antes de comprar uma carta, você deve declarar quantas pretende comprar e então comprá-las aleatoriamente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4121,7 +4429,14 @@
       "name": "Oil (flask)",
       "summary": "As a Utilize action, you can splash oil on a creature within 5 feet or throw it up to 20 feet.",
       "translations": {
-        "pt-BR": "Oil (flask)"
+        "pt-BR": "Óleo (frasco)",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Óleo (frasco)",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Com uma ação Utilizar, você pode lançar óleo sobre uma criatura a até 5 pés ou arremessar o frasco a até 20 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Com uma ação Utilizar, você pode lançar óleo sobre uma criatura a até 5 pés ou arremessar o frasco a até 20 pés.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4138,7 +4453,12 @@
       "name": "Padded",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Padded"
+        "pt-BR": "Armadura acolchoada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura acolchoada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura leve.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4157,7 +4477,12 @@
       "name": "Pike",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pike"
+        "pt-BR": "Pique",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pique",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4181,7 +4506,12 @@
       "name": "Pistol",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pistol"
+        "pt-BR": "Pistola",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pistola",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4204,7 +4534,12 @@
       "name": "Plate",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Plate"
+        "pt-BR": "Armadura de placas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura de placas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura pesada.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4224,7 +4559,14 @@
       "name": "Potion of Invulnerability",
       "summary": "For 1 minute after you drink this potion, you have Resistance to all damage. The potion's syrupy liquid looks like liquified iron.",
       "translations": {
-        "pt-BR": "Potion of Invulnerability"
+        "pt-BR": "Poção de invulnerabilidade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Poção de invulnerabilidade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Por 1 minuto após beber esta poção, você tem Resistência a todo dano. O líquido viscoso da poção parece ferro liquefeito.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Por 1 minuto após beber esta poção, você tem Resistência a todo dano. O líquido viscoso da poção parece ferro liquefeito.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4241,7 +4583,14 @@
       "name": "Potion of Longevity",
       "summary": "When you drink this potion, your physical age is reduced by 1d6 + 6 years, to a minimum of 13 years. Each time you subsequently drink a Potion of Longevity, there is a cumulative 10 percent chance that you instead age by 1d6 + 6 years.",
       "translations": {
-        "pt-BR": "Potion of Longevity"
+        "pt-BR": "Poção da longevidade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Poção da longevidade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Ao beber esta poção, sua idade física diminui em 1d6 + 6 anos, até o mínimo de 13 anos. Cada vez que beber outra Poção da Longevidade, há uma chance cumulativa de 10 por cento de, em vez disso, envelhecer 1d6 + 6 anos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Ao beber esta poção, sua idade física diminui em 1d6 + 6 anos, até o mínimo de 13 anos. Cada vez que beber outra Poção da Longevidade, há uma chance cumulativa de 10 por cento de, em vez disso, envelhecer 1d6 + 6 anos.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4258,7 +4607,14 @@
       "name": "Potion of Vitality",
       "summary": "When you drink this potion, it removes any Exhaustion you are suffering and cures any disease or poison affecting you. For the next 24 hours, you regain the maximum number of Hit Points for any Hit Point Die you spend.",
       "translations": {
-        "pt-BR": "Potion of Vitality"
+        "pt-BR": "Poção de vitalidade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Poção de vitalidade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Ao beber esta poção, ela remove qualquer Exaustão que o afete e cura qualquer doença ou veneno que o afete. Pelas próximas 24 horas, você recupera o número máximo de Pontos de Vida para cada Dado de Vida gasto.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Ao beber esta poção, ela remove qualquer Exaustão que o afete e cura qualquer doença ou veneno que o afete. Pelas próximas 24 horas, você recupera o número máximo de Pontos de Vida para cada Dado de Vida gasto.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4275,7 +4631,12 @@
       "name": "Priest's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Priest's Pack"
+        "pt-BR": "Kit do sacerdote",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do sacerdote",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para sacerdote.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4302,7 +4663,12 @@
       "name": "Quarterstaff",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Quarterstaff"
+        "pt-BR": "Bordão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Bordão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4324,7 +4690,14 @@
       "name": "Quarterstaff of the Acrobat",
       "summary": "While holding this magic quarterstaff, you have a +1 bonus to attack rolls and damage rolls made with it. While wielding the staff, you can use a Bonus Action to make one additional attack with it, and you have Advantage on Dexterity (Acrobatics) checks.",
       "translations": {
-        "pt-BR": "Quarterstaff of the Acrobat"
+        "pt-BR": "Bordão do Acrobata",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Bordão do Acrobata",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Enquanto segura este bordão mágico, você recebe +1 nas jogadas de ataque e de dano feitas com ele. Enquanto o empunha, pode usar uma Ação Bônus para realizar um ataque adicional com ele e tem Vantagem em testes de Destreza (Acrobacia).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Enquanto segura este bordão mágico, você recebe +1 nas jogadas de ataque e de dano feitas com ele. Enquanto o empunha, pode usar uma Ação Bônus para realizar um ataque adicional com ele e tem Vantagem em testes de Destreza (Acrobacia).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4341,7 +4714,12 @@
       "name": "Rapier",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rapier"
+        "pt-BR": "Florete",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Florete",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4363,7 +4741,14 @@
       "name": "Rations (1 day)",
       "summary": "Dried food suitable for travel.",
       "translations": {
-        "pt-BR": "Rations (1 day)"
+        "pt-BR": "Rações (1 dia)",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Rações (1 dia)",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Alimentos secos adequados para viagens.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Alimentos secos adequados para viagens.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4380,7 +4765,12 @@
       "name": "Ring Mail",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring Mail"
+        "pt-BR": "Armadura de anéis",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura de anéis",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura pesada.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4400,7 +4790,14 @@
       "name": "Rod of Resurrection",
       "summary": "The rod has 5 charges. While holding it, you can expend 1 charge to cast Heal or 5 charges to cast Resurrection from it. The rod regains 1 expended charge daily at dawn.",
       "translations": {
-        "pt-BR": "Rod of Resurrection"
+        "pt-BR": "Bastão da ressurreição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Bastão da ressurreição",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "O bastão tem 5 cargas. Enquanto o segura, você pode gastar 1 carga para conjurar Cura ou 5 cargas para conjurar Ressurreição a partir dele. O bastão recupera 1 carga gasta diariamente ao amanhecer.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "O bastão tem 5 cargas. Enquanto o segura, você pode gastar 1 carga para conjurar Cura ou 5 cargas para conjurar Ressurreição a partir dele. O bastão recupera 1 carga gasta diariamente ao amanhecer.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4418,7 +4815,14 @@
       "name": "Rope, Hempen (50 feet)",
       "summary": "Has 2 Hit Points and can be burst with a DC 17 Strength check.",
       "translations": {
-        "pt-BR": "Rope, Hempen (50 feet)"
+        "pt-BR": "Corda de cânhamo (50 pés)",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Corda de cânhamo (50 pés)",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Tem 2 Pontos de Vida e pode ser arrebentada com um teste de Força CD 17.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Tem 2 Pontos de Vida e pode ser arrebentada com um teste de Força CD 17.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4435,7 +4839,14 @@
       "name": "Rope, Silk (50 feet)",
       "summary": "Has 2 Hit Points and can be burst with a DC 17 Strength check.",
       "translations": {
-        "pt-BR": "Rope, Silk (50 feet)"
+        "pt-BR": "Corda de seda (50 pés)",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Corda de seda (50 pés)",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Tem 2 Pontos de Vida e pode ser arrebentada com um teste de Força CD 17.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Tem 2 Pontos de Vida e pode ser arrebentada com um teste de Força CD 17.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4452,7 +4863,12 @@
       "name": "Scale Mail",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Scale Mail"
+        "pt-BR": "Cota de escamas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Cota de escamas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura média.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4471,7 +4887,12 @@
       "name": "Scholar's Pack",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Scholar's Pack"
+        "pt-BR": "Kit do estudioso",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Kit do estudioso",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de equipamentos para estudioso.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4495,7 +4916,12 @@
       "name": "Scimitar",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Scimitar"
+        "pt-BR": "Cimitarra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Cimitarra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4518,7 +4944,14 @@
       "name": "Sending Stones",
       "summary": "These smooth stones come in pairs, with each one etched with a small symbol linking it to its partner. While you touch one stone, you can cast Sending from it, targeting the bearer of the other stone. Once Sending is cast through the stones, they can't be used again until the next dawn.",
       "translations": {
-        "pt-BR": "Sending Stones"
+        "pt-BR": "Pedras de mensagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pedras de mensagem",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Estas pedras lisas vêm em pares; cada uma tem um pequeno símbolo gravado que a liga à sua parceira. Enquanto toca uma pedra, você pode conjurar Transmissão a partir dela, tendo como alvo quem carrega a outra pedra. Depois que Transmissão é conjurada por meio das pedras, elas não podem ser usadas novamente até o próximo amanhecer.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Estas pedras lisas vêm em pares; cada uma tem um pequeno símbolo gravado que a liga à sua parceira. Enquanto toca uma pedra, você pode conjurar Transmissão a partir dela, tendo como alvo quem carrega a outra pedra. Depois que Transmissão é conjurada por meio das pedras, elas não podem ser usadas novamente até o próximo amanhecer.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4535,7 +4968,14 @@
       "name": "Sentinel Shield",
       "summary": "While holding this shield, you have Advantage on Initiative rolls and Wisdom (Perception) checks. The shield is emblazoned with a symbol of an eye.",
       "translations": {
-        "pt-BR": "Sentinel Shield"
+        "pt-BR": "Escudo sentinela",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Escudo sentinela",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Enquanto segura este escudo, você tem Vantagem nas jogadas de Iniciativa e em testes de Sabedoria (Percepção). O escudo traz o símbolo de um olho.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Enquanto segura este escudo, você tem Vantagem nas jogadas de Iniciativa e em testes de Sabedoria (Percepção). O escudo traz o símbolo de um olho.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4552,7 +4992,12 @@
       "name": "Shield",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shield"
+        "pt-BR": "Escudo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Escudo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Equipamento de proteção usado como escudo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4571,7 +5016,14 @@
       "name": "Shield of the Cavalier",
       "summary": "While holding this shield, you have a +2 bonus to AC. This bonus is in addition to the shield's normal bonus to AC. While mounted and holding this shield, your mount has a +2 bonus to AC.",
       "translations": {
-        "pt-BR": "Shield of the Cavalier"
+        "pt-BR": "Escudo do Cavaleiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Escudo do Cavaleiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Enquanto segura este escudo, você recebe +2 na CA. Esse bônus se soma ao bônus normal do escudo na CA. Enquanto estiver montado e segurando o escudo, sua montaria recebe +2 na CA.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Enquanto segura este escudo, você recebe +2 na CA. Esse bônus se soma ao bônus normal do escudo na CA. Enquanto estiver montado e segurando o escudo, sua montaria recebe +2 na CA.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4588,7 +5040,12 @@
       "name": "Shortbow",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shortbow"
+        "pt-BR": "Arco curto",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Arco curto",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4611,7 +5068,12 @@
       "name": "Shortsword",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shortsword"
+        "pt-BR": "Espada curta",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Espada curta",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4634,7 +5096,12 @@
       "name": "Sickle",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sickle"
+        "pt-BR": "Foice",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Foice",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4656,7 +5123,12 @@
       "name": "Sling",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sling"
+        "pt-BR": "Funda",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Funda",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4678,7 +5150,12 @@
       "name": "Spear",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Spear"
+        "pt-BR": "Lança",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Lança",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma simples de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4701,7 +5178,14 @@
       "name": "Spellbook",
       "summary": "A book used by wizards to record spells.",
       "translations": {
-        "pt-BR": "Spellbook"
+        "pt-BR": "Livro de magias",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Livro de magias",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Livro usado por magos para registrar magias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Livro usado por magos para registrar magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4718,7 +5202,12 @@
       "name": "Splint",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Splint"
+        "pt-BR": "Armadura segmentada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura segmentada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura pesada.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4738,7 +5227,12 @@
       "name": "Studded Leather",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Studded Leather"
+        "pt-BR": "Armadura de couro batido",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Armadura de couro batido",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Armadura leve.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4757,7 +5251,14 @@
       "name": "Thieves' Tools",
       "summary": "A set of picks and tools for disabling locks and traps.",
       "translations": {
-        "pt-BR": "Thieves' Tools"
+        "pt-BR": "Ferramentas de ladrão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Ferramentas de ladrão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Conjunto de gazuas e ferramentas para desativar fechaduras e armadilhas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Conjunto de gazuas e ferramentas para desativar fechaduras e armadilhas.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4774,7 +5275,14 @@
       "name": "Thunderous Greatclub",
       "summary": "You have a +1 bonus to attack rolls and damage rolls made with this magic weapon. When you hit with an attack roll using this greatclub, the target takes an extra 2d6 Thunder damage, and each creature of your choice within 10 feet of the target must succeed on a DC 15 Constitution saving throw or take 1d6 Thunder damage.",
       "translations": {
-        "pt-BR": "Thunderous Greatclub"
+        "pt-BR": "Clava trovejante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Clava trovejante",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você recebe +1 nas jogadas de ataque e de dano feitas com esta arma mágica. Quando acerta um ataque com esta clava, o alvo sofre 2d6 de dano adicional de Trovão, e cada criatura à sua escolha a até 10 pés do alvo deve ser bem-sucedida em uma salvaguarda de Constituição CD 15 ou sofrer 1d6 de dano de Trovão.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você recebe +1 nas jogadas de ataque e de dano feitas com esta arma mágica. Quando acerta um ataque com esta clava, o alvo sofre 2d6 de dano adicional de Trovão, e cada criatura à sua escolha a até 10 pés do alvo deve ser bem-sucedida em uma salvaguarda de Constituição CD 15 ou sofrer 1d6 de dano de Trovão.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4791,7 +5299,14 @@
       "name": "Tinderbox",
       "summary": "Using a tinderbox to light a torch—or anything else with exposed fuel—takes a Utilize action.",
       "translations": {
-        "pt-BR": "Tinderbox"
+        "pt-BR": "Pederneira",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Pederneira",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Usar uma pederneira para acender uma tocha — ou qualquer outro objeto com combustível exposto — requer uma ação Utilizar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Usar uma pederneira para acender uma tocha — ou qualquer outro objeto com combustível exposto — requer uma ação Utilizar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4808,7 +5323,14 @@
       "name": "Torch",
       "summary": "A torch burns for 1 hour, shedding Bright Light in a 20-foot radius and Dim Light for an additional 20 feet.",
       "translations": {
-        "pt-BR": "Torch"
+        "pt-BR": "Tocha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Tocha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Uma tocha queima por 1 hora, emitindo Luz plena em um raio de 20 pés e Luz fraca por mais 20 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma tocha queima por 1 hora, emitindo Luz plena em um raio de 20 pés e Luz fraca por mais 20 pés.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4825,7 +5347,12 @@
       "name": "Trident",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Trident"
+        "pt-BR": "Tridente",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Tridente",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4848,7 +5375,12 @@
       "name": "War Pick",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "War Pick"
+        "pt-BR": "Picareta de guerra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Picareta de guerra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4870,7 +5402,12 @@
       "name": "Warhammer",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Warhammer"
+        "pt-BR": "Martelo de guerra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Martelo de guerra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4892,7 +5429,14 @@
       "name": "Waterskin",
       "summary": "Holds 4 pints of liquid.",
       "translations": {
-        "pt-BR": "Waterskin"
+        "pt-BR": "Cantil",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Cantil",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Comporta 4 pints de líquido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Comporta 4 pints de líquido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -4909,7 +5453,12 @@
       "name": "Whip",
       "summary": "Entrada estruturada do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Whip"
+        "pt-BR": "Chicote",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Chicote",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Arma marcial de combate corpo a corpo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",

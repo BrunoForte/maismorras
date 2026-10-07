@@ -477,7 +477,9 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			}
 		} else {
 			var rulesRaw []byte
-			if err = tx.QueryRow(ctx, `select rules from compendium_entries where id=$1 and campaign_id=$2 and entry_type='spell' and is_published=true`, spell.EntryID, campaignID).Scan(&rulesRaw); err != nil {
+			if err = tx.QueryRow(ctx, `select e.rules from srd_catalog_entries e join srd_catalog_sources s on s.id=e.source_id join campaign_srd_catalog_sources cs on cs.source_id=e.source_id and cs.campaign_id=$1 where e.id::text=$2 and s.slug='dnd-srd' and e.entry_type='spell' and e.is_published
+				union all select e.rules from compendium_entries e where e.id::text=$2 and e.campaign_id=$1 and e.entry_type='spell' and e.is_published
+				union all select e.rules from srd_catalog_entry_aliases a join srd_catalog_entries e on e.id=a.catalog_entry_id where a.campaign_id=$1 and a.legacy_entry_id::text=$2 and e.entry_type='spell' and e.is_published limit 1`, campaignID, spell.EntryID).Scan(&rulesRaw); err != nil {
 				return SpellCastResult{}, fmt.Errorf("spell data unavailable")
 			}
 			if err = json.Unmarshal(rulesRaw, &rules); err != nil {

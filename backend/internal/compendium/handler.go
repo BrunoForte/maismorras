@@ -40,7 +40,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return mapError(err)
 	}
-	return write(w, http.StatusOK, map[string]any{"sources": s, "entries": e})
+	return write(w, http.StatusOK, map[string]any{"sources": s, "entries": e, "canTranslateSharedSrd": h.repo.CanTranslateSharedSRD(r.Context(), r.PathValue("campaignID"), p.UserID)})
 }
 func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
@@ -134,13 +134,29 @@ func (h *Handler) ImportEntries(w http.ResponseWriter, r *http.Request) error {
 // preserves canonical SRD text and records an explicit AI provenance marker.
 func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
-	fields, err := h.repo.TranslationFields(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID)
+	campaignID, entryID := r.PathValue("campaignID"), r.PathValue("entryID")
+	fields, err := h.repo.TranslationFields(r.Context(), campaignID, entryID, p.UserID)
 	if err != nil {
 		return mapError(err)
 	}
 	if len(fields) == 0 {
-		entry, err := h.repo.Entry(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID)
+		entry, err := h.repo.Entry(r.Context(), campaignID, entryID, p.UserID)
 		if err != nil {
+			return mapError(err)
+		}
+		return write(w, http.StatusOK, entry)
+	}
+	if h.repo.IsSharedSRD(r.Context(), campaignID, entryID) {
+		if h.translator == nil || !h.translator.Enabled() {
+			provider := h.translationProviderName()
+			slog.Warn("compendium translation unavailable", translationFailureAttrs(r, provider, translation.ErrNotConfigured)...)
+			return apperror.TranslationNotConfigured()
+		}
+		entry, err := h.repo.TranslateShared(r.Context(), campaignID, entryID, p.UserID, h.translator.Translate)
+		if err != nil {
+			if errors.Is(err, translation.ErrNotConfigured) || errors.Is(err, translation.ErrTimeout) || errors.Is(err, translation.ErrRateLimited) || errors.Is(err, translation.ErrQuotaExceeded) || errors.Is(err, translation.ErrProviderUnavailable) {
+				return h.writeTranslationProviderError(w, r, err)
+			}
 			return mapError(err)
 		}
 		return write(w, http.StatusOK, entry)
@@ -152,27 +168,34 @@ func (h *Handler) TranslateMissing(w http.ResponseWriter, r *http.Request) error
 	}
 	translated, err := h.translator.Translate(r.Context(), fields)
 	if err != nil {
-		provider := h.translationProviderName()
-		slog.Error("compendium translation provider failed", translationFailureAttrs(r, provider, err)...)
-		if errors.Is(err, translation.ErrQuotaExceeded) {
-			return apperror.TranslationQuotaExceeded()
-		}
-		if errors.Is(err, translation.ErrTimeout) {
-			return apperror.TranslationTimedOut(err)
-		}
-		if errors.Is(err, translation.ErrRateLimited) {
-			return apperror.TranslationRateLimited()
-		}
-		if errors.Is(err, translation.ErrProviderUnavailable) {
-			return apperror.TranslationUnavailable(err)
-		}
-		return apperror.TranslationProvider(err)
+		return h.writeTranslationProviderError(w, r, err)
 	}
 	entry, err := h.repo.SaveAITranslations(r.Context(), r.PathValue("campaignID"), r.PathValue("entryID"), p.UserID, fields, translated)
 	if err != nil {
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, entry)
+}
+
+func (h *Handler) writeTranslationProviderError(w http.ResponseWriter, r *http.Request, err error) error {
+	provider := h.translationProviderName()
+	slog.Error("compendium translation provider failed", translationFailureAttrs(r, provider, err)...)
+	if errors.Is(err, translation.ErrNotConfigured) {
+		return apperror.TranslationNotConfigured()
+	}
+	if errors.Is(err, translation.ErrQuotaExceeded) {
+		return apperror.TranslationQuotaExceeded()
+	}
+	if errors.Is(err, translation.ErrTimeout) {
+		return apperror.TranslationTimedOut(err)
+	}
+	if errors.Is(err, translation.ErrRateLimited) {
+		return apperror.TranslationRateLimited()
+	}
+	if errors.Is(err, translation.ErrProviderUnavailable) {
+		return apperror.TranslationUnavailable(err)
+	}
+	return apperror.TranslationProvider(err)
 }
 
 func translationFailureAttrs(r *http.Request, provider string, err error) []any {

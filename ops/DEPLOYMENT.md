@@ -54,3 +54,7 @@ O backend seleciona DeepL quando `DEEPL_API_KEY` estiver configurada; sem ela, m
 - `CLOUDFLARE_API_TOKEN`: token de API com as permissões mínimas para Workers AI.
 
 Registre as três variáveis acima como referências do Secret Manager no serviço Cloud Run (inclusive o identificador da conta, para manter uma única configuração backend); localmente, os nomes e valores vazios opcionais aparecem em `backend/.env.example`. Os logs estruturados de inicialização registram apenas o identificador do provedor selecionado, sem chaves, prompts ou conteúdo de requisição. Nenhuma conta ou secret é criado automaticamente.
+
+### Catálogo SRD compartilhado e tradução do proprietário
+
+O SRD 5.2.1 é armazenado uma vez em `srd_catalog_*` e lido por todas as campanhas que usam essa versão. Referências UUID antigas continuam resolvidas por aliases; conteúdo privado, traduções legadas revisadas e regras próprias ficam isolados em `campaign_srd_entry_overrides`. Esses valores antigos permanecem como exceções por campanha e nunca são copiados para o catálogo canônico. A identidade `MAISMORRAS_OWNER_USER_ID` é comparada com o UUID autenticado pelo backend; deixe-a vazia para negar geração de traduções compartilhadas. Configure esse UUID como variável de ambiente do serviço Cloud Run (não como valor vindo do navegador ou `user_metadata`); não é uma chave de API. Para desenvolvimento, use `backend/.env.example` como referência. Uma versão SRD futura deve usar outro par slug/versão e não reutilizar traduções de 5.2.1.

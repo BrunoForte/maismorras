@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompendiumEntry, CompendiumSource } from '$lib/services/compendiumApi';
 import {
 	compendiumDraftFromEditor,
+	canInitiateCompendiumTranslation,
 	compendiumEntryTranslationStatus,
 	compendiumRulesFromEditor,
 	editorModelFromEntry,
@@ -52,6 +53,16 @@ const entry = (
 });
 
 describe('compendium rules', () => {
+	it('shows translation capability only for the platform owner on shared SRD and GMs on private sources', () => {
+		const sharedEntry = entry('shared-1', 'Wizard', 'class', 'srd');
+		const privateEntry = entry('private-1', 'Homebrew spell', 'spell', 'home');
+		expect(canInitiateCompendiumTranslation(sharedEntry, sources[0], true, false)).toBe(true);
+		expect(canInitiateCompendiumTranslation(sharedEntry, sources[0], false, true)).toBe(false);
+		expect(canInitiateCompendiumTranslation(privateEntry, sources[1], true, false)).toBe(false);
+		expect(canInitiateCompendiumTranslation(privateEntry, sources[1], false, true)).toBe(true);
+		expect(canInitiateCompendiumTranslation(sharedEntry, undefined, false, false)).toBe(false);
+	});
+
 	it('normalizes search text and filters by type, source, and localized/original name', () => {
 		const entries = [
 			entry('1', 'Goblin', 'other'),

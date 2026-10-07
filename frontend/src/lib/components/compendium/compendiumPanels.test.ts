@@ -93,7 +93,7 @@ describe('compendium panels', () => {
 		};
 		const gmHtml = render(CompendiumEntryDetails, { props: { view, actions } }).body;
 		const playerHtml = render(CompendiumEntryDetails, {
-			props: { view: { ...view, isGM: false }, actions }
+			props: { view: { ...view, isGM: false, canTranslate: false }, actions }
 		}).body;
 		expect(gmHtml).toContain('Editar entrada privada');
 		expect(gmHtml).toContain('Excluir');
@@ -104,6 +104,13 @@ describe('compendium panels', () => {
 		expect(playerHtml).not.toContain('Excluir');
 		expect(playerHtml).not.toContain('Traduzir campos pendentes');
 		expect(playerHtml).not.toContain('Adicionar à cena');
+		const platformOwnerHtml = render(CompendiumEntryDetails, {
+			props: { view: { ...view, isGM: false, canTranslate: true }, actions }
+		}).body;
+		expect(platformOwnerHtml).toContain('Traduzir campos pendentes');
+		expect(platformOwnerHtml).not.toContain('Editar entrada privada');
+		expect(platformOwnerHtml).not.toContain('Excluir');
+		expect(platformOwnerHtml).not.toContain('Adicionar à cena');
 		const readonlyHtml = render(CompendiumEntryDetails, {
 			props: { view: { ...view, sourceReadOnly: true }, actions }
 		}).body;
