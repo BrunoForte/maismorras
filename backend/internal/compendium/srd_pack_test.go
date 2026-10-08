@@ -105,6 +105,93 @@ func TestSRDItemTranslationBatchIsCompleteAndReviewed(t *testing.T) {
 	}
 }
 
+func TestSRDFirstLevelSpellTranslationsAreCompleteAndReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spells, names, descriptions := 0, 0, 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if rules["level"] != float64(1) {
+			continue
+		}
+		spells++
+		translations := decodeTranslations(entry.Translations)
+		for _, key := range []string{"pt-BR", "pt-BR.summary"} {
+			if translations[key] == "" || translations[key] == entry.Name || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s is missing, still English, or not reviewed: %v", entry.Name, key, translations)
+			}
+		}
+		if _, exists := rules["name"]; exists {
+			names++
+			if translations["pt-BR.rules.name"] != translations["pt-BR"] || translations["pt-BR.rules.name.source"] != "reviewed" {
+				t.Errorf("%s rules.name localization is missing or not reviewed", entry.Name)
+			}
+		} else if _, exists := translations["pt-BR.rules.name"]; exists {
+			t.Errorf("%s has a localization for rules.name that is absent from the source", entry.Name)
+		}
+		if _, exists := rules["description"]; exists {
+			descriptions++
+			if translations["pt-BR.rules.description"] == "" || translations["pt-BR.rules.description.source"] != "reviewed" {
+				t.Errorf("%s rules.description localization is missing or not reviewed", entry.Name)
+			}
+		} else if _, exists := translations["pt-BR.rules.description"]; exists {
+			t.Errorf("%s has a localization for rules.description that is absent from the source", entry.Name)
+		}
+	}
+	if spells != 57 || names != 19 || descriptions != 19 {
+		t.Fatalf("first-level spell coverage = %d spells, %d rules.name fields, %d rules.description fields; want 57, 19, 19", spells, names, descriptions)
+	}
+}
+
+func TestSRDFirstLevelSpellTranslationSyncReplacesAIAndPreservesProtectedFields(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bless srdEntry
+	for _, entry := range pack.Entries {
+		if entry.EntryType == "spell" && entry.Name == "Bless" {
+			bless = entry
+			break
+		}
+	}
+	if bless.Name == "" {
+		t.Fatal("Bless not found in the SRD pack")
+	}
+	approved := decodeTranslations(bless.Translations)
+	current := map[string]string{}
+	for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.name", "pt-BR.rules.description"} {
+		current[key] = "tradução antiga de IA"
+		current[key+".source"] = "ai"
+	}
+	current["pt-BR.rules.description"] = "Descrição manual protegida"
+	current["pt-BR.rules.description.source"] = "manual"
+	changed, updated, unresolved := applyReviewedTranslation(current, bless)
+	if !changed || len(updated) != 3 || len(unresolved) != 0 {
+		t.Fatalf("sync result: changed=%t updated=%v unresolved=%v", changed, updated, unresolved)
+	}
+	for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.name"} {
+		if current[key] != approved[key] || current[key+".source"] != "reviewed" {
+			t.Errorf("%s was not replaced by its reviewed value: got %q (%q), want %q (reviewed)", key, current[key], current[key+".source"], approved[key])
+		}
+	}
+	if current["pt-BR.rules.description"] != "Descrição manual protegida" || current["pt-BR.rules.description.source"] != "manual" {
+		t.Fatal("manual description was overwritten")
+	}
+	changed, updated, unresolved = applyReviewedTranslation(current, bless)
+	if changed || len(updated) != 0 || len(unresolved) != 0 {
+		t.Fatalf("second sync was not idempotent: changed=%t updated=%v unresolved=%v", changed, updated, unresolved)
+	}
+}
+
 func TestApplyReviewedTranslationProvenance(t *testing.T) {
 	entry := srdEntry{
 		EntryType:    "item",

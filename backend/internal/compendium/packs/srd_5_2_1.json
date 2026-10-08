@@ -24192,7 +24192,10 @@
       "name": "Alarm",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Alarm"
+        "pt-BR": "Alarme",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Avisa quando uma criatura toca ou entra na área protegida; o alerta pode ser audível ou mental.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24224,7 +24227,10 @@
       "name": "Animal Friendship",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Animal Friendship"
+        "pt-BR": "Amizade Animal",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Tenta encantar uma Fera visível; o efeito termina se você ou seus aliados causarem dano a ela.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24480,7 +24486,10 @@
       "name": "Bane",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bane"
+        "pt-BR": "Perdição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Até três criaturas que falharem na salvaguarda subtraem 1d4 de suas jogadas de ataque e salvaguardas.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24626,7 +24635,14 @@
       "name": "Bless",
       "summary": "Up to three creatures add 1d4 to attack rolls and saving throws.",
       "translations": {
-        "pt-BR": "Bless"
+        "pt-BR": "Bênção",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Até três criaturas somam 1d4 às jogadas de ataque e às salvaguardas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Bênção",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Até três criaturas somam 1d4 às jogadas de ataque e às salvaguardas.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24700,7 +24716,14 @@
       "name": "Burning Hands",
       "summary": "Each creature in a 15-foot Cone makes a Dexterity save, taking 3d6 Fire damage on fail.",
       "translations": {
-        "pt-BR": "Burning Hands"
+        "pt-BR": "Mãos Flamejantes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cada criatura em um Cone de 15 pés faz uma salvaguarda de Destreza e sofre 3d6 de dano de Fogo se falhar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mãos Flamejantes",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Cada criatura em um Cone de 15 pés faz uma salvaguarda de Destreza e sofre 3d6 de dano de Fogo se falhar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24834,7 +24857,14 @@
       "name": "Charm Person",
       "summary": "One Humanoid makes a Wisdom save or has the Charmed condition.",
       "translations": {
-        "pt-BR": "Charm Person"
+        "pt-BR": "Enfeitiçar Pessoa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura Humanoide faz uma salvaguarda de Sabedoria ou recebe a condição Enfeitiçado.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Enfeitiçar Pessoa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura Humanoide faz uma salvaguarda de Sabedoria ou recebe a condição Enfeitiçado.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24884,7 +24914,14 @@
       "name": "Chromatic Orb",
       "summary": "You hurl an orb of energy at a creature within range. Choose Acid, Cold, Fire, Lightning, Poison, or Thunder for the orb. Make a ranged spell attack. On a hit, the target takes 3d8 damage of the chosen type.",
       "translations": {
-        "pt-BR": "Chromatic Orb"
+        "pt-BR": "Orbe Cromático",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você lança um orbe de energia contra uma criatura ao alcance. Escolha Ácido, Frio, Fogo, Elétrico, Veneno ou Trovejante; ao acertar com um ataque mágico à distância, causa 3d8 de dano do tipo escolhido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Orbe Cromático",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você lança um orbe de energia contra uma criatura ao alcance. Escolha Ácido, Frio, Fogo, Elétrico, Veneno ou Trovejante; ao acertar com um ataque mágico à distância, causa 3d8 de dano do tipo escolhido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24985,7 +25022,10 @@
       "name": "Color Spray",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Color Spray"
+        "pt-BR": "Leque Cromático",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Criaturas em um Cone de 15 pés que falharem numa salvaguarda de Constituição ficam Cegas até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25002,7 +25042,10 @@
       "name": "Command",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Command"
+        "pt-BR": "Comando",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria deve obedecer a uma ordem de uma palavra, se puder fazê-lo.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25050,7 +25093,10 @@
       "name": "Comprehend Languages",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Comprehend Languages"
+        "pt-BR": "Compreender Idiomas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você entende o sentido literal de idiomas falados e escritos que toca, mas não decifra códigos nem símbolos mágicos.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25375,7 +25421,10 @@
       "name": "Create or Destroy Water",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Create or Destroy Water"
+        "pt-BR": "Criar ou Destruir Água",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria ou destrói até 10 galões de água; também pode criar chuva ou dissipar neblina em um Cubo de 30 pés.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25424,7 +25473,14 @@
       "name": "Cure Wounds",
       "summary": "A creature you touch regains 2d8 + spellcasting modifier Hit Points.",
       "translations": {
-        "pt-BR": "Cure Wounds"
+        "pt-BR": "Curar Ferimentos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura tocada recupera 2d8 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Curar Ferimentos",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura tocada recupera 2d8 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -25566,7 +25622,10 @@
       "name": "Detect Evil and Good",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Detect Evil and Good"
+        "pt-BR": "Detectar o Bem e o Mal",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você percebe a localização de Aberrações, Celestiais, Elementais, Fadas, Corruptores e Mortos-vivos a até 30 pés, além da presença de Consagrar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25582,7 +25641,14 @@
       "name": "Detect Magic",
       "summary": "You sense the presence of magic within 30 feet of you.",
       "translations": {
-        "pt-BR": "Detect Magic"
+        "pt-BR": "Detectar Magia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você sente a presença de magia a até 30 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Detectar Magia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você sente a presença de magia a até 30 pés.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -25616,7 +25682,10 @@
       "name": "Detect Poison and Disease",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Detect Poison and Disease"
+        "pt-BR": "Detectar Veneno e Doença",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você percebe a localização e o tipo de venenos, criaturas venenosas ou peçonhentas e contágios mágicos a até 30 pés.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25681,7 +25750,10 @@
       "name": "Disguise Self",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Disguise Self"
+        "pt-BR": "Disfarçar-se",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você altera a própria aparência, incluindo roupas, armadura, armas e pertences, dentro dos limites da magia.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25782,7 +25854,14 @@
       "name": "Dissonant Whispers",
       "summary": "You whisper a discordant melody. The target must make a Wisdom save. On a fail, it takes 3d6 Psychic damage and must immediately use its Reaction to move as far away from you as possible. On a success, it takes half damage only.",
       "translations": {
-        "pt-BR": "Dissonant Whispers"
+        "pt-BR": "Sussurros Dissonantes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "O alvo faz uma salvaguarda de Sabedoria. Se falhar, sofre 3d6 de dano Psíquico e usa imediatamente sua Reação para se afastar; se passar, sofre apenas metade do dano.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Sussurros Dissonantes",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "O alvo faz uma salvaguarda de Sabedoria. Se falhar, sofre 3d6 de dano Psíquico e usa imediatamente sua Reação para se afastar; se passar, sofre apenas metade do dano.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -25832,7 +25911,10 @@
       "name": "Divine Favor",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Divine Favor"
+        "pt-BR": "Favor Divino",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Até a magia terminar, seus ataques com armas causam 1d4 de dano Radiante extra ao acertar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25847,7 +25929,14 @@
       "name": "Divine Smite",
       "summary": "The next time you hit a creature with a melee weapon attack during this spell's duration, your attack deals an extra 2d8 Radiant damage. If the target is a Fiend or Undead, it takes an extra 1d8 Radiant damage.",
       "translations": {
-        "pt-BR": "Divine Smite"
+        "pt-BR": "Golpe Divino",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Na próxima vez que acertar uma criatura com um ataque corpo a corpo com arma durante a duração da magia, o ataque causa 2d8 de dano Radiante extra; contra Corruptores ou Mortos-vivos, causa mais 1d8.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Golpe Divino",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Na próxima vez que acertar uma criatura com um ataque corpo a corpo com arma durante a duração da magia, o ataque causa 2d8 de dano Radiante extra; contra Corruptores ou Mortos-vivos, causa mais 1d8.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26118,7 +26207,14 @@
       "name": "Ensnaring Strike",
       "summary": "The next time you hit a creature with a weapon attack, a mass of vines appears and wraps around it. The target must succeed on a Strength save or have the Restrained condition until the spell ends.",
       "translations": {
-        "pt-BR": "Ensnaring Strike"
+        "pt-BR": "Golpe Enredante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando você acerta uma criatura com um ataque com arma, vinhas a envolvem. Se o alvo falhar numa salvaguarda de Força, recebe a condição Impedido até a magia terminar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Golpe Enredante",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando você acerta uma criatura com um ataque com arma, vinhas a envolvem. Se o alvo falhar numa salvaguarda de Força, recebe a condição Impedido até a magia terminar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26146,7 +26242,10 @@
       "name": "Entangle",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Entangle"
+        "pt-BR": "Emaranhar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Plantas agarradoras brotam em um quadrado de 20 pés, transformando o chão da área em Terreno Difícil; criaturas ali podem ficar Impedidas após falhar numa salvaguarda de Força.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26191,7 +26290,10 @@
       "name": "Expeditious Retreat",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Expeditious Retreat"
+        "pt-BR": "Retirada Veloz",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você realiza a ação Disparada e, até a magia terminar, pode realizá-la novamente como uma Ação Bônus.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26241,7 +26343,10 @@
       "name": "Faerie Fire",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Faerie Fire"
+        "pt-BR": "Fogo das Fadas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Objetos e criaturas atingidos em um Cubo de 20 pés ficam contornados por luz; criaturas que falharem na salvaguarda não se beneficiam da condição Invisível e concedem vantagem nos ataques contra elas.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26272,7 +26377,10 @@
       "name": "False Life",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "False Life"
+        "pt-BR": "Vida Falsa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você recebe 2d4 + 4 Pontos de Vida Temporários; cada nível acima do 1º acrescenta 5.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26306,7 +26414,10 @@
       "name": "Feather Fall",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Feather Fall"
+        "pt-BR": "Queda Suave",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Até cinco criaturas em queda descem a 60 pés por rodada e não sofrem dano de queda enquanto a magia durar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26323,7 +26434,10 @@
       "name": "Find Familiar",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Find Familiar"
+        "pt-BR": "Encontrar Familiar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você invoca um espírito que assume a forma de um animal escolhido e pode se comunicar com ele; o familiar também pode entregar magias de toque.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26590,7 +26704,10 @@
       "name": "Floating Disk",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Floating Disk"
+        "pt-BR": "Disco Flutuante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria um disco de força que acompanha você e transporta carga, desaparecendo se ficar a mais de 20 pés de distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26635,7 +26752,10 @@
       "name": "Fog Cloud",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Fog Cloud"
+        "pt-BR": "Nuvem de Neblina",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria uma Esfera de neblina com raio de 20 pés, que obscurece fortemente a área até a magia terminar ou um vento forte dissipá-la.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26866,7 +26986,10 @@
       "name": "Goodberry",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Goodberry"
+        "pt-BR": "Boa Fruta",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria dez bagas; cada uma restaura 1 Ponto de Vida e fornece alimento suficiente para um dia.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26882,7 +27005,10 @@
       "name": "Grease",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Grease"
+        "pt-BR": "Graxa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Graxa não inflamável cobre um quadrado de 10 pés e o torna Terreno Difícil; criaturas podem cair se falharem numa salvaguarda de Destreza.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27001,7 +27127,14 @@
       "name": "Guiding Bolt",
       "summary": "Ranged spell attack. On hit: 4d6 Radiant damage; next attack against target has Advantage.",
       "translations": {
-        "pt-BR": "Guiding Bolt"
+        "pt-BR": "Raio Guiador",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Ataque mágico à distância; ao acertar, causa 4d6 de dano Radiante e concede vantagem no próximo ataque contra o alvo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Raio Guiador",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Ataque mágico à distância; ao acertar, causa 4d6 de dano Radiante e concede vantagem no próximo ataque contra o alvo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27159,7 +27292,14 @@
       "name": "Healing Word",
       "summary": "A creature regains 2d4 + spellcasting modifier Hit Points.",
       "translations": {
-        "pt-BR": "Healing Word"
+        "pt-BR": "Palavra Curativa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura recupera 2d4 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Palavra Curativa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura recupera 2d4 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27205,7 +27345,10 @@
       "name": "Hellish Rebuke",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hellish Rebuke"
+        "pt-BR": "Repreensão Infernal",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Como Reação ao sofrer dano de uma criatura visível, você a envolve em chamas; ela sofre 2d10 de dano de Fogo se falhar na salvaguarda de Destreza, ou metade se passar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27237,7 +27380,10 @@
       "name": "Heroism",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Heroism"
+        "pt-BR": "Heroísmo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura voluntária fica imune à condição Amedrontado e ganha Pontos de Vida Temporários iguais ao seu modificador da habilidade de conjuração no início de cada turno.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27253,7 +27399,14 @@
       "name": "Hex",
       "summary": "You curse a creature. Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack. Also, choose one ability. The target has Disadvantage on ability checks with that ability.",
       "translations": {
-        "pt-BR": "Hex"
+        "pt-BR": "Maldição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você amaldiçoa uma criatura: seus ataques causam 1d6 de dano Necrótico extra ao alvo e você escolhe uma habilidade na qual ele terá desvantagem em testes.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Maldição",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você amaldiçoa uma criatura: seus ataques causam 1d6 de dano Necrótico extra ao alvo e você escolhe uma habilidade na qual ele terá desvantagem em testes.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27286,7 +27439,10 @@
       "name": "Hideous Laughter",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hideous Laughter"
+        "pt-BR": "Riso Histérico",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria cai no chão, fica incapacitada pelo riso e tem dificuldade para se levantar enquanto a magia durar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27384,7 +27540,10 @@
       "name": "Hunter’s Mark",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hunter’s Mark"
+        "pt-BR": "Marca do Caçador",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você marca uma criatura: seus ataques causam 1d6 de dano de Força extra contra ela, e você tem vantagem em testes de Sabedoria para encontrá-la.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27417,7 +27576,14 @@
       "name": "Ice Knife",
       "summary": "You create a shard of ice and fling it at one creature within range. Make a ranged spell attack. On a hit, the target takes 1d10 Piercing damage. Hit or miss, the shard then explodes. The target and each creature within 5 feet of it must succeed on a Dexterity save or take 2d6 Cold damage.",
       "translations": {
-        "pt-BR": "Ice Knife"
+        "pt-BR": "Faca de Gelo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Ataque mágico à distância: ao acertar, causa 1d10 de dano Perfurante; em seguida, acerte ou erre, o estilhaço explode e criaturas próximas podem sofrer 2d6 de dano de Frio.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Faca de Gelo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Ataque mágico à distância: ao acertar, causa 1d10 de dano Perfurante; em seguida, acerte ou erre, o estilhaço explode e criaturas próximas podem sofrer 2d6 de dano de Frio.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27470,7 +27636,10 @@
       "name": "Identify",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Identify"
+        "pt-BR": "Identificação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aprende as propriedades de um item mágico tocado, como usá-lo e se exige sintonia; também descobre magias que o afetam.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27486,7 +27655,10 @@
       "name": "Illusory Script",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Illusory Script"
+        "pt-BR": "Escrita Ilusória",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você escreve uma mensagem que parece incompreensível ou diferente para leitores não designados, enquanto os destinatários escolhidos a leem normalmente.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27536,7 +27708,10 @@
       "name": "Inflict Wounds",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Inflict Wounds"
+        "pt-BR": "Infligir Ferimentos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Faça um ataque mágico corpo a corpo; ao acertar, o alvo sofre 2d10 de dano Necrótico.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27630,7 +27805,10 @@
       "name": "Jump",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Jump"
+        "pt-BR": "Salto",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura tocada pode saltar com distância triplicada até a magia terminar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27814,7 +27992,10 @@
       "name": "Longstrider",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Longstrider"
+        "pt-BR": "Passo Longo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Aumenta o deslocamento de uma criatura em 10 pés por uma hora; espaços de nível superior podem afetar alvos adicionais.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27832,7 +28013,14 @@
       "name": "Mage Armor",
       "summary": "Target's base AC becomes 13 + Dexterity modifier.",
       "translations": {
-        "pt-BR": "Mage Armor"
+        "pt-BR": "Armadura Arcana",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "A CA base do alvo passa a ser 13 + modificador de Destreza.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Armadura Arcana",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "A CA base do alvo passa a ser 13 + modificador de Destreza.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27925,7 +28113,14 @@
       "name": "Magic Missile",
       "summary": "Three darts deal 1d4+1 Force damage each.",
       "translations": {
-        "pt-BR": "Magic Missile"
+        "pt-BR": "Mísseis Mágicos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Três dardos causam 1d4 + 1 de dano de Energia cada e acertam automaticamente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mísseis Mágicos",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Três dardos causam 1d4 + 1 de dano de Energia cada e acertam automaticamente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28875,7 +29070,10 @@
       "name": "Protection from Evil and Good",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Protection from Evil and Good"
+        "pt-BR": "Proteção contra o Bem e o Mal",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Protege uma criatura voluntária contra tipos específicos de seres: eles têm desvantagem ao atacá-la, e ela resiste a encantamento, medo e possessão.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -28906,7 +29104,10 @@
       "name": "Purify Food and Drink",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Purify Food and Drink"
+        "pt-BR": "Purificar Comida e Bebida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Purifica alimentos e bebidas não mágicos em uma Esfera de 5 pés, removendo venenos e doenças.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -28986,7 +29187,14 @@
       "name": "Ray of Sickness",
       "summary": "A ray of sickening greenish energy lashes out toward a creature within range. Make a ranged spell attack. On a hit, the target takes 2d8 Poison damage and is Poisoned until the end of your next turn.",
       "translations": {
-        "pt-BR": "Ray of Sickness"
+        "pt-BR": "Raio Nauseante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Ataque mágico à distância; ao acertar, causa 2d8 de dano de Veneno e deixa o alvo Envenenado até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Raio Nauseante",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Ataque mágico à distância; ao acertar, causa 2d8 de dano de Veneno e deixa o alvo Envenenado até o fim do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29215,7 +29423,10 @@
       "name": "Sanctuary",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sanctuary"
+        "pt-BR": "Santuário",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura protegida força quem tentar atacá-la ou alvejá-la com magia que causa dano a fazer uma salvaguarda de Sabedoria; numa falha, o agressor escolhe outro alvo ou perde o ataque ou magia.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29277,7 +29488,14 @@
       "name": "Searing Smite",
       "summary": "As you hit the target, it takes an extra 1d6 Fire damage from the attack. At the start of each of its turns until the spell ends, the target takes 1d6 Fire damage and then makes a Constitution save. On a successful save, the spell ends.",
       "translations": {
-        "pt-BR": "Searing Smite"
+        "pt-BR": "Golpe Flamejante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Ao acertar, o ataque causa 1d6 de dano de Fogo extra; no início dos turnos seguintes, o alvo sofre 1d6 de dano de Fogo e pode encerrar a magia passando numa salvaguarda de Constituição.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Golpe Flamejante",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Ao acertar, o ataque causa 1d6 de dano de Fogo extra; no início dos turnos seguintes, o alvo sofre 1d6 de dano de Fogo e pode encerrar a magia passando numa salvaguarda de Constituição.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29425,7 +29643,14 @@
       "name": "Shield",
       "summary": "You have a +5 bonus to AC until the start of your next turn.",
       "translations": {
-        "pt-BR": "Shield"
+        "pt-BR": "Escudo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você recebe +5 na CA até o início do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Escudo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você recebe +5 na CA até o início do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29454,7 +29679,10 @@
       "name": "Shield of Faith",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shield of Faith"
+        "pt-BR": "Escudo da Fé",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura recebe +2 na CA enquanto a magia durar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29533,7 +29761,10 @@
       "name": "Silent Image",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Silent Image"
+        "pt-BR": "Imagem Silenciosa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria a imagem visual de um objeto, criatura ou outro fenômeno em um Cubo de 15 pés, sem som, que você pode mover e ajustar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29565,7 +29796,10 @@
       "name": "Sleep",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sleep"
+        "pt-BR": "Sono",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria cai inconsciente; o efeito termina se ela sofrer dano ou alguém usar uma ação para despertá-la.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29665,7 +29899,10 @@
       "name": "Speak with Animals",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Speak with Animals"
+        "pt-BR": "Falar com Animais",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você compreende e se comunica com Bestas, podendo fazer perguntas e receber informações limitadas pelo conhecimento delas.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -30105,7 +30342,14 @@
       "name": "Thunderwave",
       "summary": "Each creature in a 15-foot Cube makes a Constitution save, taking 2d8 Thunder damage on fail.",
       "translations": {
-        "pt-BR": "Thunderwave"
+        "pt-BR": "Onda Trovejante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Criaturas em um Cubo de 15 pés fazem uma salvaguarda de Constituição e sofrem 2d8 de dano Trovejante se falharem.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Onda Trovejante",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Criaturas em um Cubo de 15 pés fazem uma salvaguarda de Constituição e sofrem 2d8 de dano Trovejante se falharem.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30315,7 +30559,10 @@
       "name": "Unseen Servant",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Unseen Servant"
+        "pt-BR": "Servo Invisível",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria uma força invisível que realiza tarefas simples e pode se afastar até 60 pés; a magia termina se for levada além disso.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 1,
