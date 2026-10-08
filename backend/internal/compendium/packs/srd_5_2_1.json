@@ -29724,7 +29724,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você dispara energia arcana contra uma criatura ou objeto. Se acertar, causa 1d8 de dano à sua escolha entre ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você dispara energia arcana contra uma criatura ou objeto dentro do alcance. Faça uma rolagem de ataque à distância contra o alvo. Se acertar, o alvo sofre 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante. Se o resultado de um d8 desta magia for 8, você pode rolar outro d8 e somá-lo ao dano. Ao conjurar esta magia, o número máximo de d8 adicionais que você pode somar ao dano é igual ao seu modificador da habilidade de conjuração. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
+        "pt-BR.rules.description": "Você dispara energia arcana contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante. Se o resultado de um d8 desta magia for 8, você pode rolar outro d8 e somá-lo ao dano. Ao conjurar esta magia, o número máximo de d8 adicionais que você pode somar ao dano é igual ao seu modificador da habilidade de conjuração. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {

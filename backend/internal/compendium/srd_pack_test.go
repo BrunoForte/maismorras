@@ -174,7 +174,7 @@ func TestSRDCantripFullDescriptionsPreserveSpellEffects(t *testing.T) {
 		"Mage Hand":        {"30 pés", "abrir uma porta ou recipiente destrancado", "frasco", "não pode atacar", "itens mágicos", "10 libras"},
 		"Prestidigitation": {"até três de seus efeitos", "1 pé cúbico", "1 hora", "fim do seu próximo turno", "valor monetário"},
 		"Sacred Flame":     {"criatura que você possa ver", "Meia Cobertura", "Três Quartos de Cobertura", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
-		"Sorcerous Burst":  {"ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante", "resultado de um d8 desta magia for 8", "pode rolar outro d8", "modificador da habilidade de conjuração", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
+		"Sorcerous Burst":  {"ataque mágico à distância", "ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante", "resultado de um d8 desta magia for 8", "pode rolar outro d8", "modificador da habilidade de conjuração", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
 		"Starry Wisp":      {"criatura ou objeto", "Luz fraca", "condição Invisível", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
 		"Thaumaturgy":      {"até três de seus efeitos", "até três vezes mais alta", "Intimidação", "porta ou janela destrancada", "som instantâneo", "tremores inofensivos"},
 		"Vicious Mockery":  {"insultos", "possa ver ou ouvir", "salvaguarda de Sabedoria", "Desvantagem", "antes do fim do seu próximo turno", "níveis 5 (2d6), 11 (3d6) e 17 (4d6)"},
