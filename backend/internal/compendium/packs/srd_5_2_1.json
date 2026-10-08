@@ -24129,7 +24129,14 @@
       "name": "Acid Splash",
       "summary": "You create an acidic bubble at a point within range. Each creature in a 5-foot Sphere must succeed on a Dexterity saving throw or take 1d6 Acid damage.",
       "translations": {
-        "pt-BR": "Acid Splash"
+        "pt-BR": "Respingos Ácidos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Respingos Ácidos",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24163,7 +24170,10 @@
       "name": "Acid SplASh",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Acid SplASh"
+        "pt-BR": "Respingos Ácidos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -24867,7 +24877,10 @@
       "name": "Chill Touch",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Chill Touch"
+        "pt-BR": "Toque Arrepiante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você canaliza o frio da sepultura e faz um ataque mágico corpo a corpo. Se acertar, o alvo sofre 1d10 de dano necrótico e não pode recuperar pontos de vida até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -25457,7 +25470,10 @@
       "name": "Dancing Lights",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dancing Lights"
+        "pt-BR": "Luzes Dançantes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria luzes flutuantes que iluminam a área e podem ser reorganizadas ou movidas enquanto a magia durar.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -26010,7 +26026,10 @@
       "name": "Druidcraft",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Druidcraft"
+        "pt-BR": "Druidismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria um efeito natural menor: prevê o clima, faz uma planta florescer, produz uma sensação inofensiva ou acende ou apaga uma pequena chama.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -26042,7 +26061,14 @@
       "name": "Eldritch Blast",
       "summary": "You hurl a beam of crackling energy. Make a ranged spell attack. On a hit, the target takes 1d10 Force damage.",
       "translations": {
-        "pt-BR": "Eldritch Blast"
+        "pt-BR": "Rajada Mística",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Rajada Mística",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara um feixe de energia crepitante contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d10 de dano de força.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara um feixe de energia crepitante contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d10 de dano de força.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26075,7 +26101,14 @@
       "name": "Elementalism",
       "summary": "You exert control over the elements, creating one of several minor effects.",
       "translations": {
-        "pt-BR": "Elementalism"
+        "pt-BR": "Elementalismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Elementalismo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você controla os elementos para criar um entre vários efeitos menores.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você controla os elementos para criar um entre vários efeitos menores.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26422,7 +26455,14 @@
       "name": "Fire Bolt",
       "summary": "You hurl a mote of fire. Make a ranged spell attack. On a hit, the target takes 1d10 Fire damage.",
       "translations": {
-        "pt-BR": "Fire Bolt"
+        "pt-BR": "Raio de Fogo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Raio de Fogo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara uma fagulha de fogo. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara uma fagulha de fogo. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26972,7 +27012,14 @@
       "name": "Guidance",
       "summary": "You touch a willing creature. The creature adds 1d4 to one ability check of its choice.",
       "translations": {
-        "pt-BR": "Guidance"
+        "pt-BR": "Orientação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Orientação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você toca uma criatura disposta. Ela adiciona 1d4 a um teste de atributo à sua escolha.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura disposta. Ela adiciona 1d4 a um teste de atributo à sua escolha.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27706,7 +27753,14 @@
       "name": "Light",
       "summary": "You touch one object. Until the spell ends, the object sheds Bright Light in a 20-foot radius.",
       "translations": {
-        "pt-BR": "Light"
+        "pt-BR": "Luz",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Luz",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você toca um objeto. Até a magia terminar, ele emite Luz plena em um raio de 20 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca um objeto. Até a magia terminar, ele emite Luz plena em um raio de 20 pés.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27861,7 +27915,14 @@
       "name": "Mage Hand",
       "summary": "A spectral, floating hand appears at a point you choose within range.",
       "translations": {
-        "pt-BR": "Mage Hand"
+        "pt-BR": "Mãos Mágicas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Mãos Mágicas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28135,7 +28196,10 @@
       "name": "Mending",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mending"
+        "pt-BR": "Consertar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você repara uma única quebra ou rasgo em um objeto tocado, desde que não ultrapasse 1 pé em nenhuma dimensão. A magia pode reparar fisicamente um item mágico, mas não restaurar sua magia.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28148,7 +28212,10 @@
       "name": "Message",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Message"
+        "pt-BR": "Mensagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aponta para uma criatura e sussurra uma mensagem que só ela ouve; ela pode responder em um sussurro que só você ouve. Silêncio mágico, certas barreiras sólidas ou uma fina folha de chumbo bloqueiam a magia.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28247,7 +28314,10 @@
       "name": "Minor Illusion",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Minor Illusion"
+        "pt-BR": "Ilusão Menor",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria um som ou a imagem de um objeto dentro do alcance. A ilusão dura até 1 minuto e termina se você conjurar esta magia novamente.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28587,7 +28657,10 @@
       "name": "Poison Spray",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Poison Spray"
+        "pt-BR": "Rajada Venenosa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você lança uma névoa tóxica contra uma criatura dentro do alcance. Faça um ataque mágico à distância; se acertar, o alvo sofre 1d12 de dano venenoso.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28736,7 +28809,14 @@
       "name": "Prestidigitation",
       "summary": "This spell is a minor magical trick that novice spellcasters use for practice.",
       "translations": {
-        "pt-BR": "Prestidigitation"
+        "pt-BR": "Prestidigitação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Prestidigitação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você cria um efeito mágico menor à sua escolha, como um efeito sensorial inofensivo, acender ou apagar uma chama, limpar ou sujar um objeto, alterar a temperatura ou o sabor de um material, fazer uma marca ou criar um pequeno objeto ilusório.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria um efeito mágico menor à sua escolha, como um efeito sensorial inofensivo, acender ou apagar uma chama, limpar ou sujar um objeto, alterar a temperatura ou o sabor de um material, fazer uma marca ou criar um pequeno objeto ilusório.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28815,7 +28895,10 @@
       "name": "Produce Flame",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Produce Flame"
+        "pt-BR": "Chama Produzida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma chama surge em sua mão e ilumina ao redor. Você também pode arremessá-la contra um alvo com um ataque mágico à distância.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28970,7 +29053,10 @@
       "name": "Ray of Frost",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ray of Frost"
+        "pt-BR": "Raio de Gelo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um feixe gélido atinge uma criatura. Faça um ataque mágico à distância; se acertar, o alvo sofre 1d8 de dano de frio e seu deslocamento diminui em 10 pés até o início do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29085,7 +29171,10 @@
       "name": "Resistance",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Resistance"
+        "pt-BR": "Resistência",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você toca uma criatura disposta. Antes da magia terminar, ela pode rolar 1d4 e somar o resultado a uma salvaguarda que fizer.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29181,7 +29270,14 @@
       "name": "Sacred Flame",
       "summary": "The target must succeed on a Dexterity saving throw or take 1d8 Radiant damage.",
       "translations": {
-        "pt-BR": "Sacred Flame"
+        "pt-BR": "Chama Sagrada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Chama Sagrada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29470,7 +29566,10 @@
       "name": "Shillelagh",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shillelagh"
+        "pt-BR": "Bordão Místico",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você imbui um bordão ou clava que está segurando com poder natural, permitindo usá-lo como arma mágica com sua habilidade de conjuração.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29500,7 +29599,10 @@
       "name": "Shocking Grasp",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shocking Grasp"
+        "pt-BR": "Toque Chocante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você atinge uma criatura com um toque elétrico. Se acertar, ela sofre 1d8 de dano elétrico e não pode realizar Reações até o início do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29616,7 +29718,14 @@
       "name": "Sorcerous Burst",
       "summary": "You cast sorcerous energy at one creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, or Thunder.",
       "translations": {
-        "pt-BR": "Sorcerous Burst"
+        "pt-BR": "Rajada da Bruxa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Rajada da Bruxa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara energia mágica contra uma criatura ou objeto. Se acertar com um ataque mágico à distância, causa 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno ou trovão.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara energia mágica contra uma criatura ou objeto. Se acertar com um ataque mágico à distância, causa 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno ou trovão.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29649,7 +29758,10 @@
       "name": "Spare the Dying",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Spare the Dying"
+        "pt-BR": "Poupar os Mortos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você estabiliza uma criatura viva com 0 pontos de vida dentro do alcance. A magia não afeta mortos-vivos nem constructos.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29817,7 +29929,14 @@
       "name": "Starry Wisp",
       "summary": "You launch a mote of light at one creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d8 Radiant damage, and until the end of your next turn, it emits Dim Light in a 10-foot radius and can't benefit from the Invisible condition.",
       "translations": {
-        "pt-BR": "Starry Wisp"
+        "pt-BR": "Fagulha Estelar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Fagulha Estelar",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você lança uma fagulha luminosa contra uma criatura ou objeto. Se acertar, causa 1d8 de dano radiante; o alvo emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você lança uma fagulha luminosa contra uma criatura ou objeto. Se acertar, causa 1d8 de dano radiante; o alvo emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível até o fim do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30078,7 +30197,14 @@
       "name": "Thaumaturgy",
       "summary": "You manifest a minor wonder, a sign of supernatural power.",
       "translations": {
-        "pt-BR": "Thaumaturgy"
+        "pt-BR": "Taumaturgia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Taumaturgia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você manifesta uma maravilha menor, um sinal de poder sobrenatural.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você manifesta uma maravilha menor, um sinal de poder sobrenatural.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30264,7 +30390,10 @@
       "name": "True Strike",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "True Strike"
+        "pt-BR": "Ataque Verdadeiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Guiado por um lampejo de intuição mágica, você faz um ataque com a arma usada para conjurar a magia, usando sua habilidade de conjuração nas jogadas de ataque e dano. O dano pode ser radiante ou do tipo normal da arma.",
+        "pt-BR.summary.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -30349,7 +30478,14 @@
       "name": "Vicious Mockery",
       "summary": "Target must succeed on Wisdom save or take 1d6 Psychic damage and have Disadvantage on next attack.",
       "translations": {
-        "pt-BR": "Vicious Mockery"
+        "pt-BR": "Zombaria Viciosa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Zombaria Viciosa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofrer 1d6 de dano psíquico e ter Desvantagem no próximo ataque.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofrer 1d6 de dano psíquico e ter Desvantagem no próximo ataque.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",

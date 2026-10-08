@@ -105,6 +105,59 @@ func TestSRDItemTranslationBatchIsCompleteAndReviewed(t *testing.T) {
 	}
 }
 
+func TestSRDCantripTranslationBatchIsCompleteAndReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNames := map[string]bool{
+		"Acid Splash": true, "Acid SplASh": true, "Chill Touch": true,
+		"Dancing Lights": true, "Druidcraft": true, "Eldritch Blast": true,
+		"Elementalism": true, "Fire Bolt": true, "Guidance": true, "Light": true,
+		"Mage Hand": true, "Mending": true, "Message": true, "Minor Illusion": true,
+		"Poison Spray": true, "Prestidigitation": true, "Produce Flame": true,
+		"Ray of Frost": true, "Resistance": true, "Sacred Flame": true,
+		"Shillelagh": true, "Shocking Grasp": true, "Sorcerous Burst": true,
+		"Spare the Dying": true, "Starry Wisp": true, "Thaumaturgy": true,
+		"True Strike": true, "Vicious Mockery": true,
+	}
+	cantrips := 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		level, isCantrip := rules["level"].(float64)
+		if !isCantrip || level != 0 {
+			continue
+		}
+		cantrips++
+		if !wantNames[entry.Name] {
+			t.Errorf("unexpected level 0 spell source name %q", entry.Name)
+		}
+		delete(wantNames, entry.Name)
+		translations := decodeTranslations(entry.Translations)
+		if translations["pt-BR"] == "" || translations["pt-BR.source"] != "reviewed" {
+			t.Errorf("%s name translation is missing or not reviewed: %v", entry.Name, translations)
+		}
+		if translations["pt-BR.summary"] == "" || translations["pt-BR.summary.source"] != "reviewed" {
+			t.Errorf("%s summary translation is missing or not reviewed: %v", entry.Name, translations)
+		}
+		if _, ok := rules["name"]; ok && (translations["pt-BR.rules.name"] == "" || translations["pt-BR.rules.name.source"] != "reviewed") {
+			t.Errorf("%s rules.name translation is missing or not reviewed", entry.Name)
+		}
+		if _, ok := rules["description"]; ok && (translations["pt-BR.rules.description"] == "" || translations["pt-BR.rules.description.source"] != "reviewed") {
+			t.Errorf("%s rules.description translation is missing or not reviewed", entry.Name)
+		}
+	}
+	if cantrips != 28 || len(wantNames) != 0 {
+		t.Fatalf("level 0 spell index mismatch: count=%d want=28, missing=%v", cantrips, wantNames)
+	}
+}
+
 func TestApplyReviewedTranslationProvenance(t *testing.T) {
 	entry := srdEntry{
 		EntryType:    "item",
