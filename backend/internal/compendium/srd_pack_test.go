@@ -2,6 +2,7 @@ package compendium
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -155,6 +156,62 @@ func TestSRDCantripTranslationBatchIsCompleteAndReviewed(t *testing.T) {
 	}
 	if cantrips != 28 || len(wantNames) != 0 {
 		t.Fatalf("level 0 spell index mismatch: count=%d want=28, missing=%v", cantrips, wantNames)
+	}
+}
+
+func TestSRDCantripFullDescriptionsPreserveSpellEffects(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]string{
+		"Acid Splash":      {"esfera de 5 pés de raio", "1d6", "níveis 5 (2d6), 11 (3d6) e 17 (4d6)"},
+		"Eldritch Blast":   {"criatura ou objeto", "nível 5", "nível 11", "nível 17", "rolagem de ataque separada"},
+		"Elementalism":     {"Brisa", "Terra", "Fogo", "Água", "Moldar Elemento", "1 minuto"},
+		"Fire Bolt":        {"criatura ou objeto", "objeto inflamável", "não estiver sendo vestido nem carregado", "níveis 5 (2d10), 11 (3d10) e 17 (4d10)"},
+		"Guidance":         {"criatura disposta", "perícia", "1d4", "Até a magia terminar"},
+		"Light":            {"Grande ou menor", "não esteja sendo usado nem carregado por outra criatura", "Luz plena", "Luz fraca", "opaco", "conjurá-la novamente"},
+		"Mage Hand":        {"30 pés", "abrir uma porta ou recipiente destrancado", "frasco", "não pode atacar", "itens mágicos", "10 libras"},
+		"Prestidigitation": {"até três de seus efeitos", "1 pé cúbico", "1 hora", "fim do seu próximo turno", "valor monetário"},
+		"Sacred Flame":     {"criatura que você possa ver", "Meia Cobertura", "Três Quartos de Cobertura", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
+		"Sorcerous Burst":  {"ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante", "resultado de um d8 desta magia for 8", "pode rolar outro d8", "modificador da habilidade de conjuração", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
+		"Starry Wisp":      {"criatura ou objeto", "Luz fraca", "condição Invisível", "níveis 5 (2d8), 11 (3d8) e 17 (4d8)"},
+		"Thaumaturgy":      {"até três de seus efeitos", "até três vezes mais alta", "Intimidação", "porta ou janela destrancada", "som instantâneo", "tremores inofensivos"},
+		"Vicious Mockery":  {"insultos", "possa ver ou ouvir", "salvaguarda de Sabedoria", "Desvantagem", "antes do fim do seu próximo turno", "níveis 5 (2d6), 11 (3d6) e 17 (4d6)"},
+	}
+	found := make(map[string]bool, len(want))
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if rules["level"] != float64(0) {
+			continue
+		}
+		needles, tracked := want[entry.Name]
+		if !tracked {
+			continue
+		}
+		translations := decodeTranslations(entry.Translations)
+		if entry.Name == "Sorcerous Burst" && (translations["pt-BR"] != "Rajada Arcana" || translations["pt-BR.rules.name"] != "Rajada Arcana") {
+			t.Errorf("Sorcerous Burst must use the owner-approved name Rajada Arcana: %v", translations)
+		}
+		description := translations["pt-BR.rules.description"]
+		for _, phrase := range needles {
+			if !strings.Contains(description, phrase) {
+				t.Errorf("%s full description is missing %q: %s", entry.Name, phrase, description)
+			}
+		}
+		if translations["pt-BR.rules.description.source"] != "reviewed" {
+			t.Errorf("%s full description is not marked reviewed", entry.Name)
+		}
+		found[entry.Name] = true
+	}
+	if len(found) != len(want) {
+		t.Errorf("full-description spell coverage = %d, want %d", len(found), len(want))
 	}
 }
 

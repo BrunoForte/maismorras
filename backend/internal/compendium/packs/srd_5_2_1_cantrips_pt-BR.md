@@ -24,16 +24,16 @@ Este lote localiza as 28 entradas `spell` de nível 0 presentes em `srd_5_2_1.js
 
 As enumerações estruturadas `rules.school`, `rules.classes`, `rules.damage.type`, `rules.savingThrow`, os valores de nível, componentes, duração e alcance permanecem intactos. Fórmulas, quantidades e mecânicas nos textos-fonte também foram mantidas; os resumos novos dos registros que só tinham placeholder são sinopses e não substituem regras completas.
 
-## Decisões de nomes aprovadas
+## Decisões de nomes e validação editorial
 
-- Shillelagh → **Bordão Místico**
-- Sorcerous Burst → **Rajada da Bruxa**
-- Starry Wisp → **Fagulha Estelar**
-- Spare the Dying → **Poupar os Mortos**
-- True Strike → **Ataque Verdadeiro**
-- Vicious Mockery → **Zombaria Viciosa**
+- Sorcerous Burst → **Rajada Arcana** (nome aprovado explicitamente pelo proprietário).
+- Shillelagh → **Bordão Místico**, Starry Wisp → **Fagulha Estelar**, Spare the Dying → **Poupar os Mortos**, True Strike → **Ataque Verdadeiro** e Vicious Mockery → **Zombaria Viciosa** são escolhas editoriais deste lote; ficam pendentes de validação do proprietário se houver dúvida terminológica.
 
 Os demais nomes usam formas PT-BR descritivas já difundidas, como Respingos Ácidos, Toque Arrepiante, Luzes Dançantes e Mãos Mágicas. O registro-fonte `Acid SplASh` contém capitalização irregular e é uma duplicata do nome Acid Splash; a grafia de origem foi preservada e só o campo de exibição foi localizado.
+
+## Revisão das descrições completas
+
+As 13 entradas que já tinham `rules.description` receberam texto integral em `pt-BR.rules.description`, conferido com as descrições oficiais das Basic Rules 2024 e o SRD 5.2.1. A revisão completou áreas e salvaguardas, opções de efeito, alvos, exceções, limites, duração e aprimoramentos por nível quando aplicáveis. Em particular, Sorcerous Burst inclui os sete tipos de dano, a rolagem adicional em resultado 8, seu limite pelo modificador da habilidade de conjuração e o escalonamento nos níveis 5, 11 e 17. Os 15 registros que não tinham descrição de regra continuam sem esse campo; suas traduções de sumário são sinopses editoriais, não regras completas.
 
 ## Proveniência
 

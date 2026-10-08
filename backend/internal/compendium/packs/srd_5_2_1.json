@@ -24135,7 +24135,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.rules.description": "Você cria uma bolha ácida em um ponto dentro do alcance, onde ela explode em uma esfera de 5 pés de raio. Cada criatura nessa esfera deve ser bem-sucedida em uma salvaguarda de Destreza ou sofre 1d6 de dano ácido. O dano aumenta em 1d6 quando você alcança os níveis 5 (2d6), 11 (3d6) e 17 (4d6).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -26067,7 +26067,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você dispara um feixe de energia crepitante contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d10 de dano de força.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você dispara um feixe de energia crepitante contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d10 de dano de força.",
+        "pt-BR.rules.description": "Você dispara um feixe de energia crepitante. Faça um ataque mágico à distância contra uma criatura ou objeto dentro do alcance. Se acertar, o alvo sofre 1d10 de dano de força. O truque cria dois feixes no nível 5, três no nível 11 e quatro no nível 17. Você pode direcionar os feixes ao mesmo alvo ou a alvos diferentes. Faça uma rolagem de ataque separada para cada feixe.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -26107,7 +26107,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você controla os elementos para criar um entre vários efeitos menores.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você controla os elementos para criar um entre vários efeitos menores.",
+        "pt-BR.rules.description": "Você exerce controle sobre os elementos, criando um dos efeitos a seguir dentro do alcance. Brisa: você cria uma brisa forte o bastante para ondular tecidos, levantar poeira, farfalhar folhas e fechar portas e venezianas abertas, tudo em um Cubo de 5 pés. Portas e venezianas mantidas abertas por alguém ou algo não são afetadas. Terra: você cria uma fina camada de poeira ou areia que cobre superfícies em uma área quadrada de 5 pés, ou faz uma única palavra aparecer, escrita à mão por você, em um trecho de terra ou areia. Fogo: você cria uma fina nuvem de brasas inofensivas e fumaça colorida e perfumada em um Cubo de 5 pés. Você escolhe a cor e o aroma, e as brasas podem acender velas, tochas ou lampiões nessa área. O aroma da fumaça permanece por 1 minuto. Água: você cria um borrifo de névoa fria que umedece levemente criaturas e objetos em um Cubo de 5 pés. Como alternativa, cria 1 xícara de água limpa em um recipiente aberto ou sobre uma superfície; a água evapora em 1 minuto. Moldar Elemento: você faz terra, areia, fogo, fumaça, névoa ou água que caiba em um Cubo de 1 pé assumir uma forma rudimentar, como a de uma criatura, por 1 hora.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -26461,7 +26461,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você dispara uma fagulha de fogo. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você dispara uma fagulha de fogo. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo.",
+        "pt-BR.rules.description": "Você dispara uma fagulha de fogo contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo. Um objeto inflamável atingido começa a queimar se não estiver sendo vestido nem carregado. O dano aumenta em 1d10 quando você alcança os níveis 5 (2d10), 11 (3d10) e 17 (4d10).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27018,7 +27018,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você toca uma criatura disposta. Ela adiciona 1d4 a um teste de atributo à sua escolha.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você toca uma criatura disposta. Ela adiciona 1d4 a um teste de atributo à sua escolha.",
+        "pt-BR.rules.description": "Você toca uma criatura disposta e escolhe uma perícia. Até a magia terminar, a criatura adiciona 1d4 a qualquer teste de atributo que use a perícia escolhida.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27759,7 +27759,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você toca um objeto. Até a magia terminar, ele emite Luz plena em um raio de 20 pés.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você toca um objeto. Até a magia terminar, ele emite Luz plena em um raio de 20 pés.",
+        "pt-BR.rules.description": "Você toca um objeto Grande ou menor que não esteja sendo usado nem carregado por outra criatura. Até a magia terminar, o objeto emite Luz plena em um raio de 20 pés e Luz fraca por mais 20 pés. A luz pode ter a cor que você quiser. Cobrir o objeto com algo opaco bloqueia a luz. A magia termina se você conjurá-la novamente.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27921,7 +27921,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance.",
+        "pt-BR.rules.description": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance. A mão permanece pela duração da magia. Ela desaparece se ficar a mais de 30 pés de você ou se você conjurar esta magia novamente. Ao conjurá-la, você pode usar a mão para manipular um objeto, abrir uma porta ou recipiente destrancado, guardar ou retirar um item de um recipiente aberto ou despejar o conteúdo de um frasco. Em turnos posteriores, você pode usar uma ação Mágica para controlar a mão dessa forma novamente e, como parte dessa ação, movê-la até 30 pés. A mão não pode atacar, ativar itens mágicos nem carregar mais de 10 libras.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -28815,7 +28815,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você cria um efeito mágico menor à sua escolha, como um efeito sensorial inofensivo, acender ou apagar uma chama, limpar ou sujar um objeto, alterar a temperatura ou o sabor de um material, fazer uma marca ou criar um pequeno objeto ilusório.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você cria um efeito mágico menor à sua escolha, como um efeito sensorial inofensivo, acender ou apagar uma chama, limpar ou sujar um objeto, alterar a temperatura ou o sabor de um material, fazer uma marca ou criar um pequeno objeto ilusório.",
+        "pt-BR.rules.description": "Você cria um efeito mágico dentro do alcance. Escolha um dos efeitos a seguir. Se conjurar esta magia várias vezes, você pode manter até três de seus efeitos não instantâneos ativos ao mesmo tempo. Efeito Sensorial: você cria um efeito sensorial instantâneo e inofensivo, como uma chuva de faíscas, uma lufada de vento, notas musicais tênues ou um odor estranho. Brincadeira com Fogo: você acende ou apaga instantaneamente uma vela, tocha ou pequena fogueira. Limpar ou Sujar: você limpa ou suja instantaneamente um objeto de até 1 pé cúbico. Sensação Menor: você esfria, aquece ou dá sabor a até 1 pé cúbico de material não vivo por 1 hora. Marca Mágica: você faz uma cor, pequena marca ou símbolo aparecer em um objeto ou superfície por 1 hora. Criação Menor: você cria uma bugiganga não mágica ou uma imagem ilusória que caiba na sua mão. Ela dura até o fim do seu próximo turno. Uma bugiganga não pode causar dano nem ter valor monetário.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29276,7 +29276,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
+        "pt-BR.rules.description": "Uma radiância semelhante a uma chama desce sobre uma criatura que você possa ver dentro do alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofre 1d8 de dano radiante. O alvo não recebe benefício de Meia Cobertura nem de Três Quartos de Cobertura para essa salvaguarda. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29718,13 +29718,13 @@
       "name": "Sorcerous Burst",
       "summary": "You cast sorcerous energy at one creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, or Thunder.",
       "translations": {
-        "pt-BR": "Rajada da Bruxa",
+        "pt-BR": "Rajada Arcana",
         "pt-BR.source": "reviewed",
-        "pt-BR.rules.name": "Rajada da Bruxa",
+        "pt-BR.rules.name": "Rajada Arcana",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.summary": "Você dispara energia mágica contra uma criatura ou objeto. Se acertar com um ataque mágico à distância, causa 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno ou trovão.",
+        "pt-BR.summary": "Você dispara energia arcana contra uma criatura ou objeto. Se acertar, causa 1d8 de dano à sua escolha entre ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você dispara energia mágica contra uma criatura ou objeto. Se acertar com um ataque mágico à distância, causa 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno ou trovão.",
+        "pt-BR.rules.description": "Você dispara energia arcana contra uma criatura ou objeto dentro do alcance. Faça uma rolagem de ataque à distância contra o alvo. Se acertar, o alvo sofre 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante. Se o resultado de um d8 desta magia for 8, você pode rolar outro d8 e somá-lo ao dano. Ao conjurar esta magia, o número máximo de d8 adicionais que você pode somar ao dano é igual ao seu modificador da habilidade de conjuração. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29935,7 +29935,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você lança uma fagulha luminosa contra uma criatura ou objeto. Se acertar, causa 1d8 de dano radiante; o alvo emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível até o fim do seu próximo turno.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você lança uma fagulha luminosa contra uma criatura ou objeto. Se acertar, causa 1d8 de dano radiante; o alvo emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível até o fim do seu próximo turno.",
+        "pt-BR.rules.description": "Você lança um ponto de luz contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d8 de dano radiante e, até o fim do seu próximo turno, emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -30203,7 +30203,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "Você manifesta uma maravilha menor, um sinal de poder sobrenatural.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "Você manifesta uma maravilha menor, um sinal de poder sobrenatural.",
+        "pt-BR.rules.description": "Você manifesta uma maravilha menor dentro do alcance. Crie um dos efeitos a seguir dentro do alcance. Se conjurar esta magia várias vezes, você pode manter até três de seus efeitos com duração de 1 minuto ativos ao mesmo tempo. Olhos Alterados: você altera a aparência dos seus olhos por 1 minuto. Voz Retumbante: sua voz fica até três vezes mais alta que o normal por 1 minuto. Durante esse período, você tem Vantagem em testes de Carisma (Intimidação). Brincadeira com Fogo: você faz chamas tremeluzirem, brilharem mais, diminuírem ou mudarem de cor por 1 minuto. Mão Invisível: você faz instantaneamente uma porta ou janela destrancada escancarar-se ou fechar-se com força. Som Fantasma: você cria um som instantâneo que se origina de um ponto à sua escolha dentro do alcance, como um estrondo de trovão, o grasnado de um corvo ou sussurros ameaçadores. Tremores: você causa tremores inofensivos no chão por 1 minuto.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -30484,7 +30484,7 @@
         "pt-BR.rules.name.source": "reviewed",
         "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofrer 1d6 de dano psíquico e ter Desvantagem no próximo ataque.",
         "pt-BR.summary.source": "reviewed",
-        "pt-BR.rules.description": "O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofrer 1d6 de dano psíquico e ter Desvantagem no próximo ataque.",
+        "pt-BR.rules.description": "Você lança uma sequência de insultos carregados de encantamentos sutis contra uma criatura que possa ver ou ouvir dentro do alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofre 1d6 de dano psíquico e tem Desvantagem na próxima rolagem de ataque que fizer antes do fim do seu próximo turno. O dano aumenta em 1d6 quando você alcança os níveis 5 (2d6), 11 (3d6) e 17 (4d6).",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
