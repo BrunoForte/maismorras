@@ -12,6 +12,7 @@
 		newSpellLevel,
 		expandedSpell,
 		isGM,
+		canCastSpells,
 		castingSpell,
 		spellbook,
 		presentation,
@@ -21,6 +22,7 @@
 		newSpellLevel: number;
 		expandedSpell: number | null;
 		isGM: boolean;
+		canCastSpells: boolean;
 		castingSpell: number | null;
 		spellbook: SpellbookProjection;
 		presentation: SpellPresentation;
@@ -77,6 +79,9 @@
 			</header>
 			{#if spellbook.spellsForCircle(circle).length}
 				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], origins = [] } (key ?? index)}
+					{@const atWillGrant = featGrants.find(
+						(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
+					)}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
@@ -241,7 +246,7 @@
 												? ` · ${grant.ability}`
 												: ''}
 										</small>
-										{#if grant.freeCastsRemaining > 0}<button
+										{#if canCastSpells && grant.freeCastsRemaining > 0}<button
 												class="free-cast"
 												type="button"
 												disabled={castingSpell === index}
@@ -264,26 +269,29 @@
 											onclick={() => actions.rollEffect(spell)}
 											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
-									{#if spell.level === 0 && index < 0 && featGrants.find((grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0)}
-										{@const atWillGrant = featGrants.find(
-											(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
-										)}
-										<small class="feat-casting-source">
-											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant?.featName}
-										</small>
+									{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
+										{#if index < 0 && atWillGrant}<small class="feat-casting-source">
+												{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant.featName}
+											</small>{/if}
 										<button
 											class="cast-spell"
 											type="button"
 											disabled={castingSpell === index}
 											onclick={() =>
-												actions.cast(spell, index, {
-													grantId: atWillGrant?.id ?? '',
-													entryId: spell.entryId ?? '',
-													freeCast: false
-												})}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
+												actions.cast(
+													spell,
+													index,
+													index < 0 && atWillGrant
+														? {
+																grantId: atWillGrant.id,
+																entryId: spell.entryId ?? '',
+																freeCast: false
+															}
+														: undefined
+												)}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
 										>
 									{/if}
-									{#if spell.level > 0}
+									{#if canCastSpells && spell.level > 0}
 										{@const spellGrant = featGrants.find(
 											(grant) => grant.spellEntryId === spell.entryId && grant.canUseExistingSlots
 										)}

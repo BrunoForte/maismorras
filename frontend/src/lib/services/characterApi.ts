@@ -255,6 +255,8 @@ export type SpellCast = {
 	baseLevel: number;
 	slotLevel: number;
 	effect: string;
+	chatText?: string;
+	presentationUpdated?: boolean;
 	expression?: string;
 	dados?: number[];
 	modificador?: number;
@@ -267,11 +269,17 @@ export const castMySpell = (
 	campaignId: string,
 	spellIndex: number,
 	slotLevel: number,
-	featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+	featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+	presentationSceneId?: string
 ) =>
 	request<SpellCast>(session, `/api/v1/campaigns/${campaignId}/character/cast-spell`, {
 		method: 'POST',
-		body: JSON.stringify({ spellIndex: featGrant ? -1 : spellIndex, slotLevel, ...featGrant })
+		body: JSON.stringify({
+			spellIndex: featGrant ? -1 : spellIndex,
+			slotLevel,
+			...featGrant,
+			...(presentationSceneId ? { presentationSceneId } : {})
+		})
 	}).then((result) => ({
 		...result,
 		sheet: normalizeCharacter({ id: '', campaignId, ownerId: '', sheet: result.sheet }).sheet
