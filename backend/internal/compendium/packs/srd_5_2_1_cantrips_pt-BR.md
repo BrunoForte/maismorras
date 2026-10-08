@@ -37,4 +37,4 @@ As 13 entradas que já tinham `rules.description` receberam texto integral em `p
 
 ## Proveniência
 
-`pt-BR`, `pt-BR.summary` e, quando esses campos já existem em `rules`, `pt-BR.rules.name` e `pt-BR.rules.description` recebem `.source = "reviewed"` porque foram revisados neste lote. Nenhum outro campo localizado foi criado. Os nomes e resumos-fonte, IDs e regras estruturadas permanecem em inglês e sem alteração.
+`pt-BR`, `pt-BR.summary` e, quando esses campos já existem em `rules`, `pt-BR.rules.name` e `pt-BR.rules.description` recebem `.source = "reviewed"` porque foram revisados neste lote. Nenhum outro campo localizado foi criado. Os nomes-fonte, IDs e regras estruturadas permanecem intactos. Na revisão posterior, o `summary` e o `rules.description` em inglês de Sorcerous Burst foram alinhados ao texto oficial do SRD 5.2.1, pois a cópia anterior do pacote estava desatualizada; nenhum valor mecânico estruturado foi alterado.

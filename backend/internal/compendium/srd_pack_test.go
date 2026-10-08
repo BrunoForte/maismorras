@@ -196,6 +196,19 @@ func TestSRDCantripFullDescriptionsPreserveSpellEffects(t *testing.T) {
 			continue
 		}
 		translations := decodeTranslations(entry.Translations)
+		if entry.Name == "Sorcerous Burst" {
+			const expectedSource = "You cast sorcerous energy at one creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, Psychic, or Thunder. If you roll an 8 on a d8 for this spell, you can roll another d8, and add it to the damage. When you cast this spell, the maximum number of these d8s you can add to the spell’s damage equals your spellcasting ability modifier. Cantrip Upgrade. The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8)."
+			if entry.Summary != expectedSource {
+				t.Errorf("Sorcerous Burst source summary does not match SRD 5.2.1: %q", entry.Summary)
+			}
+			var rules map[string]any
+			if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+				t.Fatalf("decode Sorcerous Burst source rules: %v", err)
+			}
+			if rules["description"] != expectedSource {
+				t.Errorf("Sorcerous Burst source description does not match SRD 5.2.1: %v", rules["description"])
+			}
+		}
 		if entry.Name == "Sorcerous Burst" && (translations["pt-BR"] != "Rajada Arcana" || translations["pt-BR.rules.name"] != "Rajada Arcana") {
 			t.Errorf("Sorcerous Burst must use the owner-approved name Rajada Arcana: %v", translations)
 		}
