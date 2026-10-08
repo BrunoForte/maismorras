@@ -121,7 +121,8 @@ export type CharacterCombatActionDependencies = {
 		campaignId: string,
 		spellIndex: number,
 		slotLevel: number,
-		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+		featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+		presentationSceneId?: string
 	) => Promise<SpellCast>;
 	savePresentation: (
 		session: Session,
@@ -876,31 +877,56 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const context = deps.getContext();
 		state.castingSpell = index;
 		try {
-			const result = await deps.castMySpell(
-				context.session,
-				context.campaignId,
-				index,
-				spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index),
-				featGrant
-			);
+			const slotLevel = spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index);
+			const result =
+				spell.level === 0 && context.sceneId
+					? await deps.castMySpell(
+							context.session,
+							context.campaignId,
+							index,
+							slotLevel,
+							featGrant,
+							context.sceneId
+						)
+					: await deps.castMySpell(
+							context.session,
+							context.campaignId,
+							index,
+							slotLevel,
+							featGrant
+						);
 			if (!isCurrent(operation)) return;
 			deps.setSheet(result.sheet);
 			const sheet = deps.getSheet();
-			addChat({
-				id: String(result.eventId),
-				autor: sheet.name || 'Personagem',
-				texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
-				tipo: 'rolagem',
-				canal: 'combat',
-				detalhesRolagem: {
-					expressao: result.expression || 'magia',
-					dados: result.dados ?? [],
-					modificador: result.modificador ?? 0,
-					total: result.total ?? 0,
-					label: result.spellName
-				}
-			});
-			if (result.dados?.length)
+			if (result.baseLevel === 0) {
+				addChat({
+					id: String(result.eventId),
+					autor: sheet.name || 'Personagem',
+					texto:
+						result.chatText ||
+						`✨ ${sheet.name || 'Personagem'} conjurou ${result.spellName} · truque · nenhum espaço consumido`,
+					tipo: 'texto',
+					canal: 'chat'
+				});
+			} else {
+				addChat({
+					id: String(result.eventId),
+					autor: sheet.name || 'Personagem',
+					texto:
+						result.chatText ||
+						`✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
+					tipo: 'rolagem',
+					canal: 'combat',
+					detalhesRolagem: {
+						expressao: result.expression || 'magia',
+						dados: result.dados ?? [],
+						modificador: result.modificador ?? 0,
+						total: result.total ?? 0,
+						label: result.spellName
+					}
+				});
+			}
+			if (result.baseLevel > 0 && result.dados?.length)
 				deps.setDiceOverlay({
 					expression: `${sheet.name || 'Personagem'} · ${result.spellName} · ${result.expression ?? 'rolagem'}`,
 					notation: result.expression,
@@ -908,7 +934,12 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					dice: result.dados,
 					nonce: String(result.eventId)
 				});
-			deps.setMessage('Magia lançada e espaço consumido.');
+			if (result.presentationUpdated) deps.publishPresentationUpdated(undefined);
+			deps.setMessage(
+				result.baseLevel === 0
+					? 'Truque conjurado sem consumir espaço de magia.'
+					: 'Magia lançada e espaço consumido.'
+			);
 		} catch (error) {
 			if (isCurrent(operation))
 				deps.setMessage(

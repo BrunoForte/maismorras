@@ -270,6 +270,40 @@ describe('character combat actions', () => {
 		expect(test.appendChat.mock.calls[0][0].texto).toContain('espaço usado 2');
 	});
 
+	it('registra truque sem rolar efeitos, sem gastar espaços e invalida a apresentação da mesa', async () => {
+		const test = setup();
+		const spell = { name: 'Luz', level: 0, notes: '', description: 'Uma luz aparece.' };
+		vi.mocked(test.castMySpell).mockResolvedValueOnce({
+			eventId: 18,
+			sheet: test.getSheet(),
+			spellName: 'Luz',
+			baseLevel: 0,
+			slotLevel: 0,
+			effect: '',
+			chatText: '✨ Heroína conjurou Luz · truque · nenhum espaço consumido',
+			presentationUpdated: true
+		});
+
+		await test.controller.castSpell(spell, 0);
+
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			0,
+			0,
+			undefined,
+			'scene-1'
+		);
+		expect(test.getSheet().spellSlots[0].current).toBe(1);
+		expect(test.appendChat.mock.calls[0][0]).toMatchObject({
+			tipo: 'texto',
+			texto: expect.stringContaining('nenhum espaço consumido')
+		});
+		expect(test.setDiceOverlay).not.toHaveBeenCalled();
+		expect(test.publishChatUpdated).toHaveBeenCalledOnce();
+		expect(test.publishPresentationUpdated).toHaveBeenCalledWith(undefined);
+	});
+
 	it('conjura magia de talento com uso gratuito sem enviar valores de uso como autoridade', async () => {
 		const test = setup();
 		test.getSheet().spellSlots[0].current = 0;
@@ -363,6 +397,7 @@ describe('character combat actions', () => {
 		);
 		expect(test.appendChat).toHaveBeenCalledOnce();
 		expect(test.publishPresentationUpdated).not.toHaveBeenCalled();
+		expect(test.castMySpell).not.toHaveBeenCalled();
 	});
 
 	it('Exibir do narrador publica no chat e também atualiza apresentação e overlay', async () => {

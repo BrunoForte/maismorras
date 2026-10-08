@@ -1301,6 +1301,7 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
 							addableCircles: addableSpellCircles,
