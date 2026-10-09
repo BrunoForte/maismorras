@@ -43,21 +43,7 @@ Steed_), **Vínculo Guardião** (_Warding Bond_) e **Conjurar Seres Feéricos**
 (_Conjure Fey_). _Conjure Woodland Beings_ recebeu **Conjurar Seres da
 Floresta** para evitar colisão de nomes.
 
-Formas editoriais que ainda podem ser decididas pelo proprietário:
-
-| Fonte                    | Forma no pacote      | Dúvida editorial                                                    |
-| ------------------------ | -------------------- | ------------------------------------------------------------------- |
-| _Bestow Curse_           | Rogar Maldição       | Incluir artigo: “Rogar uma Maldição”?                               |
-| _Geas_                   | Geas                 | Manter o termo próprio ou usar título explicativo?                  |
-| _Harm_                   | Ferir                | O infinitivo pode soar como verbo de ação, não como nome de magia.  |
-| _Hallow_                 | Consagrar            | Preferir o infinitivo ou um substantivo, como “Consagração”?        |
-| _Flame Strike_           | Golpe Flamejante     | Pode ser confundido com golpes de arma.                             |
-| _Otherworldly Slam_      | Impacto Sobrenatural | “Impacto” ou “ataque” para nome da ação da montaria?                |
-| _Fell Glare_             | Olhar Temível        | A nuance de _fell_ pode indicar um olhar ameaçador ou sobrenatural. |
-| _Slam_ (Animated Object) | Pancada              | “Pancada” ou “Impacto” para manter consistência com outras ações?   |
-
-As traduções de nomes ainda não escolhidas pelo proprietário são propostas
-editoriais do lote. Nenhum nome-fonte foi substituído.
+O proprietário definiu estas formas para o lote: **Rogar Maldição** (_Bestow Curse_), **Geas**, **Ferir** (_Harm_), **Consagrar** (_Hallow_), **Golpe Flamejante** (_Flame Strike_), **Impacto Sobrenatural** (_Otherworldly Slam_), **Olhar Cruel** (_Fell Glare_) e **Impacto** (_Slam_, ação de _Animated Object_). Essas escolhas resolvem as dúvidas editoriais registradas durante a preparação; nenhum nome-fonte foi substituído.
 
 ## Revisões da extração oficial
 

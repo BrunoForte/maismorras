@@ -75,6 +75,56 @@ func TestSRDWeaponTranslationsAreReviewedAndDistinct(t *testing.T) {
 	}
 }
 
+func TestSRDOwnerSpellTitleChoicesAreApplied(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantTitles := map[string]string{
+		"Bestow Curse": "Rogar Maldição",
+		"Geas":         "Geas",
+		"Harm":         "Ferir",
+		"Hallow":       "Consagrar",
+		"Flame Strike": "Golpe Flamejante",
+	}
+	wantDescriptionTerms := map[string][]string{
+		"Animate Objects": {"Ação — Impacto."},
+		"Find Steed":      {"Impacto Sobrenatural", "Olhar Cruel"},
+	}
+
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		translations := decodeTranslations(entry.Translations)
+		if want := wantTitles[entry.Name]; want != "" {
+			if got := translations["pt-BR"]; got != want {
+				t.Errorf("%s title = %q, want %q", entry.Name, got, want)
+			}
+			if got := translations["pt-BR.source"]; got != "reviewed" {
+				t.Errorf("%s title source = %q, want reviewed", entry.Name, got)
+			}
+			delete(wantTitles, entry.Name)
+		}
+		if terms := wantDescriptionTerms[entry.Name]; len(terms) > 0 {
+			description := translations["pt-BR.rules.description"]
+			for _, term := range terms {
+				if !strings.Contains(description, term) {
+					t.Errorf("%s localized description missing %q", entry.Name, term)
+				}
+			}
+			delete(wantDescriptionTerms, entry.Name)
+		}
+	}
+	if len(wantTitles) > 0 {
+		t.Errorf("missing spell title translations: %v", wantTitles)
+	}
+	if len(wantDescriptionTerms) > 0 {
+		t.Errorf("missing spell descriptions: %v", wantDescriptionTerms)
+	}
+}
+
 func TestSRDItemTranslationBatchIsCompleteAndReviewed(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {
