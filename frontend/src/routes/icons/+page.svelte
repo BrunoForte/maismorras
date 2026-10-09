@@ -29,6 +29,16 @@
 			]
 		},
 		{
+			title: 'Ferramentas do mapa',
+			icons: [
+				['ruler', 'Régua de área'],
+				['layers', 'Camadas do mapa'],
+				['persistent-area', 'Área persistente'],
+				['map-signal', 'Sinalização no mapa'],
+				['fog', 'Névoa de guerra']
+			]
+		},
+		{
 			title: 'Mesa e campanha',
 			icons: [
 				['campaign', 'Campanha'],
