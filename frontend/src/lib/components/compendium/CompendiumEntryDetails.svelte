@@ -35,6 +35,8 @@
 		translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale);
 	const displayBenefit = (index: number, value: unknown) =>
 		translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale);
+	const displayConditionEffect = (index: number, value: unknown) =>
+		translatedCompendiumText(entry, `rules.effects.${index}`, value, locale);
 </script>
 
 <aside class="entry-detail">
@@ -279,6 +281,18 @@
 					</li>{/each}
 			</ul>
 		{/if}
+	{:else if entry.entryType === 'other' && detail.catalog === 'conditions'}
+		{@const conditionDescription = displayRule('description', detail.description ?? entry.summary)}
+		{#if conditionDescription}<p class="condition-description">{conditionDescription}</p>{/if}
+		{#if Array.isArray(detail.effects) && detail.effects.length}
+			<h4>{$appLocale === 'en' ? 'Effects' : 'Efeitos'}</h4>
+			<ul class="condition-effects">
+				{#each detail.effects as effect, index (index)}<li>
+						{displayConditionEffect(index, effect)}
+					</li>{/each}
+			</ul>
+		{/if}
+		{#if detail.notes}<p class="condition-notes">{displayRule('notes', detail.notes)}</p>{/if}
 	{:else if entry.entryType === 'species'}
 		<div class="rules">
 			<b

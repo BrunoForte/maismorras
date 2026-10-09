@@ -54,6 +54,68 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	}
 }
 
+func TestSRDConditionTranslationsAreCompleteAndReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"Blinded": "Cego", "Charmed": "Enfeitiçado", "Deafened": "Surdo",
+		"Exhaustion": "Exaustão", "Frightened": "Amedrontado", "Grappled": "Agarrado",
+		"Incapacitated": "Incapacitado", "Invisible": "Invisível", "Paralyzed": "Paralisado",
+		"Petrified": "Petrificado", "Poisoned": "Envenenado", "Prone": "Caído",
+		"Restrained": "Impedido", "Stunned": "Atordoado", "Unconscious": "Inconsciente",
+	}
+	found := map[string]bool{}
+	for _, entry := range pack.Entries {
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if entry.EntryType != "other" || rules["catalog"] != "conditions" {
+			continue
+		}
+		name, ok := want[entry.Name]
+		if !ok {
+			t.Errorf("unexpected condition entry: %q", entry.Name)
+			continue
+		}
+		found[entry.Name] = true
+		translations := decodeTranslations(entry.Translations)
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.name", "pt-BR.rules.description"} {
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s is absent or not reviewed", entry.Name, key)
+			}
+		}
+		if translations["pt-BR"] != name || translations["pt-BR.rules.name"] != name {
+			t.Errorf("%s localized name/rules.name = %q/%q, want %q", entry.Name, translations["pt-BR"], translations["pt-BR.rules.name"], name)
+		}
+		if effects, ok := rules["effects"].([]any); ok {
+			for index := range effects {
+				key := fmt.Sprintf("pt-BR.rules.effects.%d", index)
+				if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+					t.Errorf("%s %s is absent or not reviewed", entry.Name, key)
+				}
+			}
+		}
+		if _, exists := rules["notes"]; exists {
+			if translations["pt-BR.rules.notes"] == "" || translations["pt-BR.rules.notes.source"] != "reviewed" {
+				t.Errorf("%s notes translation is absent or not reviewed", entry.Name)
+			}
+		}
+	}
+	if len(found) != len(want) {
+		missing := make([]string, 0)
+		for name := range want {
+			if !found[name] {
+				missing = append(missing, name)
+			}
+		}
+		sort.Strings(missing)
+		t.Fatalf("condition entries = %d, want %d; missing %v", len(found), len(want), missing)
+	}
+}
+
 func TestSRDWeaponTranslationsAreReviewedAndDistinct(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {
