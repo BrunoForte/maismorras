@@ -165,11 +165,36 @@
 		</div>
 		{@const spellMechanics = presentSpellMechanics(detail, locale)}
 		{#if spellMechanics.reviewed}
-			<div class="spell-mechanics" aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}>
+			<div
+				class="spell-mechanics"
+				aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}
+			>
 				<h4>{$appLocale === 'en' ? 'Damage and scaling' : 'Dano e escalonamento'}</h4>
-				<p><strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong> {spellMechanics.damage.length ? spellMechanics.damage.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
-				<p><strong>{$appLocale === 'en' ? 'By character level:' : 'Por nível do personagem:'}</strong> {spellMechanics.characterLevel.length ? spellMechanics.characterLevel.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
-				<p><strong>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong> {spellMechanics.spellSlot.length ? spellMechanics.spellSlot.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
+				<p>
+					<strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong>
+					{spellMechanics.damage.length
+						? spellMechanics.damage.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
+				<p>
+					<strong>{$appLocale === 'en' ? 'By character level:' : 'Por nível do personagem:'}</strong
+					>
+					{spellMechanics.characterLevel.length
+						? spellMechanics.characterLevel.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
+				<p>
+					<strong>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong>
+					{spellMechanics.spellSlot.length
+						? spellMechanics.spellSlot.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
 			</div>
 		{/if}
 	{:else if entry.entryType === 'item'}

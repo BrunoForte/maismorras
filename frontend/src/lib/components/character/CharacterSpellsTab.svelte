@@ -210,13 +210,43 @@
 											</h5>
 											<p>{presentation.higherLevels(spell)}</p>{/if}
 									</section>
-										{@const mechanics = presentation.mechanics(spell)}
-										{#if mechanics.reviewed}
-											<section class="spell-mechanics" aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}>
+									{@const mechanics = presentation.mechanics(spell)}
+									{#if mechanics.reviewed}
+										<section
+											class="spell-mechanics"
+											aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}
+										>
 											<h5>{$appLocale === 'en' ? 'Damage and scaling' : 'Dano e escalonamento'}</h5>
-											<p><strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong> {mechanics.damage.length ? mechanics.damage.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
-											<p><strong>{$appLocale === 'en' ? 'By character level:' : 'Por nível do personagem:'}</strong> {mechanics.characterLevel.length ? mechanics.characterLevel.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
-											<p><strong>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong> {mechanics.spellSlot.length ? mechanics.spellSlot.join(' · ') : $appLocale === 'en' ? 'None' : 'Não se aplica'}</p>
+											<p>
+												<strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong>
+												{mechanics.damage.length
+													? mechanics.damage.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
+											<p>
+												<strong
+													>{$appLocale === 'en'
+														? 'By character level:'
+														: 'Por nível do personagem:'}</strong
+												>
+												{mechanics.characterLevel.length
+													? mechanics.characterLevel.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
+											<p>
+												<strong
+													>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong
+												>
+												{mechanics.spellSlot.length
+													? mechanics.spellSlot.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
 										</section>
 									{/if}
 								{:else}

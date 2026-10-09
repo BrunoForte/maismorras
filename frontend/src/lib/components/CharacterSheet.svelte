@@ -45,7 +45,7 @@
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
-import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
+	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
 		addSpellToSheet,
