@@ -9,6 +9,33 @@ export type SpeciesProfile = {
 };
 
 export type SpeciesSelection = { species: string; speciesLineage?: string };
+export type CatalogSpeciesText = {
+	name: string;
+	description: string;
+};
+
+/** Reads user-facing species trait text from the shared SRD catalog translations. */
+export function catalogSpeciesTraits(
+	entry: {
+		rules?: unknown;
+		translations?: Record<string, string>;
+	},
+	locale: AppLocale
+): CatalogSpeciesText[] {
+	const rules = (entry.rules ?? {}) as { traits?: unknown };
+	if (!Array.isArray(rules.traits)) return [];
+	return rules.traits.map((raw, index) => {
+		const trait = (raw ?? {}) as { name?: unknown; description?: unknown };
+		const sourceName = String(trait.name ?? '');
+		const sourceDescription = String(trait.description ?? '');
+		const name = entry.translations?.[`pt-BR.rules.traits.${index}.name`]?.trim();
+		const description = entry.translations?.[`pt-BR.rules.traits.${index}.description`]?.trim();
+		return {
+			name: locale === 'pt-BR' && name ? name : sourceName,
+			description: locale === 'pt-BR' && description ? description : sourceDescription
+		};
+	});
+}
 
 // Species mechanics are shared by the profile UI and sheet progression so
 // speed, traits, and hit-point adjustments always come from one catalog.

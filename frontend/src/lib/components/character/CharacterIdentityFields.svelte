@@ -2,6 +2,7 @@
 	import type { CharacterSheet } from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { AppLocale } from '$lib/utils/speciesRules';
+	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
 
 	let {
 		locale,
@@ -109,12 +110,12 @@
 	>
 	<datalist id="species-options"
 		>{#each optionsFor('species') as entry (entry.id)}<option value={optionLabel(entry)}
-				>{entry.summary}</option
+				>{translatedCompendiumText(entry, 'summary', entry.summary, locale)}</option
 			>{/each}</datalist
 	>
 	<datalist id="background-options"
 		>{#each optionsFor('background') as entry (entry.id)}<option value={optionLabel(entry)}
-				>{entry.summary}</option
+				>{translatedCompendiumText(entry, 'summary', entry.summary, locale)}</option
 			>{/each}</datalist
 	>
 </section>
