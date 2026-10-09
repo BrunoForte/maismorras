@@ -341,6 +341,12 @@ jobs:
               & npx @playwrightArgs
               $phaseDurations['Playwright suite'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
               if ($LASTEXITCODE -ne 0) { throw "Authenticated E2E suite '$suiteScope' failed." }
+              if ($env:E2E_SUITE_MODE -eq 'routine') {
+                $phaseWatch.Restart()
+                & npx playwright test e2e/campaign-sheet-tab.spec.ts --project=chromium --workers=1 --global-timeout=300000 --output=test-results/campaign-sheet-tab
+                $phaseDurations['Campaign Sheets tab E2E'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
+                if ($LASTEXITCODE -ne 0) { throw 'Authenticated campaign Sheets tab E2E failed.' }
+              }
             } finally { Pop-Location }
           } finally {
             $phaseWatch.Restart()
