@@ -16,6 +16,7 @@ export type AbilityScores = {
 export type Attack = {
 	name: string;
 	attackBonus: number;
+	damageBonus?: number;
 	damage: string;
 	notes: string;
 	attackType?: 'melee' | 'ranged';
@@ -128,7 +129,10 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 function normalizeCharacter(character: Character): Character {
 	character.sheet = {
 		...character.sheet,
-		attacks: character.sheet.attacks ?? [],
+		attacks: (character.sheet.attacks ?? []).map((attack) => ({
+			...attack,
+			damageBonus: attack.damageBonus ?? 0
+		})),
 		spells: character.sheet.spells ?? [],
 		spellcastingOverride: character.sheet.spellcastingOverride ?? false,
 		inventory: character.sheet.inventory ?? [],

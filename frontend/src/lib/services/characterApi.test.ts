@@ -50,6 +50,40 @@ describe('createEmptySheet', () => {
 		expect(character.sheet.inventory).toEqual([]);
 	});
 
+	it('normalizes legacy attack damage bonus to zero and preserves independent values', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 'actor-1',
+					campaignId: 'campaign-1',
+					ownerId: 'player-1',
+					sheet: {
+						...createEmptySheet(),
+						attacks: [
+							{ name: 'Ataque antigo', attackBonus: 4, damage: '1d6+2', notes: '' },
+							{
+								name: 'Ataque novo',
+								attackBonus: 1,
+								damageBonus: 3,
+								damage: '1d8',
+								notes: ''
+							}
+						]
+					}
+				}),
+				{ status: 200 }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const character = await getMyCharacter(session, 'campaign-1');
+
+		expect(character.sheet.attacks).toMatchObject([
+			{ attackBonus: 4, damageBonus: 0 },
+			{ attackBonus: 1, damageBonus: 3 }
+		]);
+	});
+
 	it('persists D&D money separately from inventory when saving a sheet', async () => {
 		const sheet = {
 			...createEmptySheet(),
