@@ -139,4 +139,44 @@ describe('SRD spell mechanics presentation', () => {
 		expect(compendiumView).toContain('presentSpellMechanics(detail, locale)');
 		expect(characterView).toContain('presentation.mechanics(spell)');
 	});
+
+	it('renders audited levels 7–9 translations and mechanics through the existing spell views', () => {
+		const packPath = resolve(process.cwd(), '../backend/internal/compendium/packs/srd_5_2_1.json');
+		const pack = JSON.parse(readFileSync(packPath, 'utf8')) as { entries: CompendiumEntry[] };
+		const spells = pack.entries.filter(
+			(entry) => entry.entryType === 'spell' && Number(entry.rules.level) >= 7
+		);
+		expect(spells).toHaveLength(52);
+		expect(spells.filter((entry) => Number(entry.rules.level) === 7)).toHaveLength(20);
+		expect(spells.filter((entry) => Number(entry.rules.level) === 8)).toHaveLength(16);
+		expect(spells.filter((entry) => Number(entry.rules.level) === 9)).toHaveLength(16);
+		for (const entry of spells) {
+			expect(entry.translations['pt-BR'], `${entry.name} name`).toBeTruthy();
+			expect(entry.translations['pt-BR.source']).toBe('reviewed');
+			expect(entry.translations['pt-BR.summary'], `${entry.name} summary`).toBeTruthy();
+			expect(entry.translations['pt-BR.summary.source']).toBe('reviewed');
+			expect(
+				entry.translations['pt-BR.rules.description'],
+				`${entry.name} description`
+			).toBeTruthy();
+			expect(entry.translations['pt-BR.rules.description.source']).toBe('reviewed');
+			const view = presentSpellMechanics(entry.rules, 'pt-BR');
+			expect(view.reviewed, `${entry.name} audit status`).toBe(true);
+			if (entry.rules.damage === null) expect(view.damage).toEqual([]);
+			else expect(view.damage.length).toBeGreaterThan(0);
+			if (entry.rules.scaling === null) expect(view.spellSlot).toEqual([]);
+			else expect(view.spellSlot.length).toBeGreaterThan(0);
+		}
+		const compendium = readFileSync(
+			resolve(process.cwd(), 'src/lib/components/compendium/CompendiumEntryDetails.svelte'),
+			'utf8'
+		);
+		const characterSheet = readFileSync(
+			resolve(process.cwd(), 'src/lib/components/character/CharacterSpellsTab.svelte'),
+			'utf8'
+		);
+		expect(compendium).toContain("'rules.description'");
+		expect(compendium).toContain('class="spell-description"');
+		expect(characterSheet).toContain('presentation.description(spell)');
+	});
 });

@@ -157,12 +157,19 @@
 			</button>
 		{/if}
 	{:else if entry.entryType === 'spell'}
+		{@const spellDescription = translatedCompendiumText(
+			entry,
+			'rules.description',
+			detail.description,
+			locale
+		)}
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b>
 			<b>{Array.isArray(detail.classes) ? (detail.classes as string[]).join(', ') : ''}</b>
 			{#if detail.school}<b>{displayRule('school', detail.school)}</b>{/if}
 			{#if detail.range}<b>{distanceText(displayRule('range', detail.range), $appLocale)}</b>{/if}
 		</div>
+		{#if spellDescription}<p class="spell-description">{spellDescription}</p>{/if}
 		{@const spellMechanics = presentSpellMechanics(detail, locale)}
 		{#if spellMechanics.reviewed}
 			<div

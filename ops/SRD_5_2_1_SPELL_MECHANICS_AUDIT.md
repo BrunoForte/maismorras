@@ -10,13 +10,14 @@ This audit covers the 338 `entryType: spell` records in `backend/internal/compen
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------: |
 | Spell records                                             |                                                                                      338 |
 | Level 0–6 records audited                                 | 286 (28 level 0, 57 level 1, 56 level 2, 42 level 3, 34 level 4, 38 level 5, 31 level 6) |
-| Audited records with structured `rules.damage.components` |                                                                                       94 |
+| Level 7–9 records audited                                 |                                                  52 (20 level 7, 16 level 8, 16 level 9) |
+| Audited records with structured `rules.damage.components` |                                                                                      113 |
 | Audited records with character-level progression          |                                                                                       16 |
-| Audited records with spell-slot effects                   |                                                                                      105 |
-| Audited records where damage does not apply               |                                                                                      192 |
-| Audited records where scaling does not apply              |                                                                                      165 |
+| Audited records with spell-slot effects                   |                                                                                      109 |
+| Audited records where damage does not apply               |                                                                                      225 |
+| Audited records where scaling does not apply              |                                                                                      213 |
 | Level 0–6 records still unaudited                         |                                                                                        0 |
-| Level 7–9 records still unaudited                         |                                                                                       52 |
+| Level 7–9 records still unaudited                         |                                                                                        0 |
 
 Level distribution: 28 cantrips, 57 first-level, 56 second-level, 42 third-level, 34 fourth-level, 38 fifth-level, 31 sixth-level, 20 seventh-level, 16 eighth-level, and 16 ninth-level spells.
 
@@ -24,7 +25,7 @@ The 286 audited records explicitly distinguish non-applicable values from pendin
 
 ## Interface paths
 
-- `CompendiumEntry.rules` is currently `Record<string, unknown>` in `frontend/src/lib/services/compendiumApi.ts`. `CompendiumEntryDetails.svelte` shows a spell's level, classes, school, and range, but no structured damage or scaling data.
+- `CompendiumEntry.rules` is currently `Record<string, unknown>` in `frontend/src/lib/services/compendiumApi.ts`. `CompendiumEntryDetails.svelte` shows the localized spell description, level, classes, school, range, and structured damage/scaling data.
 - `projectCharacterSpells` in `frontend/src/lib/utils/character/characterSpellRules.ts` still supports older records by copying legacy `rules.damage.dice` and `rules.higherLevels` / `rules.atHigherLevels` into character sheet fields. The level 0/1 mechanics display reads the catalog's audited `rules` directly and does not copy mechanics into saved character data.
 - `CharacterSpellsTab.svelte` exposes `diceFormula` and a manually configurable `scalingDicePerLevel` for custom spells. That numeric value models a simple per-slot damage increase only; it cannot represent cantrip progression by total character level or non-damage higher-slot effects.
 - Spell descriptions are read through `translations["pt-BR.rules.description"]` (and the corresponding English `rules.description`). Mechanical presentation should use typed `rules` data, not prose parsing or translated values.
@@ -33,17 +34,18 @@ The 286 audited records explicitly distinguish non-applicable values from pendin
 
 For the reviewed records, `rules.damage.components` stores formula, canonical damage-type code, optional damage trigger, alternatives, instance count, and nested/conditional components. `rules.scaling.characterLevel` stores explicit character-level milestones and typed changes. `rules.scaling.spellSlot` stores its base slot level and typed effects with explicit thresholds and increments. An explicit `rules.damage: null` or `rules.scaling: null`, together with the audit status, means the feature was checked and does not apply. Older records without an audit marker remain pending and backward compatible. The TypeScript presentation types and `presentSpellMechanics` formatter localize only labels and map canonical codes for display; they do not calculate rolls or modify casting.
 
-The same presentation appears in `CompendiumEntryDetails.svelte` and the character spell tab. It shows base damage/type, character-level changes, and slot-level effects in separate rows, including the explicit “Não se aplica” state. Level 7–9 fields remain unaudited.
+The same presentation appears in `CompendiumEntryDetails.svelte` and the character spell tab. It shows base damage/type, character-level changes, and slot-level effects in separate rows, including the explicit “Não se aplica” state. Both descriptions use `translations["pt-BR.rules.description"]`.
 
 ## Completion criteria
 
-Tests assert coverage for the 286 reviewed entries, typed damage and scaling applicability, cantrip milestones, spell-slot effects and explicit not-applicable values. Frontend tests exercise PT-BR presentation and confirm both views use it. The remaining 52 spells (levels 7–9) still require source-by-source review before the whole SRD audit is complete.
+Tests assert coverage for all 338 reviewed entries, typed damage and scaling applicability, cantrip milestones, spell-slot effects and explicit not-applicable values. Frontend tests exercise PT-BR presentation and confirm both views use it.
 
 ## Editorial notes for this batch
 
 - The source is the official [SRD 5.2.1 PDF](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf), spell descriptions section, with checks against the official searchable [2024 spell descriptions](https://www.dndbeyond.com/sources/dnd/br-2024/spell-descriptions). Cantrip entries use the character's total level, with milestones at 5, 11, and 17 where specified. Spell-slot effects retain their base slot and threshold separately.
 - Fifteen cantrip records whose Portuguese summary had been used as a synopsis now have full `pt-BR.rules.description` translations: the case-variant Acid Splash record, Chill Touch, Dancing Lights, Druidcraft, Mending, Message, Minor Illusion, Poison Spray, Produce Flame, Ray of Frost, Resistance, Shillelagh, Shocking Grasp, Spare the Dying, and True Strike. The other 13 cantrip descriptions and all 57 first-level descriptions were retained.
 - The package's `Acid SplASh` casing variant is preserved as source data; it receives the same reviewed mechanics and translation as Acid Splash. No IDs, English descriptions, summaries, or other level/category source fields were edited.
+- Levels 7–9 were checked against the official SRD 5.2.1 spell entries. The batch adds PT-BR names, summaries, and descriptions in existing translation keys, plus audited damage/scaling data; all non-applicable states are explicit. See `SRD_5_2_1_LEVEL7_9_SPELL_TRANSLATIONS.md` for the batch list and editorial notes.
 - Circles 2–6 were checked against the spell entries in the official SRD 5.2.1 PDF. Their PT-BR descriptions include the higher-slot paragraphs; 76 higher-slot effects keep their English source and Portuguese presentation text together in a typed `rule-text` effect. The UI displays those effects without calculating rolls or changing casting.
 - Circles 2–6 have 63 records with typed damage components and 138 explicitly marked `damage: null`; 76 records have spell-slot scaling and 125 explicitly use `scaling: null`. No character-level progression applies to levels 2–6.
 - Imperial distances in PT-BR prose were converted to metric units. Structured English range values remain canonical and use the existing `distanceText` presentation path. IDs, source names, and source descriptions were left unchanged.
@@ -55,4 +57,4 @@ Tests assert coverage for the 286 reviewed entries, typed damage and scaling app
 
 ## Audit status
 
-Levels 0–6 are implemented and source-checked. The remaining 52 spells at levels 7–9 are pending; missing mechanics markers for those levels do not mean “not applicable.” No database was accessed, and no migration or synchronization was run.
+Levels 0–9 are implemented and source-checked. No database was accessed, and no migration or synchronization was run.

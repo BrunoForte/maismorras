@@ -1,6 +1,6 @@
 {
   "version": "5.2.1",
-  "revision": "cartridge-import-4",
+  "revision": "cartridge-import-5",
   "attribution": "D&D System Reference Document 5.2.1 © Wizards of the Coast LLC, CC-BY-4.0. Structured cartridge: NatOneApp/sdr-5.2.1.",
   "entries": [
     {
@@ -24502,14 +24502,25 @@
       "name": "Animal Shapes",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Animal Shapes"
+        "pt-BR": "Formas Animais",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Transforma criaturas voluntárias em Bestas de ND 4 ou menor.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha criaturas voluntárias visíveis no alcance. Cada uma assume uma forma de Besta Grande ou menor, à sua escolha, com ND 4 ou menor; formas diferentes podem ser escolhidas. Em turnos posteriores, use uma ação Mágica para transformá-las novamente. O alvo usa as estatísticas da Besta, mas mantém tipo, PV, Dados de Vida, tendência, comunicação e Inteligência, Sabedoria e Carisma. Suas ações ficam limitadas pela anatomia e ele não pode conjurar; equipamento se funde e não pode ser usado. O alvo recebe PV Temporários iguais aos PV da primeira forma, perdidos ao fim. Dura 24 horas ou até o alvo encerrar com ação bônus.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
         "school": "Transmutation",
         "classes": [
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -24644,7 +24655,12 @@
       "name": "Antimagic Field",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Antimagic Field"
+        "pt-BR": "Campo Antimagia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Suprime magia e propriedades mágicas em uma emanação ao seu redor.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma aura antimagia emana de você em 3 metros. Nela ninguém conjura magias, realiza ações Mágicas ou cria outros efeitos mágicos; estes tampouco podem visar ou afetar o que está dentro. Propriedades de itens mágicos não funcionam. Áreas mágicas não se estendem para a aura, nem se pode teleportar para dentro/fora ou viajar planarmente; portais fecham temporariamente. Magias em andamento, exceto as de Artefato ou divindade, ficam suprimidas, mas o tempo ainda conta para sua duração. Dissipar Magia não afeta a aura e campos distintos não se anulam.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -24652,7 +24668,13 @@
         "classes": [
           "Cleric",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -24766,7 +24788,12 @@
       "name": "Arcane Sword",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Arcane Sword"
+        "pt-BR": "Espada Arcana",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma espada espectral ataca repetidamente com energia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Crie uma espada espectral que paira no alcance pela duração. Quando surge, faça um ataque mágico corpo a corpo contra um alvo a até 1,5 m dela; ao acertar, causa 4d12 de dano de energia mais seu modificador da habilidade de conjuração. Em turnos posteriores, use uma ação bônus para mover a espada até 9 m a um ponto visível e repetir o ataque contra o mesmo alvo ou outro.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -24774,7 +24801,21 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "4d12",
+              "type": "force",
+              "trigger": "attack-hit"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -24808,7 +24849,12 @@
       "name": "Astral Projection",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Astral Projection"
+        "pt-BR": "Projeção Astral",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você e até oito criaturas voluntárias projetam formas astrais no Plano Astral.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você e até oito criaturas voluntárias no alcance projetam formas astrais no Plano Astral; a magia termina imediatamente se você já estiver lá. Os corpos ficam inconscientes em animação suspensa, sem precisar de alimento ou ar e sem envelhecer. A forma replica quase todos os atributos e pertences e é ligada ao corpo por cordão prateado invisível após 30 cm; se cortado por um efeito que diga fazê-lo, corpo e forma morrem. Ao deixar o plano, corpo e pertences seguem pelo cordão e o alvo retorna ao corpo no novo plano. Dano/efeitos na forma não afetam o corpo, e vice-versa. A 0 PV, a magia termina para aquele alvo. Uma ação Mágica a encerra para todos; alvo vivo retorna ao corpo. Cada alvo consome jacinta de 1.000+ PO e barra de prata de 100+ PO.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -24817,7 +24863,13 @@
           "Cleric",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25060,7 +25112,12 @@
       "name": "Befuddlement",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Befuddlement"
+        "pt-BR": "Confusão Mental",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma explosão psíquica causa dano e pode impedir a conjuração de uma criatura.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura visível no alcance faz salvaguarda de Inteligência. Em falha, sofre 10d12 psíquico e não pode conjurar magias nem realizar ação Mágica. Ao fim de cada período de 30 dias, repete a salvaguarda e encerra o efeito em sucesso; Restauração Maior, Cura ou Desejo também o encerram. Em sucesso inicial sofre apenas metade do dano.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -25070,7 +25127,20 @@
           "Druid",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "10d12",
+              "type": "psychic"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -25886,14 +25956,25 @@
       "name": "Clone",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Clone"
+        "pt-BR": "Clone",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria uma duplicata inerte que pode receber a alma da criatura após sua morte.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura ou ao menos 16,4 cm³ de sua carne. Uma duplicata inerte cresce dentro do recipiente da conjuração e termina após 120 dias; escolha se terá a mesma idade ou será mais jovem. Permanece inerte indefinidamente enquanto o recipiente não for perturbado. Se o original morrer após o clone estar pronto, a alma transfere-se se estiver livre e quiser retornar. O clone é fisicamente idêntico e tem mesma personalidade, memórias e capacidades, mas não os equipamentos do original. Os restos originais tornam-se inertes e não podem ser revividos, pois a alma está no clone. O diamante de 1.000+ PO é consumido e o recipiente selável custa 2.000+ PO.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
         "school": "Necromancy",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26281,14 +26362,47 @@
       "name": "Conjure Celestial",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Conjure Celestial"
+        "pt-BR": "Conjurar Celestial",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um espírito celestial manifesta uma coluna de luz que cura ou fere criaturas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Conjure espírito dos Planos Superiores como coluna luminosa em Cilindro de raio 3 m e altura 12 m, centrado no alcance. Para cada criatura visível no cilindro, escolha Luz Curativa (restaura 4d12 PV mais modificador de conjuração) ou Luz Calcinante (salvaguarda de Destreza; 6d12 radiante em falha, metade em sucesso). O cilindro fica em Luz Plena. Ao se mover, você pode deslocá-lo até 9 m; quando entra no espaço de criatura visível ou uma criatura visível entra/termina o turno ali, pode banhá-la com uma luz. Cada criatura só é afetada uma vez por turno. Concentração, até 10 minutos. A cura e o dano aumentam em 1d12 para cada nível de espaço acima do 7º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
         "school": "Conjuration",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "6d12",
+              "type": "radiant",
+              "trigger": "searing-light"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 7,
+            "effects": [
+              {
+                "kind": "rule-text",
+                "fromSlotLevel": 8,
+                "text": {
+                  "en": "The healing and damage increase by 1d12 for each spell slot level above 7.",
+                  "ptBR": "A cura e o dano aumentam em 1d12 para cada nível de espaço acima do 7º."
+                }
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -26670,7 +26784,12 @@
       "name": "Control Weather",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Control Weather"
+        "pt-BR": "Controlar o Clima",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você altera gradualmente as condições climáticas em uma área ampla.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você controla o clima em raio de 8 km por até 8 horas com Concentração; precisa estar ao ar livre e a magia termina se entrar em local fechado. O Mestre determina as condições atuais. Você pode alterar precipitação, temperatura e vento; cada mudança leva 1d4 × 10 minutos para surtir efeito, e então pode mudar novamente. Ao terminar, o clima retorna gradualmente ao normal. Para cada elemento, mova seu estágio atual em uma posição para cima ou para baixo: precipitação (céu limpo, nuvens leves, encoberto/neblina, chuva/granizo/neve, chuva torrencial/granizo intenso/nevasca); temperatura (onda de calor, quente, morno, fresco, frio, congelante); vento (calmo, moderado, forte, vendaval, tempestade). Você também pode mudar a direção do vento.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -26679,7 +26798,13 @@
           "Cleric",
           "Druid",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27070,7 +27195,12 @@
       "name": "Delayed Blast Fireball",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Delayed Blast Fireball"
+        "pt-BR": "Bola de Fogo Retardada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma esfera explosiva acumula dano até detonar espontaneamente ou ser tocada.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Um feixe amarelo condensa-se em esfera luminosa no ponto escolhido. Enquanto mantiver Concentração por até 1 minuto, o dano-base é 12d6 e aumenta 1d6 ao fim de cada turno seu. Quando a magia termina, cada criatura em esfera de raio 6 m faz salvaguarda de Destreza, sofrendo o dano acumulado em falha ou metade em sucesso. Quem tocar a esfera faz a salvaguarda: em falha ela explode; em sucesso pode arremessá-la até 12 m. Se entrar no espaço de criatura ou colidir com objeto sólido, explode. Objetos inflamáveis desvestidos e não carregados começam a queimar. Espaço acima do 7º aumenta o dano-base em 1d6 por nível. O dano-base aumenta em 1d6 para cada nível de espaço acima do 7º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -27078,7 +27208,42 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d6",
+              "type": "fire",
+              "trigger": "explosion",
+              "additional": [
+                {
+                  "formula": "1d6",
+                  "type": "fire",
+                  "trigger": "each-turn-before-detonation"
+                }
+              ]
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 7,
+            "effects": [
+              {
+                "kind": "rule-text",
+                "fromSlotLevel": 8,
+                "text": {
+                  "en": "The base damage increases by 1d6 for each spell slot level above 7.",
+                  "ptBR": "O dano-base aumenta em 1d6 para cada nível de espaço acima do 7º."
+                }
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27086,7 +27251,12 @@
       "name": "Demiplane",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Demiplane"
+        "pt-BR": "Semiplano",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma porta abre para uma sala extradimensional vazia ou para um semiplano criado antes.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Crie por 1 hora uma porta sombria em superfície plana visível. Ela leva a um semiplano vazio, uma sala cúbica de até 3 m por lado feita de madeira ou pedra. Se conhecer a natureza e o conteúdo de um semiplano anterior criado por esta magia, pode conectá-la a ele; caso contrário, é vazia. A porta desaparece ao fim; objetos e criaturas permanecem no semiplano, a menos que criaturas optem por ser deslocadas através da porta ao desaparecer, caindo Caídas nos espaços desocupados mais próximos. Cada conjuração cria um semiplano novo, conecta a um que você criou antes ou, se conhecer natureza e conteúdo, a um criado por outra criatura.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -27095,7 +27265,13 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27654,14 +27830,25 @@
       "name": "Divine Word",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Divine Word"
+        "pt-BR": "Palavra Divina",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma palavra sagrada impõe efeitos conforme os PV e pode banir certos seres.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Cada criatura à sua escolha no alcance faz salvaguarda de Carisma. Em falha, se tiver até 50 PV: com 0–20 morre; 21–30 fica Cega, Surda e Atordoada por 1 hora; 31–40 fica Cega e Surda por 10 minutos; 41–50 fica Surda por 1 minuto. Independentemente dos PV, Celestiais, Elementais, Fadas e Corruptores que falharem são enviados ao plano de origem, se necessário, e não podem voltar ao plano atual por 24 horas, salvo por Desejo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
         "school": "Evocation",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27711,12 +27898,37 @@
       "name": "Dominate Monster",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dominate Monster"
+        "pt-BR": "Dominar Monstro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Enfeitiça uma criatura, permitindo comandá-la por elo telepático.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura visível faz salvaguarda de Sabedoria ou fica Enfeitiçada por até 1 hora com Concentração. Tem Vantagem se você ou aliados lutarem contra ela; sempre que sofrer dano, repete a salvaguarda e encerra o efeito em sucesso. No mesmo plano, há elo telepático. No seu turno, dê comandos sem ação; ela tenta obedecer e, sem novas ordens, age como quiser priorizando a defesa. Pode ordenar uma Reação, mas você gasta sua Reação. Com um espaço de 9º círculo, a Concentração pode durar mais tempo (até 8 horas). Com um espaço de 9º círculo, a Concentração pode durar mais tempo (até 8 horas).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
         "school": "Enchantment",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 8,
+            "effects": [
+              {
+                "kind": "rule-text",
+                "fromSlotLevel": 9,
+                "text": {
+                  "en": "Your Concentration can last longer with a level 9 spell slot (up to 8 hours).",
+                  "ptBR": "Com um espaço de 9º círculo, a Concentração pode durar mais tempo (até 8 horas)."
+                }
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27954,7 +28166,12 @@
       "name": "Earthquake",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Earthquake"
+        "pt-BR": "Terremoto",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um tremor dificulta o terreno, abre fendas e pode derrubar estruturas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha ponto no chão visível. Por até 1 minuto com Concentração, um círculo de raio 30 m é Terreno Difícil. Ao conjurar e ao fim de seus turnos, criaturas no chão fazem salvaguarda de Destreza ou ficam Caídas e perdem Concentração. No fim do turno da conjuração, abrem-se 1d6 fendas escolhidas por você, não sob estruturas, com profundidade 1d10 × 3 m, largura 3 m e extensão de uma borda à outra. Quem estiver nelas salva Destreza ou cai; em sucesso acompanha a borda. Estruturas ligadas ao chão sofrem 50 contundente ao conjurar e ao fim dos seus turnos; a 0 PV, desabam. Criatura a até metade da altura da estrutura salva Destreza: falha sofre 12d6 contundente, fica Caída e soterrada, e precisa de ação e Atletismo CD 20 para escapar; sucesso sofre metade.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -27963,7 +28180,26 @@
           "Cleric",
           "Druid",
           "Sorcerer"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d6",
+              "type": "bludgeoning",
+              "trigger": "structure-collapse-failed-save"
+            },
+            {
+              "formula": "50",
+              "type": "bludgeoning",
+              "trigger": "structure-per-turn"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -28247,12 +28483,45 @@
       "name": "Etherealness",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Etherealness"
+        "pt-BR": "Etéreo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você e criaturas voluntárias entram no Plano Etéreo; espaços superiores permitem alvos adicionais.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você entra na região limítrofe do Plano Etéreo, sobreposta ao plano atual, e permanece nela pela duração, até 8 horas. Pode mover-se em qualquer direção; mover-se para cima ou para baixo custa movimento adicional igual ao deslocamento. Percebe o plano de origem em tons de cinza e não enxerga além de 18 m. No Etéreo, só afeta e é afetado por criaturas, objetos e efeitos daquele plano; criaturas fora dele não percebem nem interagem, salvo capacidade especial. Ao terminar, retorna ao ponto correspondente no plano de origem; se estiver ocupado, é deslocado ao espaço desocupado mais próximo e sofre dano de energia igual a duas vezes a distância deslocada em pés. Termina imediatamente se conjurada no Etéreo ou em plano que não faça fronteira com ele. Você pode escolher até três criaturas voluntárias (incluindo você) para cada nível de espaço acima do 7º. Elas devem estar a até 3 m ao conjurar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
         "school": "Conjuration",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "2 × feet moved",
+              "type": "force",
+              "trigger": "shunted-on-return"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 7,
+            "effects": [
+              {
+                "kind": "rule-text",
+                "fromSlotLevel": 8,
+                "text": {
+                  "en": "You can target up to three willing creatures (including yourself) for each spell slot level above 7. The creatures must be within 10 feet of you when you cast the spell.",
+                  "ptBR": "Você pode escolher até três criaturas voluntárias (incluindo você) para cada nível de espaço acima do 7º. Elas devem estar a até 3 m ao conjurar."
+                }
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -28634,7 +28903,12 @@
       "name": "Finger of Death",
       "summary": "Target makes Constitution save, taking 7d8+30 Necrotic damage on fail, half on success.",
       "translations": {
-        "pt-BR": "Finger of Death"
+        "pt-BR": "Dedo da Morte",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um raio necrótico causa dano e pode erguer como zumbi um humanoide morto.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura no alcance faz salvaguarda de Constituição: sofre 7d8 + 30 necrótico em falha ou metade em sucesso. Um humanoide morto por esta magia ergue-se no início do seu próximo turno como zumbi, permanentemente sob seu controle e obedecendo suas ordens verbais.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28658,10 +28932,21 @@
           "wizard"
         ],
         "damage": {
+          "components": [
+            {
+              "formula": "7d8 + 30",
+              "type": "necrotic"
+            }
+          ],
           "type": "necrotic",
           "dice": "7d8+30"
         },
-        "savingThrow": "con"
+        "savingThrow": "con",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": null
       }
     },
     {
@@ -28791,7 +29076,12 @@
       "name": "Fire Storm",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Fire Storm"
+        "pt-BR": "Tempestade de Fogo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Até dez cubos contíguos irrompem em chamas e ferem criaturas na área.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Organize até dez Cubos de 3 m contíguos em um ponto no alcance. Cada criatura na área faz salvaguarda de Destreza, sofrendo 7d10 fogo em falha ou metade em sucesso. Objetos inflamáveis não vestidos nem carregados começam a queimar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -28800,7 +29090,20 @@
           "Cleric",
           "Druid",
           "Sorcerer"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "7d10",
+              "type": "fire"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -29212,7 +29515,12 @@
       "name": "Forcecage",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Forcecage"
+        "pt-BR": "Jaula de Força",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma prisão invisível de força aprisiona criaturas em forma de jaula ou caixa.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma prisão cúbica imóvel e invisível surge ao redor de uma área: jaula de até 6 m por lado, com barras de 1,3 cm e intervalos iguais, ou caixa sólida de até 3 m por lado que bloqueia matéria e magias atravessando-a. Criaturas inteiramente dentro ficam presas; as parcialmente dentro ou grandes demais são empurradas para fora. Teleporte e viagem planar exigem salvaguarda de Carisma, falha mantendo a criatura presa. Dura até 1 hora com Concentração; Dissipar Magia não a afeta, mas Desintegrar a destrói.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -29221,7 +29529,13 @@
           "Bard",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29229,7 +29543,12 @@
       "name": "Foresight",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Foresight"
+        "pt-BR": "Previsão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura voluntária recebe percepção sobrenatural do futuro próximo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toque criatura voluntária e conceda capacidade limitada de perceber o futuro imediato. Por 8 horas, o alvo tem Vantagem em Testes de d20 e outras criaturas têm Desvantagem em ataques contra ele. A magia termina antes se você a conjurar novamente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -29239,7 +29558,13 @@
           "Druid",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29380,7 +29705,12 @@
       "name": "Gate",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gate"
+        "pt-BR": "Portal",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Abre portal para outro plano e pode chamar criatura específica pelo nome.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Abra portal entre espaço desocupado visível no alcance e local preciso em outro plano. A abertura circular tem diâmetro de 1,5 a 6 m, orientação à escolha, duração de até 1 minuto com Concentração, e deixa visível o destino. Em cada plano, o portal tem frente e verso; só se atravessa pela frente, aparecendo no espaço desocupado mais próximo do outro lado. Divindades e regentes planares podem impedir sua abertura em sua presença ou domínio. Ao conjurar, pode pronunciar o nome verdadeiro de criatura específica (pseudônimo, título e apelido não servem); se ela estiver em outro plano, o portal abre ao lado dela e a transporta para espaço livre próximo no seu lado. Você não a controla.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -29390,7 +29720,13 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29529,7 +29865,12 @@
       "name": "Glibness",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Glibness"
+        "pt-BR": "Lábia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Sua fala torna-se convincente e resiste a magia que detecta mentiras.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Por 1 hora, ao fazer teste de Carisma, pode substituir o d20 por 15. Magias que determinam se você diz a verdade indicam sinceridade,",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -29537,7 +29878,13 @@
         "classes": [
           "Bard",
           "Warlock"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30589,14 +30936,25 @@
       "name": "Holy Aura",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Holy Aura"
+        "pt-BR": "Aura Sagrada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma aura protege criaturas escolhidas e pode cegar atacantes malignos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Luz divina envolve você em Emanação de 9 m por até 1 minuto com Concentração. Você e criaturas escolhidas têm Vantagem em salvaguardas; outras criaturas têm Desvantagem em ataques contra elas. Quando Corruptor ou Morto-vivo acerta uma criatura protegida com ataque corpo a corpo, deve passar em salvaguarda de Constituição ou fica Cego até o fim do próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
         "school": "Abjuration",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30862,7 +31220,12 @@
       "name": "Imprisonment",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Imprisonment"
+        "pt-BR": "Aprisionamento",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Aprisiona criatura em uma forma mágica escolhida após salvaguarda de Sabedoria.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria um vínculo mágico contra uma criatura que possa ver no alcance. Ela faz salvaguarda de Sabedoria; em sucesso, nada acontece e fica imune a esta magia por 24 horas. Em falha, fica aprisionada: não precisa respirar, comer ou beber, não envelhece, não pode ser localizada/percebida por Adivinhação nem teleportar. Escolha uma forma: Enterramento, em globo oco de força sob a terra, impenetrável; Acorrentamento, com condição Impedido e sem poder ser movido; Prisão Protegida, em semiplano à prova de teleporte/viagem planar; Contenção Mínima, reduzida a 2,5 cm dentro de gema indestrutível pela qual luz passa; ou Sono, inconsciente e impossível de despertar. Ao conjurar, defina gatilho observável para encerrar a magia, que o Mestre deve considerar provável em até dez anos. Dissipar Magia só termina a magia se conjurada com espaço de 9º no cárcere ou componente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -30870,7 +31233,13 @@
         "classes": [
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30878,7 +31247,12 @@
       "name": "Incendiary Cloud",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Incendiary Cloud"
+        "pt-BR": "Nuvem Incendiária",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Nuvem de brasas obscurece a área, move-se e queima criaturas repetidamente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esfera de raio 6 m de fumaça e brasas surge no alcance, Pesadamente Obscurecida; dura até 1 minuto com Concentração ou até vento forte dispersá-la. Quando surge, quando entra no espaço de criatura e quando uma criatura entra ou termina o turno nela, faça salvaguarda de Destreza: 10d8 fogo em falha, metade em sucesso. Cada criatura salva no máximo uma vez por turno. No início dos seus turnos, move-se 3 m para longe de você na direção escolhida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -30887,7 +31261,21 @@
           "Druid",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "10d8",
+              "type": "fire",
+              "trigger": "turn-or-entry"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -31753,7 +32141,12 @@
       "name": "Magnificent Mansion",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Magnificent Mansion"
+        "pt-BR": "Mansão Magnífica",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma porta leva a uma residência extradimensional mobiliada e abastecida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria porta cintilante de 1,5 × 3 m no alcance que leva à morada extradimensional, por 24 horas. Você e criaturas designadas podem entrar enquanto aberta; a até 9 m, abre/fecha sem ação e fechada fica imperceptível. A morada tem salão e quartos, atmosfera limpa, planta escolhida de até 50 Cubos contíguos de 3 m, mobiliário e decoração escolhidos e banquete de nove pratos para até 100 pessoas. Mobiliário removido vira fumaça. Cem empregados quase transparentes, invulneráveis, obedecem e fazem tarefas humanas, mas não atacam nem causam dano e não saem. Ao terminar, ocupantes e objetos são expulsos para espaços livres próximos da entrada.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -31761,7 +32154,13 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -31870,14 +32269,25 @@
       "name": "Mass Heal",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mass Heal"
+        "pt-BR": "Cura em Massa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Distribui até 700 PV de cura e remove doenças, cegueira, surdez e veneno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma onda de cura alcança qualquer número de criaturas visíveis no alcance. Restaure até 700 PV no total, divididos como quiser entre elas. Alvos curados também removem as condições Cego, Surdo e Envenenado.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
         "school": "Abjuration",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -31968,14 +32378,25 @@
       "name": "Maze",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Maze"
+        "pt-BR": "Labirinto",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bane uma criatura para labirinto extradimensional do qual ela pode escapar com teste de Inteligência.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura visível no alcance é banida para labirinto demiplanar por até 10 minutos com Concentração, ou até escapar. O alvo pode usar ação Estudar e fazer Investigação/Inteligência CD 20; em sucesso escapa e a magia termina. Ao terminar, reaparece no espaço de origem ou no desocupado mais próximo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
         "school": "Conjuration",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -32066,7 +32487,12 @@
       "name": "Meteor Swarm",
       "summary": "Four 40-foot Spheres deal 40d6 Fire damage (Dexterity save for half) each.",
       "translations": {
-        "pt-BR": "Meteor Swarm"
+        "pt-BR": "Chuva de Meteoros",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quatro meteoros explodem em grandes esferas, causando fogo e impacto contundente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Orbes flamejantes caem em quatro pontos diferentes que você veja no alcance, cada um em esfera de raio 12 m. Cada criatura em qualquer dessas áreas faz salvaguarda de Destreza, sofrendo 20d6 de dano de fogo e 20d6 contundente em falha ou metade de ambos em sucesso. Criatura na área de mais de uma esfera é afetada uma única vez. Objeto não mágico que não esteja vestido ou carregado também sofre o dano; se inflamável, começa a queimar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -32089,10 +32515,25 @@
           "wizard"
         ],
         "damage": {
+          "components": [
+            {
+              "formula": "20d6",
+              "type": "fire"
+            },
+            {
+              "formula": "20d6",
+              "type": "bludgeoning"
+            }
+          ],
           "type": "fire",
-          "dice": "40d6"
+          "dice": "20d6"
         },
-        "savingThrow": "dex"
+        "savingThrow": "dex",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": null
       }
     },
     {
@@ -32100,7 +32541,12 @@
       "name": "Mind Blank",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mind Blank"
+        "pt-BR": "Mente Vazia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Protege uma criatura contra dano psíquico, encantamento e sondagem mental.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toque uma criatura voluntária. Por 24 horas, ela tem Imunidade a dano psíquico e à condição Enfeitiçado. Nada pode detectar suas emoções ou tendência, ler pensamentos ou detectar magicamente sua localização. Nenhuma magia, nem mesmo Desejo, pode obter informações sobre ela, observá-la remotamente ou controlar sua mente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -32108,7 +32554,13 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -32210,7 +32662,12 @@
       "name": "Mirage Arcane",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mirage Arcane"
+        "pt-BR": "Miragem Arcana",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Altera a aparência sensorial de uma área de terreno extensa.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você faz até 1 milha quadrada de terreno parecer, soar, cheirar e até ser tátil como outro terreno. Campos, estradas e corpos d’água podem parecer pântanos, colinas, fendas ou caminhos; estruturas podem ter aparência alterada ou ser adicionadas. Não disfarça, oculta ou acrescenta criaturas. A ilusão inclui elementos visuais, auditivos, táteis e olfativos e pode fazer terreno firme virar Terreno Difícil, ou o contrário, ou impedir movimento. Partes ilusórias removidas da área desaparecem. Visão Verdadeira revela o terreno real, mas os demais elementos permanecem e ainda podem ser tocados. Dura 10 dias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -32219,7 +32676,13 @@
           "Bard",
           "Druid",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -32714,7 +33177,12 @@
       "name": "Plane Shift",
       "summary": "Transport yourself and up to eight willing creatures to another plane of existence.",
       "translations": {
-        "pt-BR": "Plane Shift"
+        "pt-BR": "Transição Planar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Transporta um grupo a outro plano ou envia uma criatura tocada para longe.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você e até oito criaturas voluntárias de mãos dadas são transportados a outro plano. Pode indicar destino geral, como cidade ou palácio, e o Mestre determina chegada nele ou perto. Alternativamente, se souber a sequência de sigilos de círculo de teletransporte em outro plano, pode levar o grupo a esse círculo; se for pequeno, os viajantes surgem nos espaços livres mais próximos. A conjuração exige haste metálica bifurcada de 250+ PO sintonizada a um plano.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -32739,7 +33207,13 @@
           "sorcerer",
           "warlock",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -32884,7 +33358,12 @@
       "name": "Power Word Heal",
       "summary": "A wave of healing energy washes over a creature you touch. The target regains all its Hit Points. If the creature has the Charmed, Frightened, Paralyzed, Poisoned, or Stunned condition, the condition ends.",
       "translations": {
-        "pt-BR": "Power Word Heal"
+        "pt-BR": "Palavra de Poder: Curar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Restaura todos os PV de uma criatura, remove condições e permite reação para se levantar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma onda de energia curativa alcança uma criatura visível no alcance. Ela recupera todos os PV e encerra Enfeitiçado, Amedrontado, Paralisado, Envenenado ou Atordoado. Se estiver Caída, pode usar a Reação para se levantar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -32904,7 +33383,13 @@
         "classes": [
           "bard",
           "cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -32912,7 +33397,12 @@
       "name": "Power Word Kill",
       "summary": "If target has 100 HP or fewer, it dies.",
       "translations": {
-        "pt-BR": "Power Word Kill"
+        "pt-BR": "Palavra de Poder: Matar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura com até 100 PV morre; caso contrário, sofre dano psíquico.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Pronuncie palavra de poder contra criatura visível no alcance. Se tiver 100 PV ou menos, morre; caso contrário sofre 12d12 psíquico.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -32934,7 +33424,21 @@
           "sorcerer",
           "warlock",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d12",
+              "type": "psychic",
+              "trigger": "target-over-100-hp"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -32942,7 +33446,12 @@
       "name": "Power Word Stun",
       "summary": "If target has 150 HP or fewer, it has the Stunned condition.",
       "translations": {
-        "pt-BR": "Power Word Stun"
+        "pt-BR": "Palavra de Poder: Atordoar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Atordoa criatura debilitada ou zera temporariamente seu deslocamento.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Criatura visível no alcance com até 150 PV fica Atordoada; caso contrário seu Deslocamento é 0 até o início do seu próximo turno. Alvo Atordoado repete salvaguarda de Constituição ao fim de cada turno e encerra a condição em sucesso.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -32964,7 +33473,13 @@
           "sorcerer",
           "warlock",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -33057,7 +33572,12 @@
       "name": "Prismatic Spray",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Prismatic Spray"
+        "pt-BR": "Jato Prismático",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Oito raios afetam criaturas em cone, com efeito aleatório individual.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Oito raios partem de você em Cone de 18 m. Cada criatura faz salvaguarda de Destreza; para cada alvo, role d8 para escolher um único raio. Vermelho: 12d6 fogo; laranja: 12d6 ácido; amarelo: 12d6 elétrico; verde: 12d6 venenoso; azul: 12d6 frio; salvaguarda bem-sucedida reduz cada dano à metade. Índigo: em falha fica Impedida e faz salvaguarda de Constituição ao fim de cada turno; três sucessos encerram, três falhas a deixam Petrificada até ser libertada por efeito como Restauração Maior; sucessos/falhas não precisam ser consecutivos. Violeta: em falha fica Cega e salva Sabedoria no início do seu próximo turno; sucesso encerra, falha encerra a condição e teletransporta para outro plano à escolha do Mestre. No resultado 8, o alvo recebe dois raios: role duas vezes, repetindo qualquer resultado 8.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -33066,7 +33586,28 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d6",
+              "type": "varies",
+              "types": [
+                "fire",
+                "acid",
+                "lightning",
+                "poison",
+                "cold"
+              ],
+              "trigger": "random-ray"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -33074,7 +33615,12 @@
       "name": "Prismatic Wall",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Prismatic Wall"
+        "pt-BR": "Muralha Prismática",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Parede opaca de sete camadas coloridas bloqueia a passagem e aplica efeitos sucessivos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma parede opaca vertical de até 27 m de comprimento, 9 m de altura e 2,5 cm de espessura, ou globo de até 9 m de diâmetro, aparece no alcance; se ocupar espaço de criatura, termina sem efeito. Emite Luz Plena até 30 m e Luz Fraca por mais 30 m. Você e criaturas designadas atravessam sem dano. Outra criatura que veja e se aproxime a 6 m ou comece ali salva Constituição ou fica Cega por 1 minuto. Atravessar/alcançar cruza sete camadas, cada uma exigindo salvaguarda de Destreza: vermelha, 12d6 fogo (metade em sucesso), bloqueia ataques mundanos à distância e quebra com 25 frio; laranja, 12d6 ácido, bloqueia ataques mágicos à distância e quebra com vento forte; amarela, 12d6 elétrico, quebra com 60 energia; verde, 12d6 venenoso, quebra com Passagem ou magia equivalente; azul, 12d6 frio, quebra com 25 fogo; anil, Impedido e salva Constituição ao fim de cada turno, encerrando após três sucessos ou Petrificando após três falhas, não consecutivos; magias não atravessam e Luz Plena de Luz do Dia a destrói; violeta, Cego e salva Sabedoria no próximo turno, sucesso encerra, falha encerra a condição e bane para outro plano à escolha do Mestre; Dissipar Magia destrói essa camada. A parede tem CA 10; camadas são destruídas na ordem. Campo Antimagia não funciona e Dissipar Magia afeta apenas violeta.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -33082,7 +33628,28 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d6",
+              "type": "varies",
+              "types": [
+                "fire",
+                "acid",
+                "lightning",
+                "poison",
+                "cold"
+              ],
+              "trigger": "layer"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -33223,7 +33790,12 @@
       "name": "Project Image",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Project Image"
+        "pt-BR": "Projetar Imagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria cópia ilusória controlável que fala e compartilha sentidos à distância.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Crie uma cópia ilusória sua em qualquer local a até 805 km que já tenha visto, independentemente de obstáculos, invisível até concluir conjuração. Parece e soa como você, mas é intangível. Dura até 1 dia com Concentração. Você vê e ouve através dela; com ação Mágica, move até 18 m e escolhe gestos, fala e comportamento. Interação física revela que é ilusão; criatura pode Estudar e passar em Investigação/Inteligência contra CD da magia para discernir. Quem percebe a ilusão enxerga através dela e ouve som oco. Qualquer dano a dissipa e encerra a magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -33231,7 +33803,13 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -33544,7 +34122,12 @@
       "name": "Regenerate",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Regenerate"
+        "pt-BR": "Regenerar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Restaura PV, regenera partes do corpo e recupera PV continuamente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Criatura tocada recupera 4d8 + 15 PV. Por 1 hora, recupera 1 PV no início de cada turno. Membros decepados são restaurados após 2 minutos; se a parte estiver junto ao coto, a magia a reconecta instantaneamente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -33553,7 +34136,13 @@
           "Bard",
           "Cleric",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -33669,7 +34258,12 @@
       "name": "Resurrection",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Resurrection"
+        "pt-BR": "Ressurreição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Devolve à vida criatura morta há até 100 anos, restaurando PV e partes do corpo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toque criatura morta há no máximo um século, que não morreu de velhice nem era Morto-vivo ao morrer. Ela volta com todos os PV. A magia neutraliza venenos que a afetavam na morte, fecha feridas mortais e restaura partes ausentes. Voltar é uma provação: alvo recebe −4 em Testes de d20, reduzido em 1 a cada Descanso Longo. Se estava morta havia 365 dias ou mais, você fica sem poder conjurar magias até terminar Descanso Longo e tem Desvantagem em Testes de d20.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -33677,7 +34271,13 @@
         "classes": [
           "Bard",
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -33685,7 +34285,12 @@
       "name": "Reverse Gravity",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Reverse Gravity"
+        "pt-BR": "Gravidade Reversa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Inverte gravidade em cilindro, lançando criaturas e objetos para cima.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Inverta gravidade em Cilindro de raio 15 m e altura 30 m no alcance. Criaturas e objetos sem fixação caem para cima até o topo. Criatura pode salvar Destreza e agarrar objeto fixo ao alcance. Se atingir teto ou objeto fixo, sofre impacto como numa queda normal; se alcançar topo sem colidir, paira até a duração terminar. Ao fim, tudo cai para baixo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -33694,7 +34299,13 @@
           "Druid",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -34148,14 +34759,25 @@
       "name": "Sequester",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sequester"
+        "pt-BR": "Sequestrar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Torna alvo invisível e indetectável, colocando-o em animação suspensa.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toque objeto ou criatura voluntária. Pela duração até ser dissipada, o alvo fica Invisível e não pode ser alvo de Adivinhação, detectado por magia nem visto remotamente por magia. Criatura entra em animação suspensa, fica Inconsciente, não envelhece e não precisa de comida, água ou ar. Você define condição observável para encerrar, que deve ocorrer ou ser visível a até 1,6 km do alvo. Sofrer qualquer dano também termina a magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
         "school": "Transmutation",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -34163,7 +34785,12 @@
       "name": "Shapechange",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shapechange"
+        "pt-BR": "Mudar Forma",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Assume forma de criatura mantendo personalidade, parte das capacidades e PV próprios.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você assume outra criatura até 1 hora com Concentração, ou até usar ação Mágica para mudar a forma. A criatura deve ter ND não superior ao seu nível ou ND; você já deve ter visto esse tipo e ela não pode ser Constructo nem Morto-vivo. Ao conjurar, recebe PV Temporários iguais aos PV da primeira forma, perdidos ao fim. Seu bloco de estatísticas é substituído, mas mantém tipo, tendência, personalidade, Inteligência, Sabedoria e Carisma, PV, Dados de Vida, proficiências e comunicação. Se tiver a característica Conjuração, também a mantém. Ao mudar, escolha se o equipamento cai no chão ou muda de tamanho/forma para servir à nova forma.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -34171,7 +34798,13 @@
         "classes": [
           "Druid",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -34534,14 +35167,25 @@
       "name": "Simulacrum",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Simulacrum"
+        "pt-BR": "Simulacro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Cria duplicata parcialmente real, com metade dos PV, que não recupera espaços de magia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Durante toda a conjuração de 12 horas, mantenha uma Besta ou Humanoide a até 3 m. Ao final, toque a criatura e pilha de gelo/neve do mesmo tamanho; ela vira simulacro, um Constructo com estatísticas do original no momento, metade do máximo de PV e incapaz de conjurar esta magia. É Amigável a você e criaturas designadas, obedece comandos e age no seu turno de combate; não ganha níveis nem realiza Descansos Curtos ou Longos. Para restaurar PV perdidos, durante Descanso Longo repare-o permanecendo a até 1,5 m e gastando componentes de 100 PO por PV restaurado. Dura até 0 PV, quando vira neve e derrete. Se conjurar novamente, simulacro anterior criado por você é destruído. Rubi em pó de 1.500+ PO é consumido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
         "school": "Illusion",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -35239,14 +35883,53 @@
       "name": "Storm of Vengeance",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Storm of Vengeance"
+        "pt-BR": "Tempestade da Vingança",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Tempestade se intensifica por turnos com trovão, ácido, relâmpagos, granizo e frio.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Nuvem de raio 90 m forma-se no alcance por até 1 minuto com Concentração. Criaturas sob ela salvam Constituição ou sofrem 2d6 trovejante e ficam Surdas. Em turnos seguintes: 2º, chuva causa 4d6 ácido a criaturas e objetos; 3º, seis raios atingem alvos diferentes, salvaguarda de Destreza, 10d6 elétrico em falha ou metade em sucesso; 4º, granizo causa 2d6 contundente; 5º–10º, vento e chuva congelante causam 1d6 frio, tornam área Terreno Difícil/Pesadamente Obscurecida, impedem ataques à distância com armas e criam vento forte.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
         "school": "Conjuration",
         "classes": [
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "2d6",
+              "type": "thunder",
+              "trigger": "initial"
+            },
+            {
+              "formula": "4d6",
+              "type": "acid",
+              "trigger": "round-2"
+            },
+            {
+              "formula": "10d6",
+              "type": "lightning",
+              "trigger": "round-3"
+            },
+            {
+              "formula": "2d6",
+              "type": "bludgeoning",
+              "trigger": "round-4"
+            },
+            {
+              "formula": "1d6",
+              "type": "cold",
+              "trigger": "round-5-to-10"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -35385,7 +36068,12 @@
       "name": "Sunburst",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sunburst"
+        "pt-BR": "Explosão Solar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Luz solar causa dano radiante, cegueira e dissipa Escuridão mágica.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Luz solar explode em esfera de raio 18 m no alcance. Cada criatura salva Constituição: falha sofre 12d6 radiante e fica Cega por 1 minuto; sucesso sofre metade do dano. Alvo Cego repete salvaguarda ao fim de cada turno para encerrar a condição. Dissipa Escuridão mágica na área.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 8,
@@ -35395,7 +36083,20 @@
           "Druid",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "12d6",
+              "type": "radiant"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -35403,7 +36104,12 @@
       "name": "Symbol",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Symbol"
+        "pt-BR": "Símbolo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Glifo quase imperceptível dispara efeito nocivo escolhido quando seu gatilho ocorre.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Inscreva glifo nocivo em superfície de até 3 m de diâmetro ou objeto fechável; se o objeto for movido mais de 3 m, o glifo rompe sem disparar. É quase imperceptível e exige Percepção CD da magia. Defina gatilho (toque, passo, remoção, proximidade, abertura ou visão, entre outros; pode restringir tipos e senhas) e efeito: Morte, Discórdia, Medo, Dor, Sono ou Atordoamento. Ao disparar, emite Luz Fraca numa esfera de raio 18 m por 10 minutos; cada criatura presente, que entrar pela primeira vez no turno ou terminar turno ali é afetada uma vez por turno. Morte: salvaguarda de Constituição, 10d10 necrótico em falha ou metade em sucesso. Discórdia: salvaguarda de Sabedoria; em falha, discute por 1 minuto, sem comunicação significativa e com Desvantagem em ataques/testes. Medo: salvaguarda de Sabedoria ou Amedrontado por 1 minuto, afastando-se ao menos 9 m por turno se puder. Dor: salvaguarda de Constituição ou Incapacitado por 1 minuto. Sono: salvaguarda de Sabedoria ou Inconsciente por 10 minutos, acordando ao sofrer dano ou ser sacudido com ação. Atordoamento: salvaguarda de Sabedoria ou Atordoado por 1 minuto. Termina ao disparar; pó de diamante de 1.000+ PO é consumido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -35413,7 +36119,21 @@
           "Cleric",
           "Druid",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "10d10",
+              "type": "necrotic",
+              "trigger": "death-effect"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -35475,7 +36195,12 @@
       "name": "Teleport",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Teleport"
+        "pt-BR": "Teletransporte",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Transporta grupo ou objeto a destino conhecido, com precisão determinada por familiaridade.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Transporte instantaneamente você e até oito criaturas voluntárias visíveis no alcance, ou objeto visível Grande ou menor não segurado por criatura relutante, a destino conhecido no mesmo plano. O Mestre rola d100 conforme familiaridade: círculo permanente cujo sigilo você conhece e objeto ligado do destino garantem chegada; local muito familiar: acidente 01–05, área semelhante 06–13, fora do alvo 14–24, certo 25–00; visto casualmente: 01–33, 34–43, 44–53, 54–00; visto uma vez/descrito: 01–43, 44–53, 54–73, 74–00. Destino falso: acidente 01–50 ou fora do alvo 51–00. Em acidente, cada criatura/objeto sofre 3d10 de energia e o Mestre rola novamente, podendo haver novos acidentes. Área semelhante leva ao local próximo visual ou tematicamente parecido. Fora do alvo: chega a uma distância de 3,2 km multiplicada por 2d12, em direção aleatória determinada por d8 (leste, sudeste, sul, sudoeste, oeste, noroeste, norte, nordeste). Chegada certa leva ao destino.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 7,
@@ -35484,7 +36209,21 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "3d10",
+              "type": "force",
+              "trigger": "teleportation-mishap"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -35626,7 +36365,12 @@
       "name": "Time Stop",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Time Stop"
+        "pt-BR": "Parar o Tempo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você age por alguns turnos enquanto o tempo para para as demais criaturas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você para brevemente o fluxo do tempo para todos exceto você: faça 1d4 + 1 turnos consecutivos e use ações/movimento normalmente; nenhum tempo passa para as outras criaturas. A magia termina se uma ação ou efeito desse período afetar outra criatura ou objeto vestido/carregado por alguém que não seja você, ou se você se afastar mais de 305 m do ponto da conjuração.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -35634,7 +36378,13 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -35746,7 +36496,12 @@
       "name": "True Polymorph",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "True Polymorph"
+        "pt-BR": "Polimorfia Verdadeira",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Transforma criatura ou objeto em outra forma; mantida a Concentração, pode ser permanente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha criatura ou objeto não mágico visível no alcance. Criatura muda para outra criatura ou objeto não mágico; objeto que não esteja vestido nem carregado muda para criatura. A transformação dura até 1 hora ou até o alvo morrer/ser destruído; se você mantiver Concentração durante toda a duração, persiste até ser dissipada. Criatura involuntária salva Sabedoria e não é afetada em sucesso. Criatura em criatura: escolha forma de ND igual ou inferior ao ND ou nível do alvo; substitua estatísticas, exceto PV, Dados de Vida, tendência e personalidade. Recebe PV Temporários iguais aos PV da forma, que desaparecem ao fim. A anatomia limita ações; não pode falar ou conjurar; equipamento funde e não pode ser usado nem aproveitado. Objeto em criatura: forma não maior que o objeto, ND 9 ou menor; fica Amigável a você/aliados, age logo após você e obedece. Se a magia durar mais de uma hora, você perde controle, embora possa continuar Amigável conforme seu tratamento. Criatura em objeto: equipamento acompanha a transformação; objeto não maior que a criatura. Ao retornar, estatísticas voltam e o alvo não se lembra do período.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -35755,7 +36510,13 @@
           "Bard",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -35763,7 +36524,12 @@
       "name": "True Resurrection",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "True Resurrection"
+        "pt-BR": "Ressurreição Verdadeira",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Restaura criatura morta há até 200 anos, mesmo sem corpo, curando e removendo efeitos nocivos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toque criatura morta há até 200 anos, por qualquer causa exceto velhice. Se a alma estiver livre e quiser voltar, revive com todos os PV. A magia fecha feridas, neutraliza venenos, cura contágios mágicos e remove maldições que a afetavam ao morrer; substitui órgãos e membros danificados/ausentes. Mortos-vivos voltam à forma não-Morta-viva. Se o corpo não existir, pronuncie o nome da criatura; um corpo novo aparece em espaço desocupado à sua escolha a até 3 m. Diamantes de 25.000+ PO são consumidos.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -35771,7 +36537,13 @@
         "classes": [
           "Cleric",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -35876,7 +36648,12 @@
       "name": "Tsunami",
       "summary": "A wall of water springs into existence at a point you choose. The wall is 300 feet long, 300 feet high, and 50 feet thick, and it lasts for the duration. Each creature in the wall makes a Strength save or takes 6d10 Bludgeoning damage.",
       "translations": {
-        "pt-BR": "Tsunami"
+        "pt-BR": "Tsunami",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Muralha d’água avança, causando dano decrescente a cada rodada.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Muralha d’água de até 90 m de comprimento, 90 m de altura e 15 m de espessura surge no alcance, por até 6 rodadas com Concentração. Criaturas na área salvam Força: 6d10 contundente em falha, metade em sucesso. Depois, parede e criaturas avançam 15 m para longe de você por turno. Criaturas Enormes ou menores dentro ou atingidas salvam Força ou sofrem 5d10, uma vez por rodada. Ao fim do turno, altura cai 15 m e dano futuro diminui 1d10; a 0 m termina. Nadar exige Atletismo contra CD da magia; ao sair, criatura cai.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -35898,10 +36675,47 @@
           "druid"
         ],
         "damage": {
+          "components": [
+            {
+              "formula": "6d10",
+              "type": "bludgeoning",
+              "trigger": "initial"
+            },
+            {
+              "formula": "5d10",
+              "type": "bludgeoning",
+              "trigger": "wave-round-1"
+            },
+            {
+              "formula": "4d10",
+              "type": "bludgeoning",
+              "trigger": "wave-round-2"
+            },
+            {
+              "formula": "3d10",
+              "type": "bludgeoning",
+              "trigger": "wave-round-3"
+            },
+            {
+              "formula": "2d10",
+              "type": "bludgeoning",
+              "trigger": "wave-round-4"
+            },
+            {
+              "formula": "1d10",
+              "type": "bludgeoning",
+              "trigger": "wave-round-5"
+            }
+          ],
           "type": "bludgeoning",
           "dice": "6d10"
         },
-        "savingThrow": "str"
+        "savingThrow": "str",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": null
       }
     },
     {
@@ -36492,7 +37306,12 @@
       "name": "Weird",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Weird"
+        "pt-BR": "Pesadelo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Terror ilusório causa dano psíquico e medo, com dano recorrente em tentativas falhas de resistir.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Criaturas escolhidas em esfera de raio 9 m fazem salvaguarda de Sabedoria. Falha: 10d10 psíquico e Amedrontado por até 1 minuto com Concentração; sucesso: metade do dano. Alvo Amedrontado salva Sabedoria ao fim de cada turno: falha sofre 5d10 psíquico; sucesso encerra a magia para ele.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 9,
@@ -36500,7 +37319,26 @@
         "classes": [
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "10d10",
+              "type": "psychic",
+              "trigger": "initial"
+            },
+            {
+              "formula": "5d10",
+              "type": "psychic",
+              "trigger": "failed-repeat-save"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -36568,7 +37406,12 @@
       "name": "Wish",
       "summary": "The mightiest spell a mortal can cast. State your wish and it happens.",
       "translations": {
-        "pt-BR": "Wish"
+        "pt-BR": "Desejo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Duplica magia até 8º círculo ou altera a realidade com um efeito extraordinário.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Desejo é a magia mais poderosa que um mortal pode conjurar. Seu uso básico duplica qualquer magia de nível 8 ou menor sem requisitos, inclusive componentes caros. Ou escolha: criar objeto não mágico de até 25.000 PO, dimensão máxima 90 m, em espaço desocupado visível no chão; restaurar todos os PV seus e de até vinte criaturas visíveis e encerrar efeitos listados em Restauração Maior; conceder Resistência permanente a um tipo de dano a até dez criaturas; conceder imunidade por 8 horas a uma magia/efeito a até dez; substituir um talento por outro elegível, sem retirar talento pré-requisito de outra característica; ou forçar nova rolagem de dado da rodada anterior, com Vantagem/Desvantagem à escolha, escolhendo resultado novo ou original. Também pode pedir outro efeito ao Mestre, que decide consequências e pode concedê-lo parcialmente, fazê-lo falhar ou trazer efeitos imprevistos; desejos muito amplos podem atrair inimigos poderosos, intervenção divina ou falhar. Usos diferentes de duplicar magia causam desgaste: até terminar Descanso Longo, cada vez que conjurar magia sofre 1d10 necrótico por nível dela; Força cai a 3 por 2d4 dias e cada descanso nessa condição não a reduz; há 33% de chance de nunca mais conseguir conjurar Desejo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -36588,7 +37431,13 @@
         "classes": [
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
