@@ -45,6 +45,7 @@
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
 		addSpellToSheet,
@@ -729,6 +730,8 @@
 	const spellHasAITranslation = (spell: Sheet['spells'][number]) => {
 		return hasAISpellTranslation(spellCompendiumEntry(spell));
 	};
+	const spellMechanics = (spell: Sheet['spells'][number]) =>
+		presentSpellMechanics(spellCompendiumEntry(spell)?.rules, $appLocale);
 	function syncProgression() {
 		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
 		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
@@ -1318,6 +1321,7 @@
 							displayName: spellDisplayName,
 							description: spellDescription,
 							higherLevels: spellHigherLevels,
+							mechanics: (spell) => spellMechanics(spell),
 							hasAITranslation: spellHasAITranslation
 						}}
 						actions={{

@@ -1,7 +1,12 @@
 package compendium
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -110,7 +115,7 @@ func TestSRDFirstLevelSpellTranslationsAreCompleteAndReviewed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spells, names, descriptions := 0, 0, 0
+	spells, names, sourceDescriptions, localizedDescriptions := 0, 0, 0, 0
 	for _, entry := range pack.Entries {
 		if entry.EntryType != "spell" {
 			continue
@@ -138,16 +143,327 @@ func TestSRDFirstLevelSpellTranslationsAreCompleteAndReviewed(t *testing.T) {
 			t.Errorf("%s has a localization for rules.name that is absent from the source", entry.Name)
 		}
 		if _, exists := rules["description"]; exists {
-			descriptions++
-			if translations["pt-BR.rules.description"] == "" || translations["pt-BR.rules.description.source"] != "reviewed" {
-				t.Errorf("%s rules.description localization is missing or not reviewed", entry.Name)
-			}
-		} else if _, exists := translations["pt-BR.rules.description"]; exists {
-			t.Errorf("%s has a localization for rules.description that is absent from the source", entry.Name)
+			sourceDescriptions++
+		}
+		if translations["pt-BR.rules.description"] == "" || translations["pt-BR.rules.description.source"] != "reviewed" {
+			t.Errorf("%s rules.description localization is missing or not reviewed", entry.Name)
+		} else {
+			localizedDescriptions++
 		}
 	}
-	if spells != 57 || names != 19 || descriptions != 19 {
-		t.Fatalf("first-level spell coverage = %d spells, %d rules.name fields, %d rules.description fields; want 57, 19, 19", spells, names, descriptions)
+	if spells != 57 || names != 19 || sourceDescriptions != 19 || localizedDescriptions != 57 {
+		t.Fatalf("first-level spell coverage = %d spells, %d rules.name fields, %d source descriptions, %d localized descriptions; want 57, 19, 19, 57", spells, names, sourceDescriptions, localizedDescriptions)
+	}
+}
+
+func TestSRDFirstLevelSpellSourceAndMechanicsRemainUnchanged(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := make([]map[string]any, 0, 57)
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if rules["level"] != float64(1) {
+			continue
+		}
+		delete(rules, "mechanicsAudit")
+		delete(rules, "damage")
+		delete(rules, "scaling")
+		rows = append(rows, map[string]any{"name": entry.Name, "summary": entry.Summary, "rules": rules})
+	}
+	encoded, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(encoded)
+	const want = "0ecb77d229853a15ffecd3e234c89f60cd2c53148fa250ec224e23d48b934754"
+	if got := hex.EncodeToString(sum[:]); got != want {
+		t.Fatalf("first-level source/mechanics digest = %s, want unchanged digest %s", got, want)
+	}
+}
+
+func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{"spells": 0, "damage": 0, "noDamage": 0, "scaling": 0, "noScaling": 0}
+	levels := map[int]int{}
+	spellNames := map[string]map[string]any{}
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		level, ok := rules["level"].(float64)
+		if !ok || (level != 0 && level != 1) {
+			if _, audited := rules["mechanicsAudit"]; audited {
+				t.Errorf("out-of-scope spell %s was marked audited", entry.Name)
+			}
+			continue
+		}
+		counts["spells"]++
+		levels[int(level)]++
+		spellNames[entry.Name] = rules
+		translations := decodeTranslations(entry.Translations)
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.description"} {
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s translation is absent or not reviewed", entry.Name, key)
+			}
+		}
+		audit, ok := rules["mechanicsAudit"].(map[string]any)
+		if !ok || audit["status"] != "reviewed" || audit["source"] != "D&D SRD 5.2.1" {
+			t.Errorf("%s lacks reviewed SRD 5.2.1 mechanics provenance: %#v", entry.Name, rules["mechanicsAudit"])
+		}
+		if rules["damage"] == nil {
+			counts["noDamage"]++
+		} else {
+			counts["damage"]++
+			damage, ok := rules["damage"].(map[string]any)
+			components, componentsOK := damage["components"].([]any)
+			if !ok || !componentsOK || len(components) == 0 {
+				t.Errorf("%s has untyped damage data: %#v", entry.Name, rules["damage"])
+			}
+		}
+		if rules["scaling"] == nil {
+			counts["noScaling"]++
+		} else {
+			counts["scaling"]++
+			scaling, ok := rules["scaling"].(map[string]any)
+			if !ok || (scaling["characterLevel"] == nil && scaling["spellSlot"] == nil) {
+				t.Errorf("%s has untyped or empty scaling data: %#v", entry.Name, rules["scaling"])
+			}
+		}
+	}
+	if counts["spells"] != 85 || levels[0] != 28 || levels[1] != 57 {
+		t.Fatalf("audited spell coverage = %d total (%d cantrips, %d first-level), want 85 (28, 57)", counts["spells"], levels[0], levels[1])
+	}
+	if counts["damage"] != 31 || counts["noDamage"] != 54 || counts["scaling"] != 45 || counts["noScaling"] != 40 {
+		t.Fatalf("damage/scaling applicability = damage %d, no damage %d, scaling %d, no scaling %d; want 31, 54, 45, 40", counts["damage"], counts["noDamage"], counts["scaling"], counts["noScaling"])
+	}
+
+	wantDamage := map[string]string{
+		"Acid Splash": "1d6|acid", "Acid SplASh": "1d6|acid", "Chill Touch": "1d10|necrotic",
+		"Eldritch Blast": "1d10|force|per-beam", "Fire Bolt": "1d10|fire", "Poison Spray": "1d12|poison",
+		"Produce Flame": "1d8|fire", "Ray of Frost": "1d8|cold", "Sacred Flame": "1d8|radiant",
+		"Shillelagh": "d8|varies|types=force,weapon-normal", "Shocking Grasp": "1d8|lightning",
+		"Sorcerous Burst": "1d8|varies|types=acid,cold,fire,lightning,poison,psychic,thunder|explode=d8:8:spellcasting-ability-modifier",
+		"Starry Wisp":     "1d8|radiant", "True Strike": "weapon damage|varies|types=radiant,weapon-normal", "Vicious Mockery": "1d6|psychic",
+		"Burning Hands": "3d6|fire", "Chromatic Orb": "3d8|varies|types=acid,cold,fire,lightning,poison,thunder",
+		"Dissonant Whispers": "3d6|psychic", "Divine Favor": "1d4|radiant|weapon-hit",
+		"Divine Smite": "2d8|radiant|extra=1d8|radiant|fiend-or-undead", "Ensnaring Strike": "1d6|piercing|restrained-start-of-turn",
+		"Guiding Bolt": "4d6|radiant", "Hellish Rebuke": "2d10|fire", "Hex": "1d6|necrotic|attack-hit",
+		"Hunter’s Mark": "1d6|force|attack-hit", "Ice Knife": "1d10|piercing|attack-hit;2d6|cold|burst-save-fail",
+		"Inflict Wounds": "2d10|necrotic", "Magic Missile": "1d4+1|force|instances=3|automatic-hit",
+		"Ray of Sickness": "2d8|poison", "Searing Smite": "1d6|fire|weapon-hit;1d6|fire|start-of-turn", "Thunderwave": "2d8|thunder",
+	}
+	for name, want := range wantDamage {
+		rules, ok := spellNames[name]
+		if !ok {
+			t.Errorf("missing damage spell %q", name)
+			continue
+		}
+		if got := spellDamageSignature(t, name, rules["damage"]); got != want {
+			t.Errorf("%s damage = %q, want %q", name, got, want)
+		}
+	}
+
+	wantCharacterLevels := map[string]string{
+		"Acid Splash":     "5:damage-formula:2d6:acid;11:damage-formula:3d6:acid;17:damage-formula:4d6:acid",
+		"Acid SplASh":     "5:damage-formula:2d6:acid;11:damage-formula:3d6:acid;17:damage-formula:4d6:acid",
+		"Chill Touch":     "5:damage-formula:2d10:necrotic;11:damage-formula:3d10:necrotic;17:damage-formula:4d10:necrotic",
+		"Eldritch Blast":  "5:beam-count:2;11:beam-count:3;17:beam-count:4",
+		"Fire Bolt":       "5:damage-formula:2d10:fire;11:damage-formula:3d10:fire;17:damage-formula:4d10:fire",
+		"Poison Spray":    "5:damage-formula:2d12:poison;11:damage-formula:3d12:poison;17:damage-formula:4d12:poison",
+		"Produce Flame":   "5:damage-formula:2d8:fire;11:damage-formula:3d8:fire;17:damage-formula:4d8:fire",
+		"Ray of Frost":    "5:damage-formula:2d8:cold;11:damage-formula:3d8:cold;17:damage-formula:4d8:cold",
+		"Sacred Flame":    "5:damage-formula:2d8:radiant;11:damage-formula:3d8:radiant;17:damage-formula:4d8:radiant",
+		"Shillelagh":      "5:weapon-damage-die:d10;11:weapon-damage-die:d12;17:weapon-damage-die:2d6",
+		"Shocking Grasp":  "5:damage-formula:2d8:lightning;11:damage-formula:3d8:lightning;17:damage-formula:4d8:lightning",
+		"Sorcerous Burst": "5:damage-formula:2d8:varies;11:damage-formula:3d8:varies;17:damage-formula:4d8:varies",
+		"Spare the Dying": "5:range-feet:30;11:range-feet:60;17:range-feet:120",
+		"Starry Wisp":     "5:damage-formula:2d8:radiant;11:damage-formula:3d8:radiant;17:damage-formula:4d8:radiant",
+		"True Strike":     "5:extra-damage:1d6:radiant;11:extra-damage:2d6:radiant;17:extra-damage:3d6:radiant",
+		"Vicious Mockery": "5:damage-formula:2d6:psychic;11:damage-formula:3d6:psychic;17:damage-formula:4d6:psychic",
+	}
+	for name, want := range wantCharacterLevels {
+		if got := spellCharacterScalingSignature(t, name, spellNames[name]["scaling"]); got != want {
+			t.Errorf("%s character-level scaling = %q, want %q", name, got, want)
+		}
+	}
+	wantSlotNames := []string{"Animal Friendship", "Bane", "Bless", "Burning Hands", "Charm Person", "Chromatic Orb", "Command", "Create or Destroy Water", "Cure Wounds", "Dissonant Whispers", "Divine Smite", "Ensnaring Strike", "False Life", "Fog Cloud", "Guiding Bolt", "Healing Word", "Hellish Rebuke", "Heroism", "Hex", "Hideous Laughter", "Hunter’s Mark", "Ice Knife", "Inflict Wounds", "Jump", "Longstrider", "Magic Missile", "Ray of Sickness", "Searing Smite", "Thunderwave"}
+	wantSlotSignatures := map[string]string{
+		"Animal Friendship": "2:additional-targets:1:1:Beast", "Bane": "2:additional-targets:1:1", "Bless": "2:additional-targets:1:1",
+		"Burning Hands": "2:damage-increase:1:1d6:fire", "Charm Person": "2:additional-targets:1:1",
+		"Chromatic Orb": "2:damage-increase:1:1d8:varies;2:maximum-leaps-equals-slot-level",
+		"Command": "2:additional-targets:1:1", "Create or Destroy Water": "2:water-volume-or-cube-size:1:10:5:one-mode",
+		"Cure Wounds": "2:healing-increase:1:2d8", "Dissonant Whispers": "2:damage-increase:1:1d6:psychic",
+		"Divine Smite": "2:damage-increase:1:1d8:radiant", "Ensnaring Strike": "2:damage-increase:1:1d6:piercing",
+		"False Life": "2:temporary-hit-points-increase:1:5", "Fog Cloud": "2:radius-increase:1:20",
+		"Guiding Bolt": "2:damage-increase:1:1d6:radiant", "Healing Word": "2:healing-increase:1:2d4",
+		"Hellish Rebuke": "2:damage-increase:1:1d10:fire", "Heroism": "2:additional-targets:1:1",
+		"Hex": "2:duration-tier:4 hours;3:duration-tier:8 hours;5:duration-tier:24 hours",
+		"Hideous Laughter": "2:additional-targets:1:1", "Hunter’s Mark": "3:duration-tier:8 hours;5:duration-tier:24 hours",
+		"Ice Knife": "2:damage-increase:1:1d6:cold:burst-save-fail", "Inflict Wounds": "2:damage-increase:1:1d10:necrotic",
+		"Jump": "2:additional-targets:1:1", "Longstrider": "2:additional-targets:1:1",
+		"Magic Missile": "2:additional-instances:1:force:1:1d4+1", "Ray of Sickness": "2:damage-increase:1:1d8:poison",
+		"Searing Smite": "2:damage-increase-all-components:1:1d6:fire", "Thunderwave": "2:damage-increase:1:1d8:thunder",
+	}
+	gotSlotNames := []string{}
+	for name, rules := range spellNames {
+		scaling, _ := rules["scaling"].(map[string]any)
+		if slot, ok := scaling["spellSlot"].(map[string]any); ok {
+			gotSlotNames = append(gotSlotNames, name)
+			if slot["baseLevel"] != float64(1) {
+				t.Errorf("%s slot scaling base level = %v, want 1", name, slot["baseLevel"])
+			}
+			if got, want := spellSlotScalingSignature(t, name, slot["effects"]), wantSlotSignatures[name]; got != want {
+				t.Errorf("%s slot scaling = %q, want %q", name, got, want)
+			}
+		}
+	}
+	sort.Strings(gotSlotNames)
+	sort.Strings(wantSlotNames)
+	if strings.Join(gotSlotNames, ",") != strings.Join(wantSlotNames, ",") {
+		t.Errorf("spell-slot scaling names = %v, want %v", gotSlotNames, wantSlotNames)
+	}
+	for _, name := range []string{"Hex", "Hunter’s Mark", "Magic Missile", "Create or Destroy Water", "Cure Wounds", "Ice Knife", "Chromatic Orb", "Searing Smite"} {
+		if signature := spellSlotScalingSignature(t, name, spellNames[name]["scaling"].(map[string]any)["spellSlot"].(map[string]any)["effects"]); signature == "" {
+			t.Errorf("%s slot scaling lacks typed effect data", name)
+		}
+	}
+}
+
+func spellDamageSignature(t *testing.T, name string, value any) string {
+	t.Helper()
+	damage, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	components, ok := damage["components"].([]any)
+	if !ok {
+		return ""
+	}
+	parts := make([]string, 0, len(components))
+	for _, raw := range components {
+		component, ok := raw.(map[string]any)
+		if !ok {
+			return ""
+		}
+		part := fmt.Sprintf("%v|%v", component["formula"], component["type"])
+		if types, ok := component["types"].([]any); ok {
+			values := make([]string, len(types))
+			for index, item := range types {
+				values[index] = fmt.Sprint(item)
+			}
+			part += "|types=" + strings.Join(values, ",")
+		}
+		if instances := component["instances"]; instances != nil {
+			part += "|instances=" + fmt.Sprint(instances)
+			if component["trigger"] != nil {
+				part += "|" + fmt.Sprint(component["trigger"])
+			}
+		} else if trigger := component["trigger"]; trigger != nil {
+			part += "|" + fmt.Sprint(trigger)
+		}
+		if exploding, ok := component["explodingDice"].(map[string]any); ok {
+			part += fmt.Sprintf("|explode=%v:%v:%v", exploding["die"], exploding["triggersOn"], exploding["maxAdditionalDice"])
+		}
+		if additional, ok := component["additional"].([]any); ok {
+			for _, rawExtra := range additional {
+				extra := rawExtra.(map[string]any)
+				part += fmt.Sprintf("|extra=%v|%v|%v", extra["formula"], extra["type"], extra["trigger"])
+			}
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, ";")
+}
+
+func spellCharacterScalingSignature(t *testing.T, name string, value any) string {
+	t.Helper()
+	rules, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	rows, ok := rules["characterLevel"].([]any)
+	if !ok {
+		return ""
+	}
+	parts := []string{}
+	for _, raw := range rows {
+		row := raw.(map[string]any)
+		effects := row["effects"].([]any)
+		effect := effects[0].(map[string]any)
+		part := fmt.Sprintf("%v:%v", row["level"], effect["kind"])
+		for _, key := range []string{"formula", "type", "count", "die", "feet"} {
+			if effect[key] != nil {
+				part += ":" + fmt.Sprint(effect[key])
+			}
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, ";")
+}
+
+func spellSlotScalingSignature(t *testing.T, name string, value any) string {
+	t.Helper()
+	effects, ok := value.([]any)
+	if !ok {
+		return ""
+	}
+	parts := []string{}
+	for _, raw := range effects {
+		effect, ok := raw.(map[string]any)
+		if !ok {
+			return ""
+		}
+		part := fmt.Sprintf("%v:%v", effect["fromSlotLevel"], effect["kind"])
+		for _, key := range []string{"everySlotLevels", "formula", "type", "count", "targetType", "componentFormula", "additionalGallons", "cubeSideFeet", "choice", "feet", "amount", "duration", "componentTrigger"} {
+			if effect[key] != nil {
+				part += ":" + fmt.Sprint(effect[key])
+			}
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, ";")
+}
+
+func TestSRDCantripTranslationBatchIsReconciled(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cantrips := 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if rules["level"] != float64(0) {
+			continue
+		}
+		cantrips++
+		translations := decodeTranslations(entry.Translations)
+		if translations["pt-BR"] == "" || translations["pt-BR.source"] != "reviewed" || translations["pt-BR.summary"] == "" || translations["pt-BR.summary.source"] != "reviewed" {
+			t.Errorf("cantrip %s lacks reconciled reviewed name/summary: %v", entry.Name, translations)
+		}
+	}
+	if cantrips != 28 {
+		t.Fatalf("cantrip count = %d, want 28", cantrips)
 	}
 }
 

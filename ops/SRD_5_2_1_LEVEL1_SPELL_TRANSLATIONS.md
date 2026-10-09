@@ -1,21 +1,45 @@
-# SRD 5.2.1: magias de 1º círculo em PT-BR
+# SRD 5.2.1: truques e magias de 1º círculo em PT-BR
 
-Este lote localiza os 57 registros `spell` cujo `rules.level` é `1`. Os nomes
-em inglês, IDs, regras estruturadas e valores do pacote foram mantidos. Os
-campos localizados no pacote recebem proveniência `reviewed`.
+Este lote reúne as traduções revisadas dos 28 registros `spell` de nível 0 já
+preparadas no lote de truques e completa a descrição em PT-BR dos 57 registros
+`spell` cujo `rules.level` é `1`. Nomes-fonte, sumários-fonte, regras
+estruturadas e valores mecânicos foram mantidos. Os campos localizados recebem
+proveniência `reviewed`.
 
 ## Escopo dos campos
 
-- Todos os 57 registros recebem `pt-BR`, `pt-BR.summary` e os respectivos
-  marcadores `.source`.
+- Todos os 57 registros de 1º círculo recebem `pt-BR`, `pt-BR.summary`,
+  `pt-BR.rules.description` e os respectivos marcadores `.source`.
 - Os 19 registros que já tinham `rules.name` recebem `pt-BR.rules.name`.
-- Os 19 registros que já tinham `rules.description` recebem
-  `pt-BR.rules.description`. O texto localizado acompanha somente a descrição
-  resumida que já existe no pacote; não foram acrescentadas descrições aos
-  outros 38 registros.
+- Os 19 registros com `rules.description` em inglês tiveram esse texto
+  integralmente localizado e comparado à fonte oficial. Para os outros 38,
+  que não tinham descrição no pacote, a descrição foi redigida em PT-BR com
+  base no texto oficial do SRD 5.2.1. Essas descrições são texto de
+  apresentação dentro de `translations["pt-BR.rules.description"]`; não criam
+  nem modificam regras estruturadas.
 - Os novos sumários para registros que tinham apenas o placeholder do pacote
   são sinopses editoriais concisas das regras oficiais. Não substituem nem
   criam `rules.description` ou campos de automação.
+- Nos truques, as traduções revisadas existentes foram reconciliadas somente
+  em `translations`; os 15 registros que ainda têm apenas sinopses continuam
+  sem descrição completa localizada neste lote.
+
+## Exibição e integridade
+
+`CharacterSheet.svelte` resolve a descrição pela chave
+`translations["pt-BR.rules.description"]` usando `localizedSpellField` em
+`characterSpellRules.ts`. `CanvasMesa.svelte` reutiliza o mesmo helper. O teste
+de interface carrega o pacote real e verifica que as 57 descrições são
+retornadas por esse caminho. O teste do pacote também fixa a cobertura e
+compara um resumo criptográfico dos nomes-fonte, sumários-fonte e regras
+estruturadas das 57 entradas com a base antes da edição.
+
+As descrições traduzidas diretamente de texto que já existia no pacote são
+traduções da fonte inglesa. As 38 descrições sem texto-fonte no pacote são
+sínteses fiéis redigidas a partir das descrições correspondentes do SRD 5.2.1
+oficial; em ambos os casos foram revisados os alvos, ações, alcance, duração,
+salvaguardas, efeitos, exceções e regras de espaços de nível superior. Não
+foram acrescentados valores em campos mecânicos.
 
 ## Terminologia
 
@@ -48,4 +72,5 @@ catálogo compartilhado é carregado; nenhum banco foi acessado nesta tarefa.
 
 - [D&D System Reference Document 5.2.1](https://www.dndbeyond.com/srd)
   (conteúdo atribuído no próprio pacote sob CC BY 4.0).
+- [PDF oficial do SRD 5.2.1](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf)
 - [D&D Beyond Basic Rules 2024 — Spell Descriptions](https://www.dndbeyond.com/sources/dnd/br-2024/spell-descriptions).

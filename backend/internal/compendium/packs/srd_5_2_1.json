@@ -1,6 +1,6 @@
 {
   "version": "5.2.1",
-  "revision": "cartridge-import-2",
+  "revision": "cartridge-import-3",
   "attribution": "D&D System Reference Document 5.2.1 © Wizards of the Coast LLC, CC-BY-4.0. Structured cartridge: NatOneApp/sdr-5.2.1.",
   "entries": [
     {
@@ -24129,7 +24129,14 @@
       "name": "Acid Splash",
       "summary": "You create an acidic bubble at a point within range. Each creature in a 5-foot Sphere must succeed on a Dexterity saving throw or take 1d6 Acid damage.",
       "translations": {
-        "pt-BR": "Acid Splash"
+        "pt-BR": "Respingos Ácidos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Respingos Ácidos",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria uma bolha ácida em um ponto dentro do alcance, onde ela explode em uma esfera de 5 pés de raio. Cada criatura nessa esfera deve ser bem-sucedida em uma salvaguarda de Destreza ou sofre 1d6 de dano ácido. O dano aumenta em 1d6 quando você alcança os níveis 5 (2d6), 11 (3d6) e 17 (4d6).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -24152,9 +24159,50 @@
           "wizard"
         ],
         "damage": {
-          "type": "acid",
-          "dice": "1d6",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "acid"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d6",
+                  "type": "acid"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d6",
+                  "type": "acid"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d6",
+                  "type": "acid"
+                }
+              ]
+            }
+          ]
         }
       }
     },
@@ -24163,7 +24211,12 @@
       "name": "Acid SplASh",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Acid SplASh"
+        "pt-BR": "Respingos Ácidos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria uma bolha ácida em um ponto dentro do alcance. Cada criatura em uma esfera de 5 pés deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria uma bolha ácida em um ponto dentro do alcance, onde ela explode em uma Esfera de 5 pés de raio. Cada criatura nessa Esfera deve ser bem-sucedida em uma salvaguarda de Destreza ou sofrer 1d6 de dano ácido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -24171,7 +24224,53 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "acid"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d6",
+                  "type": "acid"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d6",
+                  "type": "acid"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d6",
+                  "type": "acid"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -24195,7 +24294,9 @@
         "pt-BR": "Alarme",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Avisa quando uma criatura toca ou entra na área protegida; o alerta pode ser audível ou mental.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você prepara um alarme contra intrusões. Escolha uma porta, janela ou área ao alcance que não seja maior que um Cubo de 20 pés. Até a magia terminar, o alarme avisa quando uma criatura toca ou entra na área protegida. Ao conjurar, você pode designar criaturas que não dispararão o alarme e escolhe se ele será audível ou mental. Alarme audível: produz o som de um sino de mão por 10 segundos, audível a até 60 pés da área. Alarme mental: você recebe um aviso mental se estiver a até 1 milha da área protegida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24203,7 +24304,13 @@
         "classes": [
           "Ranger",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -24230,7 +24337,9 @@
         "pt-BR": "Amizade Animal",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Tenta encantar uma Fera visível; o efeito termina se você ou seus aliados causarem dano a ela.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha uma Besta que você possa ver ao alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou recebe a condição Enfeitiçado pela duração. Se você ou um de seus aliados causar dano ao alvo, a magia termina. Usando um espaço de magia de nível superior: você pode escolher uma Besta adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24239,7 +24348,26 @@
           "Bard",
           "Druid",
           "Ranger"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1,
+                "targetType": "Beast"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -24489,7 +24617,9 @@
         "pt-BR": "Perdição",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Até três criaturas que falharem na salvaguarda subtraem 1d4 de suas jogadas de ataque e salvaguardas.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Até três criaturas à sua escolha que você possa ver ao alcance fazem uma salvaguarda de Carisma. Sempre que um alvo que falhar fizer uma jogada de ataque ou uma salvaguarda antes da magia terminar, ele subtrai 1d4 da jogada ou salvaguarda. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -24498,7 +24628,25 @@
           "Bard",
           "Cleric",
           "Warlock"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -24641,7 +24789,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Bênção",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Até três criaturas somam 1d4 às jogadas de ataque e às salvaguardas.",
+        "pt-BR.rules.description": "Você abençoa até três criaturas ao alcance. Sempre que um alvo fizer uma jogada de ataque ou uma salvaguarda antes da magia terminar, ele soma 1d4 à jogada ou salvaguarda. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -24663,7 +24811,25 @@
         "classes": [
           "cleric",
           "paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -24722,7 +24888,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Mãos Flamejantes",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Cada criatura em um Cone de 15 pés faz uma salvaguarda de Destreza e sofre 3d6 de dano de Fogo se falhar.",
+        "pt-BR.rules.description": "Uma fina lâmina de chamas irrompe de você. Cada criatura em um Cone de 15 pés faz uma salvaguarda de Destreza, sofrendo 3d6 de dano de Fogo se falhar ou metade desse dano se for bem-sucedida. Objetos inflamáveis no Cone que não estejam sendo vestidos ou carregados começam a queimar. Usando um espaço de magia de nível superior: o dano aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -24746,11 +24912,32 @@
           "wizard"
         ],
         "damage": {
-          "type": "fire",
-          "dice": "3d6",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "3d6",
+              "type": "fire"
+            }
+          ]
         },
-        "savingThrow": "dex"
+        "savingThrow": "dex",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "fire"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -24863,7 +25050,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Enfeitiçar Pessoa",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Uma criatura Humanoide faz uma salvaguarda de Sabedoria ou recebe a condição Enfeitiçado.",
+        "pt-BR.rules.description": "Uma criatura Humanoide que você possa ver ao alcance faz uma salvaguarda de Sabedoria. Ela tem vantagem nessa salvaguarda se você ou seus aliados estiverem lutando contra ela. Se falhar, o alvo recebe a condição Enfeitiçado até a magia terminar ou até você ou seus aliados causarem dano a ele. A criatura Enfeitiçada é amigável a você. Quando a magia termina, o alvo sabe que foi Enfeitiçado por você. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -24889,7 +25076,25 @@
           "warlock",
           "wizard"
         ],
-        "savingThrow": "wis"
+        "savingThrow": "wis",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -24897,7 +25102,12 @@
       "name": "Chill Touch",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Chill Touch"
+        "pt-BR": "Toque Arrepiante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você canaliza o frio da sepultura e faz um ataque mágico corpo a corpo. Se acertar, o alvo sofre 1d10 de dano necrótico e não pode recuperar pontos de vida até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Canalizando o frio da sepultura, faça um ataque mágico corpo a corpo contra um alvo ao alcance. Se acertar, o alvo sofre 1d10 de dano necrótico e não pode recuperar Pontos de Vida até o fim do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -24906,7 +25116,53 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d10",
+              "type": "necrotic"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d10",
+                  "type": "necrotic"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d10",
+                  "type": "necrotic"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d10",
+                  "type": "necrotic"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -24920,7 +25176,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Orbe Cromático",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Você lança um orbe de energia contra uma criatura ao alcance. Escolha Ácido, Frio, Fogo, Elétrico, Veneno ou Trovejante; ao acertar com um ataque mágico à distância, causa 3d8 de dano do tipo escolhido.",
+        "pt-BR.rules.description": "Você lança um orbe de energia contra um alvo ao alcance. Escolha Ácido, Frio, Fogo, Elétrico, Veneno ou Trovejante para o tipo do orbe e faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 3d8 de dano do tipo escolhido. Se você obtiver o mesmo número em dois ou mais d8, o orbe salta para outro alvo à sua escolha a até 30 pés do primeiro; faça uma nova jogada de ataque contra esse alvo e uma nova jogada de dano. O orbe pode saltar um número máximo de vezes igual ao nível do espaço de magia gasto, e uma criatura só pode ser alvo uma vez por conjuração. Usando um espaço de magia de nível superior: o dano aumenta em 1d8 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -24945,9 +25201,42 @@
           "wizard"
         ],
         "damage": {
-          "type": "varies",
-          "dice": "3d8",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "3d8",
+              "type": "varies",
+              "types": [
+                "acid",
+                "cold",
+                "fire",
+                "lightning",
+                "poison",
+                "thunder"
+              ]
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d8",
+                "type": "varies"
+              },
+              {
+                "kind": "maximum-leaps-equals-slot-level",
+                "fromSlotLevel": 2
+              }
+            ]
+          }
         }
       }
     },
@@ -25025,7 +25314,9 @@
         "pt-BR": "Leque Cromático",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Criaturas em um Cone de 15 pés que falharem numa salvaguarda de Constituição ficam Cegas até o fim do seu próximo turno.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você lança uma explosão deslumbrante de luzes coloridas e intermitentes. Cada criatura em um Cone de 15 pés originado em você deve ser bem-sucedida em uma salvaguarda de Constituição ou recebe a condição Cego até o fim do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25034,7 +25325,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25045,7 +25342,9 @@
         "pt-BR": "Comando",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria deve obedecer a uma ordem de uma palavra, se puder fazê-lo.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você profere uma ordem de uma palavra a uma criatura que possa ver ao alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou seguirá a ordem no próximo turno dele. Escolha uma das opções: Aproximar: o alvo se move até você pela rota mais curta e direta, encerrando o turno se chegar a até 5 pés de você. Largar: o alvo solta o que estiver segurando e encerra o turno. Fugir: o alvo usa o turno para se afastar de você pelo meio mais rápido disponível. Prostrar-se: o alvo recebe a condição Caído e encerra o turno. Parar: no turno dele, o alvo não se move nem realiza ações ou Ações Bônus. Usando um espaço de magia de nível superior: você pode afetar uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25054,7 +25353,25 @@
           "Bard",
           "Cleric",
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -25096,7 +25413,9 @@
         "pt-BR": "Compreender Idiomas",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você entende o sentido literal de idiomas falados e escritos que toca, mas não decifra códigos nem símbolos mágicos.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Pela duração, você entende o significado literal de qualquer idioma falado que ouvir. Também entende qualquer idioma escrito que tocar, mas precisa tocar a superfície onde as palavras estão inscritas. Leva cerca de 1 minuto para ler uma página de texto. A magia não decifra mensagens secretas em textos ou glifos, como um sigilo arcano, que não façam parte de um idioma escrito.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25106,7 +25425,13 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25424,7 +25749,9 @@
         "pt-BR": "Criar ou Destruir Água",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria ou destrói até 10 galões de água; também pode criar chuva ou dissipar neblina em um Cubo de 30 pés.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você faz uma das opções a seguir. Criar Água: cria até 10 galões de água limpa ao alcance em um recipiente aberto. Como alternativa, a água cai como chuva em um Cubo de 30 pés ao alcance, apagando chamas expostas na área. Destruir Água: destrói até 10 galões de água em um recipiente aberto ao alcance. Como alternativa, destrói neblina em um Cubo de 30 pés ao alcance. Usando um espaço de magia de nível superior: você cria ou destrói 10 galões adicionais, ou o tamanho do Cubo aumenta em 5 pés, para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25432,7 +25759,27 @@
         "classes": [
           "Cleric",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "water-volume-or-cube-size",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "additionalGallons": 10,
+                "cubeSideFeet": 5,
+                "choice": "one-mode"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -25479,7 +25826,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Curar Ferimentos",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Uma criatura tocada recupera 2d8 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.rules.description": "Uma criatura que você toca recupera Pontos de Vida iguais a 2d8 + seu modificador da habilidade de conjuração. Usando um espaço de magia de nível superior: a cura aumenta em 2d8 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -25505,7 +25852,25 @@
           "paladin",
           "ranger"
         ],
-        "healing": "2d8"
+        "healing": "2d8",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "healing-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "2d8"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -25513,7 +25878,12 @@
       "name": "Dancing Lights",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dancing Lights"
+        "pt-BR": "Luzes Dançantes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria luzes flutuantes que iluminam a área e podem ser reorganizadas ou movidas enquanto a magia durar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria até quatro luzes do tamanho de tochas dentro do alcance, fazendo com que pareçam tochas, lanternas ou orbes luminosos que flutuam pela duração. Como alternativa, combina as quatro luzes em uma forma Média luminosa vagamente humanoide. Qualquer que seja a forma escolhida, cada luz emite Luz Fraca em um raio de 10 pés. Como Ação Bônus, você pode mover as luzes até 60 pés para um espaço dentro do alcance. Uma luz deve permanecer a até 20 pés de outra luz criada por esta magia e desaparece se ultrapassar o alcance da magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -25522,7 +25892,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25625,7 +26001,9 @@
         "pt-BR": "Detectar o Bem e o Mal",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você percebe a localização de Aberrações, Celestiais, Elementais, Fadas, Corruptores e Mortos-vivos a até 30 pés, além da presença de Consagrar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Pela duração, você percebe a localização de qualquer Aberração, Celestial, Elemental, Fada, Corruptor ou Morto-vivo a até 30 pés de você. Também percebe se a magia Consagrar está ativa ali e, em caso afirmativo, onde. A magia é bloqueada por 1 pé de pedra, terra ou madeira; 1 polegada de metal; ou uma fina folha de chumbo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25633,7 +26011,13 @@
         "classes": [
           "Cleric",
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25647,7 +26031,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Detectar Magia",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Você sente a presença de magia a até 30 pés.",
+        "pt-BR.rules.description": "Pela duração, você sente a presença de magia a até 30 pés de você. Se sentir magia dessa forma, pode realizar a ação Mágica para ver uma aura tênue em torno de qualquer criatura ou objeto visível na área que contenha magia e, se houver, descobrir sua Escola de magia. A magia é bloqueada por 1 pé de pedra, terra ou madeira; 1 polegada de metal comum; ou uma fina folha de chumbo.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -25674,7 +26058,13 @@
           "ranger",
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25685,7 +26075,9 @@
         "pt-BR": "Detectar Veneno e Doença",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você percebe a localização e o tipo de venenos, criaturas venenosas ou peçonhentas e contágios mágicos a até 30 pés.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Pela duração, você sente a localização de venenos, criaturas venenosas ou peçonhentas e contágios mágicos a até 30 pés de você. Em cada caso, você também identifica o tipo de veneno, criatura ou contágio.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25695,7 +26087,13 @@
           "Druid",
           "Paladin",
           "Ranger"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25753,7 +26151,9 @@
         "pt-BR": "Disfarçar-se",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você altera a própria aparência, incluindo roupas, armadura, armas e pertences, dentro dos limites da magia.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você altera sua aparência — incluindo roupas, armadura, armas e outros pertences — até a magia terminar ou até usar uma ação Mágica para encerrá-la. Você pode parecer 1 pé mais alto ou mais baixo e pode parecer mais magro, gordo ou intermediário. Não pode mudar seu tipo de corpo; precisa manter o mesmo arranjo básico de membros. A extensão da ilusão depende de você. As mudanças não resistem a uma inspeção física: por exemplo, alguém que toque você pode perceber que o chapéu é ilusório. Para examinar sua aparência, uma criatura pode usar a ação Estudar e deve ser bem-sucedida em um teste de Inteligência (Investigação) contra sua CD para evitar suas magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -25762,7 +26162,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -25860,7 +26266,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Sussurros Dissonantes",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "O alvo faz uma salvaguarda de Sabedoria. Se falhar, sofre 3d6 de dano Psíquico e usa imediatamente sua Reação para se afastar; se passar, sofre apenas metade do dano.",
+        "pt-BR.rules.description": "Você sussurra uma melodia discordante que apenas uma criatura à sua escolha ao alcance pode ouvir. O alvo faz uma salvaguarda de Sabedoria. Se falhar, sofre 3d6 de dano Psíquico e deve usar imediatamente sua Reação, se disponível, para se afastar de você pelo caminho mais seguro. O alvo não se move para um terreno obviamente perigoso, como fogo ou um fosso. Se for bem-sucedido, sofre metade do dano e não se afasta. Usando um espaço de magia de nível superior: o dano aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -25882,11 +26288,32 @@
           "bard"
         ],
         "damage": {
-          "type": "psychic",
-          "dice": "3d6",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "3d6",
+              "type": "psychic"
+            }
+          ]
         },
-        "savingThrow": "wis"
+        "savingThrow": "wis",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "psychic"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -25914,14 +26341,30 @@
         "pt-BR": "Favor Divino",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Até a magia terminar, seus ataques com armas causam 1d4 de dano Radiante extra ao acertar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Até a magia terminar, seus ataques com armas causam 1d4 de dano Radiante extra ao acertar. Usando um espaço de magia de nível superior: o dano extra aumenta em 1d4 para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Transmutation",
         "classes": [
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d4",
+              "type": "radiant",
+              "trigger": "weapon-hit"
+            }
+          ]
+        },
+        "scaling": null
       }
     },
     {
@@ -25935,7 +26378,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Golpe Divino",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Na próxima vez que acertar uma criatura com um ataque corpo a corpo com arma durante a duração da magia, o ataque causa 2d8 de dano Radiante extra; contra Corruptores ou Mortos-vivos, causa mais 1d8.",
+        "pt-BR.rules.description": "O alvo sofre 2d8 de dano Radiante extra do ataque. O dano aumenta em 1d8 se o alvo for um Corruptor ou Morto-vivo. Usando um espaço de magia de nível superior: o dano aumenta em 1d8 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -25957,9 +26400,37 @@
           "paladin"
         ],
         "damage": {
-          "type": "radiant",
-          "dice": "2d8",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "2d8",
+              "type": "radiant",
+              "additional": [
+                {
+                  "formula": "1d8",
+                  "type": "radiant",
+                  "trigger": "fiend-or-undead"
+                }
+              ]
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d8",
+                "type": "radiant"
+              }
+            ]
+          }
         }
       }
     },
@@ -26099,14 +26570,25 @@
       "name": "Druidcraft",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Druidcraft"
+        "pt-BR": "Druidismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria um efeito natural menor: prevê o clima, faz uma planta florescer, produz uma sensação inofensiva ou acende ou apaga uma pequena chama.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Sussurrando aos espíritos da natureza, você cria um dos seguintes efeitos dentro do alcance. **Indicador climático.** Você cria um efeito sensorial inofensivo e Minúsculo que prevê o clima no local onde você está para as próximas 24 horas. O efeito pode se manifestar como um orbe dourado para céu limpo, uma nuvem para chuva, flocos de neve para neve e assim por diante. Ele persiste por 1 rodada. **Florescer.** Você faz uma flor desabrochar, uma vagem se abrir ou um broto florescer instantaneamente. **Efeito sensorial.** Você cria um efeito sensorial inofensivo, como folhas caindo, fadas espectrais dançando, uma brisa suave, o som de um animal ou um leve odor de gambá. O efeito deve caber em um Cubo de 5 pés. **Brincar com fogo.** Você acende ou apaga uma vela, tocha ou fogueira.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Transmutation",
         "classes": [
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26131,7 +26613,14 @@
       "name": "Eldritch Blast",
       "summary": "You hurl a beam of crackling energy. Make a ranged spell attack. On a hit, the target takes 1d10 Force damage.",
       "translations": {
-        "pt-BR": "Eldritch Blast"
+        "pt-BR": "Rajada Mística",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Rajada Mística",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara um feixe de energia crepitante contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d10 de dano de força.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara um feixe de energia crepitante. Faça um ataque mágico à distância contra uma criatura ou objeto dentro do alcance. Se acertar, o alvo sofre 1d10 de dano de força. O truque cria dois feixes no nível 5, três no nível 11 e quatro no nível 17. Você pode direcionar os feixes ao mesmo alvo ou a alvos diferentes. Faça uma rolagem de ataque separada para cada feixe.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26153,9 +26642,48 @@
           "warlock"
         ],
         "damage": {
-          "type": "force",
-          "dice": "1d10",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d10",
+              "type": "force",
+              "trigger": "per-beam"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "beam-count",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "beam-count",
+                  "count": 3
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "beam-count",
+                  "count": 4
+                }
+              ]
+            }
+          ]
         }
       }
     },
@@ -26164,7 +26692,14 @@
       "name": "Elementalism",
       "summary": "You exert control over the elements, creating one of several minor effects.",
       "translations": {
-        "pt-BR": "Elementalism"
+        "pt-BR": "Elementalismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Elementalismo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você controla os elementos para criar um entre vários efeitos menores.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você exerce controle sobre os elementos, criando um dos efeitos a seguir dentro do alcance. Brisa: você cria uma brisa forte o bastante para ondular tecidos, levantar poeira, farfalhar folhas e fechar portas e venezianas abertas, tudo em um Cubo de 5 pés. Portas e venezianas mantidas abertas por alguém ou algo não são afetadas. Terra: você cria uma fina camada de poeira ou areia que cobre superfícies em uma área quadrada de 5 pés, ou faz uma única palavra aparecer, escrita à mão por você, em um trecho de terra ou areia. Fogo: você cria uma fina nuvem de brasas inofensivas e fumaça colorida e perfumada em um Cubo de 5 pés. Você escolhe a cor e o aroma, e as brasas podem acender velas, tochas ou lampiões nessa área. O aroma da fumaça permanece por 1 minuto. Água: você cria um borrifo de névoa fria que umedece levemente criaturas e objetos em um Cubo de 5 pés. Como alternativa, cria 1 xícara de água limpa em um recipiente aberto ou sobre uma superfície; a água evapora em 1 minuto. Moldar Elemento: você faz terra, areia, fogo, fumaça, névoa ou água que caiba em um Cubo de 1 pé assumir uma forma rudimentar, como a de uma criatura, por 1 hora.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26186,7 +26721,13 @@
           "druid",
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26213,7 +26754,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Golpe Enredante",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Quando você acerta uma criatura com um ataque com arma, vinhas a envolvem. Se o alvo falhar numa salvaguarda de Força, recebe a condição Impedido até a magia terminar.",
+        "pt-BR.rules.description": "Na próxima vez que você acertar uma criatura com um ataque com arma antes da magia terminar, vinhas agarradoras aparecem no alvo, que faz uma salvaguarda de Força. Uma criatura Grande ou maior tem vantagem nessa salvaguarda. Se falhar, recebe a condição Impedido até a magia terminar; se for bem-sucedida, as vinhas murcham e a magia termina. Enquanto estiver Impedido, o alvo sofre 1d6 de dano Perfurante no início de cada turno dele. O alvo ou uma criatura ao alcance dele pode usar uma ação para fazer um teste de Força (Atletismo) contra sua CD para evitar suas magias; se for bem-sucedida, a magia termina. Usando um espaço de magia de nível superior: o dano aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -26234,7 +26775,34 @@
         "classes": [
           "ranger"
         ],
-        "savingThrow": "str"
+        "savingThrow": "str",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "piercing",
+              "trigger": "restrained-start-of-turn"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "piercing"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -26245,7 +26813,9 @@
         "pt-BR": "Emaranhar",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Plantas agarradoras brotam em um quadrado de 20 pés, transformando o chão da área em Terreno Difícil; criaturas ali podem ficar Impedidas após falhar numa salvaguarda de Força.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Plantas agarradoras brotam do chão em um quadrado de 20 pés ao alcance e murcham quando a magia termina. Pela duração, as plantas tornam o solo da área Terreno Difícil. Cada criatura (exceto você) na área quando você conjura a magia deve ser bem-sucedida em uma salvaguarda de Força ou recebe a condição Impedido pelas plantas até a magia terminar. Uma criatura Impedida pode usar uma ação para fazer um teste de Força contra sua CD para evitar suas magias, encerrando o efeito sobre si se for bem-sucedida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26253,7 +26823,13 @@
         "classes": [
           "Druid",
           "Ranger"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26293,7 +26869,9 @@
         "pt-BR": "Retirada Veloz",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você realiza a ação Disparada e, até a magia terminar, pode realizá-la novamente como uma Ação Bônus.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você realiza a ação Disparada e, até a magia terminar, pode realizar essa ação novamente como uma Ação Bônus.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26302,7 +26880,13 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26346,7 +26930,9 @@
         "pt-BR": "Fogo das Fadas",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Objetos e criaturas atingidos em um Cubo de 20 pés ficam contornados por luz; criaturas que falharem na salvaguarda não se beneficiam da condição Invisível e concedem vantagem nos ataques contra elas.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Objetos em um Cubo de 20 pés ao alcance são delineados por luz azul, verde ou violeta (à sua escolha). Cada criatura no Cubo também é delineada se falhar em uma salvaguarda de Destreza. Pela duração, objetos e criaturas afetados emitem Luz Fraca em um raio de 10 pés e não podem se beneficiar da condição Invisível. Além disso, jogadas de ataque contra uma criatura ou objeto afetado têm vantagem se o atacante puder vê-lo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26354,7 +26940,13 @@
         "classes": [
           "Bard",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26380,7 +26972,9 @@
         "pt-BR": "Vida Falsa",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você recebe 2d4 + 4 Pontos de Vida Temporários; cada nível acima do 1º acrescenta 5.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você recebe 2d4 + 4 Pontos de Vida Temporários. Usando um espaço de magia de nível superior: você recebe 5 Pontos de Vida Temporários adicionais para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26388,7 +26982,25 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "temporary-hit-points-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "amount": 5
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -26417,7 +27029,9 @@
         "pt-BR": "Queda Suave",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Até cinco criaturas em queda descem a 60 pés por rodada e não sofrem dano de queda enquanto a magia durar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha até cinco criaturas em queda ao alcance. A descida de cada alvo fica mais lenta, reduzindo a velocidade de queda para 60 pés por rodada até a magia terminar. Se uma criatura aterrissar antes disso, não sofre dano de queda e a magia termina para ela.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26426,7 +27040,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26437,14 +27057,22 @@
         "pt-BR": "Encontrar Familiar",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você invoca um espírito que assume a forma de um animal escolhido e pode se comunicar com ele; o familiar também pode entregar magias de toque.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você ganha os serviços de um familiar, um espírito que assume uma forma animal à sua escolha: Morcego, Gato, Sapo, Falcão, Lagarto, Polvo, Coruja, Rato, Corvo, Aranha, Doninha ou outra Besta com Desafio 0. Ele aparece em um espaço desocupado ao alcance e usa as estatísticas da forma escolhida, mas é Celestial, Fada ou Corruptor (à sua escolha), em vez de Besta. Seu familiar age independentemente, mas obedece aos seus comandos. Conexão telepática: enquanto estiver a até 100 pés de você, pode comunicar-se telepaticamente com ele. Além disso, como Ação Bônus, você pode ver pelos olhos dele e ouvir o que ele ouve até o início do seu próximo turno, obtendo os benefícios de quaisquer sentidos especiais dele. Entrega de magia: quando conjurar uma magia com alcance Toque, seu familiar pode entregá-la; ele deve estar a até 100 pés de você e usar a Reação para realizar o toque quando você conjurar a magia. Combate: o familiar é aliado seu e de seus aliados, rola sua própria Iniciativa e age no próprio turno. Não pode atacar, mas pode realizar outras ações normalmente. Desaparecimento: quando cai a 0 Pontos de Vida, desaparece e reaparece quando você conjura esta magia novamente. Como Ação Mágica, você pode dispensá-lo temporariamente para um espaço extradimensional ou dispensá-lo para sempre. Enquanto estiver temporariamente dispensado, você pode usar uma Ação Mágica para fazê-lo reaparecer em um espaço desocupado a até 30 pés de você. Sempre que cair a 0 Pontos de Vida ou desaparecer no espaço extradimensional, deixa no espaço tudo o que estiver vestindo ou carregando. Um Familiar por vez: você não pode ter mais de um familiar. Se conjurar esta magia enquanto tiver um familiar, em vez disso faz com que ele assuma uma nova forma elegível.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Conjuration",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26536,7 +27164,14 @@
       "name": "Fire Bolt",
       "summary": "You hurl a mote of fire. Make a ranged spell attack. On a hit, the target takes 1d10 Fire damage.",
       "translations": {
-        "pt-BR": "Fire Bolt"
+        "pt-BR": "Raio de Fogo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Raio de Fogo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara uma fagulha de fogo. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara uma fagulha de fogo contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano de fogo. Um objeto inflamável atingido começa a queimar se não estiver sendo vestido nem carregado. O dano aumenta em 1d10 quando você alcança os níveis 5 (2d10), 11 (3d10) e 17 (4d10).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -26559,9 +27194,50 @@
           "wizard"
         ],
         "damage": {
-          "type": "fire",
-          "dice": "1d10",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d10",
+              "type": "fire"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d10",
+                  "type": "fire"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d10",
+                  "type": "fire"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d10",
+                  "type": "fire"
+                }
+              ]
+            }
+          ]
         }
       }
     },
@@ -26707,14 +27383,22 @@
         "pt-BR": "Disco Flutuante",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria um disco de força que acompanha você e transporta carga, desaparecendo se ficar a mais de 20 pés de distância.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esta magia cria um disco horizontal de força com 3 pés de diâmetro e 1 polegada de espessura, que flutua 3 pés acima do chão em um espaço desocupado à sua escolha que você possa ver ao alcance. O disco pode carregar até 500 libras. Se mais peso for colocado sobre ele, a magia termina e tudo o que estiver sobre ele cai no chão. Se você se afastar mais de 20 pés, o disco o acompanha para permanecer a até 20 pés de você. Se não puder acompanhá-lo, a magia termina.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Conjuration",
         "classes": [
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -26755,7 +27439,9 @@
         "pt-BR": "Nuvem de Neblina",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria uma Esfera de neblina com raio de 20 pés, que obscurece fortemente a área até a magia terminar ou um vento forte dissipá-la.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria uma Esfera de neblina de raio de 20 pés, centrada em um ponto ao alcance. A Esfera é Pesadamente Obscurecida. Ela dura pela duração ou até um vento forte (como o criado por Rajada de Vento) dispersá-la, encerrando a magia. Usando um espaço de magia de nível superior: o raio da Esfera aumenta em 20 pés para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26765,7 +27451,25 @@
           "Ranger",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "radius-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "feet": 20
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -26989,7 +27693,9 @@
         "pt-BR": "Boa Fruta",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria dez bagas; cada uma restaura 1 Ponto de Vida e fornece alimento suficiente para um dia.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Até dez bagas aparecem em sua mão e são infundidas com magia pela duração. Uma criatura pode usar uma ação Bônus para comer uma baga. Comer uma baga restaura 1 Ponto de Vida e fornece nutrição suficiente para sustentar uma criatura por um dia. Bagas não comidas desaparecem quando a magia termina. Usando um espaço de magia de nível superior: o número de bagas criadas aumenta em dez para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -26997,7 +27703,13 @@
         "classes": [
           "Druid",
           "Ranger"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27008,7 +27720,9 @@
         "pt-BR": "Graxa",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Graxa não inflamável cobre um quadrado de 10 pés e o torna Terreno Difícil; criaturas podem cair se falharem numa salvaguarda de Destreza.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Graxa não inflamável cobre o chão em um quadrado de 10 pés centrado em um ponto ao alcance e o transforma em Terreno Difícil pela duração. Quando a graxa aparece, cada criatura que estiver na área deve ser bem-sucedida em uma salvaguarda de Destreza ou recebe a condição Caído. Uma criatura que entrar na área ou terminar o turno nela também deve ser bem-sucedida nessa salvaguarda ou cair com a condição Caído.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27016,7 +27730,13 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27098,7 +27818,14 @@
       "name": "Guidance",
       "summary": "You touch a willing creature. The creature adds 1d4 to one ability check of its choice.",
       "translations": {
-        "pt-BR": "Guidance"
+        "pt-BR": "Orientação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Orientação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você toca uma criatura disposta. Ela adiciona 1d4 a um teste de atributo à sua escolha.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura disposta e escolhe uma perícia. Até a magia terminar, a criatura adiciona 1d4 a qualquer teste de atributo que use a perícia escolhida.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27119,7 +27846,13 @@
         "classes": [
           "cleric",
           "druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27133,7 +27866,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Raio Guiador",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Ataque mágico à distância; ao acertar, causa 4d6 de dano Radiante e concede vantagem no próximo ataque contra o alvo.",
+        "pt-BR.rules.description": "Faça um ataque mágico à distância contra uma criatura à sua escolha ao alcance. Se acertar, o alvo sofre 4d6 de dano Radiante, e a próxima jogada de ataque contra ele antes do fim do seu próximo turno tem vantagem, graças à luz mística que o envolve. Usando um espaço de magia de nível superior: o dano aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27156,9 +27889,30 @@
           "cleric"
         ],
         "damage": {
-          "type": "radiant",
-          "dice": "4d6",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "4d6",
+              "type": "radiant"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "radiant"
+              }
+            ]
+          }
         }
       }
     },
@@ -27298,7 +28052,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Palavra Curativa",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Uma criatura recupera 2d4 + seu modificador da habilidade de conjuração em Pontos de Vida.",
+        "pt-BR.rules.description": "Uma criatura à sua escolha que você possa ver ao alcance recupera Pontos de Vida iguais a 2d4 + seu modificador da habilidade de conjuração. Usando um espaço de magia de nível superior: a cura aumenta em 2d4 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27321,7 +28075,25 @@
           "cleric",
           "druid"
         ],
-        "healing": "2d4"
+        "healing": "2d4",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "healing-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "2d4"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27348,14 +28120,42 @@
         "pt-BR": "Repreensão Infernal",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Como Reação ao sofrer dano de uma criatura visível, você a envolve em chamas; ela sofre 2d10 de dano de Fogo se falhar na salvaguarda de Destreza, ou metade se passar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "A criatura que causou dano a você é envolvida por chamas. Ela faz uma salvaguarda de Destreza, sofrendo 2d10 de dano de Fogo se falhar ou metade desse dano se for bem-sucedida. Usando um espaço de magia de nível superior: o dano aumenta em 1d10 para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Evocation",
         "classes": [
           "Warlock"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "2d10",
+              "type": "fire"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d10",
+                "type": "fire"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27383,7 +28183,9 @@
         "pt-BR": "Heroísmo",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura voluntária fica imune à condição Amedrontado e ganha Pontos de Vida Temporários iguais ao seu modificador da habilidade de conjuração no início de cada turno.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura voluntária que você toque recebe a condição Imune a Amedrontado e ganha Pontos de Vida Temporários iguais ao seu modificador da habilidade de conjuração no início de cada um dos turnos dela. Quando a magia termina, os Pontos de Vida Temporários restantes desaparecem. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27391,7 +28193,25 @@
         "classes": [
           "Bard",
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27405,7 +28225,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Maldição",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Você amaldiçoa uma criatura: seus ataques causam 1d6 de dano Necrótico extra ao alvo e você escolhe uma habilidade na qual ele terá desvantagem em testes.",
+        "pt-BR.rules.description": "Você amaldiçoa uma criatura que possa ver ao alcance. Até a magia terminar, você causa 1d6 de dano Necrótico extra ao alvo sempre que o acerta com uma jogada de ataque. Além disso, escolha uma habilidade; o alvo tem desvantagem nos testes de atributo feitos com essa habilidade. Se o alvo cair a 0 Pontos de Vida antes da magia terminar, você pode usar uma Ação Bônus em um turno posterior para amaldiçoar outra criatura. Usando um espaço de magia de nível 3 ou 4, a Concentração pode durar até 8 horas; com um espaço de nível 5 ou superior, até 24 horas.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27429,8 +28249,39 @@
           "warlock"
         ],
         "damage": {
-          "type": "necrotic",
-          "dice": "1d6"
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "necrotic",
+              "trigger": "attack-hit"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "duration-tier",
+                "fromSlotLevel": 2,
+                "duration": "4 hours"
+              },
+              {
+                "kind": "duration-tier",
+                "fromSlotLevel": 3,
+                "duration": "8 hours"
+              },
+              {
+                "kind": "duration-tier",
+                "fromSlotLevel": 5,
+                "duration": "24 hours"
+              }
+            ]
+          }
         }
       }
     },
@@ -27442,7 +28293,9 @@
         "pt-BR": "Riso Histérico",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria cai no chão, fica incapacitada pelo riso e tem dificuldade para se levantar enquanto a magia durar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura à sua escolha que você possa ver ao alcance faz uma salvaguarda de Sabedoria. Se falhar, recebe as condições Caído e Incapacitado pela duração. Durante esse tempo, ri incontrolavelmente se for capaz de rir e não pode encerrar a condição Caído por conta própria. A criatura deve ter Inteligência 5 ou mais. No fim de cada turno dela e sempre que sofrer dano, ela repete a salvaguarda de Sabedoria; tem vantagem nessa salvaguarda se o dano vier de um ataque. Se for bem-sucedida, a magia termina. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27451,7 +28304,25 @@
           "Bard",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27543,14 +28414,46 @@
         "pt-BR": "Marca do Caçador",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você marca uma criatura: seus ataques causam 1d6 de dano de Força extra contra ela, e você tem vantagem em testes de Sabedoria para encontrá-la.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você marca magicamente uma criatura que possa ver ao alcance como sua presa. Até a magia terminar, você causa 1d6 de dano de Força extra ao alvo sempre que o acerta com uma jogada de ataque. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Divination",
         "classes": [
           "Ranger"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "force",
+              "trigger": "attack-hit"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "duration-tier",
+                "fromSlotLevel": 3,
+                "duration": "8 hours"
+              },
+              {
+                "kind": "duration-tier",
+                "fromSlotLevel": 5,
+                "duration": "24 hours"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27582,7 +28485,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Faca de Gelo",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Ataque mágico à distância: ao acertar, causa 1d10 de dano Perfurante; em seguida, acerte ou erre, o estilhaço explode e criaturas próximas podem sofrer 2d6 de dano de Frio.",
+        "pt-BR.rules.description": "Você cria um estilhaço de gelo e o arremessa contra uma criatura ao alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d10 de dano Perfurante. Acerte ou erre, o estilhaço então explode. O alvo e cada criatura a até 5 pés dele devem ser bem-sucedidos em uma salvaguarda de Destreza ou sofrem 2d6 de dano de Frio. Usando um espaço de magia de nível superior: o dano de Frio aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -27607,11 +28510,39 @@
           "wizard"
         ],
         "damage": {
-          "type": "piercing",
-          "dice": "1d10",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "1d10",
+              "type": "piercing",
+              "trigger": "attack-hit"
+            },
+            {
+              "formula": "2d6",
+              "type": "cold",
+              "trigger": "burst-save-fail"
+            }
+          ]
         },
-        "savingThrow": "dex"
+        "savingThrow": "dex",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "cold",
+                "componentTrigger": "burst-save-fail"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27639,7 +28570,9 @@
         "pt-BR": "Identificação",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você aprende as propriedades de um item mágico tocado, como usá-lo e se exige sintonia; também descobre magias que o afetam.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você escolhe um objeto que deve tocar durante toda a conjuração. Se for um item mágico ou outro objeto imbuído de magia, você aprende suas propriedades e como usá-las, se exige sintonia para ser usado e quantas cargas tem, se houver. Você descobre se alguma magia está afetando o objeto e qual é. Se o objeto foi criado por uma magia, você aprende qual magia o criou. Se, em vez disso, tocar uma criatura durante toda a conjuração, aprende quais magias, se houver, a afetam atualmente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27647,7 +28580,13 @@
         "classes": [
           "Bard",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27658,7 +28597,9 @@
         "pt-BR": "Escrita Ilusória",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você escreve uma mensagem que parece incompreensível ou diferente para leitores não designados, enquanto os destinatários escolhidos a leem normalmente.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você escreve em um pergaminho, papel ou outro material adequado e o imbui com uma ilusão que dura pela duração. Para você e para as criaturas que designar ao conjurar, a escrita parece normal, escrita por sua mão, e transmite o significado pretendido. Para todos os demais, a escrita parece estranha e incompreensível, embora pareça escrita em outro idioma. Uma criatura que use a ação Mágica para examinar a escrita pode perceber a mensagem verdadeira com um teste bem-sucedido de Inteligência (Investigação) contra sua CD para evitar suas magias. A magia pode ser dissipada e é removida por Dissipar Magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -27667,7 +28608,13 @@
           "Bard",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27711,14 +28658,42 @@
         "pt-BR": "Infligir Ferimentos",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Faça um ataque mágico corpo a corpo; ao acertar, o alvo sofre 2d10 de dano Necrótico.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Faça um ataque mágico corpo a corpo contra uma criatura ao seu alcance. Se acertar, o alvo sofre 2d10 de dano Necrótico. Usando um espaço de magia de nível superior: o dano aumenta em 1d10 para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Necromancy",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "2d10",
+              "type": "necrotic"
+            }
+          ]
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d10",
+                "type": "necrotic"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27808,12 +28783,32 @@
         "pt-BR": "Salto",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura tocada pode saltar com distância triplicada até a magia terminar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura. Uma vez em cada um dos turnos dela até a magia terminar, essa criatura pode saltar uma distância igual ao triplo do normal.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Transmutation",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -27884,7 +28879,14 @@
       "name": "Light",
       "summary": "You touch one object. Until the spell ends, the object sheds Bright Light in a 20-foot radius.",
       "translations": {
-        "pt-BR": "Light"
+        "pt-BR": "Luz",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Luz",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você toca um objeto. Até a magia terminar, ele emite Luz plena em um raio de 20 pés.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca um objeto Grande ou menor que não esteja sendo usado nem carregado por outra criatura. Até a magia terminar, o objeto emite Luz plena em um raio de 20 pés e Luz fraca por mais 20 pés. A luz pode ter a cor que você quiser. Cobrir o objeto com algo opaco bloqueia a luz. A magia termina se você conjurá-la novamente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -27906,7 +28908,13 @@
           "cleric",
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -27995,7 +29003,9 @@
         "pt-BR": "Passo Longo",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Aumenta o deslocamento de uma criatura em 10 pés por uma hora; espaços de nível superior podem afetar alvos adicionais.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura. O deslocamento do alvo aumenta em 10 pés até a magia terminar. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -28005,7 +29015,25 @@
           "Druid",
           "Ranger",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-targets",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -28019,7 +29047,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Armadura Arcana",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "A CA base do alvo passa a ser 13 + modificador de Destreza.",
+        "pt-BR.rules.description": "Você toca uma criatura voluntária que não esteja usando armadura. Até a magia terminar, a CA base do alvo se torna 13 + modificador de Destreza. A magia termina se o alvo vestir uma armadura.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -28041,7 +29069,13 @@
         "classes": [
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -28049,7 +29083,14 @@
       "name": "Mage Hand",
       "summary": "A spectral, floating hand appears at a point you choose within range.",
       "translations": {
-        "pt-BR": "Mage Hand"
+        "pt-BR": "Mãos Mágicas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Mãos Mágicas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma mão espectral flutuante aparece em um ponto à sua escolha dentro do alcance. A mão permanece pela duração da magia. Ela desaparece se ficar a mais de 30 pés de você ou se você conjurar esta magia novamente. Ao conjurá-la, você pode usar a mão para manipular um objeto, abrir uma porta ou recipiente destrancado, guardar ou retirar um item de um recipiente aberto ou despejar o conteúdo de um frasco. Em turnos posteriores, você pode usar uma ação Mágica para controlar a mão dessa forma novamente e, como parte dessa ação, movê-la até 30 pés. A mão não pode atacar, ativar itens mágicos nem carregar mais de 10 libras.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28072,7 +29113,13 @@
           "sorcerer",
           "warlock",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -28119,7 +29166,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Mísseis Mágicos",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Três dardos causam 1d4 + 1 de dano de Energia cada e acertam automaticamente.",
+        "pt-BR.rules.description": "Você cria três dardos brilhantes de força mágica. Cada dardo acerta uma criatura à sua escolha que você possa ver ao alcance. Um dardo causa 1d4 + 1 de dano de Energia ao alvo. Todos os dardos acertam simultaneamente, e você pode direcioná-los a um ou vários alvos. Usando um espaço de magia de nível superior: você cria um dardo adicional para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -28143,11 +29190,33 @@
           "wizard"
         ],
         "damage": {
-          "type": "force",
-          "dice": "1d4+1",
-          "scalingType": "spell-level",
-          "instances": 3,
-          "scalingInstances": 1
+          "components": [
+            {
+              "formula": "1d4+1",
+              "type": "force",
+              "instances": 3,
+              "trigger": "automatic-hit"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "additional-instances",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "count": 1,
+                "componentFormula": "1d4+1",
+                "type": "force"
+              }
+            ]
+          }
         }
       }
     },
@@ -28330,12 +29399,23 @@
       "name": "Mending",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mending"
+        "pt-BR": "Consertar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você repara uma única quebra ou rasgo em um objeto tocado, desde que não ultrapasse 1 pé em nenhuma dimensão. A magia pode reparar fisicamente um item mágico, mas não restaurar sua magia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esta magia repara uma única quebra ou rasgo em um objeto que você toca, como um elo quebrado de corrente, as duas metades de uma chave quebrada, um manto rasgado ou um odre com vazamento. Desde que a quebra ou o rasgo não tenha mais de 1 pé em qualquer dimensão, você o repara sem deixar vestígios do dano anterior. Esta magia pode reparar fisicamente um item mágico, mas não restaura a magia desse objeto.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Transmutation",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -28343,12 +29423,23 @@
       "name": "Message",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Message"
+        "pt-BR": "Mensagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aponta para uma criatura e sussurra uma mensagem que só ela ouve; ela pode responder em um sussurro que só você ouve. Silêncio mágico, certas barreiras sólidas ou uma fina folha de chumbo bloqueiam a magia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você aponta para uma criatura dentro do alcance e sussurra uma mensagem. O alvo, e somente ele, ouve a mensagem e pode responder em um sussurro que só você consegue ouvir. Você pode conjurar esta magia através de objetos sólidos se conhecer o alvo e souber que ele está além da barreira. Silêncio mágico, 1 pé de pedra, metal ou madeira, ou uma fina folha de chumbo bloqueia a magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Transmutation",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -28442,7 +29533,12 @@
       "name": "Minor Illusion",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Minor Illusion"
+        "pt-BR": "Ilusão Menor",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você cria um som ou a imagem de um objeto dentro do alcance. A ilusão dura até 1 minuto e termina se você conjurar esta magia novamente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria um som ou a imagem de um objeto dentro do alcance, que dura pela duração. Consulte abaixo os efeitos de cada opção. A ilusão termina se você conjurar esta magia novamente. Se uma criatura realizar a ação Estudar para examinar o som ou a imagem, ela pode determinar que se trata de uma ilusão com um teste bem-sucedido de Inteligência (Investigação) contra a CD para evitar suas magias. Se uma criatura discernir a ilusão, ela se torna tênue para essa criatura. **Som.** O volume pode variar de um sussurro a um grito. Pode ser sua voz, a voz de outra pessoa, o rugido de um leão, uma batida de tambores ou qualquer outro som à sua escolha. O som continua sem cessar pela duração, ou você pode produzir sons distintos em momentos diferentes antes do fim da magia. **Imagem.** A imagem de um objeto, como uma cadeira, pegadas enlameadas ou um baú pequeno, não pode ser maior que um Cubo de 5 pés. A imagem não pode produzir som, luz, odor nem qualquer outro efeito sensorial. A interação física revela a ilusão, pois objetos podem atravessá-la.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -28452,7 +29548,13 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -28782,12 +29884,63 @@
       "name": "Poison Spray",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Poison Spray"
+        "pt-BR": "Rajada Venenosa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você lança uma névoa tóxica contra uma criatura dentro do alcance. Faça um ataque mágico à distância; se acertar, o alvo sofre 1d12 de dano venenoso.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você lança uma névoa tóxica contra uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d12 de dano venenoso.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Necromancy",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d12",
+              "type": "poison"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d12",
+                  "type": "poison"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d12",
+                  "type": "poison"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d12",
+                  "type": "poison"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -28931,7 +30084,14 @@
       "name": "Prestidigitation",
       "summary": "This spell is a minor magical trick that novice spellcasters use for practice.",
       "translations": {
-        "pt-BR": "Prestidigitation"
+        "pt-BR": "Prestidigitação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Prestidigitação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você cria um efeito mágico menor à sua escolha, como um efeito sensorial inofensivo, acender ou apagar uma chama, limpar ou sujar um objeto, alterar a temperatura ou o sabor de um material, fazer uma marca ou criar um pequeno objeto ilusório.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria um efeito mágico dentro do alcance. Escolha um dos efeitos a seguir. Se conjurar esta magia várias vezes, você pode manter até três de seus efeitos não instantâneos ativos ao mesmo tempo. Efeito Sensorial: você cria um efeito sensorial instantâneo e inofensivo, como uma chuva de faíscas, uma lufada de vento, notas musicais tênues ou um odor estranho. Brincadeira com Fogo: você acende ou apaga instantaneamente uma vela, tocha ou pequena fogueira. Limpar ou Sujar: você limpa ou suja instantaneamente um objeto de até 1 pé cúbico. Sensação Menor: você esfria, aquece ou dá sabor a até 1 pé cúbico de material não vivo por 1 hora. Marca Mágica: você faz uma cor, pequena marca ou símbolo aparecer em um objeto ou superfície por 1 hora. Criação Menor: você cria uma bugiganga não mágica ou uma imagem ilusória que caiba na sua mão. Ela dura até o fim do seu próximo turno. Uma bugiganga não pode causar dano nem ter valor monetário.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -28954,7 +30114,13 @@
           "sorcerer",
           "warlock",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29010,14 +30176,65 @@
       "name": "Produce Flame",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Produce Flame"
+        "pt-BR": "Chama Produzida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma chama surge em sua mão e ilumina ao redor. Você também pode arremessá-la contra um alvo com um ataque mágico à distância.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma chama bruxuleante aparece em sua mão e permanece ali pela duração. Enquanto estiver ali, não emite calor nem acende nada, e emite Luz plena em um raio de 20 pés e Luz fraca por mais 20 pés. A magia termina se você conjurá-la novamente. Até a magia terminar, você pode realizar uma ação Mágica para arremessar fogo contra uma criatura ou objeto a até 60 pés de você. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d8 de dano de fogo.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Conjuration",
         "classes": [
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "fire"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "fire"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "fire"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "fire"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29073,12 +30290,20 @@
         "pt-BR": "Proteção contra o Bem e o Mal",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Protege uma criatura voluntária contra tipos específicos de seres: eles têm desvantagem ao atacá-la, e ela resiste a encantamento, medo e possessão.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Até a magia terminar, uma criatura voluntária que você toque fica protegida contra Aberrações, Celestiais, Elementais, Fadas, Corruptores e Mortos-vivos. Esses tipos de criaturas têm desvantagem nas jogadas de ataque contra o alvo. O alvo também não pode ser Enfeitiçado, Amedrontado ou Possuído por elas. Se o alvo já estiver Enfeitiçado, Amedrontado ou Possuído por uma dessas criaturas, ele tem vantagem em qualquer nova salvaguarda contra o efeito relevante.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Abjuration",
-        "classes": []
+        "classes": [],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29107,7 +30332,9 @@
         "pt-BR": "Purificar Comida e Bebida",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Purifica alimentos e bebidas não mágicos em uma Esfera de 5 pés, removendo venenos e doenças.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Toda comida e bebida não mágica em uma Esfera de 5 pés centrada em um ponto à sua escolha ao alcance é purificada e fica livre de veneno e doença.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29116,7 +30343,13 @@
           "Cleric",
           "Druid",
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29171,7 +30404,12 @@
       "name": "Ray of Frost",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ray of Frost"
+        "pt-BR": "Raio de Gelo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um feixe gélido atinge uma criatura. Faça um ataque mágico à distância; se acertar, o alvo sofre 1d8 de dano de frio e seu deslocamento diminui em 10 pés até o início do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Um feixe gélido de luz azul-esbranquiçada dispara em direção a uma criatura dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, ele sofre 1d8 de dano de frio e seu Deslocamento é reduzido em 10 pés até o início do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29179,7 +30417,53 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "cold"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "cold"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "cold"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "cold"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29193,7 +30477,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Raio Nauseante",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Ataque mágico à distância; ao acertar, causa 2d8 de dano de Veneno e deixa o alvo Envenenado até o fim do seu próximo turno.",
+        "pt-BR.rules.description": "Um raio de energia esverdeada nauseante se lança contra uma criatura ao alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 2d8 de dano de Veneno e recebe a condição Envenenado até o fim do seu próximo turno. Usando um espaço de magia de nível superior: o dano aumenta em 1d8 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29217,9 +30501,30 @@
           "wizard"
         ],
         "damage": {
-          "type": "poison",
-          "dice": "2d8",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "2d8",
+              "type": "poison"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d8",
+                "type": "poison"
+              }
+            ]
+          }
         }
       }
     },
@@ -29293,7 +30598,12 @@
       "name": "Resistance",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Resistance"
+        "pt-BR": "Resistência",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você toca uma criatura disposta. Antes da magia terminar, ela pode rolar 1d4 e somar o resultado a uma salvaguarda que fizer.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você toca uma criatura voluntária e escolhe um tipo de dano: ácido, contundente, frio, fogo, elétrico, necrótico, perfurante, venenoso, radiante, cortante ou trovejante. Quando a criatura sofre dano do tipo escolhido antes do fim da magia, ela reduz o dano total sofrido em 1d4. Uma criatura só pode se beneficiar desta magia uma vez por turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29301,7 +30611,13 @@
         "classes": [
           "Cleric",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29389,7 +30705,14 @@
       "name": "Sacred Flame",
       "summary": "The target must succeed on a Dexterity saving throw or take 1d8 Radiant damage.",
       "translations": {
-        "pt-BR": "Sacred Flame"
+        "pt-BR": "Chama Sagrada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Chama Sagrada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofrer 1d8 de dano radiante.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Uma radiância semelhante a uma chama desce sobre uma criatura que você possa ver dentro do alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Destreza ou sofre 1d8 de dano radiante. O alvo não recebe benefício de Meia Cobertura nem de Três Quartos de Cobertura para essa salvaguarda. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29411,11 +30734,52 @@
           "cleric"
         ],
         "damage": {
-          "type": "radiant",
-          "dice": "1d8",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "radiant"
+            }
+          ]
         },
-        "savingThrow": "dex"
+        "savingThrow": "dex",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "radiant"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29426,14 +30790,22 @@
         "pt-BR": "Santuário",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura protegida força quem tentar atacá-la ou alvejá-la com magia que causa dano a fazer uma salvaguarda de Sabedoria; numa falha, o agressor escolhe outro alvo ou perde o ataque ou magia.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você protege uma criatura ao alcance. Até a magia terminar, qualquer criatura que escolha a criatura protegida como alvo de uma jogada de ataque ou de uma magia que cause dano deve ser bem-sucedida em uma salvaguarda de Sabedoria ou escolher um novo alvo; se não puder escolher outro, o ataque ou a magia é perdido. Esta magia não protege a criatura contra efeitos de área. A magia termina se a criatura protegida fizer uma jogada de ataque, conjurar uma magia ou causar dano a outra criatura.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
         "school": "Abjuration",
         "classes": [
           "Cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29494,7 +30866,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Golpe Flamejante",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Ao acertar, o ataque causa 1d6 de dano de Fogo extra; no início dos turnos seguintes, o alvo sofre 1d6 de dano de Fogo e pode encerrar a magia passando numa salvaguarda de Constituição.",
+        "pt-BR.rules.description": "Na próxima vez que você acertar uma criatura com um ataque corpo a corpo durante a duração, o ataque causa 1d6 de dano de Fogo extra. No início de cada turno do alvo até a magia terminar, ele sofre 1d6 de dano de Fogo e faz uma salvaguarda de Constituição; se for bem-sucedido, a magia termina. Usando um espaço de magia de nível superior: o dano extra inicial aumenta em 1d6 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29517,11 +30889,38 @@
           "ranger"
         ],
         "damage": {
-          "type": "fire",
-          "dice": "1d6",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "fire",
+              "trigger": "weapon-hit"
+            },
+            {
+              "formula": "1d6",
+              "type": "fire",
+              "trigger": "start-of-turn"
+            }
+          ]
         },
-        "savingThrow": "con"
+        "savingThrow": "con",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase-all-components",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d6",
+                "type": "fire"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -29649,7 +31048,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Escudo",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Você recebe +5 na CA até o início do seu próximo turno.",
+        "pt-BR.rules.description": "Uma barreira invisível de força mágica protege você. Até o início do seu próximo turno, você recebe +5 de bônus na CA, inclusive contra o ataque desencadeador, e não sofre dano de Mísseis Mágicos.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -29671,7 +31070,13 @@
         "classes": [
           "sorcerer",
           "wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29682,7 +31087,9 @@
         "pt-BR": "Escudo da Fé",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura recebe +2 na CA enquanto a magia durar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Um campo cintilante envolve uma criatura à sua escolha ao alcance, concedendo +2 de bônus na CA pela duração. Usando um espaço de magia de nível superior: você pode escolher uma criatura adicional para cada nível do espaço acima do 1º.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29690,7 +31097,13 @@
         "classes": [
           "Cleric",
           "Paladin"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29698,14 +31111,66 @@
       "name": "Shillelagh",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shillelagh"
+        "pt-BR": "Bordão Místico",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você imbui um bordão ou clava que está segurando com poder natural, permitindo usá-lo como arma mágica com sua habilidade de conjuração.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Um Bordão ou Clava que você segura é imbuído do poder da natureza. Pela duração, você pode usar sua habilidade de conjuração em vez de Força nas jogadas de ataque e dano de ataques corpo a corpo com essa arma, e o dado de dano da arma passa a ser d8. Se o ataque causar dano, ele pode ser de energia ou do tipo normal da arma, à sua escolha. A magia termina antes se você a conjurar novamente ou soltar a arma.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
         "school": "Transmutation",
         "classes": [
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "d8",
+              "type": "varies",
+              "types": [
+                "force",
+                "weapon-normal"
+              ]
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "weapon-damage-die",
+                  "die": "d10"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "weapon-damage-die",
+                  "die": "d12"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "weapon-damage-die",
+                  "die": "2d6"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29728,7 +31193,12 @@
       "name": "Shocking Grasp",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shocking Grasp"
+        "pt-BR": "Toque Chocante",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você atinge uma criatura com um toque elétrico. Se acertar, ela sofre 1d8 de dano elétrico e não pode realizar Reações até o início do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Relâmpagos saltam de você para uma criatura que tenta tocar. Faça um ataque mágico corpo a corpo contra o alvo. Se acertar, ele sofre 1d8 de dano elétrico e não pode realizar Ataques de Oportunidade até o início do seu próximo turno.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29736,7 +31206,53 @@
         "classes": [
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "lightning"
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "lightning"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "lightning"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "lightning"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29764,7 +31280,9 @@
         "pt-BR": "Imagem Silenciosa",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria a imagem visual de um objeto, criatura ou outro fenômeno em um Cubo de 15 pés, sem som, que você pode mover e ajustar.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você cria a imagem visual de um objeto, criatura ou outro fenômeno que não seja maior que um Cubo de 15 pés. A imagem aparece em um ponto ao alcance e dura pela duração. Ela é puramente visual; não é acompanhada por som, cheiro ou outros efeitos sensoriais. Como uma ação Mágica, você pode mover a imagem para qualquer ponto ao alcance. Enquanto ela se move, você pode alterar sua aparência para que o movimento pareça natural. A interação física revela que é uma ilusão, pois coisas passam através dela. Uma criatura que use a ação Estudar para examinar a imagem pode determinar que é uma ilusão com um teste bem-sucedido de Inteligência (Investigação) contra sua CD para evitar suas magias.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29773,7 +31291,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29799,7 +31323,9 @@
         "pt-BR": "Sono",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Uma criatura que falhar numa salvaguarda de Sabedoria cai inconsciente; o efeito termina se ela sofrer dano ou alguém usar uma ação para despertá-la.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Cada criatura à sua escolha em uma Esfera de 5 pés de raio centrada em um ponto ao alcance deve ser bem-sucedida em uma salvaguarda de Sabedoria ou recebe a condição Incapacitado até o fim do próximo turno dela; nesse momento, deve repetir a salvaguarda. Se falhar na segunda salvaguarda, recebe a condição Inconsciente pela duração. A magia termina para um alvo se ele sofrer dano ou se alguém a até 5 pés dele usar uma ação para sacudi-lo e tirá-lo do efeito. Criaturas que não dormem, como elfos, ou que sejam Imunes à condição Exaustão são automaticamente bem-sucedidas nas salvaguardas contra esta magia.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29808,7 +31334,13 @@
           "Bard",
           "Sorcerer",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -29850,7 +31382,14 @@
       "name": "Sorcerous Burst",
       "summary": "You cast sorcerous energy at one creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, or Thunder.",
       "translations": {
-        "pt-BR": "Sorcerous Burst"
+        "pt-BR": "Rajada Arcana",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Rajada Arcana",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você dispara energia arcana contra uma criatura ou objeto. Se acertar, causa 1d8 de dano à sua escolha entre ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você dispara energia arcana contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância contra o alvo. Se acertar, o alvo sofre 1d8 de dano de um tipo à sua escolha: ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante. Se o resultado de um d8 desta magia for 8, você pode rolar outro d8 e somá-lo ao dano. Ao conjurar esta magia, o número máximo de d8 adicionais que você pode somar ao dano é igual ao seu modificador da habilidade de conjuração. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -29872,9 +31411,64 @@
           "sorcerer"
         ],
         "damage": {
-          "type": "varies",
-          "dice": "1d8",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "varies",
+              "types": [
+                "acid",
+                "cold",
+                "fire",
+                "lightning",
+                "poison",
+                "psychic",
+                "thunder"
+              ],
+              "explodingDice": {
+                "die": "d8",
+                "triggersOn": 8,
+                "maxAdditionalDice": "spellcasting-ability-modifier"
+              }
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "varies"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "varies"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "varies"
+                }
+              ]
+            }
+          ]
         }
       }
     },
@@ -29883,7 +31477,12 @@
       "name": "Spare the Dying",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Spare the Dying"
+        "pt-BR": "Poupar os Mortos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você estabiliza uma criatura viva com 0 pontos de vida dentro do alcance. A magia não afeta mortos-vivos nem constructos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Escolha uma criatura dentro do alcance que tenha 0 Pontos de Vida e não esteja morta. A criatura fica Estável.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -29891,7 +31490,43 @@
         "classes": [
           "Cleric",
           "Druid"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "range-feet",
+                  "feet": 30
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "range-feet",
+                  "feet": 60
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "range-feet",
+                  "feet": 120
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -29902,7 +31537,9 @@
         "pt-BR": "Falar com Animais",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Você compreende e se comunica com Bestas, podendo fazer perguntas e receber informações limitadas pelo conhecimento delas.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Pela duração, você pode compreender e comunicar-se verbalmente com Bestas. Você tem vantagem em testes de Carisma para influenciá-las. A maioria das Bestas tem pouca inteligência e não consegue fornecer informações sobre o passado ou o futuro, mas pode dizer o que percebeu recentemente.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -29912,7 +31549,13 @@
           "Druid",
           "Ranger",
           "Warlock"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30054,7 +31697,14 @@
       "name": "Starry Wisp",
       "summary": "You launch a mote of light at one creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d8 Radiant damage, and until the end of your next turn, it emits Dim Light in a 10-foot radius and can't benefit from the Invisible condition.",
       "translations": {
-        "pt-BR": "Starry Wisp"
+        "pt-BR": "Fagulha Estelar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Fagulha Estelar",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você lança uma fagulha luminosa contra uma criatura ou objeto. Se acertar, causa 1d8 de dano radiante; o alvo emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível até o fim do seu próximo turno.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você lança um ponto de luz contra uma criatura ou objeto dentro do alcance. Faça um ataque mágico à distância. Se acertar, o alvo sofre 1d8 de dano radiante e, até o fim do seu próximo turno, emite Luz fraca em um raio de 10 pés e não pode se beneficiar da condição Invisível. O dano aumenta em 1d8 quando você alcança os níveis 5 (2d8), 11 (3d8) e 17 (4d8).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30077,9 +31727,50 @@
           "druid"
         ],
         "damage": {
-          "type": "radiant",
-          "dice": "1d8",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d8",
+              "type": "radiant"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d8",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d8",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d8",
+                  "type": "radiant"
+                }
+              ]
+            }
+          ]
         }
       }
     },
@@ -30315,7 +32006,14 @@
       "name": "Thaumaturgy",
       "summary": "You manifest a minor wonder, a sign of supernatural power.",
       "translations": {
-        "pt-BR": "Thaumaturgy"
+        "pt-BR": "Taumaturgia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Taumaturgia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "Você manifesta uma maravilha menor, um sinal de poder sobrenatural.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você manifesta uma maravilha menor dentro do alcance. Crie um dos efeitos a seguir dentro do alcance. Se conjurar esta magia várias vezes, você pode manter até três de seus efeitos com duração de 1 minuto ativos ao mesmo tempo. Olhos Alterados: você altera a aparência dos seus olhos por 1 minuto. Voz Retumbante: sua voz fica até três vezes mais alta que o normal por 1 minuto. Durante esse período, você tem Vantagem em testes de Carisma (Intimidação). Brincadeira com Fogo: você faz chamas tremeluzirem, brilharem mais, diminuírem ou mudarem de cor por 1 minuto. Mão Invisível: você faz instantaneamente uma porta ou janela destrancada escancarar-se ou fechar-se com força. Som Fantasma: você cria um som instantâneo que se origina de um ponto à sua escolha dentro do alcance, como um estrondo de trovão, o grasnado de um corvo ou sussurros ameaçadores. Tremores: você causa tremores inofensivos no chão por 1 minuto.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30334,7 +32032,13 @@
         "description": "You manifest a minor wonder, a sign of supernatural power.",
         "classes": [
           "cleric"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30348,7 +32052,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Onda Trovejante",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Criaturas em um Cubo de 15 pés fazem uma salvaguarda de Constituição e sofrem 2d8 de dano Trovejante se falharem.",
+        "pt-BR.rules.description": "Uma onda de força trovejante varre você. Cada criatura em um Cubo de 15 pés originado em você faz uma salvaguarda de Constituição. Se falhar, sofre 2d8 de dano Trovejante e é empurrada 10 pés para longe de você; se for bem-sucedida, sofre metade do dano apenas. Além disso, objetos não fixados que estejam completamente dentro do Cubo são empurrados 10 pés para longe de você, e o estrondo é audível a até 300 pés. Usando um espaço de magia de nível superior: o dano aumenta em 1d8 para cada nível do espaço acima do 1º.",
         "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
@@ -30374,11 +32078,32 @@
           "wizard"
         ],
         "damage": {
-          "type": "thunder",
-          "dice": "2d8",
-          "scalingType": "spell-level"
+          "components": [
+            {
+              "formula": "2d8",
+              "type": "thunder"
+            }
+          ]
         },
-        "savingThrow": "con"
+        "savingThrow": "con",
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "spellSlot": {
+            "baseLevel": 1,
+            "effects": [
+              {
+                "kind": "damage-increase",
+                "fromSlotLevel": 2,
+                "everySlotLevels": 1,
+                "formula": "1d8",
+                "type": "thunder"
+              }
+            ]
+          }
+        }
       }
     },
     {
@@ -30508,7 +32233,12 @@
       "name": "True Strike",
       "summary": "Magia do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "True Strike"
+        "pt-BR": "Ataque Verdadeiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Guiado por um lampejo de intuição mágica, você faz um ataque com a arma usada para conjurar a magia, usando sua habilidade de conjuração nas jogadas de ataque e dano. O dano pode ser radiante ou do tipo normal da arma.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Guiado por um lampejo de intuição mágica, você faz um ataque com a arma usada na conjuração desta magia. O ataque usa sua habilidade de conjuração nas jogadas de ataque e dano, em vez de Força ou Destreza. Se o ataque causar dano, ele pode ser radiante ou do tipo normal da arma, à sua escolha.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 0,
@@ -30518,7 +32248,57 @@
           "Sorcerer",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": {
+          "components": [
+            {
+              "formula": "weapon damage",
+              "type": "varies",
+              "types": [
+                "radiant",
+                "weapon-normal"
+              ]
+            }
+          ]
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "extra-damage",
+                  "formula": "1d6",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "extra-damage",
+                  "formula": "2d6",
+                  "type": "radiant"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "extra-damage",
+                  "formula": "3d6",
+                  "type": "radiant"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -30562,7 +32342,9 @@
         "pt-BR": "Servo Invisível",
         "pt-BR.source": "reviewed",
         "pt-BR.summary": "Cria uma força invisível que realiza tarefas simples e pode se afastar até 60 pés; a magia termina se for levada além disso.",
-        "pt-BR.summary.source": "reviewed"
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Esta magia cria uma força invisível, sem forma e sem mente que realiza tarefas simples sob seu comando até a magia terminar. O servo surge em um espaço desocupado no chão ao alcance. Tem CA 10, 1 Ponto de Vida e Força 2, e não pode atacar. Se cair a 0 Pontos de Vida, a magia termina. Uma vez em cada um dos seus turnos, como Ação Bônus, você pode comandar mentalmente o servo para se mover até 15 pés e interagir com um objeto. O servo pode realizar tarefas simples que um criado humano poderia fazer, como buscar coisas, limpar, consertar, dobrar roupas, acender fogueiras, servir comida e bebida. Depois de receber uma ordem, ele executa até poder concluí-la e então espera pela próxima. Se você comandá-lo a realizar uma tarefa a mais de 60 pés de você, a magia termina.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "level": 1,
@@ -30571,7 +32353,13 @@
           "Bard",
           "Warlock",
           "Wizard"
-        ]
+        ],
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "damage": null,
+        "scaling": null
       }
     },
     {
@@ -30596,7 +32384,14 @@
       "name": "Vicious Mockery",
       "summary": "Target must succeed on Wisdom save or take 1d6 Psychic damage and have Disadvantage on next attack.",
       "translations": {
-        "pt-BR": "Vicious Mockery"
+        "pt-BR": "Zombaria Viciosa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.rules.name": "Zombaria Viciosa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.summary": "O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofrer 1d6 de dano psíquico e ter Desvantagem no próximo ataque.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.description": "Você lança uma sequência de insultos carregados de encantamentos sutis contra uma criatura que possa ver ou ouvir dentro do alcance. O alvo deve ser bem-sucedido em uma salvaguarda de Sabedoria ou sofre 1d6 de dano psíquico e tem Desvantagem na próxima rolagem de ataque que fizer antes do fim do seu próximo turno. O dano aumenta em 1d6 quando você alcança os níveis 5 (2d6), 11 (3d6) e 17 (4d6).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -30617,9 +32412,50 @@
           "bard"
         ],
         "damage": {
-          "type": "psychic",
-          "dice": "1d6",
-          "scalingType": "cantrip"
+          "components": [
+            {
+              "formula": "1d6",
+              "type": "psychic"
+            }
+          ]
+        },
+        "mechanicsAudit": {
+          "status": "reviewed",
+          "source": "D&D SRD 5.2.1"
+        },
+        "scaling": {
+          "characterLevel": [
+            {
+              "level": 5,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "2d6",
+                  "type": "psychic"
+                }
+              ]
+            },
+            {
+              "level": 11,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "3d6",
+                  "type": "psychic"
+                }
+              ]
+            },
+            {
+              "level": 17,
+              "effects": [
+                {
+                  "kind": "damage-formula",
+                  "formula": "4d6",
+                  "type": "psychic"
+                }
+              ]
+            }
+          ]
         }
       }
     },

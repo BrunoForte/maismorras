@@ -10,6 +10,7 @@ import { canonicalClass } from '$lib/data/classProgression';
 import { DND2024_FEAT_SPELL_RULES } from '$lib/data/dnd2024FeatSpells';
 import { campaignFeatSpellRuleFromEntryRules } from '$lib/utils/compendium/campaignFeatSpellRule';
 import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
+import type { SpellMechanicsPresentation } from '$lib/utils/compendium/spellMechanics';
 
 export type SpellOrigin = NonNullable<Spell['origin']>;
 export type SpellFeatGrantProjection = {
@@ -60,6 +61,7 @@ export type SpellPresentation = {
 	displayName: (spell: Spell) => string;
 	description: (spell: Spell) => string;
 	higherLevels: (spell: Spell) => string;
+	mechanics: (spell: Spell) => SpellMechanicsPresentation;
 	hasAITranslation: (spell: Spell) => boolean;
 };
 
