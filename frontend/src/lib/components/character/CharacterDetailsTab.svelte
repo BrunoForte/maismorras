@@ -6,6 +6,7 @@
 	} from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { translatedFeatDetails } from '$lib/utils/compendium/compendiumRules';
 	import CharacterFeatSpellGrants from './CharacterFeatSpellGrants.svelte';
 	import CharacterCampaignFeatSpellGrants from './CharacterCampaignFeatSpellGrants.svelte';
 
@@ -54,12 +55,7 @@
 					: 'Ao rolar o dano de um ataque corpo a corpo com uma arma empunhada com as duas mãos, você pode rolar novamente um dado de dano que tenha resultado 1 ou 2. Você deve usar o novo resultado.';
 			return 'Talento privado ou sem descrição cadastrada no compêndio.';
 		}
-		const rules = entry.rules ?? {};
-		const description = String(rules.description ?? entry.summary ?? '').trim();
-		const benefits = Array.isArray(rules.benefits)
-			? rules.benefits.map((benefit) => String(benefit).trim()).filter(Boolean)
-			: [];
-		const resolved = [...new Set([description, ...benefits].filter(Boolean))].join('\n\n');
+		const resolved = translatedFeatDetails(entry, $appLocale);
 		if (resolved) return resolved;
 		if (/great weapon fighting|luta com armas grandes/i.test(feat))
 			return $appLocale === 'en'

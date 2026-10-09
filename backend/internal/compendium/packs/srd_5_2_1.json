@@ -586,7 +586,70 @@
       "name": "Barbarian",
       "summary": "A fierce warrior who can enter a battle rage.",
       "translations": {
-        "pt-BR": "Barbarian"
+        "pt-BR": "Bárbaro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um guerreiro feroz capaz de entrar em fúria durante a batalha.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Bárbaro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um guerreiro feroz capaz de entrar em fúria durante a batalha.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Fúria",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Em batalha, você luta com ferocidade primal. No seu turno, pode entrar em fúria com uma ação bônus. Enquanto estiver em fúria, você recebe Resistência a dano contundente, perfurante e cortante; tem Vantagem em testes de Força e salvaguardas de Força; e causa dano adicional ao acertar ataques baseados em Força.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Defesa sem Armadura",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Enquanto não estiver usando armadura, sua CA é igual a 10 + seu modificador de Destreza + seu modificador de Constituição.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Sentido de Perigo",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você percebe instintivamente quando algo próximo não está como deveria, o que lhe dá vantagem ao esquivar-se do perigo. Você tem Vantagem em salvaguardas de Destreza, a menos que esteja com a condição Incapacitado.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Ataque Imprudente",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você pode abandonar toda preocupação com a defesa para atacar com desespero feroz. Ao fazer seu primeiro ataque no turno, pode decidir atacar de maneira imprudente. Isso lhe dá Vantagem nas jogadas de ataque com armas corpo a corpo usando Força durante esse turno, mas as jogadas de ataque contra você têm Vantagem até o início do seu próximo turno.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Conhecimento Primal",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Você recebe proficiência em outra perícia da lista de perícias do Bárbaro.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Ataque Extra",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Você pode atacar duas vezes, em vez de uma, sempre que realizar a ação de Ataque no seu turno.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Movimento Rápido",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Seu Deslocamento aumenta em 3 metros enquanto você não estiver usando armadura Pesada.",
+        "pt-BR.rules.features.6.description.source": "reviewed",
+        "pt-BR.rules.features.7.name": "Instinto Selvagem",
+        "pt-BR.rules.features.7.name.source": "reviewed",
+        "pt-BR.rules.features.7.description": "Seus instintos são tão aguçados que você tem Vantagem nas jogadas de Iniciativa.",
+        "pt-BR.rules.features.7.description.source": "reviewed",
+        "pt-BR.rules.features.8.name": "Bote Instintivo",
+        "pt-BR.rules.features.8.name.source": "reviewed",
+        "pt-BR.rules.features.8.description": "Como parte da ação bônus usada para entrar em fúria, você pode se mover até metade do seu Deslocamento.",
+        "pt-BR.rules.features.8.description.source": "reviewed",
+        "pt-BR.rules.features.9.name": "Golpe Brutal",
+        "pt-BR.rules.features.9.name.source": "reviewed",
+        "pt-BR.rules.features.9.description": "Se usar Ataque Imprudente, você pode abrir mão de qualquer Vantagem em um ataque baseado em Força. Se esse ataque acertar, causa dano adicional e pode derrubar o alvo ou empurrá-lo.",
+        "pt-BR.rules.features.9.description.source": "reviewed",
+        "pt-BR.rules.features.10.name": "Fúria Implacável",
+        "pt-BR.rules.features.10.name.source": "reviewed",
+        "pt-BR.rules.features.10.description": "Sua Fúria pode mantê-lo lutando apesar de ferimentos graves. Se seus Pontos de Vida caírem a 0 enquanto sua Fúria estiver ativa e você não morrer imediatamente, pode fazer uma salvaguarda de Constituição CD 10. Se tiver sucesso, seus Pontos de Vida passam a ser iguais ao dobro do seu nível de Bárbaro.",
+        "pt-BR.rules.features.10.description.source": "reviewed",
+        "pt-BR.rules.features.11.name": "Fúria Persistente",
+        "pt-BR.rules.features.11.name.source": "reviewed",
+        "pt-BR.rules.features.11.description": "Sua Fúria é tão intensa que só termina antes do esperado se você ficar com a condição Inconsciente ou decidir encerrá-la.",
+        "pt-BR.rules.features.11.description.source": "reviewed",
+        "pt-BR.rules.features.12.name": "Força Indomável",
+        "pt-BR.rules.features.12.name.source": "reviewed",
+        "pt-BR.rules.features.12.description": "Se o total de um teste de Força ou salvaguarda de Força for menor que seu valor de Força, você pode usar esse valor no lugar do total.",
+        "pt-BR.rules.features.12.description.source": "reviewed",
+        "pt-BR.rules.features.13.name": "Campeão Primal",
+        "pt-BR.rules.features.13.name.source": "reviewed",
+        "pt-BR.rules.features.13.description": "Você personifica o poder primal. Seus valores de Força e Constituição aumentam em 4, e o máximo deles passa a ser 26.",
+        "pt-BR.rules.features.13.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -717,7 +780,14 @@
       "name": "Bard",
       "summary": "An inspiring magician whose power echoes the music of creation.",
       "translations": {
-        "pt-BR": "Bard"
+        "pt-BR": "Bardo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um conjurador inspirador cujo poder ecoa a música da criação.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Bardo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um conjurador inspirador cujo poder ecoa a música da criação.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -804,7 +874,14 @@
       "name": "Cleric",
       "summary": "A priestly champion who wields divine magic in service of a higher power.",
       "translations": {
-        "pt-BR": "Cleric"
+        "pt-BR": "Clérigo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um campeão sacerdotal que empunha magia divina a serviço de um poder maior.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Clérigo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um campeão sacerdotal que empunha magia divina a serviço de um poder maior.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -875,7 +952,14 @@
       "name": "Druid",
       "summary": "A priest of the Old Faith, wielding the powers of nature and adopting animal forms.",
       "translations": {
-        "pt-BR": "Druid"
+        "pt-BR": "Druida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um sacerdote da Antiga Fé que empunha os poderes da natureza e assume formas animais.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Druida",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um sacerdote da Antiga Fé que empunha os poderes da natureza e assume formas animais.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -948,7 +1032,42 @@
       "name": "Fighter",
       "summary": "A master of martial combat, skilled with a variety of weapons and armor.",
       "translations": {
-        "pt-BR": "Fighter"
+        "pt-BR": "Guerreiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um mestre do combate marcial, habilidoso com diversas armas e armaduras.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Guerreiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um mestre do combate marcial, habilidoso com diversas armas e armaduras.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Estilo de Luta",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você adota um estilo específico como sua especialidade de combate. Escolha uma opção de Estilo de Luta.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Segundo Fôlego",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você tem uma reserva limitada de vigor que pode usar para se proteger de danos. No seu turno, pode usar uma ação bônus para recuperar Pontos de Vida iguais a 1d10 + seu nível de Guerreiro. Você pode usar esta característica um número de vezes igual ao seu Bônus de Proficiência e recupera todos os usos gastos ao concluir um Descanso Curto ou Longo.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Surto de Ação",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você pode superar seus limites normais por um instante. No seu turno, pode realizar uma ação adicional. Depois de usar esta característica, precisa concluir um Descanso Curto ou Longo antes de usá-la novamente. A partir do nível 17, pode usá-la duas vezes antes de um descanso, mas somente uma vez no mesmo turno.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Mente Tática",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você tem aptidão para táticas dentro e fora do campo de batalha. Quando falha em um teste de habilidade, pode gastar um uso de Segundo Fôlego para tentar obter sucesso. Role 1d10 e adicione o resultado ao teste, podendo transformá-lo em um sucesso.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Ataque Extra",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Você pode atacar duas vezes, em vez de uma, sempre que realizar a ação de Ataque no seu turno. O número de ataques aumenta para três ao alcançar o nível 11 nesta classe e para quatro ao alcançar o nível 20.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Indomável",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Você pode repetir uma salvaguarda que falhou. Se fizer isso, deve usar o novo resultado e não pode usar esta característica novamente até concluir um Descanso Longo. Você pode usá-la duas vezes entre Descansos Longos a partir do nível 13 e três vezes a partir do nível 17.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Mestre em Armamentos",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Você é mestre em armas. Sempre que concluir um Descanso Longo, pode escolher uma das propriedades de Maestria de arma às quais tem acesso e substituí-la por outra propriedade.",
+        "pt-BR.rules.features.6.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1039,7 +1158,50 @@
       "name": "Monk",
       "summary": "A master of martial arts, harnessing the power of the body in pursuit of physical and spiritual perfection.",
       "translations": {
-        "pt-BR": "Monk"
+        "pt-BR": "Monge",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um mestre das artes marciais que canaliza o poder do corpo em busca da perfeição física e espiritual.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Monge",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um mestre das artes marciais que canaliza o poder do corpo em busca da perfeição física e espiritual.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Artes Marciais",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Sua prática das artes marciais lhe dá domínio de estilos de combate que usam Golpes Desarmados e armas de Monge. Você recebe benefícios quando está desarmado ou empunha apenas armas de Monge e não usa armadura nem escudo.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Defesa sem Armadura",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Enquanto não estiver usando armadura nem empunhando um escudo, sua CA é igual a 10 + seu modificador de Destreza + seu modificador de Sabedoria.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Ki",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Seu treinamento permite canalizar a energia mística do ki. Você tem uma quantidade de Pontos de Ki igual ao seu nível de Monge. Pode gastar esses pontos para alimentar várias características de ki.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Movimento sem Armadura",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Seu Deslocamento aumenta em 3 metros enquanto você não estiver usando armadura nem empunhando um escudo. Esse bônus aumenta quando você alcança certos níveis de Monge.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Desviar Ataques",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Quando uma jogada de ataque acerta você e o dano inclui dano contundente, perfurante ou cortante, pode usar uma Reação para reduzir o dano total em 1d10 + seu modificador de Destreza + seu nível de Monge.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Queda Lenta",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Quando cair, você pode usar uma Reação para reduzir o dano da queda em um valor igual a cinco vezes seu nível de Monge.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Ataque Extra",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Você pode atacar duas vezes, em vez de uma, sempre que realizar a ação de Ataque no seu turno.",
+        "pt-BR.rules.features.6.description.source": "reviewed",
+        "pt-BR.rules.features.7.name": "Golpe Atordoante",
+        "pt-BR.rules.features.7.name.source": "reviewed",
+        "pt-BR.rules.features.7.description": "Uma vez por turno, quando acerta uma criatura com uma arma de Monge ou um Golpe Desarmado, pode gastar 1 Ponto de Ki para tentar atordoá-la. O alvo deve ter sucesso em uma salvaguarda de Constituição ou ficará com a condição Atordoado até o início do seu próximo turno.",
+        "pt-BR.rules.features.7.description.source": "reviewed",
+        "pt-BR.rules.features.8.name": "Evasão",
+        "pt-BR.rules.features.8.name.source": "reviewed",
+        "pt-BR.rules.features.8.description": "Quando estiver sujeito a um efeito que permita uma salvaguarda de Destreza para sofrer apenas metade do dano, você não sofre dano se tiver sucesso e sofre apenas metade se falhar.",
+        "pt-BR.rules.features.8.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1137,7 +1299,46 @@
       "name": "Paladin",
       "summary": "A holy warrior bound to a sacred oath.",
       "translations": {
-        "pt-BR": "Paladin"
+        "pt-BR": "Paladino",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um guerreiro sagrado vinculado a um juramento sagrado.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Paladino",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um guerreiro sagrado vinculado a um juramento sagrado.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Imposição das Mãos",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Seu toque abençoado pode curar ferimentos. Você tem uma reserva de poder curativo que se renova ao concluir um Descanso Longo. Com essa reserva, pode restaurar um total de Pontos de Vida igual a cinco vezes seu nível de Paladino.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Conjuração",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você aprendeu a recorrer à magia divina por meio de meditação e oração para conjurar magias.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Maestria com Armas",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Seu treinamento com armas permite que você use as propriedades de Maestria das armas.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Estilo de Luta",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você adota um estilo específico como sua especialidade de combate.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Canalizar Divindade",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Você canaliza energia divina diretamente dos Planos Exteriores e usa essa energia para alimentar efeitos mágicos.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Ataque Extra",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Você pode atacar duas vezes, em vez de uma, sempre que realizar a ação de Ataque no seu turno.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Aura de Proteção",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Sempre que você ou uma criatura aliada a até 3 metros fizer uma salvaguarda, pode adicionar seu modificador de Carisma à salvaguarda.",
+        "pt-BR.rules.features.6.description.source": "reviewed",
+        "pt-BR.rules.features.7.name": "Aura de Coragem",
+        "pt-BR.rules.features.7.name.source": "reviewed",
+        "pt-BR.rules.features.7.description": "Você e criaturas aliadas a até 3 metros têm Imunidade à condição Amedrontado.",
+        "pt-BR.rules.features.7.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1237,7 +1438,14 @@
       "name": "Ranger",
       "summary": "A warrior who combats threats on the edges of civilization.",
       "translations": {
-        "pt-BR": "Ranger"
+        "pt-BR": "Patrulheiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um guerreiro que combate ameaças nos limites da civilização.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Patrulheiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um guerreiro que combate ameaças nos limites da civilização.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1290,7 +1498,42 @@
       "name": "Rogue",
       "summary": "A scoundrel who uses stealth and trickery to overcome obstacles and enemies.",
       "translations": {
-        "pt-BR": "Rogue"
+        "pt-BR": "Ladino",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um patife que usa furtividade e astúcia para superar obstáculos e inimigos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Ladino",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um patife que usa furtividade e astúcia para superar obstáculos e inimigos.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Especialização",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você recebe Especialização em duas proficiências de perícia à sua escolha.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Ataque Furtivo",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Uma vez por turno, você pode causar dano adicional ao acertar um ataque se tiver Vantagem na jogada de ataque ou se um aliado estiver a até 1,5 metro do alvo.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Gíria dos Ladrões",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Durante seu treinamento, você aprendeu várias habilidades. Você conhece a Gíria dos Ladrões e mais um idioma.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Ação Ardilosa",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você pode usar uma ação bônus para realizar a ação Disparada, Desengajar ou Esconder-se.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Esquiva Sobrenatural",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Quando um atacante que você possa ver acerta você com uma jogada de ataque, pode usar uma Reação para reduzir pela metade o dano do ataque contra você.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Evasão",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Você consegue se esquivar agilmente de certos efeitos. Quando estiver sujeito a um efeito que permita uma salvaguarda de Destreza para sofrer apenas metade do dano, você não sofre dano se tiver sucesso e sofre metade se falhar.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Talento Confiável",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Sempre que fizer um teste de habilidade que use uma perícia ou ferramenta na qual seja proficiente, você pode tratar uma rolagem de 9 ou menos no d20 como 10.",
+        "pt-BR.rules.features.6.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1387,7 +1630,30 @@
       "name": "Sorcerer",
       "summary": "A spellcaster who draws on inherent magic from a gift or bloodline.",
       "translations": {
-        "pt-BR": "Sorcerer"
+        "pt-BR": "Feiticeiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um conjurador que extrai magia inata de um dom ou linhagem.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Feiticeiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um conjurador que extrai magia inata de um dom ou linhagem.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Feitiçaria Inata",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Um acontecimento do seu passado deixou uma marca indelével em você, impregnando-o de magia latente. Com uma ação bônus, você pode liberar essa magia por 1 minuto. Durante esse período, você tem Vantagem nas jogadas de ataque mágico, e sua CD para evitar suas magias aumenta em 1.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Fonte de Magia",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você tem Pontos de Feitiçaria que pode usar para criar espaços de magia ou aprimorar suas magias. Sua quantidade de Pontos de Feitiçaria é igual ao seu nível de Feiticeiro.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Metamagia",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você aprende a alterar suas magias para atender às suas necessidades. Aprenda duas opções de Metamagia à sua escolha.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Restauração Feiticeira",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Ao concluir um Descanso Curto, você recupera Pontos de Feitiçaria gastos em uma quantidade igual à metade do seu nível de Feiticeiro (arredondada para baixo).",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1480,7 +1746,38 @@
       "name": "Warlock",
       "summary": "A wielder of magic that is derived from a bargain with an extraplanar entity.",
       "translations": {
-        "pt-BR": "Warlock"
+        "pt-BR": "Bruxo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um usuário de magia derivada de um pacto com uma entidade extraplanar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Bruxo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um usuário de magia derivada de um pacto com uma entidade extraplanar.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Invocações Místicas",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Em seu estudo de saber oculto, você descobriu invocações místicas: fragmentos de conhecimento proibido que lhe concedem uma capacidade mágica duradoura.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Magia de Pacto",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Sua pesquisa arcana e a magia concedida por seu patrono lhe deram aptidão para conjurar magias. Você tem vários espaços de magia, todos do mesmo círculo.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Astúcia Mágica",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Se todos os seus espaços de Magia de Pacto tiverem sido gastos, você pode realizar um rito esotérico de 1 minuto. Ao final dele, recupera metade desses espaços.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Dádiva do Pacto",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Seu patrono sobrenatural lhe concede uma dádiva que aprofunda sua ligação com ele.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Contatar Patrono",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Você pode conjurar Contatar Outro Plano sem gastar um espaço de magia para entrar em contato com seu patrono.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Arcano Místico",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Seu patrono lhe concede um segredo mágico chamado arcano. Escolha uma magia de 6º círculo da lista de magias de Bruxo como esse arcano.",
+        "pt-BR.rules.features.5.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1588,7 +1885,42 @@
       "name": "Wizard",
       "summary": "A scholarly magic-user capable of manipulating the structures of reality.",
       "translations": {
-        "pt-BR": "Wizard"
+        "pt-BR": "Mago",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um estudioso da magia capaz de manipular as estruturas da realidade.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mago",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um estudioso da magia capaz de manipular as estruturas da realidade.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Recuperação Arcana",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você aprendeu a recuperar parte de sua energia mágica estudando seu grimório. Uma vez por dia, ao concluir um Descanso Curto, pode escolher espaços de magia gastos para recuperar, cujo total de círculos não exceda metade do seu nível de Mago (arredondada para cima).",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Adepto de Rituais",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você pode conjurar qualquer magia como Ritual se ela tiver a propriedade Ritual e estiver em seu grimório.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Grimório",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Seu grimório contém as magias que você conhece. Você começa com seis magias de Mago de 1º círculo à sua escolha em seu grimório.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Estudioso",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Enquanto estuda seu grimório, você também se aprofunda na teoria arcana. Você tem Especialização em uma perícia à sua escolha entre Arcanismo, História, Investigação, Medicina, Natureza ou Religião.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Memorizar Magia",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Sempre que concluir um Descanso Curto, pode estudar seu grimório e substituir uma das magias preparadas por outra magia do grimório.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Maestria Mágica",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Você dominou certas magias a ponto de poder conjurá-las à vontade. Escolha uma magia de Mago de 1º círculo e uma de 2º círculo que estejam em seu grimório.",
+        "pt-BR.rules.features.5.description.source": "reviewed",
+        "pt-BR.rules.features.6.name": "Magias Características",
+        "pt-BR.rules.features.6.name.source": "reviewed",
+        "pt-BR.rules.features.6.description": "Você domina duas magias poderosas e consegue conjurá-las com pouco esforço. Escolha duas magias de Mago de 3º círculo em seu grimório como suas magias características.",
+        "pt-BR.rules.features.6.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1700,7 +2032,16 @@
       "name": "Ability Score Improvement",
       "summary": "You increase your abilities through training and self-improvement.",
       "translations": {
-        "pt-BR": "Ability Score Improvement"
+        "pt-BR": "Aumento no Valor de Habilidade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aprimora suas habilidades por meio de treinamento e desenvolvimento pessoal.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Aumento no Valor de Habilidade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você aprimora suas habilidades por meio de treinamento e desenvolvimento pessoal.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumente um valor de habilidade à sua escolha em 2, ou aumente dois valores de habilidade à sua escolha em 1 cada. Você não pode aumentar um valor de habilidade acima de 20 usando este talento.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1720,7 +2061,18 @@
       "name": "Alert",
       "summary": "You develop keen senses that help you act in combat.",
       "translations": {
-        "pt-BR": "Alert"
+        "pt-BR": "Alerta",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você desenvolve sentidos aguçados que ajudam a agir em combate.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Alerta",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você desenvolve sentidos aguçados que ajudam a agir em combate.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Proficiência em Iniciativa: Quando rolar Iniciativa, você pode adicionar seu Bônus de Proficiência à rolagem.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Troca de Iniciativa: Imediatamente depois de rolar Iniciativa, você pode trocar seu resultado pelo de um aliado voluntário no mesmo combate. Você não pode fazer essa troca se você ou o aliado estiver com a condição Incapacitado.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1741,7 +2093,22 @@
       "name": "Athlete",
       "summary": "You have undergone extensive physical training.",
       "translations": {
-        "pt-BR": "Athlete"
+        "pt-BR": "Atleta",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você passou por um treinamento físico intenso.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atleta",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você passou por um treinamento físico intenso.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Deslocamento de Escalada: Você recebe um Deslocamento de Escalada igual ao seu Deslocamento.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Levantar-se: Quando estiver Caído, você pode se levantar gastando apenas 1,5 metro de deslocamento.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Saltos: Você pode realizar um salto longo ou alto com corrida depois de se mover apenas 1,5 metro.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1764,7 +2131,18 @@
       "name": "Boon of Combat Prowess",
       "summary": "Your combat ability has reached legendary proportions.",
       "translations": {
-        "pt-BR": "Boon of Combat Prowess"
+        "pt-BR": "Pacto da Proeza em Combate",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Sua capacidade de combate alcançou proporções lendárias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto da Proeza em Combate",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Sua capacidade de combate alcançou proporções lendárias.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente um valor de habilidade à sua escolha em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Mira Impecável: Quando errar uma jogada de ataque, você pode acertar em vez disso. Depois de usar este benefício, você não pode usá-lo novamente até o início do seu próximo turno.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1785,7 +2163,18 @@
       "name": "Boon of Dimensional Travel",
       "summary": "You can slip between dimensions at will.",
       "translations": {
-        "pt-BR": "Boon of Dimensional Travel"
+        "pt-BR": "Pacto da Viagem Dimensional",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você pode atravessar dimensões à vontade.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto da Viagem Dimensional",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você pode atravessar dimensões à vontade.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente um valor de habilidade à sua escolha em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Passos de Salto: Imediatamente depois de realizar a ação de Ataque ou a ação Mágica, você pode se teleportar até 9 metros para um espaço desocupado que possa ver.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1806,7 +2195,18 @@
       "name": "Boon of Fate",
       "summary": "You have mastery over fate itself.",
       "translations": {
-        "pt-BR": "Boon of Fate"
+        "pt-BR": "Pacto do Destino",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina o próprio destino.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto do Destino",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina o próprio destino.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente um valor de habilidade à sua escolha em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Aprimorar o Destino: Quando você ou outra criatura a até 18 metros de você tiver sucesso ou falhar em um Teste de d20, você pode rolar 2d4 e aplicar o total como bônus ou penalidade à rolagem do d20. Depois de usar este benefício, você não pode usá-lo novamente até rolar Iniciativa ou concluir um Descanso Curto ou Longo.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1827,7 +2227,20 @@
       "name": "Boon of Irresistible Offense",
       "summary": "Your attacks are devastating beyond measure.",
       "translations": {
-        "pt-BR": "Boon of Irresistible Offense"
+        "pt-BR": "Pacto do Ataque Irresistível",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seus ataques são devastadores além da medida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto do Ataque Irresistível",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seus ataques são devastadores além da medida.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Superar Defesas: O dano contundente, perfurante e cortante que você causa sempre ignora Resistência.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Golpe Avassalador: Quando obtiver 20 no d20 de uma jogada de ataque, você pode causar dano adicional ao alvo igual ao valor de habilidade aumentado por este talento.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1849,7 +2262,18 @@
       "name": "Boon of Spell Recall",
       "summary": "Your mastery of magic allows you to recall spent power.",
       "translations": {
-        "pt-BR": "Boon of Spell Recall"
+        "pt-BR": "Pacto da Recuperação de Magia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu domínio da magia permite recuperar o poder já gasto.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto da Recuperação de Magia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu domínio da magia permite recuperar o poder já gasto.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Inteligência, Sabedoria ou Carisma em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Conjuração Gratuita: Sempre que conjurar uma magia usando um espaço de magia de círculo 1 a 4, role 1d4. Se o resultado for igual ao círculo do espaço, ele não é gasto.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1870,7 +2294,20 @@
       "name": "Boon of the Night Spirit",
       "summary": "You merge with darkness itself.",
       "translations": {
-        "pt-BR": "Boon of the Night Spirit"
+        "pt-BR": "Pacto do Espírito da Noite",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você se funde à própria escuridão.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto do Espírito da Noite",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você se funde à própria escuridão.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente um valor de habilidade à sua escolha em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Fundir-se às Sombras: Enquanto estiver inteiramente em Luz Fraca ou Escuridão, você pode conceder a si mesmo a condição Invisível com uma ação bônus. A condição termina imediatamente depois que você realiza uma ação, uma ação bônus ou uma Reação.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Forma Sombria: Enquanto estiver inteiramente em Luz Fraca ou Escuridão, você tem Resistência a todo dano, exceto Psíquico e Radiante.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1892,7 +2329,18 @@
       "name": "Boon of Truesight",
       "summary": "You perceive the world in its true form.",
       "translations": {
-        "pt-BR": "Boon of Truesight"
+        "pt-BR": "Pacto da Visão Verdadeira",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você percebe o mundo em sua forma verdadeira.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Pacto da Visão Verdadeira",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você percebe o mundo em sua forma verdadeira.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente um valor de habilidade à sua escolha em 1, até o máximo de 30.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Visão Verdadeira: Você tem Visão Verdadeira com alcance de 18 metros.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1913,7 +2361,20 @@
       "name": "Charger",
       "summary": "You know how to make the most of a charge attack.",
       "translations": {
-        "pt-BR": "Charger"
+        "pt-BR": "Investida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você sabe tirar o máximo proveito de um ataque de investida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Investida",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você sabe tirar o máximo proveito de um ataque de investida.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Disparada Aprimorada: Quando realiza a ação Disparada, seu Deslocamento aumenta em 3 metros para essa ação.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Ataque de Investida: Se você se mover pelo menos 3 metros em linha reta na direção de um alvo imediatamente antes de acertá-lo com um ataque corpo a corpo como parte da ação de Ataque, escolha um dos seguintes efeitos: recebe +1d8 na jogada de dano do ataque ou empurra o alvo até 3 metros para longe, se ele for Grande ou menor. Você só pode usar este benefício uma vez por turno.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1935,7 +2396,22 @@
       "name": "Chef",
       "summary": "You are an able cook.",
       "translations": {
-        "pt-BR": "Chef"
+        "pt-BR": "Cozinheiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é um cozinheiro habilidoso.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Cozinheiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é um cozinheiro habilidoso.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Constituição ou Sabedoria em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Proficiência com Utensílios de Cozinheiro: Você recebe proficiência com Utensílios de Cozinheiro.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Refeição Revigorante: Como parte de um Descanso Curto, você pode preparar comida especial se tiver Utensílios de Cozinheiro e alimentos crus. Você pode preparar um número de porções igual ao seu Bônus de Proficiência. Ao fim do Descanso Curto, cada criatura que comer uma porção recupera 1d8 Pontos de Vida adicionais.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Petiscos Fortificantes: Com 1 hora de trabalho, você pode preparar um número de petiscos igual ao seu Bônus de Proficiência. Eles duram 8 horas depois de preparados. Uma criatura pode comer um para receber Pontos de Vida Temporários iguais ao seu Bônus de Proficiência.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1958,7 +2434,20 @@
       "name": "Crafter",
       "summary": "You are adept at crafting things.",
       "translations": {
-        "pt-BR": "Crafter"
+        "pt-BR": "Artesão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você tem talento para fabricar objetos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Artesão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você tem talento para fabricar objetos.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Proficiência com Ferramentas: Você recebe proficiência com três tipos diferentes de Ferramentas de Artesão à sua escolha.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Fabricação Acelerada: Ao fabricar um item usando uma ferramenta com a qual tenha proficiência, o tempo de fabricação necessário é reduzido em 20%.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Desconto: Sempre que comprar um item não mágico, você recebe 20% de desconto.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -1980,7 +2469,22 @@
       "name": "Crossbow Expert",
       "summary": "You are an expert with crossbows.",
       "translations": {
-        "pt-BR": "Crossbow Expert"
+        "pt-BR": "Especialista em Besta",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é especialista no uso de bestas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Especialista em Besta",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é especialista no uso de bestas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Ignorar Recarga: Você ignora a propriedade Recarga das bestas.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Disparo em Combate Corpo a Corpo: Estar a até 1,5 metro de um inimigo não impõe Desvantagem às suas jogadas de ataque com bestas.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Combater com Duas Armas: Quando fizer o ataque adicional da propriedade Leve, você pode adicionar seu modificador de habilidade ao dano se estiver empunhando uma besta com a propriedade Leve.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2003,7 +2507,16 @@
       "name": "Defensive Duelist",
       "summary": "You are skilled at parrying attacks.",
       "translations": {
-        "pt-BR": "Defensive Duelist"
+        "pt-BR": "Duelista Defensivo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você sabe aparar ataques.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Duelista Defensivo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você sabe aparar ataques.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aparar: Se estiver empunhando uma arma com acuidade e outra criatura acertar você com um ataque corpo a corpo, você pode usar uma Reação para adicionar seu Bônus de Proficiência à sua CA, possivelmente fazendo o ataque errar.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2023,7 +2536,20 @@
       "name": "Dual Wielder",
       "summary": "You master fighting with two weapons.",
       "translations": {
-        "pt-BR": "Dual Wielder"
+        "pt-BR": "Combatente com Duas Armas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina o combate com duas armas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Combatente com Duas Armas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina o combate com duas armas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Combate Aprimorado com Duas Armas: Quando realiza a ação de Ataque e ataca com uma arma que tenha a propriedade Leve, você pode fazer um ataque adicional com uma ação bônus mais tarde no mesmo turno, usando uma arma diferente que seja corpo a corpo e não tenha a propriedade Duas Mãos. Você não adiciona seu modificador de habilidade ao dano do ataque adicional, a menos que ele seja negativo.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Sacar Rapidamente: Você pode sacar ou guardar duas armas sem a propriedade Duas Mãos quando normalmente só poderia sacar ou guardar uma.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2045,7 +2571,20 @@
       "name": "Durable",
       "summary": "You are tough and hard to kill.",
       "translations": {
-        "pt-BR": "Durable"
+        "pt-BR": "Resistente",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é resistente e difícil de matar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Resistente",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é resistente e difícil de matar.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Constituição em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Desafiar a Morte: Você tem Vantagem em Salvaguardas contra a Morte.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Recuperação Rápida: Com uma ação bônus, você pode gastar um dos seus Dados de Vida, rolar o dado e recuperar uma quantidade de Pontos de Vida igual ao resultado.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2067,7 +2606,18 @@
       "name": "Elemental Adept",
       "summary": "You master spells of a particular element.",
       "translations": {
-        "pt-BR": "Elemental Adept"
+        "pt-BR": "Especialista Elemental",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina magias de um elemento específico.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Especialista Elemental",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina magias de um elemento específico.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Domínio da Energia: Escolha um dos seguintes tipos de dano: Ácido, Frio, Fogo, Elétrico ou Trovejante. As magias que você conjura ignoram Resistência ao dano do tipo escolhido. Quando rolar dano de uma magia que conjurou e que cause dano desse tipo, você pode tratar qualquer resultado 1 em um dado de dano como 2.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Repetível: Você pode escolher este talento mais de uma vez, escolhendo um tipo de dano diferente a cada vez.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2088,7 +2638,16 @@
       "name": "Fighting Style: Archery",
       "summary": "You gain a +2 bonus to attack rolls you make with Ranged weapons.",
       "translations": {
-        "pt-BR": "Fighting Style: Archery"
+        "pt-BR": "Estilo de Luta: Arquearia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você recebe +2 nas jogadas de ataque que fizer com armas à distância.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Estilo de Luta: Arquearia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você recebe +2 nas jogadas de ataque que fizer com armas à distância.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "+2 nas jogadas de ataque com armas à distância.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2108,7 +2667,16 @@
       "name": "Fighting Style: Defense",
       "summary": "While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class.",
       "translations": {
-        "pt-BR": "Fighting Style: Defense"
+        "pt-BR": "Estilo de Luta: Defesa",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Enquanto estiver usando armadura leve, média ou pesada, você recebe +1 na Classe de Armadura.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Estilo de Luta: Defesa",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Enquanto estiver usando armadura leve, média ou pesada, você recebe +1 na Classe de Armadura.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "+1 na CA enquanto estiver usando armadura.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2128,7 +2696,16 @@
       "name": "Fighting Style: Great Weapon Fighting",
       "summary": "When you roll damage for an attack with a Melee weapon that you're holding with two hands, you can treat any 1 or 2 on a damage die as a 3. The weapon must have the Two-Handed or Versatile property to gain this benefit.",
       "translations": {
-        "pt-BR": "Fighting Style: Great Weapon Fighting"
+        "pt-BR": "Estilo de Luta: Combate com Armas Grandes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Ao rolar o dano de um ataque com arma corpo a corpo empunhada com as duas mãos, você pode tratar resultados 1 ou 2 em um dado de dano como 3. A arma deve ter a propriedade Duas Mãos ou Versátil para receber esse benefício.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Estilo de Luta: Combate com Armas Grandes",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Ao rolar o dano de um ataque com arma corpo a corpo empunhada com as duas mãos, você pode tratar resultados 1 ou 2 em um dado de dano como 3. A arma deve ter a propriedade Duas Mãos ou Versátil para receber esse benefício.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Trate resultados 1 e 2 nos dados de dano como 3 ao usar armas corpo a corpo empunhadas com as duas mãos.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2148,7 +2725,16 @@
       "name": "Fighting Style: Two-Weapon Fighting",
       "summary": "When you make an extra attack as a result of using a weapon that has the Light property, you can add your ability modifier to the damage of that attack.",
       "translations": {
-        "pt-BR": "Fighting Style: Two-Weapon Fighting"
+        "pt-BR": "Estilo de Luta: Combate com Duas Armas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Estilo de Luta: Combate com Duas Armas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Adicione seu modificador de habilidade ao dano de ataques bônus com armas Leves.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2168,7 +2754,20 @@
       "name": "Great Weapon Master",
       "summary": "You master the techniques of heavy weapons.",
       "translations": {
-        "pt-BR": "Great Weapon Master"
+        "pt-BR": "Mestre em Armas Grandes",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina as técnicas de armas pesadas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mestre em Armas Grandes",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina as técnicas de armas pesadas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Domínio de Arma Pesada: Quando acerta uma criatura com uma arma que tenha a propriedade Pesada como parte da ação de Ataque, você pode fazer a arma causar dano adicional igual ao seu Bônus de Proficiência.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Derrubar: Imediatamente depois de obter um Acerto Crítico com uma arma corpo a corpo ou reduzir uma criatura a 0 Pontos de Vida com ela, você pode fazer um ataque com a mesma arma usando uma ação bônus.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2190,7 +2789,18 @@
       "name": "Healer",
       "summary": "You are an able physician.",
       "translations": {
-        "pt-BR": "Healer"
+        "pt-BR": "Curandeiro",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é um médico habilidoso.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Curandeiro",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é um médico habilidoso.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Médico de Batalha: Se tiver um Kit de Curandeiro, você pode gastar um uso dele e cuidar de uma criatura a até 1,5 metro como uma ação Utilizar. A criatura recupera 2d4 + 2 Pontos de Vida.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Repetir Dados de Cura: Sempre que rolar um dado para determinar a quantidade de Pontos de Vida recuperados por uma magia ou habilidade, você pode rolar novamente se o resultado for 1 e deve usar o novo resultado.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2211,7 +2821,18 @@
       "name": "Heavily Armored",
       "summary": "You have trained to master the use of heavy armor.",
       "translations": {
-        "pt-BR": "Heavily Armored"
+        "pt-BR": "Fortemente Armadurado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você treinou para dominar o uso de armaduras pesadas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Fortemente Armadurado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você treinou para dominar o uso de armaduras pesadas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Constituição ou Força em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Treinamento com Armadura Pesada: Você recebe Treinamento com Armadura Pesada.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2232,7 +2853,16 @@
       "name": "Inspiring Leader",
       "summary": "You can inspire your allies with stirring words.",
       "translations": {
-        "pt-BR": "Inspiring Leader"
+        "pt-BR": "Líder Inspirador",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você consegue inspirar seus aliados com palavras comoventes.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Líder Inspirador",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você consegue inspirar seus aliados com palavras comoventes.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Atuação Inspiradora: Ao fim de um Descanso Curto ou Longo, você pode fazer uma apresentação inspiradora para seus aliados. Ao fazê-lo, escolha até seis aliados que possam ver ou ouvir você. Cada um recebe Pontos de Vida Temporários iguais ao seu Bônus de Proficiência + seu modificador de Carisma.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2252,7 +2882,20 @@
       "name": "Keen Mind",
       "summary": "You have an unusually sharp memory.",
       "translations": {
-        "pt-BR": "Keen Mind"
+        "pt-BR": "Mente Aguçada",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você tem uma memória excepcionalmente aguçada.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mente Aguçada",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você tem uma memória excepcionalmente aguçada.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Inteligência em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Conhecimento de Saber: Escolha uma perícia entre Arcanismo, História, Investigação, Natureza ou Religião. Você tem Especialização nessa perícia se for proficiente nela.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Estudo Rápido: Você pode realizar a ação Estudar como uma ação bônus.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2274,7 +2917,20 @@
       "name": "Lucky",
       "summary": "You have inexplicable luck.",
       "translations": {
-        "pt-BR": "Lucky"
+        "pt-BR": "Sortudo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você tem uma sorte inexplicável.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Sortudo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você tem uma sorte inexplicável.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Pontos de Sorte: Você tem um número de Pontos de Sorte igual ao seu Bônus de Proficiência. Você pode gastar esses pontos nos benefícios abaixo e recupera todos ao concluir um Descanso Longo.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Vantagem: Imediatamente depois de rolar um d20, você pode gastar 1 Ponto de Sorte para ter Vantagem na rolagem.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Desvantagem: Quando uma criatura rolar um d20 para atacar você ou determinar se falha em uma salvaguarda, você pode gastar 1 Ponto de Sorte para impor Desvantagem à rolagem.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2296,7 +2952,20 @@
       "name": "Mage Slayer",
       "summary": "You have practiced techniques useful in melee combat against spellcasters.",
       "translations": {
-        "pt-BR": "Mage Slayer"
+        "pt-BR": "Caçador de Magos",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você praticou técnicas úteis no combate corpo a corpo contra conjuradores.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caçador de Magos",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você praticou técnicas úteis no combate corpo a corpo contra conjuradores.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Quebra de Concentração: Quando causa dano a uma criatura que esteja Concentração, ela tem Desvantagem na salvaguarda para manter a Concentração.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Mente Protegida: Se falhar em uma salvaguarda de Inteligência, Sabedoria ou Carisma, você pode transformar a falha em sucesso. Depois de usar este benefício, você não pode usá-lo novamente até concluir um Descanso Longo.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2318,7 +2987,22 @@
       "name": "Magic Initiate",
       "summary": "You have learned the basics of a magical tradition.",
       "translations": {
-        "pt-BR": "Magic Initiate"
+        "pt-BR": "Iniciado em Magia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aprendeu os fundamentos de uma tradição mágica.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Iniciado em Magia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você aprendeu os fundamentos de uma tradição mágica.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Dois Truques: Escolha uma classe: Bardo, Clérigo, Druida, Feiticeiro, Bruxo ou Mago. Você aprende dois truques à sua escolha da lista de magias dessa classe.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Magia de 1º Círculo: Escolha uma magia de 1º círculo da mesma lista. Você sempre a tem preparada. Pode conjurá-la uma vez sem gastar um espaço de magia e recupera essa capacidade ao concluir um Descanso Longo. Você também pode conjurá-la usando espaços de magia que tiver.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Habilidade de Conjuração: Inteligência, Sabedoria ou Carisma é sua habilidade de conjuração para essas magias (escolha ao selecionar este talento).",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Repetível: Você pode escolher este talento mais de uma vez, escolhendo uma classe diferente a cada vez.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2341,7 +3025,18 @@
       "name": "Musician",
       "summary": "You are a practiced musician.",
       "translations": {
-        "pt-BR": "Musician"
+        "pt-BR": "Músico",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é um músico experiente.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Músico",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é um músico experiente.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Treinamento Instrumental: Você recebe proficiência com três Instrumentos Musicais à sua escolha.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Canção Inspiradora: Ao concluir um Descanso Curto ou Longo, você pode tocar uma canção em um Instrumento Musical e inspirar seus aliados. Escolha um número de aliados que possam ver ou ouvir você, até seu Bônus de Proficiência. Cada um recebe Inspiração Heroica.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2362,7 +3057,20 @@
       "name": "Observant",
       "summary": "You are exceptionally perceptive.",
       "translations": {
-        "pt-BR": "Observant"
+        "pt-BR": "Observador",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é excepcionalmente perceptivo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Observador",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é excepcionalmente perceptivo.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Inteligência ou Sabedoria em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Observador Aguçado: Você recebe +5 em sua Percepção Passiva e Investigação Passiva.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Busca Rápida: Você pode realizar a ação Procurar como uma ação bônus.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2384,7 +3092,20 @@
       "name": "Polearm Master",
       "summary": "You are an expert with polearms.",
       "translations": {
-        "pt-BR": "Polearm Master"
+        "pt-BR": "Mestre em Armas de Haste",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é especialista em armas de haste.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mestre em Armas de Haste",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é especialista em armas de haste.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Golpe com a Haste: Imediatamente depois de realizar a ação de Ataque e atacar com um bordão, uma lança ou uma arma com as propriedades Pesada e Alcance, você pode usar uma ação bônus para fazer um ataque corpo a corpo com a outra extremidade da arma. A arma causa 1d4 de dano contundente.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Golpe Reativo: Enquanto empunhar uma arma desse tipo, você pode usar uma Reação para fazer um ataque corpo a corpo contra uma criatura que entre no seu alcance com essa arma.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2406,7 +3127,20 @@
       "name": "Resilient",
       "summary": "You have developed the resilience to better withstand certain dangers.",
       "translations": {
-        "pt-BR": "Resilient"
+        "pt-BR": "Resiliente",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você desenvolveu resiliência para suportar melhor certos perigos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Resiliente",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você desenvolveu resiliência para suportar melhor certos perigos.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Escolha um valor de habilidade. Aumente-o em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Proficiência em Salvaguarda: Você recebe proficiência em salvaguardas usando o valor de habilidade escolhido.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Repetível: Você pode escolher este talento mais de uma vez, escolhendo um valor de habilidade diferente a cada vez.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2428,7 +3162,20 @@
       "name": "Ritual Caster",
       "summary": "You have learned a number of spells that you can cast as rituals.",
       "translations": {
-        "pt-BR": "Ritual Caster"
+        "pt-BR": "Conjurador Ritualista",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aprendeu várias magias que pode conjurar como rituais.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Conjurador Ritualista",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você aprendeu várias magias que pode conjurar como rituais.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Magias Rituais: Escolha duas magias de 1º círculo com a propriedade Ritual da lista de magias de Bardo, Clérigo, Druida, Feiticeiro, Bruxo ou Mago. Você as tem preparadas e elas não contam no número de magias que pode ter preparadas.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Conjuração Ritualística: Quando conjura uma magia preparada com a propriedade Ritual, você pode conjurá-la como um Ritual.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Habilidade de Conjuração: Inteligência, Sabedoria ou Carisma é sua habilidade de conjuração para essas magias (escolha ao selecionar este talento).",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2450,7 +3197,16 @@
       "name": "Savage Attacker",
       "summary": "You've trained to deal particularly damaging strikes.",
       "translations": {
-        "pt-BR": "Savage Attacker"
+        "pt-BR": "Atacante Selvagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você treinou para desferir golpes especialmente devastadores.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atacante Selvagem",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você treinou para desferir golpes especialmente devastadores.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Golpe Selvagem: Uma vez por turno, quando acerta um alvo com uma arma, você pode rolar os dados de dano da arma duas vezes e usar qualquer um dos resultados contra o alvo.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2470,7 +3226,20 @@
       "name": "Sentinel",
       "summary": "You have mastered techniques to take advantage of every drop in any enemy's guard.",
       "translations": {
-        "pt-BR": "Sentinel"
+        "pt-BR": "Sentinela",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina técnicas para aproveitar qualquer brecha na guarda de um inimigo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Sentinela",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina técnicas para aproveitar qualquer brecha na guarda de um inimigo.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Guardião: Imediatamente depois que uma criatura a até 1,5 metro de você realiza a ação Desengajar ou acerta com um ataque um alvo que não seja você, você pode fazer um Ataque de Oportunidade contra ela.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Imobilizar: Quando acerta uma criatura com um Ataque de Oportunidade, o Deslocamento dela se torna 0 pelo restante do turno.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2492,7 +3261,22 @@
       "name": "Sharpshooter",
       "summary": "You are an expert marksman.",
       "translations": {
-        "pt-BR": "Sharpshooter"
+        "pt-BR": "Atirador de Elite",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é um atirador de elite.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atirador de Elite",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é um atirador de elite.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Ignorar Cobertura: Seus ataques à distância com armas ignoram Meia Cobertura e Três Quartos de Cobertura.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Disparo em Combate Corpo a Corpo: Estar a até 1,5 metro de um inimigo não impõe Desvantagem às suas jogadas de ataque com armas à distância.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Disparos Longos: Atacar no alcance longo não impõe Desvantagem às suas jogadas de ataque com armas à distância.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2515,7 +3299,20 @@
       "name": "Shield Master",
       "summary": "You have mastered using a shield to protect yourself and your allies.",
       "translations": {
-        "pt-BR": "Shield Master"
+        "pt-BR": "Mestre do Escudo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você domina o uso do escudo para proteger a si e a seus aliados.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mestre do Escudo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você domina o uso do escudo para proteger a si e a seus aliados.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Golpe com Escudo: Se atacar uma criatura a até 1,5 metro como parte da ação de Ataque e acertar, você pode empurrá-la até 1,5 metro se ela não for mais de uma categoria de tamanho maior que você.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Interpor Escudo: Se estiver sujeito a um efeito que permita uma salvaguarda de Destreza para sofrer apenas metade do dano, você pode usar uma Reação e o escudo para não sofrer dano se tiver sucesso na salvaguarda.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Golpe Poderoso: Você pode adicionar o bônus de Classe de Armadura do escudo ao seu teste de Força (Atletismo) para empurrar uma criatura a até 1,5 metro.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2537,7 +3334,18 @@
       "name": "Skilled",
       "summary": "You have acquired skills.",
       "translations": {
-        "pt-BR": "Skilled"
+        "pt-BR": "Habilidoso",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você adquiriu perícias.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Habilidoso",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você adquiriu perícias.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Proficiências em Perícias: Você recebe proficiência em qualquer combinação de três perícias ou ferramentas à sua escolha.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Repetível: Você pode escolher este talento mais de uma vez.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2558,7 +3366,22 @@
       "name": "Skulker",
       "summary": "You are expert at slinking through shadows.",
       "translations": {
-        "pt-BR": "Skulker"
+        "pt-BR": "Furtivo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é especialista em se esgueirar pelas sombras.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Furtivo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é especialista em se esgueirar pelas sombras.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Visão às Cegas: Você tem Visão às Cegas com alcance de 3 metros.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Névoa da Guerra: Você pode realizar a ação Esconder-se quando estiver Levemente Obscurecido.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Atirador Oculto: Se fizer uma jogada de ataque enquanto estiver Escondido e errar, fazer a jogada não encerra a condição Escondido em você.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2581,7 +3404,20 @@
       "name": "Speedy",
       "summary": "You are exceptionally fast.",
       "translations": {
-        "pt-BR": "Speedy"
+        "pt-BR": "Veloz",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é excepcionalmente veloz.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Veloz",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é excepcionalmente veloz.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Destreza ou Constituição em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Aumento de Deslocamento: Seu Deslocamento aumenta em 3 metros.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Disparada em Terreno Difícil: Quando realiza a ação Disparada, Terreno Difícil não custa deslocamento adicional pelo restante do turno atual.",
+        "pt-BR.rules.benefits.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2603,7 +3439,22 @@
       "name": "Spell Sniper",
       "summary": "You have learned techniques to enhance your attacks with certain kinds of spells.",
       "translations": {
-        "pt-BR": "Spell Sniper"
+        "pt-BR": "Atirador de Magia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você aprendeu técnicas para aprimorar ataques com certos tipos de magia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atirador de Magia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você aprendeu técnicas para aprimorar ataques com certos tipos de magia.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Inteligência, Sabedoria ou Carisma em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Ignorar Cobertura: Seus ataques mágicos ignoram Meia Cobertura e Três Quartos de Cobertura.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Conjuração em Combate Corpo a Corpo: Estar a até 1,5 metro de um inimigo não impõe Desvantagem às suas jogadas de ataque com magias.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Alcance Ampliado: Quando conjurar uma magia com alcance de pelo menos 3 metros que exija uma jogada de ataque, você pode aumentar o alcance da magia em 18 metros.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2626,7 +3477,22 @@
       "name": "Tavern Brawler",
       "summary": "You are accustomed to brawling.",
       "translations": {
-        "pt-BR": "Tavern Brawler"
+        "pt-BR": "Brigão de Taverna",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você está acostumado a brigas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Brigão de Taverna",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você está acostumado a brigas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Constituição em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Golpe Desarmado Aprimorado: Quando acerta com seu Golpe Desarmado e causa dano, você pode causar dano contundente igual a 1d4 + seu modificador de Força em vez do dano normal.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Repetir Dados de Dano: Sempre que rolar um dado de dano do seu Golpe Desarmado, você pode rolar novamente se o resultado for 1 e deve usar o novo resultado.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Empurrar: Quando acerta uma criatura com seu Golpe Desarmado como parte da ação de Ataque no seu turno, você pode empurrá-la até 1,5 metro se ela for Grande ou menor.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2649,7 +3515,16 @@
       "name": "Tough",
       "summary": "You are tougher than most.",
       "translations": {
-        "pt-BR": "Tough"
+        "pt-BR": "Robusto",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você é mais resistente que a maioria.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Robusto",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você é mais resistente que a maioria.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Difícil de Matar: Seu máximo de Pontos de Vida aumenta em um valor igual ao dobro do seu nível de personagem ao receber este talento. Sempre que ganhar um nível de personagem depois disso, seu máximo de Pontos de Vida aumenta em mais 2.",
+        "pt-BR.rules.benefits.0.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2669,7 +3544,22 @@
       "name": "War Caster",
       "summary": "You have practiced casting spells in the midst of combat.",
       "translations": {
-        "pt-BR": "War Caster"
+        "pt-BR": "Conjurador de Guerra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você praticou conjurar magias em meio ao combate.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Conjurador de Guerra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você praticou conjurar magias em meio ao combate.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Inteligência, Sabedoria ou Carisma em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Concentração: Você tem Vantagem em salvaguardas de Constituição feitas para manter a Concentração.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Magia Reativa: Quando uma criatura provoca um Ataque de Oportunidade contra você, você pode conjurar uma magia contra ela em vez de fazer o Ataque de Oportunidade. A magia deve ter tempo de conjuração de uma ação e visar somente aquela criatura.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Componentes Somáticos: Você pode executar os componentes Somáticos de magias mesmo quando tiver uma ou ambas as mãos ocupadas por armas ou escudo.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2692,7 +3582,18 @@
       "name": "Weapon Master",
       "summary": "Your extensive practice with weapons has given you expertise.",
       "translations": {
-        "pt-BR": "Weapon Master"
+        "pt-BR": "Mestre em Armas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Sua prática extensa com armas lhe deu grande domínio.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mestre em Armas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Sua prática extensa com armas lhe deu grande domínio.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Propriedade de Maestria: Você recebe a propriedade de Maestria de um tipo de arma Simples ou Marcial à sua escolha, desde que tenha proficiência com ela. Ao concluir um Descanso Longo, você pode trocar a arma escolhida.",
+        "pt-BR.rules.benefits.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2713,7 +3614,14 @@
       "name": "Acrobatics",
       "summary": "Your Dexterity (Acrobatics) check covers your attempt to stay on your feet in a tricky situation, such as when you're trying to run across a sheet of ice, balance on a tightrope, or stay upright on a rocking ship's deck.",
       "translations": {
-        "pt-BR": "Acrobatics"
+        "pt-BR": "Acrobacia",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Destreza (Acrobacia) abrange tentativas de se manter em pé em situações difíceis, como correr sobre gelo, equilibrar-se numa corda bamba ou permanecer de pé no convés de um navio em movimento.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Acrobacia",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Destreza (Acrobacia) abrange tentativas de se manter em pé em situações difíceis, como correr sobre gelo, equilibrar-se numa corda bamba ou permanecer de pé no convés de um navio em movimento.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2729,7 +3637,14 @@
       "name": "Animal Handling",
       "summary": "When there is any question whether you can calm down a domesticated animal, keep a mount from getting spooked, or intuit an animal's intentions, the DM might call for a Wisdom (Animal Handling) check.",
       "translations": {
-        "pt-BR": "Animal Handling"
+        "pt-BR": "Adestrar Animais",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando houver dúvida sobre sua capacidade de acalmar um animal domesticado, impedir que uma montaria se assuste ou intuir as intenções de um animal, o Mestre pode pedir um teste de Sabedoria (Adestrar Animais).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Adestrar Animais",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando houver dúvida sobre sua capacidade de acalmar um animal domesticado, impedir que uma montaria se assuste ou intuir as intenções de um animal, o Mestre pode pedir um teste de Sabedoria (Adestrar Animais).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2745,7 +3660,14 @@
       "name": "Arcana",
       "summary": "Your Intelligence (Arcana) check measures your ability to recall lore about spells, magic items, eldritch symbols, magical traditions, planes of existence, and the inhabitants of those planes.",
       "translations": {
-        "pt-BR": "Arcana"
+        "pt-BR": "Arcanismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Inteligência (Arcanismo) mede sua capacidade de recordar conhecimentos sobre magias, itens mágicos, símbolos arcanos, tradições mágicas, planos de existência e seus habitantes.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Arcanismo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Inteligência (Arcanismo) mede sua capacidade de recordar conhecimentos sobre magias, itens mágicos, símbolos arcanos, tradições mágicas, planos de existência e seus habitantes.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2761,7 +3683,14 @@
       "name": "Athletics",
       "summary": "Your Strength (Athletics) check covers difficult situations you encounter while climbing, jumping, or swimming.",
       "translations": {
-        "pt-BR": "Athletics"
+        "pt-BR": "Atletismo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Força (Atletismo) abrange situações difíceis que você encontra ao escalar, saltar ou nadar.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atletismo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Força (Atletismo) abrange situações difíceis que você encontra ao escalar, saltar ou nadar.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2777,7 +3706,14 @@
       "name": "Deception",
       "summary": "Your Charisma (Deception) check determines whether you can convincingly hide the truth, either verbally or through your actions.",
       "translations": {
-        "pt-BR": "Deception"
+        "pt-BR": "Enganação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Carisma (Enganação) determina se você consegue ocultar a verdade de maneira convincente, seja com palavras ou ações.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Enganação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Carisma (Enganação) determina se você consegue ocultar a verdade de maneira convincente, seja com palavras ou ações.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2793,7 +3729,14 @@
       "name": "History",
       "summary": "Your Intelligence (History) check measures your ability to recall lore about historical events, legendary people, ancient kingdoms, past disputes, recent wars, and lost civilizations.",
       "translations": {
-        "pt-BR": "History"
+        "pt-BR": "História",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Inteligência (História) mede sua capacidade de recordar conhecimentos sobre eventos históricos, pessoas lendárias, reinos antigos, disputas passadas, guerras recentes e civilizações perdidas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "História",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Inteligência (História) mede sua capacidade de recordar conhecimentos sobre eventos históricos, pessoas lendárias, reinos antigos, disputas passadas, guerras recentes e civilizações perdidas.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2809,7 +3752,14 @@
       "name": "Insight",
       "summary": "Your Wisdom (Insight) check decides whether you can determine the true intentions of a creature, such as when searching out a lie or predicting someone's next move.",
       "translations": {
-        "pt-BR": "Insight"
+        "pt-BR": "Intuição",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Sabedoria (Intuição) determina se você consegue discernir as verdadeiras intenções de uma criatura, por exemplo, ao detectar uma mentira ou prever o próximo movimento de alguém.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Intuição",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Sabedoria (Intuição) determina se você consegue discernir as verdadeiras intenções de uma criatura, por exemplo, ao detectar uma mentira ou prever o próximo movimento de alguém.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2825,7 +3775,14 @@
       "name": "Intimidation",
       "summary": "When you attempt to influence someone through overt threats, hostile actions, and physical violence, the DM might ask you to make a Charisma (Intimidation) check.",
       "translations": {
-        "pt-BR": "Intimidation"
+        "pt-BR": "Intimidação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando você tenta influenciar alguém por meio de ameaças explícitas, ações hostis ou violência física, o Mestre pode pedir um teste de Carisma (Intimidação).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Intimidação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando você tenta influenciar alguém por meio de ameaças explícitas, ações hostis ou violência física, o Mestre pode pedir um teste de Carisma (Intimidação).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2841,7 +3798,14 @@
       "name": "Investigation",
       "summary": "When you look around for clues and make deductions based on those clues, you make an Intelligence (Investigation) check.",
       "translations": {
-        "pt-BR": "Investigation"
+        "pt-BR": "Investigação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando procura pistas e deduz algo a partir delas, você faz um teste de Inteligência (Investigação).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Investigação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando procura pistas e deduz algo a partir delas, você faz um teste de Inteligência (Investigação).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2857,7 +3821,14 @@
       "name": "Medicine",
       "summary": "A Wisdom (Medicine) check lets you try to stabilize a dying companion or diagnose an illness.",
       "translations": {
-        "pt-BR": "Medicine"
+        "pt-BR": "Medicina",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um teste de Sabedoria (Medicina) permite tentar estabilizar um companheiro moribundo ou diagnosticar uma doença.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Medicina",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um teste de Sabedoria (Medicina) permite tentar estabilizar um companheiro moribundo ou diagnosticar uma doença.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2873,7 +3844,14 @@
       "name": "Nature",
       "summary": "Your Intelligence (Nature) check measures your ability to recall lore about terrain, plants and animals, the weather, and natural cycles.",
       "translations": {
-        "pt-BR": "Nature"
+        "pt-BR": "Natureza",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Inteligência (Natureza) mede sua capacidade de recordar conhecimentos sobre terrenos, plantas e animais, clima e ciclos naturais.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Natureza",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Inteligência (Natureza) mede sua capacidade de recordar conhecimentos sobre terrenos, plantas e animais, clima e ciclos naturais.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2889,7 +3867,14 @@
       "name": "Perception",
       "summary": "Your Wisdom (Perception) check lets you spot, hear, or otherwise detect the presence of something. It measures your general awareness of your surroundings and the keenness of your senses.",
       "translations": {
-        "pt-BR": "Perception"
+        "pt-BR": "Percepção",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Sabedoria (Percepção) permite notar, ouvir ou detectar de outra forma a presença de algo. Ele mede sua percepção geral do ambiente e a acuidade dos sentidos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Percepção",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Sabedoria (Percepção) permite notar, ouvir ou detectar de outra forma a presença de algo. Ele mede sua percepção geral do ambiente e a acuidade dos sentidos.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2905,7 +3890,14 @@
       "name": "Performance",
       "summary": "Your Charisma (Performance) check determines how well you can delight an audience with music, dance, acting, storytelling, or some other form of entertainment.",
       "translations": {
-        "pt-BR": "Performance"
+        "pt-BR": "Atuação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Carisma (Atuação) determina o quanto você consegue entreter um público com música, dança, interpretação, narração ou outra forma de entretenimento.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atuação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Carisma (Atuação) determina o quanto você consegue entreter um público com música, dança, interpretação, narração ou outra forma de entretenimento.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2921,7 +3913,14 @@
       "name": "Persuasion",
       "summary": "When you attempt to influence someone or a group of people with tact, social graces, or good nature, the DM might ask you to make a Charisma (Persuasion) check.",
       "translations": {
-        "pt-BR": "Persuasion"
+        "pt-BR": "Persuasão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Quando tenta influenciar alguém ou um grupo com tato, boas maneiras ou cordialidade, o Mestre pode pedir um teste de Carisma (Persuasão).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Persuasão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Quando tenta influenciar alguém ou um grupo com tato, boas maneiras ou cordialidade, o Mestre pode pedir um teste de Carisma (Persuasão).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2937,7 +3936,14 @@
       "name": "Religion",
       "summary": "Your Intelligence (Religion) check measures your ability to recall lore about deities, rites and prayers, religious hierarchies, holy symbols, and the practices of secret cults.",
       "translations": {
-        "pt-BR": "Religion"
+        "pt-BR": "Religião",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Seu teste de Inteligência (Religião) mede sua capacidade de recordar conhecimentos sobre divindades, ritos e orações, hierarquias religiosas, símbolos sagrados e práticas de cultos secretos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Religião",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Seu teste de Inteligência (Religião) mede sua capacidade de recordar conhecimentos sobre divindades, ritos e orações, hierarquias religiosas, símbolos sagrados e práticas de cultos secretos.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2953,7 +3959,14 @@
       "name": "Sleight of Hand",
       "summary": "Whenever you attempt an act of legerdemain or manual trickery, such as planting something on someone else or concealing an object on your person, make a Dexterity (Sleight of Hand) check.",
       "translations": {
-        "pt-BR": "Sleight of Hand"
+        "pt-BR": "Prestidigitação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Sempre que tentar um ato de prestidigitação ou trapaça manual, como colocar algo no bolso de alguém ou esconder um objeto consigo, faça um teste de Destreza (Prestidigitação).",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Prestidigitação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Sempre que tentar um ato de prestidigitação ou trapaça manual, como colocar algo no bolso de alguém ou esconder um objeto consigo, faça um teste de Destreza (Prestidigitação).",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2969,7 +3982,14 @@
       "name": "Stealth",
       "summary": "Make a Dexterity (Stealth) check when you attempt to conceal yourself from enemies, slink past guards, slip away without being noticed, or sneak up on someone without being seen or heard.",
       "translations": {
-        "pt-BR": "Stealth"
+        "pt-BR": "Furtividade",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Faça um teste de Destreza (Furtividade) quando tentar se esconder dos inimigos, passar sorrateiramente por guardas, escapar sem ser percebido ou aproximar-se de alguém sem ser visto ou ouvido.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Furtividade",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Faça um teste de Destreza (Furtividade) quando tentar se esconder dos inimigos, passar sorrateiramente por guardas, escapar sem ser percebido ou aproximar-se de alguém sem ser visto ou ouvido.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -2985,7 +4005,14 @@
       "name": "Survival",
       "summary": "The DM might ask you to make a Wisdom (Survival) check to follow tracks, hunt wild game, guide your group through frozen wastelands, identify signs that owlbears live nearby, predict the weather, or avoid quicksand.",
       "translations": {
-        "pt-BR": "Survival"
+        "pt-BR": "Sobrevivência",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "O Mestre pode pedir um teste de Sabedoria (Sobrevivência) para seguir rastros, caçar animais selvagens, guiar seu grupo por ermos congelados, identificar sinais da presença de corujursos, prever o tempo ou evitar areia movediça.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Sobrevivência",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "O Mestre pode pedir um teste de Sabedoria (Sobrevivência) para seguir rastros, caçar animais selvagens, guiar seu grupo por ermos congelados, identificar sinais da presença de corujursos, prever o tempo ou evitar areia movediça.",
+        "pt-BR.rules.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37499,7 +38526,38 @@
       "name": "Battle Master",
       "summary": "Those who emulate the archetypal Battle Master employ martial techniques passed down through generations.",
       "translations": {
-        "pt-BR": "Battle Master"
+        "pt-BR": "Mestre de Batalha",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Aqueles que imitam o arquétipo do Mestre de Batalha empregam técnicas marciais transmitidas por gerações.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Mestre de Batalha",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Aqueles que imitam o arquétipo do Mestre de Batalha empregam técnicas marciais transmitidas por gerações.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Superioridade em Combate",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você aprende três manobras à sua escolha da lista de Manobras. Você recebe Dados de Superioridade, que são d8, e tem quatro deles. Quando usa uma manobra, gasta um Dado de Superioridade.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Estudante da Guerra",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você recebe proficiência com um tipo de Ferramentas de Artesão à sua escolha e proficiência em uma perícia à sua escolha da lista do Mestre de Batalha: Adestrar Animais, História, Intuição, Atuação ou Persuasão.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Conheça seu Inimigo",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Com uma ação bônus, você pode discernir certas forças e fraquezas de uma criatura que possa ver a até 9 metros. Você descobre se ela é superior, inferior ou igual a você em relação a duas destas características: valor de Força, valor de Destreza, valor de Constituição, Classe de Armadura, Pontos de Vida atuais ou níveis totais de classe.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Superioridade em Combate Aprimorada",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Seus Dados de Superioridade se tornam d10.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Incansável",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Quando rolar Iniciativa, você recupera um Dado de Superioridade gasto.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Superioridade em Combate Suprema",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Seus Dados de Superioridade se tornam d12.",
+        "pt-BR.rules.features.5.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37552,7 +38610,34 @@
       "name": "Champion",
       "summary": "A Champion focuses on the development of raw physical power honed to deadly perfection.",
       "translations": {
-        "pt-BR": "Champion"
+        "pt-BR": "Campeão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Um Campeão se dedica ao desenvolvimento de poder físico bruto, aperfeiçoado até se tornar letal.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Campeão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Um Campeão se dedica ao desenvolvimento de poder físico bruto, aperfeiçoado até se tornar letal.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Acerto Crítico Aprimorado",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Suas jogadas de ataque com armas e Golpes Desarmados podem obter um Acerto Crítico com um resultado 19 ou 20 no d20.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Atleta Extraordinário",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você tem Vantagem nas jogadas de Iniciativa e em testes de Força (Atletismo). Ao realizar um Salto Longo com corrida, a distância que pode percorrer aumenta em um número de pés igual ao seu modificador de Força.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Estilo de Luta Adicional",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você recebe outro talento de Estilo de Luta à sua escolha.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Acerto Crítico Superior",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Suas jogadas de ataque podem obter um Acerto Crítico com resultado 18, 19 ou 20 no d20.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Sobrevivente",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Você alcança o ápice da resiliência em batalha. No início de cada turno, recupera Pontos de Vida iguais a 5 + seu modificador de Constituição se tiver no máximo metade dos seus Pontos de Vida. Você não recebe esse benefício se tiver 0 Pontos de Vida.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37599,7 +38684,34 @@
       "name": "Circle of the Land",
       "summary": "The Circle of the Land is made up of mystics and sages who safeguard ancient knowledge and rites through a vast oral tradition.",
       "translations": {
-        "pt-BR": "Circle of the Land"
+        "pt-BR": "Círculo da Terra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "O Círculo da Terra reúne místicos e sábios que protegem conhecimentos e ritos antigos por meio de uma vasta tradição oral.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Círculo da Terra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "O Círculo da Terra reúne místicos e sábios que protegem conhecimentos e ritos antigos por meio de uma vasta tradição oral.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Ajuda da Terra",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Com uma ação Mágica, você gasta um uso de Forma Selvagem e escolhe um ponto a até 18 metros. Flores que concedem vitalidade e espinhos que drenam vida surgem por um instante em uma Esfera de 3 metros de raio centrada nesse ponto. Cada criatura à sua escolha na Esfera deve fazer uma salvaguarda de Constituição, sofrendo 2d6 de dano necrótico se falhar ou metade desse dano se tiver sucesso. Uma criatura à sua escolha na área recupera 2d6 Pontos de Vida.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Recuperação Natural",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você pode conjurar uma das magias de 1º círculo ou superior da sua lista de Magias do Círculo sem gastar um espaço de magia. Depois, precisa concluir um Descanso Longo para usar esta característica novamente.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Passo da Natureza",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Mover-se por Terreno Difícil não mágico não custa movimento adicional. Você também pode atravessar plantas não mágicas sem ser atrasado por elas e sem sofrer dano delas caso tenham espinhos ou perigos semelhantes.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Proteção da Natureza",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você tem Imunidade à condição Envenenado e Resistência a um tipo de dano associado à sua escolha atual de terreno.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Santuário da Natureza",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Espíritos da natureza se erguem para protegê-lo quando você está gravemente ferido. Se estiver com a condição Ferido, você pode usar uma Reação quando uma criatura que possa ver escolher você como alvo de um ataque para forçá-la a fazer uma salvaguarda de Sabedoria contra sua CD para evitar magias. Se falhar, a criatura deve escolher outro alvo ou perder o ataque.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37646,7 +38758,34 @@
       "name": "Circle of the Moon",
       "summary": "Druids of the Circle of the Moon are fierce guardians of the wilds. Their order gathers under the full moon to share news and trade warnings.",
       "translations": {
-        "pt-BR": "Circle of the Moon"
+        "pt-BR": "Círculo da Lua",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Druidas do Círculo da Lua são guardiões ferozes das terras selvagens. Sua ordem se reúne sob a lua cheia para compartilhar notícias e alertas.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Círculo da Lua",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Druidas do Círculo da Lua são guardiões ferozes das terras selvagens. Sua ordem se reúne sob a lua cheia para compartilhar notícias e alertas.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Forma Selvagem de Combate",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você aprendeu a usar Forma Selvagem em combate. Você recebe benefícios relacionados à sua Forma Selvagem.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Formas do Círculo",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "O poder da lua ajuda você a assumir formas mais poderosas. Você pode usar Forma Selvagem para assumir formas com um Nível de Desafio igual ou inferior ao seu nível de Druida dividido por 3 (arredondado para baixo).",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Formas do Círculo Aprimoradas",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Enquanto estiver em Forma Selvagem, você recebe benefícios adicionais com base no seu nível de Druida.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Passo ao Luar",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você se transporta magicamente de um raio de luar para outro. Se Raio Lunar for uma magia preparada por você, pode conjurá-la sem gastar um espaço de magia. Enquanto Raio Lunar estiver ativo, você pode se teleportar para um espaço desocupado que possa ver dentro da área da magia.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Forma Lunar",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Enquanto estiver em Forma Selvagem, você tem Resistência a dano contundente, perfurante e cortante.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37693,7 +38832,30 @@
       "name": "Circle of the Sea",
       "summary": "Druids of the Circle of the Sea draw on the tempestuous forces of oceans and storms.",
       "translations": {
-        "pt-BR": "Circle of the Sea"
+        "pt-BR": "Círculo do Mar",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Druidas do Círculo do Mar recorrem às forças tempestuosas dos oceanos e das tempestades.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Círculo do Mar",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Druidas do Círculo do Mar recorrem às forças tempestuosas dos oceanos e das tempestades.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Ira do Mar",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Com uma ação bônus, você pode gastar um uso de Forma Selvagem para criar uma aura de borrifos do oceano ao seu redor. A aura dura 10 minutos e se move com você. Você pode encerrá-la antes disso (nenhuma ação necessária). A aura produz os efeitos descritos nesta característica.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Afinidade Aquática",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você tem um Deslocamento de Natação igual ao seu Deslocamento. Além disso, o raio da sua Ira do Mar aumenta para 4,5 metros e, quando causa dano de frio com ela, causa dano adicional igual ao seu modificador de Sabedoria.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Nascido da Tempestade",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "O raio da sua Ira do Mar aumenta para 6 metros. Além disso, você tem Resistência a dano de frio, elétrico e trovejante.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Dádiva Oceânica",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você pode conceder capacidades aquáticas a criaturas. Com uma ação bônus, toque uma criatura voluntária para lhe conceder um Deslocamento de Natação igual ao Deslocamento dela. A criatura também pode respirar debaixo d’água.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37734,7 +38896,34 @@
       "name": "Circle of the Stars",
       "summary": "Druids of the Circle of the Stars trace their patterns among the stars, looking for meaning in the celestial movements.",
       "translations": {
-        "pt-BR": "Circle of the Stars"
+        "pt-BR": "Círculo das Estrelas",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Druidas do Círculo das Estrelas traçam padrões entre os astros em busca de sentido nos movimentos celestes.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Círculo das Estrelas",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Druidas do Círculo das Estrelas traçam padrões entre os astros em busca de sentido nos movimentos celestes.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Mapa Estelar",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você criou um mapa estelar como parte de seus estudos celestes. Enquanto o segura, recebe estes benefícios: conhece o truque Orientação; tem a magia Raio Guiador preparada, ela conta como magia de Druida para você e não conta no número de magias preparadas.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Forma Estrelada",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Com uma ação bônus, você pode gastar um uso de Forma Selvagem para assumir uma forma estrelada em vez de se transformar em uma fera. Enquanto estiver nessa forma, emana Luz Plena em um raio de 3 metros e Luz Fraca por mais 3 metros. Escolha qual das três constelações brilha em seu corpo: Arqueiro, Cálice ou Dragão.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Presságio Cósmico",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Sempre que concluir um Descanso Longo, você pode consultar seu Mapa Estelar em busca de presságios e rolar um dado. O resultado determina se recebe um presságio Favorável ou Desfavorável, que afeta como pode ajudar ou atrapalhar criaturas.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Constelações Cintilantes",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "As constelações da sua Forma Estrelada melhoram, e você pode mudar sua constelação no início de cada turno.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Repleto de Estrelas",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Enquanto estiver em sua Forma Estrelada, você se torna parcialmente incorpóreo e recebe Resistência a dano contundente, perfurante e cortante.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37781,7 +38970,30 @@
       "name": "College of Dance",
       "summary": "Bards of this college consider dancing a more potent art form than music or speech.",
       "translations": {
-        "pt-BR": "College of Dance"
+        "pt-BR": "Colégio da Dança",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bardos deste colégio consideram a dança uma arte mais poderosa que a música ou a fala.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Colégio da Dança",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bardos deste colégio consideram a dança uma arte mais poderosa que a música ou a fala.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Passos Deslumbrantes",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Sua prática da dança permite executar manobras de combate espetaculares. Você recebe benefícios quando usa armadura leve ou nenhuma armadura e não usa escudo.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Movimento Inspirador",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Quando um inimigo que possa ver termina o turno a até 1,5 metro de você, pode usar uma Reação e gastar um uso de Inspiração Bárdica para se mover até metade do seu Deslocamento sem provocar Ataques de Oportunidade.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Passos em Conjunto",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando gasta Inspiração Bárdica como parte de uma ação, ação bônus ou Reação, pode permitir que até dois aliados que possa ver a até 9 metros se movam até metade do Deslocamento deles.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Evasão Condutora",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Quando estiver sujeito a um efeito que permita uma salvaguarda de Destreza para sofrer apenas metade do dano, você não sofre dano se tiver sucesso. Além disso, quando um aliado a até 1,5 metro fizer uma salvaguarda de Destreza contra um efeito que cause dano, você pode usar uma Reação para conceder a ele o benefício da sua Evasão.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37822,7 +39034,30 @@
       "name": "College of Glamour",
       "summary": "Bards of this college have learned to weave fey magic into their performances.",
       "translations": {
-        "pt-BR": "College of Glamour"
+        "pt-BR": "Colégio do Glamour",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bardos deste colégio aprenderam a tecer magia feérica em suas apresentações.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Colégio do Glamour",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bardos deste colégio aprenderam a tecer magia feérica em suas apresentações.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Magia Enganadora",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você conhece a magia Comando. Para você, ela conta como magia de Bardo. Sempre que a conjurar, pode escolher duas criaturas como alvo em vez de uma.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Manto da Inspiração",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Com uma ação bônus, gaste um uso de Inspiração Bárdica e escolha criaturas voluntárias que possa ver a até 18 metros, em quantidade máxima igual ao seu modificador de Carisma. Cada uma recebe Pontos de Vida Temporários iguais a duas vezes seu nível de Bardo e pode se mover até o próprio Deslocamento sem provocar Ataques de Oportunidade.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Manto da Majestade",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Com uma ação bônus, você assume uma aparência sobrenatural por 1 minuto. Durante esse período, pode conjurar Comando com uma ação bônus em cada turno sem gastar espaço de magia, e um alvo à sua escolha falha automaticamente na salvaguarda contra a magia.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Majestade Inquebrável",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Com uma ação bônus, você pode assumir uma presença magicamente majestosa por 1 minuto ou até ficar com a condição Incapacitado. Durante esse período, na primeira vez em cada turno que uma criatura acertar você com uma jogada de ataque, ela deve ter sucesso em uma salvaguarda de Carisma contra sua CD para evitar magias ou o ataque erra.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37863,7 +39098,30 @@
       "name": "College of Lore",
       "summary": "Bards of the College of Lore collect knowledge from sources as diverse as scholarly tomes and peasant tales.",
       "translations": {
-        "pt-BR": "College of Lore"
+        "pt-BR": "Colégio do Saber",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bardos do Colégio do Saber reúnem conhecimentos de fontes tão diversas quanto tomos acadêmicos e contos populares.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Colégio do Saber",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bardos do Colégio do Saber reúnem conhecimentos de fontes tão diversas quanto tomos acadêmicos e contos populares.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Proficiências Adicionais",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você recebe proficiência em quaisquer três perícias à sua escolha.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Palavras Ferinas",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você aprende a usar sua sagacidade para distrair, confundir e minar a confiança e a competência dos outros. Quando uma criatura que possa ver a até 18 metros faz uma jogada de ataque ou teste de habilidade, você pode usar uma Reação e gastar um uso de Inspiração Bárdica, rolando o dado e subtraindo o resultado da rolagem da criatura.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Descobertas Mágicas",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você aprende duas magias à sua escolha de qualquer lista de magias. As magias escolhidas devem ser de um círculo que você possa conjurar.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Perícia Inigualável",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Quando fizer um teste de habilidade ou jogada de ataque e falhar, pode gastar um uso de Inspiração Bárdica, rolar o dado e adicionar o resultado ao d20, podendo transformar a falha em sucesso.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37904,7 +39162,30 @@
       "name": "College of Valor",
       "summary": "Bards of the College of Valor are daring skalds whose tales keep alive the memory of the great heroes of the past.",
       "translations": {
-        "pt-BR": "College of Valor"
+        "pt-BR": "Colégio da Bravura",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bardos do Colégio da Bravura são escaldos audaciosos cujas histórias mantêm viva a memória dos grandes heróis do passado.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Colégio da Bravura",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bardos do Colégio da Bravura são escaldos audaciosos cujas histórias mantêm viva a memória dos grandes heróis do passado.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Inspiração de Combate",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Quando concede Inspiração Bárdica, o recipiente também pode adicionar o dado a uma rolagem de dano ou à CA contra um ataque.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Treinamento Marcial",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você recebe Treinamento com Armadura Média e Escudos. Além disso, quando ataca com uma Arma como parte da ação de Ataque, pode fazer um ataque adicional com uma Arma diferente usando uma ação bônus.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Ataque Extra",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você pode atacar duas vezes, em vez de uma, sempre que realizar a ação de Ataque no seu turno.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Magia de Batalha",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Quando realiza a ação de Ataque no seu turno, pode substituir um dos ataques por uma magia cujo tempo de conjuração seja uma ação.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37945,7 +39226,38 @@
       "name": "Eldritch Knight",
       "summary": "The archetypal Eldritch Knight combines the martial mastery common to all fighters with a careful study of magic.",
       "translations": {
-        "pt-BR": "Eldritch Knight"
+        "pt-BR": "Cavaleiro Arcano",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "O arquétipo do Cavaleiro Arcano combina o domínio marcial comum a todos os guerreiros com o estudo cuidadoso da magia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Cavaleiro Arcano",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "O arquétipo do Cavaleiro Arcano combina o domínio marcial comum a todos os guerreiros com o estudo cuidadoso da magia.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Conjuração",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você aprimora sua capacidade marcial com a habilidade de conjurar magias. Aprende truques e magias da lista de Mago.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Vínculo de Guerra",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você aprende um ritual que cria um vínculo mágico entre você e uma arma. Pode invocá-la com uma ação bônus, fazendo-a se teleportar imediatamente para sua mão.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Magia de Guerra",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando realiza a ação de Ataque no seu turno, pode substituir um ataque por um truque de Mago cujo tempo de conjuração seja uma ação.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Golpe Místico",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Quando acerta uma criatura com um ataque usando uma arma, ela tem Desvantagem na próxima salvaguarda que fizer contra uma magia conjurada por você antes do fim do seu próximo turno.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Investida Arcana",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Quando usa Surto de Ação, você pode se teleportar até 9 metros para um espaço desocupado que possa ver.",
+        "pt-BR.rules.features.4.description.source": "reviewed",
+        "pt-BR.rules.features.5.name": "Magia de Guerra Aprimorada",
+        "pt-BR.rules.features.5.name.source": "reviewed",
+        "pt-BR.rules.features.5.description": "Quando realiza a ação de Ataque no seu turno, pode substituir dois ataques por uma magia de Mago cujo tempo de conjuração seja uma ação.",
+        "pt-BR.rules.features.5.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -37998,7 +39310,30 @@
       "name": "Life Domain",
       "summary": "The Life Domain focuses on the vibrant positive energy that sustains all life.",
       "translations": {
-        "pt-BR": "Life Domain"
+        "pt-BR": "Domínio da Vida",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "O Domínio da Vida se concentra na vibrante energia positiva que sustenta toda a vida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Domínio da Vida",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "O Domínio da Vida se concentra na vibrante energia positiva que sustenta toda a vida.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Discípulo da Vida",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Quando uma magia que você conjura usando um espaço de magia restaura Pontos de Vida de uma criatura, ela recupera Pontos de Vida adicionais no turno em que a magia é conjurada. Esses Pontos de Vida adicionais são iguais a 2 + o círculo do espaço de magia.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Preservar a Vida",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Com uma ação Mágica, gaste um uso de Canalizar Divindade e apresente seu Símbolo Sagrado. Você ou uma criatura a até 9 metros recupera Pontos de Vida iguais a cinco vezes seu nível de Clérigo. Isso não pode elevar os Pontos de Vida de uma criatura acima da metade do máximo dela.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Curandeiro Abençoado",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando conjura uma magia usando um espaço de magia que restaura Pontos de Vida de uma criatura que não seja você, também recupera Pontos de Vida iguais a 2 + o círculo do espaço de magia.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Cura Suprema",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Quando rolar dados para restaurar Pontos de Vida com suas magias, você pode obter o resultado máximo em cada dado em vez de rolar.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38069,7 +39404,30 @@
       "name": "Light Domain",
       "summary": "Gods of light promote the ideals of rebirth and renewal, truth, vigilance, and beauty.",
       "translations": {
-        "pt-BR": "Light Domain"
+        "pt-BR": "Domínio da Luz",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Deuses da luz promovem os ideais de renascimento e renovação, verdade, vigilância e beleza.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Domínio da Luz",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Deuses da luz promovem os ideais de renascimento e renovação, verdade, vigilância e beleza.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Radiação da Aurora",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Com uma ação Mágica, gaste um uso de Canalizar Divindade e apresente seu Símbolo Sagrado. Toda Escuridão mágica a até 9 metros termina. Cada criatura à sua escolha a até 9 metros deve fazer uma salvaguarda de Constituição, sofrendo dano radiante igual a 2d10 + seu nível de Clérigo se falhar ou metade desse dano se tiver sucesso.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Clarão Protetor",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Quando uma criatura a até 9 metros fizer uma jogada de ataque, você pode usar uma Reação para impor Desvantagem à rolagem. O atacante não pode se beneficiar de Vantagem nessa rolagem. Você pode usar esta característica um número de vezes igual ao seu modificador de Sabedoria.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Clarão Protetor Aprimorado",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando usa Clarão Protetor, pode escolher qualquer criatura a até 9 metros como alvo, não apenas você.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Coroa de Luz",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Com uma ação Mágica, você ativa uma aura de luz solar que dura 1 minuto e emana de você em uma Emanação de 18 metros. Criaturas à sua escolha na Emanação têm Desvantagem nas salvaguardas contra qualquer magia que cause dano de fogo ou radiante.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38140,7 +39498,30 @@
       "name": "Path of the Berserker",
       "summary": "For some Barbarians, rage is a means to an end—that end being violence. The Path of the Berserker is a path of untrammeled fury, slick with blood.",
       "translations": {
-        "pt-BR": "Path of the Berserker"
+        "pt-BR": "Caminho do Berserker",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Para alguns bárbaros, a fúria é um meio para alcançar a violência. O Caminho do Berserker é uma trilha de fúria irrestrita, coberta de sangue.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caminho do Berserker",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Para alguns bárbaros, a fúria é um meio para alcançar a violência. O Caminho do Berserker é uma trilha de fúria irrestrita, coberta de sangue.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Frenesi",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Se usar Ataque Imprudente enquanto sua Fúria estiver ativa, você causa dano adicional ao primeiro alvo que acertar no turno com um ataque baseado em Força. O dano adicional é igual ao seu Bônus de Proficiência.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Fúria Insensata",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Você tem Imunidade às condições Enfeitiçado e Amedrontado enquanto sua Fúria estiver ativa. Se estiver Enfeitiçado ou Amedrontado quando entrar em Fúria, a condição termina.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Retaliação",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando sofre dano de uma criatura a até 1,5 metro, você pode usar uma Reação para fazer um ataque corpo a corpo contra ela com uma arma ou Golpe Desarmado.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Presença Intimidadora",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Com uma ação bônus, você pode aterrorizar os outros com sua presença ameaçadora e fúria estrondosa. Cada criatura à sua escolha em uma Emanação de 9 metros originada em você deve fazer uma salvaguarda de Sabedoria (CD 8 + Bônus de Proficiência + modificador de Força). Se falhar, fica com a condição Amedrontado por 1 minuto.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38181,7 +39562,34 @@
       "name": "Path of the Wild Heart",
       "summary": "Barbarians who follow this path draw their rage from the untamed wilds. These barbarians commune with animals and channel bestial spirits during their rages.",
       "translations": {
-        "pt-BR": "Path of the Wild Heart"
+        "pt-BR": "Caminho do Coração Selvagem",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bárbaros que seguem este caminho extraem sua fúria da natureza indomada. Eles comungam com animais e canalizam espíritos bestiais durante a fúria.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caminho do Coração Selvagem",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bárbaros que seguem este caminho extraem sua fúria da natureza indomada. Eles comungam com animais e canalizam espíritos bestiais durante a fúria.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Orador dos Animais",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você pode conjurar Sentido Bestial e Falar com Animais, mas somente como Rituais.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Fúria das Terras Selvagens",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Sua Fúria recorre ao poder primal dos animais. Sempre que ativá-la, escolha uma destas opções: Urso, Águia ou Lobo. A opção determina certos benefícios enquanto sua Fúria estiver ativa.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Aspecto das Terras Selvagens",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Escolha uma das opções a seguir. Sempre que concluir um Descanso Longo, você pode mudar sua escolha: Coruja, Pantera ou Salmão.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Orador da Natureza",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você pode conjurar Comunhão com a Natureza como Ritual.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Poder das Terras Selvagens",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Sempre que ativar sua Fúria, pode escolher duas opções de Fúria das Terras Selvagens em vez de uma.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38228,7 +39636,30 @@
       "name": "Path of the World Tree",
       "summary": "Barbarians who follow this path connect themselves to the cosmic World Tree.",
       "translations": {
-        "pt-BR": "Path of the World Tree"
+        "pt-BR": "Caminho da Árvore do Mundo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Bárbaros que seguem este caminho se conectam à cósmica Árvore do Mundo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caminho da Árvore do Mundo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Bárbaros que seguem este caminho se conectam à cósmica Árvore do Mundo.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Vitalidade da Árvore",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Sua Fúria recorre à força vital da Árvore do Mundo. Ao ativá-la, você recebe Pontos de Vida Temporários iguais ao seu nível de Bárbaro.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Ramos da Árvore",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Enquanto sua Fúria estiver ativa, você pode usar uma ação bônus para se teleportar até 18 metros para um espaço desocupado que possa ver.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Raízes Esmagadoras",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Gavinhas da Árvore do Mundo se estendem de você. Enquanto sua Fúria estiver ativa, quando acerta com um ataque de arma, pode empurrar o alvo até 4,5 metros para longe de você.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Viajar pela Árvore",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Ao ativar sua Fúria, você pode teleportar a si mesmo e até seis criaturas voluntárias que possa ver para um local que conheça no plano de existência atual.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38269,7 +39700,34 @@
       "name": "Path of the Zealot",
       "summary": "Some deities inspire their followers to pitch themselves into a ferocious battle fury. These barbarians are zealots—warriors who channel their rage into powerful displays of divine power.",
       "translations": {
-        "pt-BR": "Path of the Zealot"
+        "pt-BR": "Caminho do Zelote",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Algumas divindades inspiram seus seguidores a mergulhar numa fúria de batalha feroz. Esses bárbaros são zelotes que canalizam sua fúria em demonstrações poderosas de poder divino.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caminho do Zelote",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Algumas divindades inspiram seus seguidores a mergulhar numa fúria de batalha feroz. Esses bárbaros são zelotes que canalizam sua fúria em demonstrações poderosas de poder divino.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Fúria Divina",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Você canaliza poder divino em seus golpes. Enquanto sua Fúria estiver ativa, a primeira criatura que acertar em cada turno com uma arma ou Golpe Desarmado sofre dano adicional igual a 1d6 + metade do seu nível de Bárbaro. O dano adicional é necrótico ou radiante (à sua escolha ao receber esta característica).",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Guerreiro dos Deuses",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Se algum efeito puder trazê-lo de volta à vida, você pode escolher retornar com metade dos seus Pontos de Vida ou com todos eles. Além disso, você não precisa de componentes materiais para nenhuma magia que o traga de volta à vida.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Foco Fanático",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Se falhar em uma salvaguarda enquanto sua Fúria estiver ativa, pode repeti-la com um bônus igual ao seu bônus de Dano de Fúria e deve usar o novo resultado.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Presença Zelosa",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Com uma ação bônus, você solta um grito de guerra imbuído de energia divina. Até dez outras criaturas à sua escolha a até 18 metros têm Vantagem nas jogadas de ataque e salvaguardas até o início do seu próximo turno.",
+        "pt-BR.rules.features.3.description.source": "reviewed",
+        "pt-BR.rules.features.4.name": "Fúria Além da Morte",
+        "pt-BR.rules.features.4.name.source": "reviewed",
+        "pt-BR.rules.features.4.description": "Enquanto sua Fúria estiver ativa, ter 0 Pontos de Vida não o deixa inconsciente. Você ainda deve fazer Salvaguardas contra a Morte e sofre os efeitos normais de receber dano com 0 Pontos de Vida. Porém, se morrer por falhar em Salvaguardas contra a Morte, você só morre quando sua Fúria terminar.",
+        "pt-BR.rules.features.4.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38316,7 +39774,30 @@
       "name": "Trickery Domain",
       "summary": "Gods of trickery are mischief-makers and instigators who stand as a constant challenge to the accepted order.",
       "translations": {
-        "pt-BR": "Trickery Domain"
+        "pt-BR": "Domínio da Enganação",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Deuses da enganação são provocadores e instigadores que desafiam constantemente a ordem estabelecida.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Domínio da Enganação",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Deuses da enganação são provocadores e instigadores que desafiam constantemente a ordem estabelecida.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Bênção do Trapaceiro",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Com uma ação Mágica, você concede a si mesmo ou a uma criatura voluntária tocada Vantagem em testes de Furtividade. A bênção dura até você concluir um Descanso Longo ou usar esta característica novamente.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Invocar Duplicidade",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Com uma ação bônus, gaste um uso de Canalizar Divindade e crie uma ilusão perfeita de si mesmo, que dura 1 minuto ou até você perder a Concentração. A ilusão aparece em um espaço desocupado que possa ver a até 9 metros.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Transposição do Trapaceiro",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Quando usa Invocar Duplicidade, você pode se teleportar, trocando de lugar com sua ilusão.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Duplicidade Aprimorada",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você pode criar até quatro duplicatas ilusórias ao usar Invocar Duplicidade e mover qualquer número delas sempre que usar uma ação bônus para movê-las.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -38387,7 +39868,30 @@
       "name": "War Domain",
       "summary": "War has many manifestations. Gods of war can inspire leaders, soldiers, and warriors.",
       "translations": {
-        "pt-BR": "War Domain"
+        "pt-BR": "Domínio da Guerra",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "A guerra se manifesta de muitas formas. Deuses da guerra podem inspirar líderes, soldados e guerreiros.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Domínio da Guerra",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "A guerra se manifesta de muitas formas. Deuses da guerra podem inspirar líderes, soldados e guerreiros.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.features.0.name": "Golpe Guiado",
+        "pt-BR.rules.features.0.name.source": "reviewed",
+        "pt-BR.rules.features.0.description": "Quando você ou outra criatura a até 9 metros erra uma jogada de ataque, pode gastar um uso de Canalizar Divindade para conceder +10 à rolagem, podendo fazê-la acertar.",
+        "pt-BR.rules.features.0.description.source": "reviewed",
+        "pt-BR.rules.features.1.name": "Sacerdote da Guerra",
+        "pt-BR.rules.features.1.name.source": "reviewed",
+        "pt-BR.rules.features.1.description": "Com uma ação bônus, você pode fazer um ataque com uma arma ou Golpe Desarmado. Pode usar esta ação bônus um número de vezes igual ao seu modificador de Sabedoria (mínimo de uma vez). Recupera todos os usos gastos ao concluir um Descanso Longo.",
+        "pt-BR.rules.features.1.description.source": "reviewed",
+        "pt-BR.rules.features.2.name": "Bênção do Deus da Guerra",
+        "pt-BR.rules.features.2.name.source": "reviewed",
+        "pt-BR.rules.features.2.description": "Você recebe proficiência com armas Marciais e treinamento com armadura Pesada.",
+        "pt-BR.rules.features.2.description.source": "reviewed",
+        "pt-BR.rules.features.3.name": "Avatar da Batalha",
+        "pt-BR.rules.features.3.name.source": "reviewed",
+        "pt-BR.rules.features.3.description": "Você tem Resistência a dano contundente, perfurante e cortante.",
+        "pt-BR.rules.features.3.description.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",

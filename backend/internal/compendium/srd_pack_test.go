@@ -161,6 +161,154 @@ func TestSRDItemTranslationBatchIsCompleteAndReviewed(t *testing.T) {
 	}
 }
 
+func TestSRDClassFeatFeatureCoreTranslationCoverage(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"class": 12, "subclass": 19, "feat": 47, "feature": 18}
+	got := map[string]int{}
+	wantTitles := map[string]string{
+		"Ability Score Improvement":    "Aumento no Valor de Habilidade",
+		"Boon of Combat Prowess":       "Pacto da Proeza em Combate",
+		"Boon of Dimensional Travel":   "Pacto da Viagem Dimensional",
+		"Boon of Fate":                 "Pacto do Destino",
+		"Boon of Irresistible Offense": "Pacto do Ataque Irresistível",
+		"Boon of Spell Recall":         "Pacto da Recuperação de Magia",
+		"Boon of the Night Spirit":     "Pacto do Espírito da Noite",
+		"Boon of Truesight":            "Pacto da Visão Verdadeira",
+		"College of Glamour":           "Colégio do Glamour",
+		"Animal Handling":              "Adestrar Animais",
+	}
+	classFeatures, subclassFeatures, featBenefits := 0, 0, 0
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if _, included := want[entry.EntryType]; !included {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if len(rules) == 0 {
+			continue // Ignore the legacy name-only index appended by loadSRDPack.
+		}
+		got[entry.EntryType]++
+		translations := decodeTranslations(entry.Translations)
+		if want := wantTitles[entry.Name]; want != "" && translations["pt-BR"] != want {
+			t.Errorf("%s title = %q, want %q", entry.Name, translations["pt-BR"], want)
+		}
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.description"} {
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s is missing or not reviewed", entry.Name, key)
+			}
+		}
+		if _, exists := rules["name"]; exists {
+			if translations["pt-BR.rules.name"] != translations["pt-BR"] || translations["pt-BR.rules.name.source"] != "reviewed" {
+				t.Errorf("%s rules.name localization is missing or not reviewed", entry.Name)
+			}
+		} else if _, exists := translations["pt-BR.rules.name"]; exists {
+			t.Errorf("%s has a rules.name localization absent from source", entry.Name)
+		}
+		if entry.EntryType == "class" || entry.EntryType == "subclass" {
+			rawFeatures, exists := rules["features"]
+			if !exists {
+				continue
+			}
+			features, ok := rawFeatures.([]any)
+			if !ok {
+				t.Errorf("%s rules.features has type %T", entry.Name, rawFeatures)
+				continue
+			}
+			for index, rawFeature := range features {
+				feature, ok := rawFeature.(map[string]any)
+				if !ok {
+					t.Errorf("%s feature %d has type %T", entry.Name, index, rawFeature)
+					continue
+				}
+				for _, field := range []string{"name", "description"} {
+					if _, exists := feature[field]; !exists {
+						continue
+					}
+					key := fmt.Sprintf("pt-BR.rules.features.%d.%s", index, field)
+					if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+						t.Errorf("%s %s is missing or not reviewed", entry.Name, key)
+					}
+					if field == "name" && feature[field] == "Pact Boon" && translations[key] != "Dádiva do Pacto" {
+						t.Errorf("Pact Boon localized title = %q, want Dádiva do Pacto", translations[key])
+					}
+				}
+				if entry.EntryType == "class" {
+					classFeatures++
+				} else {
+					subclassFeatures++
+				}
+			}
+		}
+		if entry.EntryType == "feat" {
+			if rawBenefits, exists := rules["benefits"]; exists {
+				benefits, ok := rawBenefits.([]any)
+				if !ok {
+					t.Errorf("%s rules.benefits has type %T", entry.Name, rawBenefits)
+					continue
+				}
+				for index := range benefits {
+					key := fmt.Sprintf("pt-BR.rules.benefits.%d", index)
+					if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+						t.Errorf("%s %s is missing or not reviewed", entry.Name, key)
+					}
+					featBenefits++
+				}
+			}
+		}
+	}
+	for entryType, count := range want {
+		if got[entryType] != count {
+			t.Errorf("%s count = %d, want %d", entryType, got[entryType], count)
+		}
+	}
+	if classFeatures != 62 || subclassFeatures != 86 || featBenefits != 120 {
+		t.Errorf("nested localized content counts: class features=%d subclass features=%d feat benefits=%d", classFeatures, subclassFeatures, featBenefits)
+	}
+}
+
+func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type sourceRecord struct {
+		EntryType string          `json:"entryType"`
+		Name      string          `json:"name"`
+		Summary   string          `json:"summary"`
+		Rules     json.RawMessage `json:"rules"`
+	}
+	entries := uniqueEntries(pack.Entries)
+	records := make([]sourceRecord, 0, len(entries))
+	for _, entry := range entries {
+		records = append(records, sourceRecord{
+			EntryType: entry.EntryType,
+			Name:      entry.Name,
+			Summary:   entry.Summary,
+			Rules:     entry.Rules,
+		})
+	}
+	sort.Slice(records, func(i, j int) bool {
+		if records[i].EntryType != records[j].EntryType {
+			return records[i].EntryType < records[j].EntryType
+		}
+		return records[i].Name < records[j].Name
+	})
+	data, err := json.Marshal(records)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(data)
+	const wantSourceDigest = "1cc5e2419c2d7ce3219915f65320332d4d20c6698b8f9e46f56e383426ad3108"
+	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
+		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
+	}
+}
+
 func TestSRDFirstLevelSpellTranslationsAreCompleteAndReviewed(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {

@@ -806,7 +806,8 @@
 			compendiumEntries,
 			sheet.class,
 			sheet.level,
-			sheet.subclass
+			sheet.subclass,
+			$appLocale
 		);
 	};
 	const spellCompendiumEntry = (spell: Sheet['spells'][number]) =>

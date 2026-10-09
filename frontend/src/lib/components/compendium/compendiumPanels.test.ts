@@ -4,6 +4,7 @@ import CompendiumEntryDetails from './CompendiumEntryDetails.svelte';
 import CompendiumEntryEditor from './CompendiumEntryEditor.svelte';
 import CompendiumCatalogPanel from './CompendiumCatalogPanel.svelte';
 import { emptyCompendiumEditorModel } from '$lib/utils/compendium/compendiumRules';
+import { setAppLocale } from '$lib/stores/locale';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
 import {
 	emptyCampaignFeatSpellRuleDraft,
@@ -22,6 +23,86 @@ const monster: CompendiumEntry = {
 };
 
 describe('compendium panels', () => {
+	it('renders localized class features and feat benefits with source fallback', () => {
+		setAppLocale('pt-BR');
+		const actions = {
+			close: vi.fn(),
+			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
+			remove: vi.fn(),
+			translate: vi.fn(),
+			copyToCampaign: vi.fn(),
+			place: vi.fn()
+		};
+		const makeView = (entry: CompendiumEntry) => ({
+			entry,
+			artUrl: '',
+			displayName: entry.translations['pt-BR'] ?? entry.name,
+			displaySummary: entry.translations['pt-BR.summary'] ?? entry.summary,
+			typeLabel: 'Entrada',
+			isMonster: false,
+			hasMonsterSheet: false,
+			sourceReadOnly: true,
+			hasPrivateSource: false,
+			isGM: false,
+			canConfigureFeatSpellRule: false,
+			canTranslate: false,
+			translationStatus: 'manual' as const,
+			canPlace: false,
+			translating: false,
+			placing: false
+		});
+		const classEntry: CompendiumEntry = {
+			...monster,
+			id: 'fighter',
+			entryType: 'class',
+			name: 'Fighter',
+			summary: 'Combat training.',
+			rules: {
+				hitDie: 10,
+				features: [
+					{ id: 'second-wind', name: 'Second Wind', level: 1, description: 'Regain hit points.' }
+				]
+			},
+			translations: {
+				'pt-BR': 'Guerreiro',
+				'pt-BR.rules.features.0.name': 'Segundo Fôlego',
+				'pt-BR.rules.features.0.description': 'Recupere pontos de vida.'
+			},
+			isPublished: true
+		};
+		const localizedClassHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(classEntry), actions }
+		}).body;
+		expect(localizedClassHtml).toContain('Segundo Fôlego');
+		expect(localizedClassHtml).toContain('Recupere pontos de vida.');
+		const fallbackClassHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView({ ...classEntry, translations: { 'pt-BR': 'Guerreiro' } }), actions }
+		}).body;
+		expect(fallbackClassHtml).toContain('Second Wind');
+		expect(fallbackClassHtml).toContain('Regain hit points.');
+
+		const featEntry: CompendiumEntry = {
+			...monster,
+			id: 'alert',
+			entryType: 'feat',
+			name: 'Alert',
+			summary: 'Always ready.',
+			rules: { description: 'You are always ready.', benefits: ['Add proficiency to Initiative.'] },
+			translations: {
+				'pt-BR': 'Alerta',
+				'pt-BR.rules.description': 'Você está sempre preparado.',
+				'pt-BR.rules.benefits.0': 'Adicione proficiência à Iniciativa.'
+			},
+			isPublished: true
+		};
+		const featHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(featEntry), actions }
+		}).body;
+		expect(featHtml).toContain('Você está sempre preparado.');
+		expect(featHtml).toContain('Adicione proficiência à Iniciativa.');
+	});
+
 	it('shows per-entry pending, AI and official translation states in the catalog', () => {
 		const entries: CompendiumEntry[] = [
 			{ ...monster, id: 'pending', name: 'Pending Ogre', summary: '', rules: {}, translations: {} },
