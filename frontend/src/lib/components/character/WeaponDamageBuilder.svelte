@@ -112,13 +112,15 @@
 <style>
 	.damage-builder {
 		min-width: 0;
-		display: grid;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: end;
 		gap: 0.55rem;
 	}
 	.damage-component {
-		min-width: 0;
+		min-width: min(100%, 15rem);
 		display: grid;
-		grid-template-columns: minmax(5rem, 1fr) minmax(5rem, 1fr) auto;
+		grid-template-columns: minmax(3.5rem, 4.5rem) minmax(3.5rem, 4rem) auto;
 		align-items: end;
 		gap: 0.5rem;
 	}
@@ -143,12 +145,17 @@
 		color: #aa9d91;
 	}
 	.damage-error {
+		flex-basis: 100%;
+		margin: 0;
 		color: #f0a29b;
 		font-size: 0.72rem;
 	}
+	.damage-builder > :global(.secondary-button) {
+		align-self: end;
+	}
 	@media (max-width: 520px) {
 		.damage-component {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+			grid-template-columns: minmax(3.25rem, 1fr) minmax(3.25rem, 1fr) auto;
 		}
 	}
 </style>

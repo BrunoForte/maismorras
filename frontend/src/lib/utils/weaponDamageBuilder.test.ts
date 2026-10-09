@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	DAMAGE_DIE_TYPES,
 	parseDamageExpression,
 	parseLegacyDamage,
 	addDamageComponent,
@@ -10,6 +11,15 @@ import {
 } from './weaponDamageBuilder';
 
 describe('weapon damage builder', () => {
+	it('accepts every die offered by the visual selector and serializes it as the selected formula', () => {
+		for (const sides of DAMAGE_DIE_TYPES) {
+			const components = [{ count: 1, sides }];
+			expect(validateDamageComponents(components)).toBeNull();
+			expect(serializeDamageComponents(components)).toBe(`1d${sides}`);
+			expect(parseDamageExpression(serializeDamageComponents(components))).toEqual(components);
+		}
+	});
+
 	it('round-trips additive damage groups', () => {
 		const components = parseDamageExpression('2d6+3d8+4d10');
 		expect(components).toEqual([

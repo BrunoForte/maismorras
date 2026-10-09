@@ -89,7 +89,7 @@
 						>
 					</button>
 					{#if expandedWeapon === actions.weaponKey(item)}
-						<div class="weapon-modifications">
+						<div class="weapon-combat-fields">
 							<label
 								>{$appLocale === 'en' ? 'Enchantment bonus' : 'Bônus de encantamento'}
 								<input
@@ -103,33 +103,6 @@
 										})}
 								/>
 							</label>
-							<label
-								>{$appLocale === 'en' ? 'Modifications' : 'Modificações'}
-								<input
-									value={String(item.rules.modifications ?? '')}
-									oninput={(event) =>
-										actions.updateWeaponRules(item, { modifications: event.currentTarget.value })}
-									placeholder={$appLocale === 'en'
-										? 'Notes on this weapon'
-										: 'Ex.: runas, ajustes…'}
-								/>
-							</label>
-							<label class="weapon-description-field"
-								>{$appLocale === 'en' ? 'Description / ability' : 'Descrição / função'}
-								<textarea
-									value={String(item.rules.playerDescription ?? '')}
-									oninput={(event) =>
-										actions.updateWeaponRules(
-											item,
-											{ playerDescription: event.currentTarget.value },
-											true
-										)}
-									placeholder={$appLocale === 'en'
-										? 'Item function or special ability'
-										: 'Função do item ou habilidade especial'}></textarea>
-							</label>
-						</div>
-						<div class="weapon-combat-fields">
 							<label
 								>{$appLocale === 'en' ? 'Attack ability' : 'Atributo do ataque'}
 								<select
@@ -165,6 +138,28 @@
 										: `Bônus de ${item.name}`}
 								/>
 							</label>
+							<label
+								>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+									id={`damage-bonus-${actions.weaponKey(item)}-base`}
+									type="number"
+									step="1"
+									min="-10000"
+									max="10000"
+									aria-invalid={actions.invalidWeaponKey() === actions.weaponKey(item) &&
+										actions.invalidDamageProfileId() === null &&
+										actions.invalidWeaponField() === 'bonus'}
+									value={Number(item.rules.damageBonus ?? item.rules.bonus) || 0}
+									oninput={(event) =>
+										actions.updateWeaponRules(
+											item,
+											{
+												damageBonus: Number(event.currentTarget.value) || 0,
+												attackBonus: Number(item.rules.attackBonus ?? item.rules.bonus) || 0
+											},
+											true
+										)}
+								/></label
+							>
 							<span
 								class:unproficient={!actions.proficiencyStatus(item)}
 								class="weapon-proficiency"
@@ -187,7 +182,32 @@
 										)}
 								/>{$appLocale === 'en' ? 'Manual proficiency' : 'Proficiência manual'}</label
 							>
+							<label class="weapon-modification-note"
+								>{$appLocale === 'en' ? 'Modifications' : 'Modificações'}
+								<input
+									value={String(item.rules.modifications ?? '')}
+									oninput={(event) =>
+										actions.updateWeaponRules(item, { modifications: event.currentTarget.value })}
+									placeholder={$appLocale === 'en'
+										? 'Notes on this weapon'
+										: 'Ex.: runas, ajustes…'}
+								/>
+							</label>
 						</div>
+						<label class="weapon-description-field">
+							{$appLocale === 'en' ? 'Description / ability' : 'Descrição / função'}
+							<textarea
+								value={String(item.rules.playerDescription ?? '')}
+								oninput={(event) =>
+									actions.updateWeaponRules(
+										item,
+										{ playerDescription: event.currentTarget.value },
+										true
+									)}
+								placeholder={$appLocale === 'en'
+									? 'Item function or special ability'
+									: 'Função do item ou habilidade especial'}></textarea>
+						</label>
 						{@const baseComponents = actions.damageComponents(item)}
 						{@const baseIssue = validateDamageComponents(baseComponents)}
 						<fieldset
@@ -270,7 +290,7 @@
 									? 'No numeric class or feat modifiers are mapped to this weapon.'
 									: 'Nenhum bônus numérico de habilidade ou talento foi mapeado para esta arma.'}</small
 							>{/if}
-						<div class="weapon-combat-summary">
+						<div class="weapon-combat-summary" aria-live="polite">
 							{$appLocale === 'en' ? 'Attack' : 'Ataque'}: {actions.modifierText(
 								actions.attackBonusTotal(item)
 							)} · {$appLocale === 'en' ? 'Damage' : 'Dano'}: {serializeDamageComponents(
@@ -380,6 +400,10 @@
 													actions.setDamageComponents(item, components, profile)}
 											/>
 										</fieldset>
+										<div class="weapon-combat-summary profile-damage-summary" aria-live="polite">
+											{$appLocale === 'en' ? 'Damage' : 'Dano'}:
+											{serializeDamageComponents(actions.damageComponents(item, profile)) || '—'}
+										</div>
 										<label
 											>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
 												id={`damage-bonus-${actions.weaponKey(item)}-${profile.id}`}
@@ -503,33 +527,6 @@
 	.weapon-toggle span {
 		color: #c9a972;
 	}
-	.weapon-modifications {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.6rem;
-		padding-bottom: 0.6rem;
-		border-bottom: 1px solid #393034;
-	}
-	.weapon-modifications label {
-		min-width: 0;
-		display: grid;
-		gap: 0.25rem;
-		color: #bcae9f;
-		font-size: 0.68rem;
-	}
-	.weapon-modifications input {
-		width: 100%;
-		min-width: 0;
-		border: 1px solid #554841;
-		border-radius: 6px;
-		padding: 0.45rem;
-		color: #f5ede3;
-		background: #121012;
-		font: inherit;
-	}
-	.weapon-modifications .weapon-description-field {
-		grid-column: 1 / -1;
-	}
 	.weapon-description-field textarea {
 		width: 100%;
 		min-width: 0;
@@ -550,7 +547,7 @@
 	}
 	.weapon-combat-fields {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
 		align-items: end;
 		gap: 0.55rem;
 	}
@@ -614,6 +611,13 @@
 	}
 	.weapon-profile-fields {
 		margin-top: 0.55rem;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+	}
+	.weapon-profile-fields > textarea,
+	.weapon-profile-fields > .profile-damage-builder,
+	.weapon-profile-fields > .profile-damage-summary,
+	.weapon-profile-fields > .weapon-combat-actions {
+		grid-column: 1 / -1;
 	}
 	.weapon-profile-fields input,
 	.weapon-profile-fields textarea,
@@ -629,6 +633,9 @@
 	.weapon-combat-summary {
 		color: #b9aa9b;
 		font-size: 0.75rem;
+	}
+	.profile-damage-summary {
+		padding-inline: 0.2rem;
 	}
 	.weapon-combat-fields label {
 		min-width: 0;
@@ -705,9 +712,11 @@
 		font-size: 0.76rem;
 	}
 	@media (max-width: 520px) {
-		.weapon-combat-fields,
-		.weapon-modifications {
-			grid-template-columns: 1fr;
+		.weapon-combat-fields {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.weapon-combat-fields > label:nth-child(2) {
+			grid-column: 1 / -1;
 		}
 	}
 </style>

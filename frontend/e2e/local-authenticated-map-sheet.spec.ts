@@ -1387,6 +1387,162 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
+	test('weapon damage dice selection stays valid, persists, summarizes and rolls for base and alternate attacks', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const character = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Construtor de dano E2E',
+				inventory: [
+					{
+						entryId: 'damage-builder-e2e',
+						name: 'Machado de teste',
+						quantity: 1,
+						equipped: true,
+						rules: {
+							category: 'weapon',
+							damage: '1d4',
+							attackAbility: 'strength',
+							attackType: 'melee',
+							proficient: true,
+							attackProfiles: [
+								{
+									id: 'alternate-damage-e2e',
+									name: 'Golpe alternativo',
+									description: '',
+									attackAbility: 'strength',
+									damage: '1d6',
+									attackBonus: 0,
+									damageBonus: 0,
+									greatWeaponFighting: false
+								}
+							]
+						}
+					}
+				]
+			});
+			await fixture.createCharacterToken(character.id);
+			const page = fixture.player;
+			await openMap(page, fixture.campaignId, fixture.sceneId);
+			await selectTokenAtDefaultPosition(page);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			const sheet = page.locator('.sheet-backdrop.floating .sheet');
+			await expect(sheet).toBeVisible();
+			await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+			const weapon = sheet.locator('.weapon-combat-card').filter({ hasText: 'Machado de teste' });
+			await weapon.getByRole('button', { name: 'Machado de teste' }).click();
+			const baseBuilder = weapon.locator('fieldset.damage-builder').first();
+			const chooseDie = async (builder: Locator, sides: number) => {
+				await builder.locator('.die-type-picker summary').first().click();
+				await builder
+					.locator('.die-type-options button')
+					.filter({ hasText: `d${sides}` })
+					.click();
+			};
+			for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+				await chooseDie(baseBuilder, sides);
+				await expect(weapon.locator('.weapon-combat-summary').first()).toContainText(`1d${sides}`);
+				await expect(baseBuilder.getByRole('alert')).toHaveCount(0);
+			}
+			await baseBuilder.locator('button.secondary-button').click();
+			await chooseDie(baseBuilder, 8);
+			const components = baseBuilder.locator('.damage-component');
+			await expect(components).toHaveCount(2);
+			const desktopRects = await components.evaluateAll((nodes) =>
+				nodes.map((node) => {
+					const rect = node.getBoundingClientRect();
+					return { x: rect.x, y: rect.y, right: rect.right };
+				})
+			);
+			expect(desktopRects[1].x).toBeGreaterThan(desktopRects[0].x);
+			await page.setViewportSize({ width: 390, height: 844 });
+			const narrowLayout = await components.evaluateAll((nodes) =>
+				nodes.map((node) => {
+					const rect = node.getBoundingClientRect();
+					return { x: rect.x, y: rect.y, right: rect.right };
+				})
+			);
+			expect(narrowLayout.every((rect) => rect.right <= 390)).toBeTruthy();
+			expect(narrowLayout[1].y).toBeGreaterThan(narrowLayout[0].y);
+			const baseCount = baseBuilder.locator('input[type="number"]').first();
+			await baseCount.fill('0');
+			await expect(baseBuilder.getByRole('alert')).toBeVisible();
+			await baseCount.fill('1');
+			await chooseDie(baseBuilder, 100);
+			await expect(baseBuilder.getByRole('alert')).toHaveCount(0);
+
+			const profile = weapon.locator('.weapon-profile');
+			await profile.locator('summary').click();
+			const profileBuilder = profile.locator('fieldset.profile-damage-builder');
+			for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+				await chooseDie(profileBuilder, sides);
+				await expect(profile.locator('.profile-damage-summary')).toContainText(`1d${sides}`);
+				await expect(profileBuilder.getByRole('alert')).toHaveCount(0);
+			}
+			await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+			const readSavedDamage = async () => {
+				const response = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/character`
+				);
+				expect(response.ok()).toBeTruthy();
+				const result = (await response.json()) as {
+					sheet: {
+						inventory: Array<{
+							entryId: string;
+							rules: { damage: string; attackProfiles: Array<{ id: string; damage: string }> };
+						}>;
+					};
+				};
+				return result.sheet.inventory.find((item) => item.entryId === 'damage-builder-e2e')!.rules;
+			};
+			await expect.poll(async () => (await readSavedDamage()).damage).toBe('1d100+1d8');
+			await expect
+				.poll(async () => (await readSavedDamage()).attackProfiles[0].damage)
+				.toBe('1d100');
+
+			await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
+			await expect(sheet).toHaveCount(0);
+			await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+			await expect(sheet).toBeVisible();
+			await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+			const reopenedWeapon = sheet
+				.locator('.weapon-combat-card')
+				.filter({ hasText: 'Machado de teste' });
+			await reopenedWeapon.getByRole('button', { name: 'Machado de teste' }).click();
+			await expect(reopenedWeapon.locator('.weapon-combat-summary').first()).toContainText(
+				'1d100+1d8'
+			);
+			const reopenedProfile = reopenedWeapon.locator('.weapon-profile');
+			await reopenedProfile.locator('summary').click();
+			await expect(reopenedProfile.locator('.profile-damage-summary')).toContainText('1d100');
+			const readRolls = async () => {
+				const response = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/events`
+				);
+				expect(response.ok()).toBeTruthy();
+				return (
+					(await response.json()) as {
+						events: Array<{ type: string; payload: { expressao?: string } }>;
+					}
+				).events.filter((event) => event.type === 'dice.roll');
+			};
+			const initialRollCount = (await readRolls()).length;
+			await reopenedWeapon.getByRole('button', { name: 'Dano', exact: true }).first().click();
+			await expect.poll(async () => (await readRolls()).length).toBeGreaterThan(initialRollCount);
+			let rolls = await readRolls();
+			expect(rolls.at(-1)?.payload.expressao).toContain('1d100+1d8');
+			const profileRollCount = rolls.length;
+			await reopenedProfile.getByRole('button', { name: 'Dano', exact: true }).click();
+			await expect.poll(async () => (await readRolls()).length).toBeGreaterThan(profileRollCount);
+			rolls = await readRolls();
+			expect(rolls.at(-1)?.payload.expressao).toContain('1d100');
+		} finally {
+			await fixture?.close();
+		}
+	});
+
 	test('armor descriptions span the combat panel and sheet actions share a responsive style', async ({
 		browser
 	}) => {
