@@ -263,7 +263,7 @@ func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
 			}
 			continue
 		}
-		if level > 6 {
+		if level > 9 {
 			if _, audited := rules["mechanicsAudit"]; audited {
 				t.Errorf("out-of-scope spell %s was marked audited", entry.Name)
 			}
@@ -566,6 +566,148 @@ func TestSRDSecondThroughSixthLevelSpellTranslationsAreReviewed(t *testing.T) {
 			if !strings.Contains(text, fragment) {
 				t.Errorf("%s source slot-scaling text %q lacks %q", name, text, fragment)
 			}
+		}
+	}
+}
+
+func TestSRDSeventhThroughNinthLevelSpellTranslationsAndMechanicsAreReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantLevels := map[int]int{7: 20, 8: 16, 9: 16}
+	wantApprovedTitles := map[string]string{
+		"Etherealness": "Forma Etérea",
+		"Glibness":     "Loquacidade",
+		"Mind Blank":   "Mente Vazia",
+		"Plane Shift":  "Viagem Planar",
+		"Weird":        "Estranho",
+	}
+	levels := map[int]int{}
+	counts := map[string]int{"damage": 0, "noDamage": 0, "scaling": 0, "noScaling": 0}
+	spellCount := 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		spellCount++
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		level, ok := rules["level"].(float64)
+		if !ok || level < 7 || level > 9 {
+			continue
+		}
+		levels[int(level)]++
+		translations := decodeTranslations(entry.Translations)
+		if want, ok := wantApprovedTitles[entry.Name]; ok && translations["pt-BR"] != want {
+			t.Errorf("%s approved title = %q, want %q", entry.Name, translations["pt-BR"], want)
+		}
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.description"} {
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s translation is absent or not reviewed", entry.Name, key)
+			}
+		}
+		audit, ok := rules["mechanicsAudit"].(map[string]any)
+		if !ok || audit["status"] != "reviewed" || audit["source"] != "D&D SRD 5.2.1" {
+			t.Errorf("%s mechanics were not audited against the SRD: %#v", entry.Name, rules["mechanicsAudit"])
+		}
+		if rules["damage"] == nil {
+			counts["noDamage"]++
+		} else {
+			counts["damage"]++
+			damage, ok := rules["damage"].(map[string]any)
+			components, componentsOK := damage["components"].([]any)
+			if !ok || !componentsOK || len(components) == 0 {
+				t.Errorf("%s has untyped damage data: %#v", entry.Name, rules["damage"])
+			}
+		}
+		if rules["scaling"] == nil {
+			counts["noScaling"]++
+		} else {
+			counts["scaling"]++
+			scaling, ok := rules["scaling"].(map[string]any)
+			slot, slotOK := scaling["spellSlot"].(map[string]any)
+			if !ok || !slotOK || slot["baseLevel"] != level {
+				t.Errorf("%s has malformed slot scaling: %#v", entry.Name, rules["scaling"])
+				continue
+			}
+			effects, effectsOK := slot["effects"].([]any)
+			if !effectsOK || len(effects) == 0 {
+				t.Errorf("%s slot scaling has no effects", entry.Name)
+				continue
+			}
+			for _, raw := range effects {
+				effect, ok := raw.(map[string]any)
+				if !ok || effect["kind"] != "rule-text" || effect["fromSlotLevel"] != level+1 {
+					t.Errorf("%s has incorrectly thresholded slot scaling: %#v", entry.Name, raw)
+					continue
+				}
+				text, ok := effect["text"].(map[string]any)
+				if !ok || strings.TrimSpace(fmt.Sprint(text["en"])) == "" || strings.TrimSpace(fmt.Sprint(text["ptBR"])) == "" || !strings.Contains(translations["pt-BR.rules.description"], fmt.Sprint(text["ptBR"])) {
+					t.Errorf("%s slot scaling lacks localized source text: %#v", entry.Name, effect["text"])
+				}
+			}
+		}
+	}
+	if spellCount != 338 {
+		t.Fatalf("SRD spell count = %d, want 338", spellCount)
+	}
+	for level, want := range wantLevels {
+		if levels[level] != want {
+			t.Errorf("level %d spells = %d, want %d", level, levels[level], want)
+		}
+	}
+	if counts["damage"] != 19 || counts["noDamage"] != 33 || counts["scaling"] != 4 || counts["noScaling"] != 48 {
+		t.Fatalf("levels 7–9 applicability: damage %d/%d, scaling %d/%d; want 19/33 and 4/48", counts["damage"], counts["noDamage"], counts["scaling"], counts["noScaling"])
+	}
+	wantDamage := map[string]string{
+		"Arcane Sword": "4d12|force|attack-hit", "Befuddlement": "10d12|psychic", "Conjure Celestial": "6d12|radiant|searing-light",
+		"Delayed Blast Fireball": "12d6|fire|explosion|extra=1d6|fire|each-turn-before-detonation", "Earthquake": "12d6|bludgeoning|structure-collapse-failed-save;50|bludgeoning|structure-per-turn", "Etherealness": "2 × feet moved|force|shunted-on-return",
+		"Finger of Death": "7d8 + 30|necrotic", "Fire Storm": "7d10|fire", "Incendiary Cloud": "10d8|fire|turn-or-entry",
+		"Meteor Swarm": "20d6|fire;20d6|bludgeoning", "Power Word Kill": "12d12|psychic|target-over-100-hp", "Prismatic Spray": "12d6|varies|types=fire,acid,lightning,poison,cold|random-ray",
+		"Prismatic Wall": "12d6|varies|types=fire,acid,lightning,poison,cold|layer", "Storm of Vengeance": "2d6|thunder|initial;4d6|acid|round-2;10d6|lightning|round-3;2d6|bludgeoning|round-4;1d6|cold|round-5-to-10",
+		"Sunburst": "12d6|radiant", "Symbol": "10d10|necrotic|death-effect", "Teleport": "3d10|force|teleportation-mishap", "Tsunami": "6d10|bludgeoning|initial;5d10|bludgeoning|wave-round-1;4d10|bludgeoning|wave-round-2;3d10|bludgeoning|wave-round-3;2d10|bludgeoning|wave-round-4;1d10|bludgeoning|wave-round-5",
+		"Weird": "10d10|psychic|initial;5d10|psychic|failed-repeat-save",
+	}
+	byName := map[string]srdEntry{}
+	for _, entry := range pack.Entries {
+		if entry.EntryType == "spell" {
+			byName[entry.Name] = entry
+		}
+	}
+	for name, want := range wantDamage {
+		var rules map[string]any
+		if err := json.Unmarshal(byName[name].Rules, &rules); err != nil {
+			t.Fatal(err)
+		}
+		if got := spellDamageSignature(t, name, rules["damage"]); got != want {
+			t.Errorf("%s damage signature = %q, want %q", name, got, want)
+		}
+	}
+	for name, want := range map[string]struct{ damageType, dice string }{
+		"Finger of Death": {damageType: "necrotic", dice: "7d8+30"},
+		"Meteor Swarm":    {damageType: "fire", dice: "20d6"},
+		"Tsunami":         {damageType: "bludgeoning", dice: "6d10"},
+	} {
+		var rules map[string]any
+		if err := json.Unmarshal(byName[name].Rules, &rules); err != nil {
+			t.Fatal(err)
+		}
+		damage, ok := rules["damage"].(map[string]any)
+		if !ok || damage["type"] != want.damageType || damage["dice"] != want.dice {
+			t.Errorf("%s legacy damage fallback = %#v, want type %q and dice %q", name, rules["damage"], want.damageType, want.dice)
+		}
+	}
+	for name, base := range map[string]float64{"Conjure Celestial": 7, "Delayed Blast Fireball": 7, "Etherealness": 7, "Dominate Monster": 8} {
+		var rules map[string]any
+		if err := json.Unmarshal(byName[name].Rules, &rules); err != nil {
+			t.Fatal(err)
+		}
+		slot := rules["scaling"].(map[string]any)["spellSlot"].(map[string]any)
+		if slot["baseLevel"] != base {
+			t.Errorf("%s scaling base = %v, want %v", name, slot["baseLevel"], base)
 		}
 	}
 }

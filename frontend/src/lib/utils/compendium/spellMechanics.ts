@@ -147,6 +147,41 @@ function damageLabel(component: SpellDamageComponent, locale: string): string {
 
 function triggerLabel(trigger: string, locale: string): string {
 	const labels: Record<string, [string, string]> = {
+		'initial-failed-save': ['na conjuração, em salvaguarda falha', 'on the initial failed save'],
+		initial: ['na conjuração', 'initial effect'],
+		'round-2': ['no 2º turno da tempestade', 'on storm turn 2'],
+		'round-3': ['no 3º turno da tempestade', 'on storm turn 3'],
+		'round-3-failed-save': ['no 3º turno, em salvaguarda falha', 'on turn 3, on a failed save'],
+		'round-4': ['no 4º turno da tempestade', 'on storm turn 4'],
+		'round-5-to-10': ['nos turnos 5 a 10', 'on turns 5–10'],
+		'wave-round-1': ['na 1ª rodada após a onda surgir', 'on wave round 1'],
+		'wave-round-2': ['na 2ª rodada após a onda surgir', 'on wave round 2'],
+		'wave-round-3': ['na 3ª rodada após a onda surgir', 'on wave round 3'],
+		'wave-round-4': ['na 4ª rodada após a onda surgir', 'on wave round 4'],
+		'wave-round-5': ['na 5ª rodada após a onda surgir', 'on wave round 5'],
+		'each-turn-before-detonation': [
+			'a cada turno antes da detonação',
+			'at each turn end before detonation'
+		],
+		'structure-collapse-failed-save': [
+			'ao desabar estrutura, em salvaguarda falha',
+			'on structure collapse, failed save'
+		],
+		'structure-per-turn': ['a estruturas, a cada turno', 'to structures, each turn'],
+		'shunted-on-return': ['ao ser deslocado no retorno', 'when shunted on return'],
+		'searing-light': ['ao falhar contra Luz Calcinante', 'on a failed save against Searing Light'],
+		explosion: ['na explosão', 'on the explosion'],
+		'random-ray': ['conforme o raio aleatório', 'according to the random ray'],
+		layer: ['ao atravessar uma camada', 'when crossing a layer'],
+		'death-effect': ['no efeito Morte do glifo', 'on the glyph’s Death effect'],
+		'teleportation-mishap': ['em acidente de teletransporte', 'on a teleportation mishap'],
+		'wave-rounds': ['nas rodadas da onda', 'on wave rounds'],
+		'failed-repeat-save': ['em salvaguarda repetida falha', 'on a failed repeated save'],
+		'target-over-100-hp': ['se o alvo tiver mais de 100 PV', 'if the target has more than 100 HP'],
+		'per-5-feet-solid-matter': [
+			'por 1,5 m atravessado em matéria sólida',
+			'per 5 feet through solid matter'
+		],
 		'per-beam': ['por feixe', 'per beam'],
 		'weapon-hit': ['ao acertar com arma', 'when a weapon hits'],
 		'attack-hit': ['ao acertar com um ataque', 'when an attack hits'],

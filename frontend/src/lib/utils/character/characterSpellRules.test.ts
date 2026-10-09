@@ -71,6 +71,31 @@ describe('character spell rules', () => {
 		}
 	});
 
+	it('renders the 7th–9th-circle SRD descriptions from the UI localization key', () => {
+		const packPath = resolve(process.cwd(), '../backend/internal/compendium/packs/srd_5_2_1.json');
+		const pack = JSON.parse(readFileSync(packPath, 'utf8')) as {
+			entries: CompendiumEntry[];
+		};
+		const spells = pack.entries.filter(
+			(item) => item.entryType === 'spell' && Number(item.rules?.level) >= 7
+		);
+		expect(spells).toHaveLength(52);
+		for (const item of spells) {
+			const description = item.translations?.['pt-BR.rules.description'];
+			expect(description, `${item.name} description`).toBeTruthy();
+			expect(
+				localizedSpellField(
+					spell({ name: item.name, level: Number(item.rules?.level) }),
+					item,
+					'description',
+					String(item.rules?.description ?? item.summary),
+					'pt-BR'
+				),
+				`${item.name} UI description`
+			).toBe(description);
+		}
+	});
+
 	it('keeps the Spells tab available for active campaign-configured feat spells', () => {
 		expect(hasActiveFeatGrantedSpells([], [])).toBe(false);
 		expect(
