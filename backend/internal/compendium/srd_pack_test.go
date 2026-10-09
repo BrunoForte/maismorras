@@ -54,6 +54,77 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	}
 }
 
+func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *testing.T) {
+	type projection struct {
+		EntryType string `json:"entryType"`
+		Name      string `json:"name"`
+		Summary   string `json:"summary"`
+		Rules     any    `json:"rules"`
+	}
+	var sourcePack srdPack
+	if err := json.Unmarshal(srdPackJSON, &sourcePack); err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	projected := make([]projection, 0, len(sourcePack.Entries))
+	for _, entry := range sourcePack.Entries {
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("%s %q rules: %v", entry.EntryType, entry.Name, err)
+		}
+		projected = append(projected, projection{EntryType: entry.EntryType, Name: entry.Name, Summary: entry.Summary, Rules: rules})
+		if entry.EntryType != "species" && entry.EntryType != "background" {
+			continue
+		}
+		counts[entry.EntryType]++
+		translations := map[string]string{}
+		if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+			t.Fatalf("%s %q translations: %v", entry.EntryType, entry.Name, err)
+		}
+		checkReviewed := func(key string) {
+			t.Helper()
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %q field %s is missing reviewed PT-BR text", entry.EntryType, entry.Name, key)
+			}
+		}
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.name", "pt-BR.rules.description"} {
+			checkReviewed(key)
+		}
+		if entry.EntryType == "species" {
+			traits, _ := rules["traits"].([]any)
+			for index, raw := range traits {
+				for _, field := range []string{"name", "description"} {
+					checkReviewed(fmt.Sprintf("pt-BR.rules.traits.%d.%s", index, field))
+				}
+				if trait, ok := raw.(map[string]any); !ok || strings.TrimSpace(fmt.Sprint(trait["id"])) == "" {
+					t.Errorf("%s %q trait %d lost its mechanical ID", entry.EntryType, entry.Name, index)
+				}
+			}
+		} else {
+			for _, field := range []string{"skillProficiencies", "startingEquipment"} {
+				values, _ := rules[field].([]any)
+				for index := range values {
+					checkReviewed(fmt.Sprintf("pt-BR.rules.%s.%d", field, index))
+				}
+			}
+			for _, field := range []string{"toolProficiency", "feat"} {
+				checkReviewed("pt-BR.rules." + field)
+			}
+		}
+	}
+	if counts["species"] != 9 || counts["background"] != 16 {
+		t.Fatalf("SRD species/background inventory = %v, want 9 species and 16 backgrounds", counts)
+	}
+	mechanicsJSON, err := json.Marshal(projected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mechanicsHash := sha256.Sum256(mechanicsJSON)
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "9867851700853151f4bfe6b929678fea6f0fde720a41912873774c8505968f22" {
+		t.Fatalf("non-translation package content changed: projection digest %s", got)
+	}
+}
+
 func TestSRDConditionTranslationsAreCompleteAndReviewed(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {

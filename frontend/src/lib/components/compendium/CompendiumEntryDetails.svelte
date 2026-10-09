@@ -35,6 +35,27 @@
 		translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale);
 	const displayBenefit = (index: number, value: unknown) =>
 		translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale);
+	const displaySpeciesTrait = (index: number, field: string, value: unknown) =>
+		translatedCompendiumText(entry, `rules.traits.${index}.${field}`, value, locale);
+	const displayChoice = (value: unknown) => {
+		const labels: Record<string, string> = {
+			str: 'Força',
+			dex: 'Destreza',
+			con: 'Constituição',
+			int: 'Inteligência',
+			wis: 'Sabedoria',
+			cha: 'Carisma'
+		};
+		return locale === 'pt-BR'
+			? (labels[String(value)] ?? String(value ?? ''))
+			: String(value ?? '');
+	};
+	const displaySize = (value: unknown) => {
+		const labels: Record<string, string> = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
+		return locale === 'pt-BR'
+			? (labels[String(value)] ?? String(value ?? ''))
+			: String(value ?? '');
+	};
 	const displayConditionEffect = (index: number, value: unknown) =>
 		translatedCompendiumText(entry, `rules.effects.${index}`, value, locale);
 </script>
@@ -294,7 +315,11 @@
 		{/if}
 		{#if detail.notes}<p class="condition-notes">{displayRule('notes', detail.notes)}</p>{/if}
 	{:else if entry.entryType === 'species'}
+		{@const speciesDescription = displayRule('description', detail.description)}
+		{#if speciesDescription}<p>{speciesDescription}</p>{/if}
 		<div class="rules">
+			{#if detail.size}<b>{$appLocale === 'en' ? 'Size' : 'Tamanho'}: {displaySize(detail.size)}</b
+				>{/if}
 			<b
 				>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}: {distanceText(
 					displayRule('speed', detail.speed ?? '—'),
@@ -302,6 +327,66 @@
 				)}</b
 			>
 		</div>
+		{#if Array.isArray(detail.traits) && detail.traits.length}
+			<h4>{$appLocale === 'en' ? 'Species traits' : 'Características da espécie'}</h4>
+			<div class="feature-detail-list">
+				{#each detail.traits as trait, index (String((trait as Record<string, unknown>).id ?? index))}
+					{@const item = trait as Record<string, unknown>}
+					<article>
+						<strong>{displaySpeciesTrait(index, 'name', item.name)}</strong>
+						{#if item.description}<p>
+								{displaySpeciesTrait(index, 'description', item.description)}
+							</p>{/if}
+					</article>
+				{/each}
+			</div>
+		{/if}
+	{:else if entry.entryType === 'background'}
+		{@const backgroundDescription = displayRule('description', detail.description)}
+		{#if backgroundDescription}<p>{backgroundDescription}</p>{/if}
+		{#if detail.abilityScoreIncreases}
+			{@const abilityChoices = detail.abilityScoreIncreases as {
+				options?: unknown[];
+				points?: unknown;
+			}}
+			<p>
+				{$appLocale === 'en'
+					? 'Ability score increase options:'
+					: 'Opções de valores de habilidade:'}
+				{Array.isArray(abilityChoices.options)
+					? abilityChoices.options.map(displayChoice).join(', ')
+					: ''}
+				· {String(abilityChoices.points ?? '')}
+				{$appLocale === 'en' ? 'points to distribute' : 'pontos para distribuir'}
+			</p>
+		{/if}
+		{#if Array.isArray(detail.skillProficiencies)}
+			<p>
+				<strong
+					>{$appLocale === 'en' ? 'Skill proficiencies:' : 'Proficiências em perícias:'}</strong
+				>
+				{detail.skillProficiencies
+					.map((value, index) => displayRule(`skillProficiencies.${index}`, value))
+					.join(', ')}
+			</p>
+		{/if}
+		{#if detail.toolProficiency}<p>
+				<strong>{$appLocale === 'en' ? 'Tool proficiency:' : 'Proficiência com ferramenta:'}</strong
+				>
+				{displayRule('toolProficiency', detail.toolProficiency)}
+			</p>{/if}
+		{#if Array.isArray(detail.startingEquipment)}
+			<p>
+				<strong>{$appLocale === 'en' ? 'Starting equipment:' : 'Equipamento inicial:'}</strong>
+				{detail.startingEquipment
+					.map((value, index) => displayRule(`startingEquipment.${index}`, value))
+					.join(', ')}
+			</p>
+		{/if}
+		{#if detail.feat}<p>
+				<strong>{$appLocale === 'en' ? 'Origin feat:' : 'Talento de Origem:'}</strong>
+				{displayRule('feat', detail.feat)}
+			</p>{/if}
 	{/if}
 	<small
 		>{entry.isPublished

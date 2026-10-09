@@ -93,6 +93,22 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if decodeTranslations(sharedA.Translations)["pt-BR"] != decodeTranslations(sharedB.Translations)["pt-BR"] {
 		t.Fatal("canonical Fireball translation differs between campaigns")
 	}
+	for _, item := range []struct{ kind, name, translation string }{
+		{"species", "Dragonborn", "Draconato"},
+		{"species", "Dwarf", "Anão"},
+		{"background", "Acolyte", "Acólito"},
+		{"background", "Farmer", "Fazendeiro"},
+	} {
+		entryA := findEntryByName(entriesA, item.kind, item.name)
+		entryB := findEntryByName(entriesB, item.kind, item.name)
+		translationsA, translationsB := decodeTranslations(entryA.Translations), decodeTranslations(entryB.Translations)
+		if entryA.ID == "" || entryA.ID != entryB.ID || translationsA["pt-BR"] != item.translation || translationsB["pt-BR"] != item.translation {
+			t.Fatalf("campaigns did not receive the same reviewed %s translation for %s: A=%v B=%v", item.kind, item.name, translationsA, translationsB)
+		}
+		if translationsA["pt-BR.source"] != "reviewed" || translationsB["pt-BR.source"] != "reviewed" {
+			t.Fatalf("%s %s translation provenance not preserved: A=%v B=%v", item.kind, item.name, translationsA, translationsB)
+		}
+	}
 	shieldA := findEntryByName(entriesA, "spell", "Shield")
 	shieldB := findEntryByName(entriesB, "spell", "Shield")
 	if decodeTranslations(shieldA.Translations)["pt-BR"] != "Proteção legada da campanha A" || decodeTranslations(shieldB.Translations)["pt-BR"] == "Proteção legada da campanha A" {

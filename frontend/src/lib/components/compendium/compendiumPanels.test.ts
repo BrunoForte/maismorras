@@ -103,7 +103,7 @@ describe('compendium panels', () => {
 		expect(featHtml).toContain('Adicione proficiência à Iniciativa.');
 	});
 
-	it('renders localized SRD condition details and falls back to source text', () => {
+	it('renders localized SRD conditions, species traits and background choices with source fallback', () => {
 		setAppLocale('pt-BR');
 		const actions = {
 			close: vi.fn(),
@@ -153,6 +153,79 @@ describe('compendium panels', () => {
 			translating: false,
 			placing: false
 		});
+		const species: CompendiumEntry = {
+			...monster,
+			entryType: 'species',
+			name: 'Dwarf',
+			summary: 'Dwarves endure.',
+			rules: {
+				size: 'medium',
+				speed: 30,
+				description: 'Dwarves endure.',
+				traits: [
+					{ id: 'darkvision-dwarf', name: 'Darkvision', description: 'You see in darkness.' }
+				]
+			},
+			translations: {
+				'pt-BR': 'Anão',
+				'pt-BR.summary': 'Anões resistem.',
+				'pt-BR.rules.description': 'Anões resistem.',
+				'pt-BR.rules.traits.0.name': 'Visão no Escuro',
+				'pt-BR.rules.traits.0.description': 'Você enxerga no escuro.'
+			},
+			isPublished: true
+		};
+		const speciesHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(species), actions }
+		}).body;
+		expect(speciesHtml).toContain('Visão no Escuro');
+		expect(speciesHtml).toContain('Você enxerga no escuro.');
+		const fallbackSpeciesHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView({ ...species, translations: { 'pt-BR': 'Anão' } }), actions }
+		}).body;
+		expect(fallbackSpeciesHtml).toContain('Darkvision');
+		expect(fallbackSpeciesHtml).toContain('You see in darkness.');
+
+		const background: CompendiumEntry = {
+			...monster,
+			entryType: 'background',
+			name: 'Farmer',
+			summary: 'You grew up close to the land.',
+			rules: {
+				description: 'You grew up close to the land.',
+				abilityScoreIncreases: { options: ['str', 'con', 'wis'], points: 3 },
+				skillProficiencies: ['Animal Handling', 'Nature'],
+				toolProficiency: "Carpenter's Tools",
+				startingEquipment: ['Sickle', "Carpenter's Tools"],
+				feat: 'Tough'
+			},
+			translations: {
+				'pt-BR': 'Fazendeiro',
+				'pt-BR.rules.description': 'Você cresceu perto da terra.',
+				'pt-BR.rules.skillProficiencies.0': 'Adestrar Animais',
+				'pt-BR.rules.skillProficiencies.1': 'Natureza',
+				'pt-BR.rules.toolProficiency': 'Ferramentas de Carpinteiro',
+				'pt-BR.rules.startingEquipment.0': 'Foice',
+				'pt-BR.rules.startingEquipment.1': 'Ferramentas de Carpinteiro',
+				'pt-BR.rules.feat': 'Robusto'
+			},
+			isPublished: true
+		};
+		const backgroundHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(background), actions }
+		}).body;
+		for (const label of [
+			'Você cresceu perto da terra.',
+			'Força',
+			'Constituição',
+			'Sabedoria',
+			'Adestrar Animais',
+			'Ferramentas de Carpinteiro',
+			'Foice',
+			'Robusto'
+		]) {
+			expect(backgroundHtml).toContain(label);
+		}
 		const localizedHtml = render(CompendiumEntryDetails, {
 			props: { view: makeView(condition), actions }
 		}).body;

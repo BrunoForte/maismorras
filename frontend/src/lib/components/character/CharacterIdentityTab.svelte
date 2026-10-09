@@ -4,12 +4,14 @@
 	import { appLocale, distance } from '$lib/stores/locale';
 	import {
 		displayedSpeed,
+		catalogSpeciesTraits,
 		getActiveSpeciesTraits,
 		getSpeciesProfile,
 		getSpeciesSpeed,
 		getSpeciesLineageOptions,
 		speciesProfileLabel,
 		speciesTraitDescription,
+		normalizeSpecies,
 		storedSpeedFromDisplay,
 		updateSpeciesSelection
 	} from '$lib/utils/speciesRules';
@@ -98,13 +100,30 @@
 	} = $props();
 
 	const speciesProfile = () => getSpeciesProfile(sheet.species);
+	const catalogSpecies = () =>
+		optionsFor('species').find((entry) => {
+			const rules = (entry.rules ?? {}) as Record<string, unknown>;
+			return [rules.id, entry.name, entry.translations?.['pt-BR']].some(
+				(value) => normalizeSpecies(value) === normalizeSpecies(sheet.species)
+			);
+		});
 	const lineageOptions = () => getSpeciesLineageOptions(sheet.species);
 	const profileSpeed = () => getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
-	const activeSpeciesTraits = () =>
-		getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).map((trait) => ({
-			name: trait,
-			description: speciesTraitDescription(trait, $appLocale)
-		}));
+	const activeSpeciesTraits = () => {
+		const catalogEntry = catalogSpecies();
+		if (!catalogEntry) {
+			return getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).map((trait) => ({
+				name: trait,
+				description: speciesTraitDescription(trait, $appLocale)
+			}));
+		}
+		const translatedTraits = catalogSpeciesTraits(catalogEntry, $appLocale);
+		const baseTraitCount = speciesProfile()?.traits.length ?? 0;
+		const lineageSummaries = getActiveSpeciesTraits(sheet.species, sheet.speciesLineage)
+			.slice(baseTraitCount)
+			.map((trait) => ({ name: trait, description: speciesTraitDescription(trait, $appLocale) }));
+		return [...translatedTraits, ...lineageSummaries];
+	};
 	const shownSpeed = () => displayedSpeed(sheet.speed, $appLocale);
 
 	function applySpeciesSelection(species: string, lineage = sheet.speciesLineage ?? '') {
