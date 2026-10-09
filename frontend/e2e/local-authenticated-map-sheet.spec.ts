@@ -336,7 +336,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('floating chat collapses physically and restores above the audio footer', async ({
+	test('floating chat collapses physically and restores above the audio footer @routine-gate', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -398,7 +398,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('docked sheet stays above actors and audio footer on desktop and mobile', async ({
+	test('docked sheet stays above actors and audio footer on desktop and mobile @routine-gate', async ({
 		browser
 	}, testInfo) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
@@ -731,7 +731,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('chat, docked sheet, actors and audio footer fit a narrow viewport', async ({ browser }) => {
+	test('chat, docked sheet, actors and audio footer fit a narrow viewport @routine-gate', async ({
+		browser
+	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			await test.step('prepare a compact authenticated map with all three panels', async () => {
@@ -793,7 +795,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player restores chat across map tab switches', async ({ browser }) => {
+	test('player restores chat across map tab switches @routine-gate', async ({ browser }) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
 			await test.step('prepare the authenticated player map', async () => {
@@ -2124,7 +2126,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player linked sheet survives map navigation and focuses one instance', async ({
+	test('player linked sheet survives map navigation and focuses one instance @routine-gate', async ({
 		browser
 	}, testInfo) => {
 		let fixture: LocalAuthenticatedFixture | undefined;
@@ -2197,7 +2199,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('player opens an isolated authorized auxiliary sheet window', async ({
+	test('player opens an isolated authorized auxiliary sheet window @routine-gate', async ({
 		browser
 	}, testInfo) => {
 		let fixture: LocalAuthenticatedFixture | undefined;
