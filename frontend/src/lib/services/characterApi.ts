@@ -17,6 +17,7 @@ export type AbilityScores = {
 export type Attack = {
 	name: string;
 	attackBonus: number;
+	damageBonus?: number;
 	damage: string;
 	notes: string;
 	attackType?: 'melee' | 'ranged';

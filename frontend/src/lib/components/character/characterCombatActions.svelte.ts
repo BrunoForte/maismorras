@@ -680,7 +680,12 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		});
 	}
 
-	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
+	async function rollSheetDamage(
+		label: string,
+		damage: string,
+		attackIndex: number,
+		damageBonus = 0
+	) {
 		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
 		if (!match) return;
 		const operation = captureOperation();
@@ -689,7 +694,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const critical = lastCriticalAttack === attackIndex;
 		const count = Number(match[1]) * (critical ? 2 : 1);
 		const formulaModifier = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
-		const modifier = formulaModifier;
+		const modifier = formulaModifier + damageBonus;
 		const event = await deps.rollDice(
 			context.session,
 			context.campaignId,
@@ -763,7 +768,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			await rollSheetDamage(
 				attack.name || localized(context.locale, 'Ataque', 'Attack'),
 				attack.damage,
-				index
+				index,
+				attack.damageBonus ?? 0
 			);
 		} catch {
 			if (isCurrent(operation))

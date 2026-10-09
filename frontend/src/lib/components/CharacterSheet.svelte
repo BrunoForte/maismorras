@@ -1087,6 +1087,7 @@
 				attackType: 'melee',
 				ability: 'strength',
 				attackBonus: 0,
+				damageBonus: 0,
 				damage: '',
 				notes: ''
 			}

@@ -169,6 +169,29 @@ func TestSheetRoundTripKeepsMoneyAndFeatGrantUsageAndLegacyDefaults(t *testing.T
 	}
 }
 
+func TestAttackBonusFieldsRoundTripAndKeepLegacyAttackBonusMeaning(t *testing.T) {
+	var legacy Sheet
+	if err := json.Unmarshal([]byte(`{"attacks":[{"name":"Adaga","attackBonus":4,"damage":"1d4+2"}]}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if len(legacy.Attacks) != 1 || legacy.Attacks[0].AttackBonus != 4 || legacy.Attacks[0].DamageBonus != 0 {
+		t.Fatalf("legacy attack bonuses decoded incorrectly: %+v", legacy.Attacks)
+	}
+
+	legacy.Attacks[0].DamageBonus = 3
+	raw, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored Sheet
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if restored.Attacks[0].AttackBonus != 4 || restored.Attacks[0].DamageBonus != 3 {
+		t.Fatalf("attack and damage bonuses did not round-trip independently: %+v", restored.Attacks[0])
+	}
+}
+
 func TestValidateAndDecodeAcceptFractionalMetricSpeciesSpeed(t *testing.T) {
 	for _, species := range []string{"Goliath", "Elfo"} {
 		t.Run(species, func(t *testing.T) {
