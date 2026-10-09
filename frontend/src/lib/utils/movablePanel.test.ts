@@ -137,6 +137,20 @@ afterEach(() => {
 });
 
 describe('movablePanel', () => {
+	it('skips persisted position and viewport calculations for embedded content', () => {
+		const h = makeHarness();
+		const getItem = vi.mocked(localStorage.getItem);
+		const action = movablePanel(h.node, {
+			storageKey: 'embedded-sheet',
+			handleSelector: '.titlebar',
+			skipLayout: true
+		});
+		expect(getItem).not.toHaveBeenCalled();
+		expect(h.nodeListeners.size).toBe(0);
+		expect((h.node as unknown as { style: Record<string, string> }).style.left).toBeUndefined();
+		action.destroy();
+	});
+
 	it('allows a larger panel to use available viewport width when requested', () => {
 		const h = makeHarness();
 		const action = movablePanel(h.node, {
