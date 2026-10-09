@@ -417,8 +417,11 @@
 		font-size: 0.76rem;
 	}
 	.scene-add {
+		display: grid;
+		place-items: center;
 		width: 2rem;
 		height: 2rem;
+		padding: 0;
 		border: 1px solid #806039;
 		border-radius: 7px;
 		color: #f0cb85;
