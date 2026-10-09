@@ -263,7 +263,7 @@
 						? '…'
 						: $appLocale === 'en'
 							? 'Attack'
-							: 'Ataque'}<RpgIcon name="attack" size={18} /></button
+							: 'Ataque'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button
 					class="roll-custom"
@@ -273,7 +273,7 @@
 						? '…'
 						: $appLocale === 'en'
 							? 'Damage'
-							: 'Dano'}<RpgIcon name="dice-stack" size={18} /></button
+							: 'Dano'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button onclick={() => actions.removeAttack(index)}>×</button>
 			</div>

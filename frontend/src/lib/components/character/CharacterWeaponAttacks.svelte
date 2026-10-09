@@ -287,7 +287,7 @@
 									? '…'
 									: $appLocale === 'en'
 										? 'Attack'
-										: 'Ataque'}<RpgIcon name="attack" size={18} /></button
+										: 'Ataque'}<RpgIcon name="d20" size={18} /></button
 							>
 							<button
 								onclick={() => actions.rollWeapon(item, 'damage')}
@@ -300,7 +300,7 @@
 									? '…'
 									: $appLocale === 'en'
 										? 'Damage'
-										: 'Dano'}<RpgIcon name="dice-stack" size={18} /></button
+										: 'Dano'}<RpgIcon name="d20" size={18} /></button
 							>
 						</div>
 						<div class="weapon-profile-list">
@@ -415,7 +415,7 @@
 												class="roll-weapon"
 												onclick={() => actions.rollWeapon(item, 'attack', profile)}
 												disabled={rollingWeaponAction !== null}
-												><RpgIcon name="attack" size={18} />
+												><RpgIcon name="d20" size={18} />
 												{$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
 											>
 											<button
@@ -425,7 +425,7 @@
 													!!profileIssue ||
 													!!validateDamageBonus(profile.damageBonus) ||
 													!!profile.damageNeedsRepair}
-												><RpgIcon name="dice-stack" size={18} />
+												><RpgIcon name="d20" size={18} />
 												{$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button

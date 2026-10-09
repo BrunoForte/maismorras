@@ -308,7 +308,7 @@
 											class="roll-effect"
 											type="button"
 											onclick={() => actions.rollEffect(spell)}
-											><RpgIcon name="dice-stack" size={18} />
+											><RpgIcon name="d20" size={18} />
 											{$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
 									{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
