@@ -2508,6 +2508,9 @@ async function prepareSavedPlayerSheet(browser: Browser, testInfo: TestInfo) {
 							return ((await response.json()) as { sheet: { name: string } }).sheet.name;
 						})
 						.toBe('Ficha persistida E2E');
+					phase = 'open the floating panel as an alternate sheet view';
+					await sheet.getByRole('button', { name: 'Abrir como painel' }).click();
+					await expect(fixture.player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 				},
 				() => phase
 			);
@@ -2515,7 +2518,7 @@ async function prepareSavedPlayerSheet(browser: Browser, testInfo: TestInfo) {
 		return {
 			fixture,
 			player: fixture.player,
-			sheet: fixture.player.locator('.sheet-backdrop .sheet')
+			sheet: fixture.player.locator('.sheet-backdrop.floating .sheet')
 		};
 	} catch (error) {
 		await fixture.close();
