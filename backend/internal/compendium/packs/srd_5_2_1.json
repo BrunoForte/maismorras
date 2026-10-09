@@ -8945,7 +8945,22 @@
       "name": "Blinded",
       "summary": "A blinded creature can't see and automatically fails any ability check that requires sight.",
       "translations": {
-        "pt-BR": "Blinded"
+        "pt-BR": "Cego",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura cega não consegue enxergar e falha automaticamente em testes de habilidade que exijam visão.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Cego",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura cega não consegue enxergar e falha automaticamente em testes de habilidade que exijam visão.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Não consegue enxergar",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Falha automaticamente em testes de habilidade que exijam visão",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "As jogadas de ataque da criatura têm Desvantagem",
+        "pt-BR.rules.effects.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -9865,7 +9880,18 @@
       "name": "Charmed",
       "summary": "A charmed creature is beguiled by the charmer.",
       "translations": {
-        "pt-BR": "Charmed"
+        "pt-BR": "Enfeitiçado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura enfeitiçada fica sob o fascínio de quem a enfeitiçou.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Enfeitiçado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura enfeitiçada fica sob o fascínio de quem a enfeitiçou.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Não pode realizar ações que prejudiquem quem a enfeitiçou",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Quem a enfeitiçou tem Vantagem em testes de habilidade para interagir socialmente com a criatura",
+        "pt-BR.rules.effects.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -10757,7 +10783,18 @@
       "name": "Deafened",
       "summary": "A deafened creature can't hear and automatically fails any ability check that requires hearing.",
       "translations": {
-        "pt-BR": "Deafened"
+        "pt-BR": "Surdo",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura surda não consegue ouvir e falha automaticamente em testes de habilidade que exijam audição.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Surdo",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura surda não consegue ouvir e falha automaticamente em testes de habilidade que exijam audição.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Não consegue ouvir",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Falha automaticamente em testes de habilidade que exijam audição",
+        "pt-BR.rules.effects.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -12015,7 +12052,28 @@
       "name": "Exhaustion",
       "summary": "Exhaustion is measured in six levels. Each level of exhaustion imposes penalties.",
       "translations": {
-        "pt-BR": "Exhaustion"
+        "pt-BR": "Exaustão",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "A exaustão é medida em seis níveis. Cada nível impõe penalidades.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Exaustão",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "A exaustão é medida em seis níveis. Cada nível impõe penalidades.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Nível 1: Desvantagem em testes de habilidade",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Nível 2: Deslocamento reduzido à metade",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Nível 3: Desvantagem em jogadas de ataque e testes de resistência",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Nível 4: Pontos de Vida máximos reduzidos à metade",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Nível 5: Deslocamento reduzido a 0",
+        "pt-BR.rules.effects.4.source": "reviewed",
+        "pt-BR.rules.effects.5": "Nível 6: Morte",
+        "pt-BR.rules.effects.5.source": "reviewed",
+        "pt-BR.rules.notes": "Concluir um Descanso Longo remove 1 nível de Exaustão se a criatura tiver ingerido comida e bebida. Ser trazida de volta à vida também remove 1 nível.",
+        "pt-BR.rules.notes.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -12279,7 +12337,18 @@
       "name": "Frightened",
       "summary": "A frightened creature is terrified of the source of its fear.",
       "translations": {
-        "pt-BR": "Frightened"
+        "pt-BR": "Amedrontado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura amedrontada sente terror da fonte de seu medo.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Amedrontado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura amedrontada sente terror da fonte de seu medo.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Tem Desvantagem em testes de habilidade e jogadas de ataque enquanto a fonte do medo estiver em sua linha de visão",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se mover voluntariamente para mais perto da fonte do medo",
+        "pt-BR.rules.effects.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -14637,7 +14706,22 @@
       "name": "Grappled",
       "summary": "A grappled creature is held by another creature or effect.",
       "translations": {
-        "pt-BR": "Grappled"
+        "pt-BR": "Agarrado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura agarrada é segurada por outra criatura ou por um efeito.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Agarrado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura agarrada é segurada por outra criatura ou por um efeito.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Deslocamento reduzido a 0",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se beneficiar de nenhum bônus de deslocamento",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "A condição termina se quem a agarrou ficar Incapacitado",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "A condição termina se a criatura agarrada for movida para fora do alcance de quem a agarrou",
+        "pt-BR.rules.effects.3.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -16026,7 +16110,20 @@
       "name": "Incapacitated",
       "summary": "An incapacitated creature can't take actions or reactions.",
       "translations": {
-        "pt-BR": "Incapacitated"
+        "pt-BR": "Incapacitado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura incapacitada não pode realizar ações nem reações.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Incapacitado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura incapacitada não pode realizar ações nem reações.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Não pode realizar ações",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode realizar ações bônus",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Não pode realizar reações",
+        "pt-BR.rules.effects.2.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -16089,7 +16186,24 @@
       "name": "Invisible",
       "summary": "An invisible creature is impossible to see without the aid of magic or a special sense.",
       "translations": {
-        "pt-BR": "Invisible"
+        "pt-BR": "Invisível",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura invisível não pode ser vista sem auxílio de magia ou de um sentido especial.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Invisível",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura invisível não pode ser vista sem auxílio de magia ou de um sentido especial.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Impossível de ver sem magia ou sentidos especiais",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "É considerada Pesadamente Obscurecida para se esconder",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Pode ser detectada por ruídos ou rastros",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Jogadas de ataque contra a criatura têm Desvantagem",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "As jogadas de ataque da criatura têm Vantagem",
+        "pt-BR.rules.effects.4.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -18307,7 +18421,24 @@
       "name": "Paralyzed",
       "summary": "A paralyzed creature is frozen in place.",
       "translations": {
-        "pt-BR": "Paralyzed"
+        "pt-BR": "Paralisado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura paralisada fica imóvel.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Paralisado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura paralisada fica imóvel.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Tem a condição Incapacitado",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se mover nem falar",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Falha automaticamente em testes de resistência de Força e Destreza",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Qualquer ataque que acerte é um Acerto Crítico se o atacante estiver a até 1,5 metro",
+        "pt-BR.rules.effects.4.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -18422,7 +18553,34 @@
       "name": "Petrified",
       "summary": "A petrified creature is transformed into a solid inanimate substance.",
       "translations": {
-        "pt-BR": "Petrified"
+        "pt-BR": "Petrificado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura petrificada é transformada em uma substância sólida e inanimada.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Petrificado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura petrificada é transformada em uma substância sólida e inanimada.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "É transformada em pedra junto com objetos não mágicos que esteja vestindo ou carregando",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Seu peso aumenta dez vezes",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Para de envelhecer",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Tem a condição Incapacitado",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Não pode se mover nem falar",
+        "pt-BR.rules.effects.4.source": "reviewed",
+        "pt-BR.rules.effects.5": "Não percebe os arredores",
+        "pt-BR.rules.effects.5.source": "reviewed",
+        "pt-BR.rules.effects.6": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.6.source": "reviewed",
+        "pt-BR.rules.effects.7": "Falha automaticamente em testes de resistência de Força e Destreza",
+        "pt-BR.rules.effects.7.source": "reviewed",
+        "pt-BR.rules.effects.8": "Tem Resistência a todo dano",
+        "pt-BR.rules.effects.8.source": "reviewed",
+        "pt-BR.rules.effects.9": "Tem Imunidade a dano de Veneno e a doenças",
+        "pt-BR.rules.effects.9.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -18778,7 +18936,18 @@
       "name": "Poisoned",
       "summary": "A poisoned creature suffers from a toxin.",
       "translations": {
-        "pt-BR": "Poisoned"
+        "pt-BR": "Envenenado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura envenenada sofre os efeitos de uma toxina.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Envenenado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura envenenada sofre os efeitos de uma toxina.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Tem Desvantagem em jogadas de ataque",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Tem Desvantagem em testes de habilidade",
+        "pt-BR.rules.effects.1.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -19199,7 +19368,24 @@
       "name": "Prone",
       "summary": "A prone creature is lying on the ground.",
       "translations": {
-        "pt-BR": "Prone"
+        "pt-BR": "Caído",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura caída está deitada no chão.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Caído",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura caída está deitada no chão.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Sua única opção de movimento é rastejar (cada 30 centímetros rastejados custa 30 centímetros adicionais de movimento)",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Tem Desvantagem em jogadas de ataque",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Jogadas de ataque feitas a até 1,5 metro contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Jogadas de ataque feitas a mais de 1,5 metro contra a criatura têm Desvantagem",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Pode se levantar gastando movimento igual à metade do deslocamento",
+        "pt-BR.rules.effects.4.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -19698,7 +19884,24 @@
       "name": "Restrained",
       "summary": "A restrained creature is held in place by bindings, webbing, or other effects.",
       "translations": {
-        "pt-BR": "Restrained"
+        "pt-BR": "Impedido",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura impedida é mantida no lugar por amarras, teias ou outros efeitos.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Impedido",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura impedida é mantida no lugar por amarras, teias ou outros efeitos.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Deslocamento reduzido a 0",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se beneficiar de nenhum bônus de deslocamento",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "As jogadas de ataque da criatura têm Desvantagem",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Tem Desvantagem em testes de resistência de Destreza",
+        "pt-BR.rules.effects.4.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -21892,7 +22095,24 @@
       "name": "Stunned",
       "summary": "A stunned creature is dazed and unable to act effectively.",
       "translations": {
-        "pt-BR": "Stunned"
+        "pt-BR": "Atordoado",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura atordoada fica desnorteada e incapaz de agir com eficácia.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Atordoado",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura atordoada fica desnorteada e incapaz de agir com eficácia.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Tem a condição Incapacitado",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se mover",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Só consegue falar de forma hesitante",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Falha automaticamente em testes de resistência de Força e Destreza",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.4.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",
@@ -22853,7 +23073,28 @@
       "name": "Unconscious",
       "summary": "An unconscious creature is completely unaware and unable to act.",
       "translations": {
-        "pt-BR": "Unconscious"
+        "pt-BR": "Inconsciente",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Uma criatura inconsciente não percebe o que está ao redor e não consegue agir.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Inconsciente",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Uma criatura inconsciente não percebe o que está ao redor e não consegue agir.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.effects.0": "Tem a condição Incapacitado",
+        "pt-BR.rules.effects.0.source": "reviewed",
+        "pt-BR.rules.effects.1": "Não pode se mover nem falar",
+        "pt-BR.rules.effects.1.source": "reviewed",
+        "pt-BR.rules.effects.2": "Não percebe os arredores",
+        "pt-BR.rules.effects.2.source": "reviewed",
+        "pt-BR.rules.effects.3": "Solta tudo o que estiver segurando e fica Caída",
+        "pt-BR.rules.effects.3.source": "reviewed",
+        "pt-BR.rules.effects.4": "Falha automaticamente em testes de resistência de Força e Destreza",
+        "pt-BR.rules.effects.4.source": "reviewed",
+        "pt-BR.rules.effects.5": "Jogadas de ataque contra a criatura têm Vantagem",
+        "pt-BR.rules.effects.5.source": "reviewed",
+        "pt-BR.rules.effects.6": "Qualquer ataque que acerte é um Acerto Crítico se o atacante estiver a até 1,5 metro",
+        "pt-BR.rules.effects.6.source": "reviewed"
       },
       "rules": {
         "source": "D&D SRD 5.2.1",

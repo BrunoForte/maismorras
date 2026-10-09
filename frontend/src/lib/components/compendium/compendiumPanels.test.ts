@@ -103,6 +103,68 @@ describe('compendium panels', () => {
 		expect(featHtml).toContain('Adicione proficiência à Iniciativa.');
 	});
 
+	it('renders localized SRD condition details and falls back to source text', () => {
+		setAppLocale('pt-BR');
+		const actions = {
+			close: vi.fn(),
+			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
+			remove: vi.fn(),
+			translate: vi.fn(),
+			copyToCampaign: vi.fn(),
+			place: vi.fn()
+		};
+		const condition: CompendiumEntry = {
+			...monster,
+			id: 'blinded',
+			name: 'Blinded',
+			summary: 'A blinded creature cannot see.',
+			rules: {
+				catalog: 'conditions',
+				id: 'blinded',
+				name: 'Blinded',
+				description: 'A blinded creature cannot see.',
+				effects: ['Cannot see']
+			},
+			translations: {
+				'pt-BR': 'Cego',
+				'pt-BR.summary': 'Uma criatura cega não consegue enxergar.',
+				'pt-BR.rules.name': 'Cego',
+				'pt-BR.rules.description': 'Uma criatura cega não consegue enxergar.',
+				'pt-BR.rules.effects.0': 'Não consegue enxergar.'
+			},
+			isPublished: true
+		};
+		const makeView = (entry: CompendiumEntry) => ({
+			entry,
+			artUrl: '',
+			displayName: entry.translations['pt-BR'] ?? entry.name,
+			displaySummary: entry.translations['pt-BR.summary'] ?? entry.summary,
+			typeLabel: 'Monstro / outro',
+			isMonster: false,
+			hasMonsterSheet: false,
+			sourceReadOnly: true,
+			hasPrivateSource: false,
+			isGM: false,
+			canConfigureFeatSpellRule: false,
+			canTranslate: false,
+			translationStatus: 'manual' as const,
+			canPlace: false,
+			translating: false,
+			placing: false
+		});
+		const localizedHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(condition), actions }
+		}).body;
+		expect(localizedHtml).toContain('Cego');
+		expect(localizedHtml).toContain('Não consegue enxergar.');
+		const fallbackHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView({ ...condition, translations: { 'pt-BR': 'Cego' } }), actions }
+		}).body;
+		expect(fallbackHtml).toContain('Cannot see');
+		expect(fallbackHtml).toContain('A blinded creature cannot see.');
+	});
+
 	it('shows per-entry pending, AI and official translation states in the catalog', () => {
 		const entries: CompendiumEntry[] = [
 			{ ...monster, id: 'pending', name: 'Pending Ogre', summary: '', rules: {}, translations: {} },
