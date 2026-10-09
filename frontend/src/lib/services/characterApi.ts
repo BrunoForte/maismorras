@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { request as httpRequest } from './httpClient';
 import { EMPTY_DND2024_MONEY, normalizeDnd2024Money } from '$lib/utils/character/dnd2024Money';
 import type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
+import { parseDamageExpression, parseLegacyDamage } from '$lib/utils/weaponDamageBuilder';
 
 export type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 
@@ -127,15 +128,61 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 // Fichas criadas antes do inventário estruturado possuem arrays serializados
 // como null. Normalizar na borda mantém os dados antigos compatíveis.
 function normalizeCharacter(character: Character): Character {
+	const normalizeInventoryItem = (item: InventoryItem): InventoryItem => {
+		if (!item || typeof item !== 'object' || !item.rules || typeof item.rules !== 'object')
+			return item;
+		const rules = { ...item.rules };
+		const legacyUnifiedBonus =
+			rules.attackBonus === undefined && rules.damageBonus === undefined
+				? Number(rules.bonus) || 0
+				: 0;
+		if (String(rules.category ?? '') === 'weapon' || rules.damage !== undefined) {
+			const damage = parseDamageExpression(rules.damage);
+			const legacyDamage = damage === null ? parseLegacyDamage(rules.damage) : null;
+			if (damage !== null || legacyDamage !== null) {
+				if (rules.attackBonus === undefined || rules.damageBonus === undefined) {
+					const legacyBonus = Number(rules.bonus) || 0;
+					rules.attackBonus ??= legacyBonus;
+					rules.damageBonus ??= legacyBonus + (legacyDamage?.damageBonus ?? 0);
+					rules.damage = legacyDamage?.damage ?? String(rules.damage ?? '');
+				} else {
+					rules.damage = String(rules.damage ?? '');
+				}
+			} else {
+				// Preserve unsupported legacy text so the player can repair it explicitly.
+				rules.attackBonus ??= Number(rules.bonus) || 0;
+				rules.damageBonus ??= Number(rules.bonus) || 0;
+				rules.damageNeedsRepair = true;
+			}
+		}
+		if (Array.isArray(rules.attackProfiles)) {
+			rules.attackProfiles = rules.attackProfiles.map((profile) => {
+				if (!profile || typeof profile !== 'object') return profile;
+				const normalized = { ...(profile as Record<string, unknown>) };
+				const formula = parseDamageExpression(normalized.damage);
+				const legacy = formula === null ? parseLegacyDamage(normalized.damage) : null;
+				if (legacy) {
+					normalized.damage = legacy.damage;
+					normalized.damageBonus = (Number(normalized.damageBonus) || 0) + legacy.damageBonus;
+					normalized.damageNeedsRepair = false;
+				} else if (formula === null && String(normalized.damage ?? '') !== '') {
+					normalized.damageNeedsRepair = true;
+				} else {
+					normalized.damage = String(normalized.damage ?? '');
+				}
+				normalized.attackBonus = Number(normalized.attackBonus) || 0;
+				normalized.damageBonus = (Number(normalized.damageBonus) || 0) + legacyUnifiedBonus;
+				return normalized;
+			});
+		}
+		return { ...item, rules };
+	};
 	character.sheet = {
 		...character.sheet,
-		attacks: (character.sheet.attacks ?? []).map((attack) => ({
-			...attack,
-			damageBonus: attack.damageBonus ?? 0
-		})),
+		attacks: character.sheet.attacks ?? [],
 		spells: character.sheet.spells ?? [],
 		spellcastingOverride: character.sheet.spellcastingOverride ?? false,
-		inventory: character.sheet.inventory ?? [],
+		inventory: (character.sheet.inventory ?? []).map(normalizeInventoryItem),
 		savingThrows: character.sheet.savingThrows ?? [],
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
 		skillExpertise: character.sheet.skillExpertise ?? [],

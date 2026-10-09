@@ -3,10 +3,13 @@ import { hasWeaponProficiency, hasWeaponProficiencyInText } from './weaponProfic
 import {
 	modifierText,
 	weaponAbility,
+	weaponAttackSpecificBonus,
+	weaponDamageSpecificBonus,
 	weaponItemBonus,
 	weaponRange,
 	weaponRangeFromText
 } from './characterEquipment';
+import type { DamageComponent } from './weaponDamageBuilder';
 
 export type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
 export type WeaponAttackProfile = {
@@ -17,6 +20,7 @@ export type WeaponAttackProfile = {
 	damage: string;
 	attackBonus: number;
 	damageBonus: number;
+	damageNeedsRepair?: boolean;
 	greatWeaponFighting: boolean;
 };
 export type WeaponFeature = { id: string; name: string; description: string };
@@ -53,6 +57,16 @@ export type WeaponCombatActions = {
 		changes: Record<string, unknown>,
 		autosave?: boolean
 	) => void;
+	damageComponents: (item: InventoryItem, profile?: WeaponAttackProfile) => DamageComponent[];
+	setDamageComponents: (
+		item: InventoryItem,
+		components: DamageComponent[],
+		profile?: WeaponAttackProfile
+	) => void;
+	invalidWeaponKey: () => string | null;
+	invalidDamageIndex: () => number;
+	invalidWeaponField: () => 'damage' | 'bonus';
+	invalidDamageProfileId: () => string | null;
 	toggleWeaponEffect: (item: InventoryItem, key: string) => void;
 	addWeaponAttackProfile: (item: InventoryItem) => void;
 	removeWeaponAttackProfile: (item: InventoryItem, id: string) => void;
@@ -238,6 +252,7 @@ export function weaponAttackBonusTotal(
 	return (
 		Math.floor((abilityScores[ability] - 10) / 2) +
 		(proficiencyBonus || 0) +
+		weaponAttackSpecificBonus(item) +
 		weaponItemBonus(item) +
 		weaponBonusTotals(effects).attack
 	);
@@ -246,11 +261,13 @@ export function weaponAttackBonusTotal(
 export function weaponDamageBonusTotal(
 	item: InventoryItem,
 	abilityScores: AbilityScores,
-	effects: readonly WeaponEffect[]
+	effects: readonly WeaponEffect[],
+	includeWeaponDamageBonus = true
 ): number {
 	const ability = weaponAbility(item);
 	return (
 		Math.floor((abilityScores[ability] - 10) / 2) +
+		(includeWeaponDamageBonus ? weaponDamageSpecificBonus(item) : 0) +
 		weaponItemBonus(item) +
 		weaponBonusTotals(effects).damage
 	);

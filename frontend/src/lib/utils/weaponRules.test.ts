@@ -59,6 +59,12 @@ describe('weapon domain rules', () => {
 		expect(weaponAttackBonusTotal(item, scores, 0, [])).toBe(4);
 	});
 
+	it('separates weapon attack and damage bonuses while keeping enchantment on both once', () => {
+		const item = weapon({ attackBonus: 3, damageBonus: 5, enchantmentBonus: 2 });
+		expect(weaponAttackBonusTotal(item, scores, 0, [])).toBe(8);
+		expect(weaponDamageBonusTotal(item, scores, [])).toBe(10);
+	});
+
 	it('derives range-specific effects and applies two-handed and dual-wield restrictions', () => {
 		expect(
 			parseWeaponEffect(

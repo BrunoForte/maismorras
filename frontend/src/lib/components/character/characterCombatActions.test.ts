@@ -217,7 +217,7 @@ describe('character combat actions', () => {
 		}
 	});
 
-	it('duplica os dados de dano após crítico e consome a marca crítica', async () => {
+	it('envia a fórmula-base e marca o crítico para duplicação autoritativa', async () => {
 		const test = setup();
 		vi.mocked(test.rollDice)
 			.mockResolvedValueOnce({
@@ -240,7 +240,9 @@ describe('character combat actions', () => {
 		await test.controller.rollWeapon(weapon, 'damage');
 		await test.controller.rollWeapon(weapon, 'damage');
 
-		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '2d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
 	});
 
 	it('aplica o bônus de ataque somente ao ataque e mantém o modificador da fórmula de dano', async () => {
