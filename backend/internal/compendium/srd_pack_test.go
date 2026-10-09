@@ -54,6 +54,131 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	}
 }
 
+func TestSRDCreatureFirstHalfIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) {
+	type action struct {
+		Name        string `json:"name"`
+		Damage      string `json:"damage"`
+		Range       string `json:"range"`
+		Description string `json:"description"`
+	}
+	type monsterRules struct {
+		Catalog      string   `json:"catalog"`
+		CreatureType string   `json:"creatureType"`
+		Speed        string   `json:"speed"`
+		Senses       string   `json:"senses"`
+		Languages    string   `json:"languages"`
+		Actions      []action `json:"actions"`
+	}
+	var pack srdPack
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	creatures := make([]srdEntry, 0, 330)
+	for _, entry := range pack.Entries {
+		var header struct {
+			Catalog string `json:"catalog"`
+		}
+		if entry.EntryType != "other" || json.Unmarshal(entry.Rules, &header) != nil || header.Catalog != "monster" {
+			continue
+		}
+		var rules monsterRules
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode rules for %s: %v", entry.Name, err)
+		}
+		creatures = append(creatures, entry)
+	}
+	if len(creatures) != 330 {
+		t.Fatalf("creature count = %d, want 330", len(creatures))
+	}
+	sort.Slice(creatures, func(i, j int) bool {
+		left, right := strings.ToLower(creatures[i].Name), strings.ToLower(creatures[j].Name)
+		if left == right {
+			return "other:"+creatures[i].Name < "other:"+creatures[j].Name
+		}
+		return left < right
+	})
+	if creatures[164].Name != "Hill Giant" || creatures[165].Name != "Hippogriff" {
+		t.Fatalf("unexpected stable split: 165th=%q, 166th=%q", creatures[164].Name, creatures[165].Name)
+	}
+	for index, entry := range creatures {
+		var translations map[string]string
+		var rules monsterRules
+		if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+			t.Fatalf("decode translations for %s: %v", entry.Name, err)
+		}
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode rules for %s: %v", entry.Name, err)
+		}
+		if index < 165 {
+			for _, key := range []string{"pt-BR", "pt-BR.source", "pt-BR.summary", "pt-BR.summary.source", "pt-BR.rules.creatureType", "pt-BR.rules.creatureType.source"} {
+				if strings.TrimSpace(translations[key]) == "" {
+					t.Errorf("%s missing reviewed translation %s", entry.Name, key)
+				}
+			}
+			if translations["pt-BR.source"] != "reviewed" || translations["pt-BR.summary.source"] != "reviewed" || translations["pt-BR.rules.creatureType.source"] != "reviewed" {
+				t.Errorf("%s translations lack reviewed provenance", entry.Name)
+			}
+			for _, key := range []string{"speed", "senses", "languages"} {
+				var source string
+				switch key {
+				case "speed":
+					source = rules.Speed
+				case "senses":
+					source = rules.Senses
+				case "languages":
+					source = rules.Languages
+				}
+				if source != "" && (strings.TrimSpace(translations["pt-BR.rules."+key]) == "" || translations["pt-BR.rules."+key+".source"] != "reviewed") {
+					t.Errorf("%s missing reviewed %s translation", entry.Name, key)
+				}
+			}
+			for actionIndex, item := range rules.Actions {
+				for _, field := range []struct{ name, source string }{{"name", item.Name}, {"damage", item.Damage}, {"range", item.Range}, {"description", item.Description}} {
+					if field.source == "" {
+						continue
+					}
+					key := fmt.Sprintf("pt-BR.rules.actions.%d.%s", actionIndex, field.name)
+					if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+						t.Errorf("%s action %d missing reviewed %s translation", entry.Name, actionIndex, field.name)
+					}
+				}
+			}
+		} else if translations["pt-BR.source"] == "reviewed" || translations["pt-BR.summary.source"] == "reviewed" {
+			t.Errorf("later-half creature %s unexpectedly has reviewed first-half translations", entry.Name)
+		}
+	}
+
+	// This digest covers every source name, summary, rules object, ID-like field,
+	// and all non-translation pack metadata from the base revision.
+	var source map[string]any
+	if err := json.Unmarshal(srdPackJSON, &source); err != nil {
+		t.Fatal(err)
+	}
+	stripTranslations(source)
+	canonical, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(canonical)
+	if got := hex.EncodeToString(digest[:]); got != "08d6c4bc765a41c092f340052b56f63295f5b8cf0fead1ac19b3c17390aa9019" {
+		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
+	}
+}
+
+func stripTranslations(value any) {
+	switch node := value.(type) {
+	case map[string]any:
+		delete(node, "translations")
+		for _, child := range node {
+			stripTranslations(child)
+		}
+	case []any:
+		for _, child := range node {
+			stripTranslations(child)
+		}
+	}
+}
+
 func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *testing.T) {
 	type projection struct {
 		EntryType string `json:"entryType"`

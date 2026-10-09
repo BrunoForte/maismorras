@@ -101,6 +101,41 @@ describe('compendium panels', () => {
 		}).body;
 		expect(featHtml).toContain('Você está sempre preparado.');
 		expect(featHtml).toContain('Adicione proficiência à Iniciativa.');
+
+		const localizedMonster: CompendiumEntry = {
+			...monster,
+			translations: {
+				'pt-BR': 'Ogro',
+				'pt-BR.summary': 'Gigante Grande (ND 2).',
+				'pt-BR.rules.actions.0.name': 'Pancada',
+				'pt-BR.rules.actions.0.description': 'Ataque corpo a corpo: causa dano contundente.'
+			},
+			rules: {
+				catalog: 'monster',
+				hpMax: 59,
+				armorClass: 11,
+				challenge: 2,
+				actions: [
+					{
+						name: 'Slam',
+						toHit: 6,
+						damage: '13 (2d8 + 4) Bludgeoning damage.',
+						description: 'Melee Attack Roll: +6. Hit: 13 (2d8 + 4) Bludgeoning damage.'
+					}
+				]
+			}
+		};
+		const monsterView = {
+			...makeView(localizedMonster),
+			displayName: 'Ogro',
+			isMonster: true
+		};
+		const localizedMonsterHtml = render(CompendiumEntryDetails, {
+			props: { view: monsterView, actions }
+		}).body;
+		expect(localizedMonsterHtml).toContain('Pancada');
+		expect(localizedMonsterHtml).toContain('Ataque corpo a corpo: causa dano contundente.');
+		expect(localizedMonsterHtml).not.toContain('Melee Attack Roll');
 	});
 
 	it('renders localized SRD conditions, species traits and background choices with source fallback', () => {

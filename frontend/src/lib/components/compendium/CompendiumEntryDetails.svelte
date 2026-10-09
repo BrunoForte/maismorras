@@ -161,8 +161,8 @@
 							? `+${String(actionRecord.toHit)} ${$appLocale === 'en' ? 'to hit' : 'para acertar'} · `
 							: ''}{displayAction(
 							index,
-							'damage',
-							actionRecord.damage ?? actionRecord.description ?? ''
+							'description',
+							actionRecord.description ?? actionRecord.damage ?? ''
 						)}</span
 					>
 				</div>
