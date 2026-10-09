@@ -1441,10 +1441,15 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.filter({ hasText: `d${sides}` })
 					.click();
 			};
+			const saveAndAssertSuccess = async () => {
+				await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+				await expect(sheet.locator('footer')).toContainText('Ficha salva.');
+			};
 			for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
 				await chooseDie(baseBuilder, sides);
 				await expect(weapon.locator('.weapon-combat-summary').first()).toContainText(`1d${sides}`);
 				await expect(baseBuilder.getByRole('alert')).toHaveCount(0);
+				await saveAndAssertSuccess();
 			}
 			await baseBuilder.locator('button.secondary-button').click();
 			await chooseDie(baseBuilder, 8);
@@ -1480,8 +1485,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await chooseDie(profileBuilder, sides);
 				await expect(profile.locator('.profile-damage-summary')).toContainText(`1d${sides}`);
 				await expect(profileBuilder.getByRole('alert')).toHaveCount(0);
+				await saveAndAssertSuccess();
 			}
-			await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+			await saveAndAssertSuccess();
 			const readSavedDamage = async () => {
 				const response = await fixture!.playerApi.get(
 					`/api/v1/campaigns/${fixture!.campaignId}/character`
