@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
 import type { Spell, SpellSlot } from '$lib/services/characterApi';
 import {
@@ -10,6 +12,7 @@ import {
 	eligibleSpellEntries,
 	groupSpellsByCircle,
 	groupCharacterSpellsByCircle,
+	localizedSpellField,
 	hasActiveFeatGrantedSpells,
 	hasAISpellTranslation,
 	normalizeSpellName,
@@ -43,6 +46,31 @@ const slots: SpellSlot[] = [
 ];
 
 describe('character spell rules', () => {
+	it('renders all first-level SRD descriptions from the UI localization key', () => {
+		const packPath = resolve(process.cwd(), '../backend/internal/compendium/packs/srd_5_2_1.json');
+		const pack = JSON.parse(readFileSync(packPath, 'utf8')) as {
+			entries: CompendiumEntry[];
+		};
+		const spells = pack.entries.filter(
+			(item) => item.entryType === 'spell' && item.rules?.level === 1
+		);
+		expect(spells).toHaveLength(57);
+		for (const item of spells) {
+			const description = item.translations?.['pt-BR.rules.description'];
+			expect(description, `${item.name} description`).toBeTruthy();
+			expect(
+				localizedSpellField(
+					spell({ name: item.name, level: 1 }),
+					item,
+					'description',
+					String(item.rules?.description ?? item.summary),
+					'pt-BR'
+				),
+				`${item.name} UI description`
+			).toBe(description);
+		}
+	});
+
 	it('keeps the Spells tab available for active campaign-configured feat spells', () => {
 		expect(hasActiveFeatGrantedSpells([], [])).toBe(false);
 		expect(
