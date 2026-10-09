@@ -1,0 +1,350 @@
+# SRD 5.2.1 — Criaturas 001–165 (PT-BR)
+
+Base: `e4e93840f491ddc5dc369504c0bb0e1dc413cf60` · Pacote SRD 5.2.1
+Total confirmado: 330 entradas de criatura (identificadas por `entryType=other` e `rules.catalog=monster`). Lote: 165.
+
+## Critério e identidade
+
+Ordenação pelo nome-fonte em inglês, sem diferenciar maiúsculas/minúsculas; desempate pela chave estável `other:<name>`. O pacote não contém um campo `id` por registro; a identidade catalogada usa origem, tipo e nome. O lote seguinte começa em **Hippogriff** e contém as 165 entradas restantes.
+
+## Campos localizados
+
+Para cada uma das 165 entradas: nome (`pt-BR`), sumário factual (`pt-BR.summary`), tipo/alinhamento (`pt-BR.rules.creatureType`), deslocamento, sentidos e idiomas quando existentes, e campos existentes de ação (`name`, `damage`, `range`, `description`). Cada tradução gravada recebeu `.source=reviewed`; essa marca registra revisão editorial do texto traduzido, não validação mecânica do bloco de estatísticas.
+
+A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `translatedCompendiumText`; a ficha/bestiário lê as chaves `pt-BR.rules.*` por `localizedMonsterField`. Os campos de ação agora usam essas chaves e o alcance passa por `formatDistance`, que preserva a conversão de pés para unidades métricas. Quando a chave não existe, o texto-fonte continua como fallback. Nos registros do pacote, o bloco aninhado presente é `actions`; não há matrizes de `traits` ou `reactions` para este lote.
+
+## Decisões editoriais
+
+- Traduções editoriais do projeto, cotejadas com o SRD 5.2.1; nos campos incompletos da extração, a conferência integral permanece pendente. Não são traduções oficiais da Wizards of the Coast. Fonte consultada: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf).
+- Nomes de criaturas foram localizados com termos PT-BR correntes; nomes de espécies fantásticas sem equivalente estável foram preservados (por exemplo, Aboleth, Ankheg, Balor, Behir, Berserker, Bulette, Chuul, Cloaker, Couatl, Deva, Doppelganger, Dretch, Drider, Ettercap, Ettin, Glabrezu, Grick, Grimlock e Hezrou).
+- Sumários foram redigidos como resumos factuais do tipo/alinhamento e ND já presentes no pacote; nenhum dado narrativo ou regra foi acrescentado.
+- Vocabulário aplicado: Aberração, Besta, Celestial, Constructo, Dragão, Elemental, Feérico, Ínfero, Gigante, Humanoide, Monstruosidade, Limo, Planta, Morto-vivo; tipos de dano Contundente, Perfurante, Cortante, Ácido, Frio, Fogo, Elétrico, Veneno, Psíquico, Trovejante, Energia e Necrótico; condições segundo o glossário do projeto.
+- Distâncias mantêm o token de unidade fonte `ft` na chave localizada para que o formatador da interface faça a conversão métrica; nenhum valor numérico foi alterado.
+- Os campos mecânicos e fontes não foram modificados. Um teste verifica um digest dos dados do pacote excluindo apenas `translations`.
+
+## Pendências da fonte importada
+
+A auditoria encontrou **150 blocos de ação** com campo `description` ou `damage` truncado/incompleto na própria fonte do pacote (parêntese aberto, hífen no final ou frase interrompida). Eles foram preservados sem reconstrução e suas traduções espelham somente o trecho disponível; portanto, esses campos não permitem confirmar o efeito integral até correção/reimportação autorizada da extração. Nenhum conteúdo mecânico foi inferido.
+
+- other:Adult Black Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6”
+- other:Adult Blue Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8”
+- other:Adult Brass Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10”
+- other:Adult Bronze Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8”
+- other:Adult Copper Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10”
+- other:Adult Gold Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 10 ft. Hit: 17 (2d8”
+- other:Adult Green Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 15 (2d8”
+- other:Adult Red Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 10 ft. Hit: 13 (1d10”
+- other:Adult Silver Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +13, reach 10 ft. Hit: 17 (2d8”
+- other:Adult White Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6”
+- other:Allosaurus · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 15 (2d10 +”
+- other:Allosaurus · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d8”
+- other:Allosaurus · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10”
+- other:Ancient Black Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8”
+- other:Ancient Blue Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8”
+- other:Ancient Brass Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 15 ft. Hit: 19 (2d10”
+- other:Ancient Bronze Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8”
+- other:Ancient Copper Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +15, reach 15 ft. Hit: 19 (2d10”
+- other:Ancient Green Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8”
+- other:Ancient White Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 15 ft. Hit: 17 (2d8”
+- other:Animated Armor · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Animated Flying Sword · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Animated Rug of Smothering · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Ankylosaurus · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10”
+- other:Archelon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Piercing”
+- other:Assassin · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +1, reach 5 ft. Hit: 1 Slash-”
+- other:Awakened Shrub · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +1, reach 5 ft. Hit: 1 Slash-”
+- other:Awakened Shrub · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 14 (3d6”
+- other:Awakened Tree · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 14 (3d6”
+- other:Baboon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing”
+- other:Badger · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing”
+- other:Balor · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 30 ft. Hit: 18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage. If”
+- other:Balor · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +14, reach 10 ft. Hit: 21 (3d8 + 8) Force damage plus 22 (4d10) Light-”
+- other:Bandit · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Bandit Captain · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Barbed Devil · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6”
+- other:Barbed Devil · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 14 (2d10”
+- other:Basilisk · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8”
+- other:Bat · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing”
+- other:Bearded Devil · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8”
+- other:Bearded Devil · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 10 ft. Hit: 8 (1d10 + 3) Slashing damage. If the target is a crea-”
+- other:Behir · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +10, reach 10 ft. Hit: 19 (2d12”
+- other:Blink Dog · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10”
+- other:Blue Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10”
+- other:Blue Dragon Wyrmling · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 10 ft. Hit: 12 (2d6”
+- other:Bone Devil · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 13 (2d8”
+- other:Bone Devil · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 15 (2d10 + 4) Piercing damage plus 18 (4d8) Poison”
+- other:Bone Devil · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Brass Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Bronze Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10”
+- other:Bronze Dragon Wyrmling · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 16 (2d10”
+- other:Brown Bear · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Slash-”
+- other:Bugbear Stalker · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 10 ft. Hit: 9 (2d6”
+- other:Bugbear Warrior · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 10 ft. Hit: 9 (2d6”
+- other:Bulette · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10”
+- other:Camel · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Slash-”
+- other:Cat · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Slash-”
+- other:Cat · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Centaur Trooper · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10”
+- other:Chimera · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1”
+- other:Chuul · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10”
+- other:Clay Golem · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 5 ft. Hit: 10 (1d10”
+- other:Cloaker · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 13 (3d6”
+- other:Cloaker · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 8 (1d10”
+- other:Commoner · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Constrictor Snake · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8”
+- other:Constrictor Snake · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Copper Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Crab · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Crab · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8”
+- other:Cultist · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage plus 7 (2d6) Ne-”
+- other:Cultist · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Cultist Fanatic · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage plus 7 (2d6) Ne-”
+- other:Cultist Fanatic · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Darkmantle · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Death Dog · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4”
+- other:Deer · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 6 (1d4”
+- other:Deva · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 7 (1d6 + 4) Bludgeoning damage plus 18 (4d8) Radi-”
+- other:Dire Wolf · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 6 (1d4”
+- other:Dire Wolf · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4”
+- other:Djinni · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 5 feet. Hit: 12 (2d6 + 5) Slashing damage plus 7 (2d6) Light-”
+- other:Djinni · rules.actions.1.description/damage — fonte incompleta: “Ranged Attack Roll: +9, range 120 feet. Hit: 13 (3d8) Thunder damage. If the target is a Large or”
+- other:Draft Horse · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 6 (1d4”
+- other:Draft Horse · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4”
+- other:Draft Horse · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8”
+- other:Dragon Turtle · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +13, reach 15 ft. Hit: 18 (2d10”
+- other:Druid · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8”
+- other:Eagle · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4”
+- other:Eagle · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8”
+- other:Eagle · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Earth Elemental · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 14 (2d8”
+- other:Elephant · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8”
+- other:Elephant · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Elephant · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing”
+- other:Elk · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
+- other:Elk · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing”
+- other:Erinyes · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 13 (2d8 + 4) Slashing damage plus 11 (2d10) Ne-”
+- other:Fire Elemental · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 +”
+- other:Flying Snake · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing”
+- other:Flying Snake · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10”
+- other:Frog · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing”
+- other:Frog · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10”
+- other:Frost Giant · rules.actions.1.description/damage — fonte incompleta: “Ranged Attack Roll: +9, range 150/600 ft. Hit: 17 (2d10 + 6) Piercing damage plus 7 (2d6) Cold”
+- other:Ghast · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Ghoul · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4”
+- other:Giant Ape · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10”
+- other:Giant Badger · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Giant Bat · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Giant Boar · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6”
+- other:Giant Boar · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 +”
+- other:Giant Centipede · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 +”
+- other:Giant Constrictor Snake · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 +”
+- other:Giant Constrictor Snake · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 21 (3d10”
+- other:Giant Crab · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 21 (3d10”
+- other:Giant Crab · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 18 (3d8”
+- other:Giant Crocodile · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 21 (3d10”
+- other:Giant Crocodile · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 18 (3d8”
+- other:Giant Eagle · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6”
+- other:Giant Elk · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6”
+- other:Giant Octopus · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Giant Owl · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Giant Owl · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 feet. Hit: 5 (1d4”
+- other:Giant Rat · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 feet. Hit: 5 (1d4”
+- other:Giant Rat · rules.actions.3.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 9 (2d6”
+- other:Giant Scorpion · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 9 (2d6”
+- other:Giant Seahorse · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 9 (2d6”
+- other:Giant Venomous Snake · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 9 (2d6”
+- other:Giant Vulture · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 9 (2d6”
+- other:Giant Weasel · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Giant Wolf Spider · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Giant Wolf Spider · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 1 Slash-”
+- other:Glabrezu · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +9, reach 10 ft. Hit: 16 (2d10”
+- other:Gnoll Warrior · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6”
+- other:Goat · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +2, reach 5 ft. Hit: 1 Blud-”
+- other:Goat · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 1 Slash-”
+- other:Goblin Boss · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6”
+- other:Goblin Boss · rules.actions.1.description/damage — fonte incompleta: “Ranged Attack Roll: +4, range 80/320 ft. Hit: 5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing”
+- other:Goblin Boss · rules.actions.2.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 9 (1d10”
+- other:Goblin Minion · rules.actions.1.description/damage — fonte incompleta: “Ranged Attack Roll: +4, range 80/320 ft. Hit: 5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing”
+- other:Goblin Warrior · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6”
+- other:Goblin Warrior · rules.actions.1.description/damage — fonte incompleta: “Ranged Attack Roll: +4, range 80/320 ft. Hit: 5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing”
+- other:Gold Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 9 (1d10”
+- other:Gorgon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 5 ft. Hit: 18 (2d12”
+- other:Green Dragon Wyrmling · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10”
+- other:Grick · rules.actions.3.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage plus 2 (1d4) Psy-”
+- other:Griffon · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage plus 2 (1d4) Psy-”
+- other:Grimlock · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage plus 2 (1d4) Psy-”
+- other:Grimlock · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 17 (2d12”
+- other:Guardian Naga · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 17 (2d12”
+- other:Hawk · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 1 Slash-”
+
+## Outras pendências de campos-fonte
+
+Além das ações acima, há 8 campos textuais truncados no próprio pacote: Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`); Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`). Os trechos foram traduzidos sem completar a frase nem alterar a fonte. A revisão integral desses campos depende da correção/reimportação da extração.
+
+## Seleção do lote
+
+- `other:Aboleth` — **Aboleth**
+- `other:Adult Black Dragon` — **Adult Black Dragon**
+- `other:Adult Blue Dragon` — **Adult Blue Dragon**
+- `other:Adult Brass Dragon` — **Adult Brass Dragon**
+- `other:Adult Bronze Dragon` — **Adult Bronze Dragon**
+- `other:Adult Copper Dragon` — **Adult Copper Dragon**
+- `other:Adult Gold Dragon` — **Adult Gold Dragon**
+- `other:Adult Green Dragon` — **Adult Green Dragon**
+- `other:Adult Red Dragon` — **Adult Red Dragon**
+- `other:Adult Silver Dragon` — **Adult Silver Dragon**
+- `other:Adult White Dragon` — **Adult White Dragon**
+- `other:Air Elemental` — **Air Elemental**
+- `other:Allosaurus` — **Allosaurus**
+- `other:Ancient Black Dragon` — **Ancient Black Dragon**
+- `other:Ancient Blue Dragon` — **Ancient Blue Dragon**
+- `other:Ancient Brass Dragon` — **Ancient Brass Dragon**
+- `other:Ancient Bronze Dragon` — **Ancient Bronze Dragon**
+- `other:Ancient Copper Dragon` — **Ancient Copper Dragon**
+- `other:Ancient Gold Dragon` — **Ancient Gold Dragon**
+- `other:Ancient Green Dragon` — **Ancient Green Dragon**
+- `other:Ancient Red Dragon` — **Ancient Red Dragon**
+- `other:Ancient Silver Dragon` — **Ancient Silver Dragon**
+- `other:Ancient White Dragon` — **Ancient White Dragon**
+- `other:Animated Armor` — **Animated Armor**
+- `other:Animated Flying Sword` — **Animated Flying Sword**
+- `other:Animated Rug of Smothering` — **Animated Rug of Smothering**
+- `other:Ankheg` — **Ankheg**
+- `other:Ankylosaurus` — **Ankylosaurus**
+- `other:Ape` — **Ape**
+- `other:Archelon` — **Archelon**
+- `other:Archmage` — **Archmage**
+- `other:Assassin` — **Assassin**
+- `other:Awakened Shrub` — **Awakened Shrub**
+- `other:Awakened Tree` — **Awakened Tree**
+- `other:Axe Beak` — **Axe Beak**
+- `other:Azer Sentinel` — **Azer Sentinel**
+- `other:Baboon` — **Baboon**
+- `other:Badger` — **Badger**
+- `other:Balor` — **Balor**
+- `other:Bandit` — **Bandit**
+- `other:Bandit Captain` — **Bandit Captain**
+- `other:Barbed Devil` — **Barbed Devil**
+- `other:Basilisk` — **Basilisk**
+- `other:Bat` — **Bat**
+- `other:Bearded Devil` — **Bearded Devil**
+- `other:Behir` — **Behir**
+- `other:Berserker` — **Berserker**
+- `other:Black Bear` — **Black Bear**
+- `other:Black Dragon Wyrmling` — **Black Dragon Wyrmling**
+- `other:Black Pudding` — **Black Pudding**
+- `other:Blink Dog` — **Blink Dog**
+- `other:Blood Hawk` — **Blood Hawk**
+- `other:Blue Dragon Wyrmling` — **Blue Dragon Wyrmling**
+- `other:Boar` — **Boar**
+- `other:Bone Devil` — **Bone Devil**
+- `other:Brass Dragon Wyrmling` — **Brass Dragon Wyrmling**
+- `other:Bronze Dragon Wyrmling` — **Bronze Dragon Wyrmling**
+- `other:Brown Bear` — **Brown Bear**
+- `other:Bugbear Stalker` — **Bugbear Stalker**
+- `other:Bugbear Warrior` — **Bugbear Warrior**
+- `other:Bulette` — **Bulette**
+- `other:Camel` — **Camel**
+- `other:Cat` — **Cat**
+- `other:Centaur Trooper` — **Centaur Trooper**
+- `other:Chain Devil` — **Chain Devil**
+- `other:Chimera` — **Chimera**
+- `other:Chuul` — **Chuul**
+- `other:Clay Golem` — **Clay Golem**
+- `other:Cloaker` — **Cloaker**
+- `other:Cloud Giant` — **Cloud Giant**
+- `other:Cockatrice` — **Cockatrice**
+- `other:Commoner` — **Commoner**
+- `other:Constrictor Snake` — **Constrictor Snake**
+- `other:Copper Dragon Wyrmling` — **Copper Dragon Wyrmling**
+- `other:Couatl` — **Couatl**
+- `other:Crab` — **Crab**
+- `other:Crocodile` — **Crocodile**
+- `other:Cultist` — **Cultist**
+- `other:Cultist Fanatic` — **Cultist Fanatic**
+- `other:Darkmantle` — **Darkmantle**
+- `other:Death Dog` — **Death Dog**
+- `other:Deer` — **Deer**
+- `other:Deva` — **Deva**
+- `other:Dire Wolf` — **Dire Wolf**
+- `other:Djinni` — **Djinni**
+- `other:Doppelganger` — **Doppelganger**
+- `other:Draft Horse` — **Draft Horse**
+- `other:Dragon Turtle` — **Dragon Turtle**
+- `other:Dretch` — **Dretch**
+- `other:Drider` — **Drider**
+- `other:Druid` — **Druid**
+- `other:Dryad` — **Dryad**
+- `other:Dust Mephit` — **Dust Mephit**
+- `other:Eagle` — **Eagle**
+- `other:Earth Elemental` — **Earth Elemental**
+- `other:Efreeti` — **Efreeti**
+- `other:Elephant` — **Elephant**
+- `other:Elk` — **Elk**
+- `other:Erinyes` — **Erinyes**
+- `other:Ettercap` — **Ettercap**
+- `other:Ettin` — **Ettin**
+- `other:Fire Elemental` — **Fire Elemental**
+- `other:Fire Giant` — **Fire Giant**
+- `other:Flesh Golem` — **Flesh Golem**
+- `other:Flying Snake` — **Flying Snake**
+- `other:Frog` — **Frog**
+- `other:Frost Giant` — **Frost Giant**
+- `other:Gargoyle` — **Gargoyle**
+- `other:Gelatinous Cube` — **Gelatinous Cube**
+- `other:Ghast` — **Ghast**
+- `other:Ghost` — **Ghost**
+- `other:Ghoul` — **Ghoul**
+- `other:Giant Ape` — **Giant Ape**
+- `other:Giant Badger` — **Giant Badger**
+- `other:Giant Bat` — **Giant Bat**
+- `other:Giant Boar` — **Giant Boar**
+- `other:Giant Centipede` — **Giant Centipede**
+- `other:Giant Constrictor Snake` — **Giant Constrictor Snake**
+- `other:Giant Crab` — **Giant Crab**
+- `other:Giant Crocodile` — **Giant Crocodile**
+- `other:Giant Eagle` — **Giant Eagle**
+- `other:Giant Elk` — **Giant Elk**
+- `other:Giant Fire Beetle` — **Giant Fire Beetle**
+- `other:Giant Frog` — **Giant Frog**
+- `other:Giant Goat` — **Giant Goat**
+- `other:Giant Hyena` — **Giant Hyena**
+- `other:Giant Lizard` — **Giant Lizard**
+- `other:Giant Octopus` — **Giant Octopus**
+- `other:Giant Owl` — **Giant Owl**
+- `other:Giant Rat` — **Giant Rat**
+- `other:Giant Scorpion` — **Giant Scorpion**
+- `other:Giant Seahorse` — **Giant Seahorse**
+- `other:Giant Shark` — **Giant Shark**
+- `other:Giant Spider` — **Giant Spider**
+- `other:Giant Toad` — **Giant Toad**
+- `other:Giant Venomous Snake` — **Giant Venomous Snake**
+- `other:Giant Vulture` — **Giant Vulture**
+- `other:Giant Wasp` — **Giant Wasp**
+- `other:Giant Weasel` — **Giant Weasel**
+- `other:Giant Wolf Spider` — **Giant Wolf Spider**
+- `other:Gibbering Mouther` — **Gibbering Mouther**
+- `other:Glabrezu` — **Glabrezu**
+- `other:Gladiator` — **Gladiator**
+- `other:Gnoll Warrior` — **Gnoll Warrior**
+- `other:Goat` — **Goat**
+- `other:Goblin Boss` — **Goblin Boss**
+- `other:Goblin Minion` — **Goblin Minion**
+- `other:Goblin Warrior` — **Goblin Warrior**
+- `other:Gold Dragon Wyrmling` — **Gold Dragon Wyrmling**
+- `other:Gorgon` — **Gorgon**
+- `other:Gray Ooze` — **Gray Ooze**
+- `other:Green Dragon Wyrmling` — **Green Dragon Wyrmling**
+- `other:Green Hag` — **Green Hag**
+- `other:Grick` — **Grick**
+- `other:Griffon` — **Griffon**
+- `other:Grimlock` — **Grimlock**
+- `other:Guard` — **Guard**
+- `other:Guard Captain` — **Guard Captain**
+- `other:Guardian Naga` — **Guardian Naga**
+- `other:Half-Dragon` — **Half-Dragon**
+- `other:Harpy` — **Harpy**
+- `other:Hawk` — **Hawk**
+- `other:Hell Hound` — **Hell Hound**
+- `other:Hezrou` — **Hezrou**
+- `other:Hill Giant` — **Hill Giant**
