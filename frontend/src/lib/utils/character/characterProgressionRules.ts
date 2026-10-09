@@ -1,5 +1,7 @@
 import type { AbilityScores, CharacterResource, SpellSlot } from '$lib/services/characterApi';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
+import type { AppLocale } from '$lib/utils/speciesRules';
+import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
 import {
 	canonicalClass,
 	classData,
@@ -42,7 +44,8 @@ export function deriveCharacterFeatures(
 	customEntries: readonly CompendiumEntry[],
 	className: string,
 	level: number,
-	subclassName: string
+	subclassName: string,
+	locale: AppLocale = 'en'
 ): CharacterFeature[] {
 	const semanticKey = (feature: Pick<CharacterFeature, 'level' | 'name'>) =>
 		`${feature.level}:${feature.name
@@ -117,7 +120,43 @@ export function deriveCharacterFeatures(
 			byMeaning.set(key, { ...feature, id: stableId(feature) });
 		}
 	}
-	return [...byMeaning.values()].sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+	const sourceEntries = [classEntry, subclassEntry].filter((entry): entry is CompendiumEntry =>
+		Boolean(entry)
+	);
+	return [...byMeaning.values()]
+		.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+		.map((feature) => {
+			const source = sourceEntries
+				.map((entry) => ({
+					entry,
+					features: Array.isArray(entry.rules.features) ? entry.rules.features : []
+				}))
+				.flatMap(({ entry, features }) =>
+					features.map((value, index) => ({ entry, value: asRecord(value), index }))
+				)
+				.find(
+					({ value }) =>
+						value &&
+						Number(value.level ?? 0) === feature.level &&
+						String(value.name ?? '') === feature.name
+				);
+			if (!source) return feature;
+			return {
+				...feature,
+				name: translatedCompendiumText(
+					source.entry,
+					`rules.features.${source.index}.name`,
+					feature.name,
+					locale
+				),
+				description: translatedCompendiumText(
+					source.entry,
+					`rules.features.${source.index}.description`,
+					feature.description,
+					locale
+				)
+			};
+		});
 }
 
 export function expertiseChoicesForLevel(className: string, level: number): number {
