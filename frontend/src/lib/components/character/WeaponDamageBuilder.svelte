@@ -2,10 +2,10 @@
 	import { appLocale } from '$lib/stores/locale';
 	import {
 		addDamageComponent,
-		DAMAGE_DIE_TYPES,
 		type DamageComponent,
 		removeDamageComponent
 	} from '$lib/utils/weaponDamageBuilder';
+	import DamageDieSelector from './DamageDieSelector.svelte';
 
 	let {
 		identifier,
@@ -58,30 +58,20 @@
 					}}
 				/>
 			</label>
-			<label for={`damage-sides-${identifier}-${index}`}>
-				{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}
-				<select
-					id={`damage-sides-${identifier}-${index}`}
-					value={component.sides}
-					aria-label={`${$appLocale === 'en' ? 'Die type for component' : 'Tipo de dado do componente'} ${index + 1}`}
-					aria-invalid={invalidIndex === index &&
+			<div class="die-type-field">
+				<span>{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}</span>
+				<DamageDieSelector
+					sides={component.sides}
+					label={`${$appLocale === 'en' ? 'Die type for component' : 'Tipo de dado do componente'} ${index + 1}`}
+					invalid={invalidIndex === index &&
 						(Number(component.sides) < 2 || Number(component.sides) > 1000)}
-					aria-describedby={invalidIndex === index && error
-						? `damage-error-${identifier}`
-						: undefined}
-					onchange={(event) =>
+					describedBy={invalidIndex === index && error ? `damage-error-${identifier}` : undefined}
+					onchange={(sides) =>
 						onchange(
-							components.map((part, partIndex) =>
-								partIndex === index ? { ...part, sides: Number(event.currentTarget.value) } : part
-							)
+							components.map((part, partIndex) => (partIndex === index ? { ...part, sides } : part))
 						)}
-				>
-					{#if !DAMAGE_DIE_TYPES.includes(component.sides as (typeof DAMAGE_DIE_TYPES)[number])}<option
-							value={component.sides}>{component.sides}</option
-						>{/if}
-					{#each DAMAGE_DIE_TYPES as sides (sides)}<option value={sides}>d{sides}</option>{/each}
-				</select>
-			</label>
+				/>
+			</div>
 			<button
 				type="button"
 				class="danger-button"
@@ -114,10 +104,15 @@
 		align-items: end;
 		gap: 0.5rem;
 	}
-	.damage-component label {
+	.damage-component label,
+	.die-type-field {
 		min-width: 0;
 		display: grid;
 		gap: 0.25rem;
+	}
+	.die-type-field > span {
+		color: inherit;
+		font-size: inherit;
 	}
 	.damage-error {
 		color: #f0a29b;
