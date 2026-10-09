@@ -366,27 +366,29 @@
 						class:info={message.canal === 'info'}
 						class:roll-article={message.tipo === 'rolagem'}
 					>
-						{#if message.tipo === 'texto'}<strong>{message.autor}</strong><div class="message-content">
+						{#if message.tipo === 'texto'}<strong>{message.autor}</strong>
+							<div class="message-content">
 								{#if presentation.icon}<RpgIcon
-									name={presentation.icon}
-									size={18}
-									title={presentation.icon === 'combat'
-										? $appLocale === 'en'
-											? 'Combat event'
-											: 'Evento de combate'
-										: $appLocale === 'en'
-											? 'Magic event'
-											: 'Evento de magia'}
-								/> {/if}<span>{presentation.text}</span>
-							</div>{#if message.texto.length > 80}<button
+										name={presentation.icon}
+										size={18}
+										title={presentation.icon === 'combat'
+											? $appLocale === 'en'
+												? 'Combat event'
+												: 'Evento de combate'
+											: $appLocale === 'en'
+												? 'Magic event'
+												: 'Evento de magia'}
+									/>
+								{/if}<span>{presentation.text}</span>
+							</div>
+							{#if message.texto.length > 80}<button
 									class="expand"
 									onclick={() =>
 										(expanded = {
 											author: message.autor,
 											text: presentation.text,
 											icon: presentation.icon
-										})}
-									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
+										})}>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
 								>{/if}
 						{:else if message.detalhesRolagem}<div class="roll-heading">
 								<strong>{message.autor}</strong><span>/</span><small>{rollLabel(message)}</small>
@@ -413,9 +415,10 @@
 									</div>
 									<b>{message.detalhesRolagem.total}</b>
 								</div>{:else}<div class="roll pending">
-									<small><RpgIcon name="dice-stack" size={16} /> {$appLocale === 'en'
-										? 'Rolling…'
-										: 'Rolando…'}</small>
+									<small
+										><RpgIcon name="dice-stack" size={16} />
+										{$appLocale === 'en' ? 'Rolling…' : 'Rolando…'}</small
+									>
 								</div>{/if}{/if}
 					</article>
 				{/each}
@@ -446,16 +449,18 @@
 			><small>{expanded.author}</small>
 			<div class="expanded-message">
 				{#if expanded.icon}<RpgIcon
-					name={expanded.icon}
-					size={28}
-					title={expanded.icon === 'combat'
-						? $appLocale === 'en'
-							? 'Combat event'
-							: 'Evento de combate'
-						: $appLocale === 'en'
-							? 'Magic event'
-							: 'Evento de magia'}
-				/> {/if}<p>{expanded.text}</p>
+						name={expanded.icon}
+						size={28}
+						title={expanded.icon === 'combat'
+							? $appLocale === 'en'
+								? 'Combat event'
+								: 'Evento de combate'
+							: $appLocale === 'en'
+								? 'Magic event'
+								: 'Evento de magia'}
+					/>
+				{/if}
+				<p>{expanded.text}</p>
 			</div>
 		</section>
 	</div>{/if}

@@ -304,13 +304,12 @@
 									{#if isGM}<button type="button" onclick={() => actions.present(spell)}
 											>{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}</button
 										>{/if}
-					{#if spell.diceFormula?.trim() && spell.level === 0}<button
-							class="roll-effect"
-							type="button"
+									{#if spell.diceFormula?.trim() && spell.level === 0}<button
+											class="roll-effect"
+											type="button"
 											onclick={() => actions.rollEffect(spell)}
-										><RpgIcon name="dice-stack" size={18} /> {$appLocale === 'en'
-											? 'Roll effect'
-											: 'Rolar efeito'}</button
+											><RpgIcon name="dice-stack" size={18} />
+											{$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
 									{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
 										{#if index < 0 && atWillGrant}<small class="feat-casting-source">

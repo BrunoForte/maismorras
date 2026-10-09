@@ -260,13 +260,15 @@
 			aria-expanded={toolsOpen}
 			aria-label={$appLocale === 'en' ? 'Area ruler' : 'Régua'}
 			onclick={() => togglePanel('ruler')}
-			title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}><RpgIcon name="ruler" size={22} /></button
+			title={$appLocale === 'en' ? 'Area ruler' : 'Régua de área'}
+			><RpgIcon name="ruler" size={22} /></button
 		><button
 			class:active={initiativeOpen}
 			aria-expanded={initiativeOpen}
 			aria-label={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}
 			onclick={() => togglePanel('initiative')}
-			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}><RpgIcon name="initiative" size={22} /></button
+			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}
+			><RpgIcon name="initiative" size={22} /></button
 		><button
 			class:active={diceOpen}
 			aria-expanded={diceOpen}
@@ -280,22 +282,22 @@
 				aria-expanded={activeMapTool === 'layers'}
 				aria-label={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
 				onclick={() => toggleMapTool('layers')}
-			title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}><RpgIcon name="layers" size={22} /></button
+				title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
+				><RpgIcon name="layers" size={22} /></button
 			><button
 				class:active={activeMapTool === 'areas'}
 				aria-expanded={activeMapTool === 'areas'}
 				aria-label={$appLocale === 'en' ? 'Persistent areas' : 'Área persistente'}
 				onclick={() => toggleMapTool('areas')}
-				title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}><RpgIcon
-					name="persistent-area"
-					size={22}
-				/></button
+				title={$appLocale === 'en' ? 'Persistent areas' : 'Áreas persistentes'}
+				><RpgIcon name="persistent-area" size={22} /></button
 			><button
 				class:active={activeMapTool === 'barriers'}
 				aria-expanded={activeMapTool === 'barriers'}
 				aria-label={$appLocale === 'en' ? 'Barriers' : 'Barreiras'}
 				onclick={() => toggleMapTool('barriers')}
-				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}><RpgIcon name="barrier-arch" size={22} /></button
+				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}
+				><RpgIcon name="barrier-arch" size={22} /></button
 			>{/if}<button
 			class:active={pingArmed}
 			data-testid="map-signal-button"

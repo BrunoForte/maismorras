@@ -415,9 +415,8 @@
 												class="roll-weapon"
 												onclick={() => actions.rollWeapon(item, 'attack', profile)}
 												disabled={rollingWeaponAction !== null}
-								><RpgIcon name="attack" size={18} /> {$appLocale === 'en'
-									? 'Attack'
-									: 'Ataque'}</button
+												><RpgIcon name="attack" size={18} />
+												{$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
 											>
 											<button
 												onclick={() => actions.rollWeapon(item, 'damage', profile)}
@@ -426,9 +425,8 @@
 													!!profileIssue ||
 													!!validateDamageBonus(profile.damageBonus) ||
 													!!profile.damageNeedsRepair}
-								><RpgIcon name="dice-stack" size={18} /> {$appLocale === 'en'
-									? 'Damage'
-									: 'Dano'}</button
+												><RpgIcon name="dice-stack" size={18} />
+												{$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button
 												class="danger-button"

@@ -40,10 +40,8 @@
 					aria-expanded={state.openTool === 'layers'}
 					onclick={() => actions.onToolToggle('layers')}
 					aria-label={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}
-					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}><RpgIcon
-					name="layers"
-					size={22}
-				/></button
+					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}
+					><RpgIcon name="layers" size={22} /></button
 				>{#if state.openTool === 'layers'}
 					<div
 						class="layer-tools map-tool-menu"
@@ -85,10 +83,8 @@
 					aria-expanded={state.openTool === 'areas'}
 					onclick={() => actions.onToolToggle('areas')}
 					aria-label={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}
-					title={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}><RpgIcon
-					name="persistent-area"
-					size={22}
-				/></button
+					title={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}
+					><RpgIcon name="persistent-area" size={22} /></button
 				>{#if state.openTool === 'areas'}
 					<div
 						class="area-tools map-tool-menu"
@@ -142,10 +138,8 @@
 					aria-expanded={state.openTool === 'barriers'}
 					onclick={() => actions.onToolToggle('barriers')}
 					aria-label={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}
-					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}><RpgIcon
-						name="barrier-arch"
-						size={22}
-					/></button
+					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}
+					><RpgIcon name="barrier-arch" size={22} /></button
 				>{#if state.openTool === 'barriers'}
 					<div
 						class="wall-tools map-tool-menu"

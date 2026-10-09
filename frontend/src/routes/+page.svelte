@@ -152,15 +152,18 @@
 				class="feature-list"
 				aria-label={$appLocale === 'en' ? 'Platform features' : 'Recursos da plataforma'}
 			>
-				<span><RpgIcon name="map" size={18} /> {$appLocale === 'en'
-					? 'Real-time table'
-					: 'Mesa em tempo real'}</span>
-				<span><RpgIcon name="campaign" size={18} /> {$appLocale === 'en'
-					? 'Persistent campaigns'
-					: 'Campanhas persistentes'}</span>
-				<span><RpgIcon name="settings" size={18} /> {$appLocale === 'en'
-					? 'Game-master tools'
-					: 'Ferramentas para narrar'}</span>
+				<span
+					><RpgIcon name="map" size={18} />
+					{$appLocale === 'en' ? 'Real-time table' : 'Mesa em tempo real'}</span
+				>
+				<span
+					><RpgIcon name="campaign" size={18} />
+					{$appLocale === 'en' ? 'Persistent campaigns' : 'Campanhas persistentes'}</span
+				>
+				<span
+					><RpgIcon name="settings" size={18} />
+					{$appLocale === 'en' ? 'Game-master tools' : 'Ferramentas para narrar'}</span
+				>
 			</div>
 		</section>
 

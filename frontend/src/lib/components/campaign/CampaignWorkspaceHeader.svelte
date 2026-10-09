@@ -93,10 +93,8 @@
 						class="scene-add"
 						onclick={onopenscenesettings}
 						title={isEnglish ? 'Configure scene' : 'Configurar cena'}
-						aria-label={isEnglish ? 'Configure scene' : 'Configurar cena'}><RpgIcon
-						name="settings"
-						size={18}
-					/></button
+						aria-label={isEnglish ? 'Configure scene' : 'Configurar cena'}
+						><RpgIcon name="settings" size={18} /></button
 					>
 				{/if}
 			</div>

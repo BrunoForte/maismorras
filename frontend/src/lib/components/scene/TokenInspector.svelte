@@ -160,9 +160,8 @@
 		/>
 	{/if}
 	{#if permissions.canInteractWithDoor}<button class="door-interaction" onclick={onInteractWithDoor}
-			><RpgIcon name="barrier-arch" size={18} /> {isEnglish
-				? 'Interact with nearby door'
-				: 'Interagir com porta próxima'}</button
+			><RpgIcon name="barrier-arch" size={18} />
+			{isEnglish ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button
 		>{/if}
 	{#if token.actorId && permissions.canOpenSheet}
 		<div class="sheet-actions">
@@ -177,7 +176,8 @@
 	{#if permissions.canRollInitiative}
 		<div class="token-rolls">
 			<button class="token-initiative-button" onclick={onRollInitiative}
-				><RpgIcon name="initiative" size={18} /> {isEnglish ? 'Roll initiative' : 'Rolar iniciativa'}</button
+				><RpgIcon name="initiative" size={18} />
+				{isEnglish ? 'Roll initiative' : 'Rolar iniciativa'}</button
 			>
 			{#if token.actorId && !npc}<label class="token-initiative-advantage"
 					><input

@@ -308,7 +308,8 @@
 											aria-label={$appLocale === 'en'
 												? `Show ${asset.name} to the table`
 												: `Exibir ${asset.name} para a mesa`}
-							onclick={() => actions.present(asset)}><RpgIcon name="camera" size={18} /></button
+											onclick={() => actions.present(asset)}
+											><RpgIcon name="camera" size={18} /></button
 										>
 									{/if}
 								</div>
