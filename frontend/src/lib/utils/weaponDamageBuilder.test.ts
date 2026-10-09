@@ -22,6 +22,7 @@ describe('weapon damage builder', () => {
 
 	it('converts supported legacy fixed modifiers separately', () => {
 		expect(parseLegacyDamage('2d6+1d4-3')).toEqual({ damage: '2d6+1d4', damageBonus: -3 });
+		expect(parseLegacyDamage('11d6+3')).toEqual({ damage: '11d6', damageBonus: 3 });
 		expect(parseDamageExpression('')).toEqual([]);
 		expect(parseDamageExpression('2d6+')).toBeNull();
 		expect(parseLegacyDamage('damage varies')).toBeNull();
@@ -42,21 +43,23 @@ describe('weapon damage builder', () => {
 	});
 
 	it('rejects empty, fractional, nonpositive, and over-limit quantities and invalid die sizes', () => {
-		for (const count of ['', 0, -1, 1.5, 101])
+		for (const count of ['', 0, -1, 1.5, 11])
 			expect(validateDamageComponents([{ count: count as number | '', sides: 6 }])).not.toBeNull();
 		expect(validateDamageComponents([{ count: 1, sides: 1001 }])).not.toBeNull();
 		expect(
 			validateDamageComponents([
-				{ count: 50, sides: 6 },
-				{ count: 51, sides: 8 }
+				{ count: 5, sides: 6 },
+				{ count: 6, sides: 8 }
 			])
 		).not.toBeNull();
 		expect(
 			validateDamageComponents([
-				{ count: 50, sides: 6 },
-				{ count: 50, sides: 8 }
+				{ count: 3, sides: 6 },
+				{ count: 3, sides: 8 },
+				{ count: 4, sides: 10 }
 			])
 		).toBeNull();
+		expect(validateDamageComponents([{ count: 10, sides: 6 }])).toBeNull();
 	});
 
 	it('limits the fixed damage modifier to the server roll bound', () => {

@@ -215,7 +215,7 @@ describe('character combat actions', () => {
 		}
 	});
 
-	it('duplica os dados de dano após crítico e consome a marca crítica', async () => {
+	it('envia a fórmula base e marca o crítico para duplicação validada no servidor', async () => {
 		const test = setup();
 		vi.mocked(test.rollDice)
 			.mockResolvedValueOnce({
@@ -238,10 +238,12 @@ describe('character combat actions', () => {
 		await test.controller.rollWeapon(weapon, 'damage');
 		await test.controller.rollWeapon(weapon, 'damage');
 
-		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '2d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
 	});
 
-	it('sends all damage components and duplicates each component on a critical without duplicating modifiers', async () => {
+	it('envia todos os componentes e o crítico sem duplicar bônus no cliente', async () => {
 		const test = setup({
 			getWeaponRollDetails: (item) => ({
 				attackBonus: 5,
@@ -260,7 +262,8 @@ describe('character combat actions', () => {
 		});
 		await test.controller.rollWeapon(multiDamageWeapon, 'attack');
 		await test.controller.rollWeapon(multiDamageWeapon, 'damage');
-		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '4d6+6d8+8d10+6']);
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '2d6+3d8+4d10+6']);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
 		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({ modificador: 6 });
 	});
 

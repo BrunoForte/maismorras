@@ -1,6 +1,7 @@
 export type DamageComponent = { count: number | ''; sides: number | '' };
 
-export const MAX_DAMAGE_DICE = 100;
+export const MAX_DAMAGE_DICE = 10;
+export const MAX_SERVER_DICE = 100;
 export const DAMAGE_DIE_TYPES = [4, 6, 8, 10, 12, 20, 100] as const;
 
 export function parseDamageExpression(value: unknown): DamageComponent[] | null {
@@ -27,7 +28,7 @@ export function parseLegacyDamage(value: unknown): { damage: string; damageBonus
 	const modifier = (match[2] === '-' ? -1 : 1) * Number(match[3] ?? 0);
 	if (
 		!components ||
-		validateDamageComponents(components) ||
+		validateDamageComponentsWithLimit(components, MAX_SERVER_DICE) ||
 		!Number.isSafeInteger(modifier) ||
 		Math.abs(modifier) > 10000
 	)
@@ -39,16 +40,23 @@ export function parseLegacyDamage(value: unknown): { damage: string; damageBonus
 }
 
 export function validateDamageComponents(components: readonly DamageComponent[]) {
+	return validateDamageComponentsWithLimit(components, MAX_DAMAGE_DICE);
+}
+
+function validateDamageComponentsWithLimit(
+	components: readonly DamageComponent[],
+	maximum: number
+) {
 	let total = 0;
 	for (let index = 0; index < components.length; index += 1) {
 		const { count, sides } = components[index];
-		if (!Number.isInteger(count) || Number(count) < 1 || Number(count) > MAX_DAMAGE_DICE)
-			return { index, message: 'Informe uma quantidade inteira entre 1 e 100.' };
+		if (!Number.isInteger(count) || Number(count) < 1 || Number(count) > maximum)
+			return { index, message: `Informe uma quantidade inteira entre 1 e ${maximum}.` };
 		if (!Number.isInteger(sides) || Number(sides) < 2 || Number(sides) > 1000)
 			return { index, message: 'Escolha um tipo de dado válido.' };
 		total += Number(count);
-		if (total > MAX_DAMAGE_DICE)
-			return { index, message: 'O total de dados de dano não pode passar de 100.' };
+		if (total > maximum)
+			return { index, message: `O total de dados não pode passar de ${maximum}.` };
 	}
 	return null;
 }

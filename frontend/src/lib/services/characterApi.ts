@@ -131,6 +131,10 @@ function normalizeCharacter(character: Character): Character {
 		if (!item || typeof item !== 'object' || !item.rules || typeof item.rules !== 'object')
 			return item;
 		const rules = { ...item.rules };
+		const legacyUnifiedBonus =
+			rules.attackBonus === undefined && rules.damageBonus === undefined
+				? Number(rules.bonus) || 0
+				: 0;
 		if (String(rules.category ?? '') === 'weapon' || rules.damage !== undefined) {
 			const damage = parseDamageExpression(rules.damage);
 			const legacyDamage = damage === null ? parseLegacyDamage(rules.damage) : null;
@@ -145,8 +149,30 @@ function normalizeCharacter(character: Character): Character {
 				}
 			} else {
 				// Preserve unsupported legacy text so the player can repair it explicitly.
+				rules.attackBonus ??= Number(rules.bonus) || 0;
+				rules.damageBonus ??= Number(rules.bonus) || 0;
 				rules.damageNeedsRepair = true;
 			}
+		}
+		if (Array.isArray(rules.attackProfiles)) {
+			rules.attackProfiles = rules.attackProfiles.map((profile) => {
+				if (!profile || typeof profile !== 'object') return profile;
+				const normalized = { ...(profile as Record<string, unknown>) };
+				const formula = parseDamageExpression(normalized.damage);
+				const legacy = formula === null ? parseLegacyDamage(normalized.damage) : null;
+				if (legacy) {
+					normalized.damage = legacy.damage;
+					normalized.damageBonus = (Number(normalized.damageBonus) || 0) + legacy.damageBonus;
+					normalized.damageNeedsRepair = false;
+				} else if (formula === null && String(normalized.damage ?? '') !== '') {
+					normalized.damageNeedsRepair = true;
+				} else {
+					normalized.damage = String(normalized.damage ?? '');
+				}
+				normalized.attackBonus = Number(normalized.attackBonus) || 0;
+				normalized.damageBonus = (Number(normalized.damageBonus) || 0) + legacyUnifiedBonus;
+				return normalized;
+			});
 		}
 		return { ...item, rules };
 	};

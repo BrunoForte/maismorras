@@ -59,14 +59,28 @@ describe('createEmptySheet', () => {
 					name: 'Machado',
 					quantity: 1,
 					equipped: true,
-					rules: { category: 'weapon', damage: '2d6+3', bonus: 2, enchantmentBonus: 1 }
+					rules: {
+						category: 'weapon',
+						damage: '2d6+3',
+						bonus: 2,
+						enchantmentBonus: 1,
+						attackProfiles: [
+							{ id: 'flurry', damage: '1d8+2', attackBonus: 1, damageBonus: 1 },
+							{ id: 'old-heavy', damage: '11d6+3', attackBonus: 0, damageBonus: 2 }
+						]
+					}
 				},
 				{
 					entryId: 'ambiguous',
 					name: 'Arma especial',
 					quantity: 1,
 					equipped: true,
-					rules: { category: 'weapon', damage: 'dano variável', bonus: 4 }
+					rules: {
+						category: 'weapon',
+						damage: 'dano variável',
+						bonus: 4,
+						attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 0 }]
+					}
 				},
 				{
 					entryId: 'longbow',
@@ -93,9 +107,16 @@ describe('createEmptySheet', () => {
 			damageBonus: 5,
 			enchantmentBonus: 1
 		});
+		expect(normalized.sheet.inventory[0].rules.attackProfiles).toEqual([
+			{ id: 'flurry', damage: '1d8', attackBonus: 1, damageBonus: 5, damageNeedsRepair: false },
+			{ id: 'old-heavy', damage: '11d6', attackBonus: 0, damageBonus: 7, damageNeedsRepair: false }
+		]);
 		expect(normalized.sheet.inventory[1].rules).toMatchObject({
 			damage: 'dano variável',
-			damageNeedsRepair: true
+			damageNeedsRepair: true,
+			attackBonus: 4,
+			damageBonus: 4,
+			attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 4 }]
 		});
 		expect(normalized.sheet.inventory[2].rules).toMatchObject({
 			damage: '1d8+1d6',

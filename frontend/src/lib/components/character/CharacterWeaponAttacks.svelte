@@ -3,11 +3,9 @@
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
 	import { tick } from 'svelte';
+	import WeaponDamageBuilder from './WeaponDamageBuilder.svelte';
 	import {
-		addDamageComponent,
-		DAMAGE_DIE_TYPES,
-		parseDamageExpression,
-		removeDamageComponent,
+		validateDamageBonus,
 		serializeDamageComponents,
 		validateDamageComponents
 	} from '$lib/utils/weaponDamageBuilder';
@@ -32,13 +30,21 @@
 		if (!invalidKey || !items.some((item) => actions.weaponKey(item) === invalidKey)) return;
 		expandedWeapon = invalidKey;
 		const index = actions.invalidDamageIndex();
+		const profileId = actions.invalidDamageProfileId();
 		void tick().then(() => {
 			if (actions.invalidWeaponField() === 'bonus') {
-				document.getElementById(`damage-bonus-${invalidKey}`)?.focus();
+				document.getElementById(`damage-bonus-${invalidKey}-${profileId ?? 'base'}`)?.focus();
 				return;
 			}
-			const field = document.getElementById(`damage-count-${invalidKey}-${index}`);
-			(field ?? document.getElementById(`damage-add-${invalidKey}`))?.focus();
+			if (profileId) {
+				const details = document.getElementById(
+					`damage-profile-${invalidKey}-${profileId}`
+				) as HTMLDetailsElement | null;
+				if (details) details.open = true;
+			}
+			const identifier = `${invalidKey}-${profileId ?? 'base'}`;
+			const field = document.getElementById(`damage-count-${identifier}-${index}`);
+			(field ?? document.getElementById(`damage-add-${identifier}`))?.focus();
 		});
 	});
 </script>
@@ -181,6 +187,8 @@
 								/>{$appLocale === 'en' ? 'Manual proficiency' : 'Proficiência manual'}</label
 							>
 						</div>
+						{@const baseComponents = actions.damageComponents(item)}
+						{@const baseIssue = validateDamageComponents(baseComponents)}
 						<fieldset
 							class="damage-builder"
 							aria-label={$appLocale === 'en'
@@ -188,96 +196,33 @@
 								: 'Configuração do dano da arma'}
 						>
 							<legend>{$appLocale === 'en' ? 'Damage' : 'Dano'}</legend>
-							{#if item.rules.damageNeedsRepair || (String(item.rules.damage ?? '') !== '' && parseDamageExpression(item.rules.damage) === null)}<p
-									class="damage-error"
-									role="alert"
-								>
-									{$appLocale === 'en'
-										? 'This legacy damage formula cannot be converted. Rebuild its dice components before saving or rolling.'
-										: 'Esta fórmula antiga não pode ser convertida. Refaça os componentes de dados antes de salvar ou rolar.'}
-								</p>{/if}
-							{#each actions.damageComponents(item) as component, index (`${actions.weaponKey(item)}:${index}`)}
-								<div class="damage-component">
-									<label
-										>{$appLocale === 'en' ? 'Dice quantity' : 'Quantidade de dados'}
-										<input
-											id={`damage-count-${actions.weaponKey(item)}-${index}`}
-											type="number"
-											min="1"
-											max="100"
-											step="1"
-											value={component.count}
-											aria-invalid={!!validateDamageComponents(actions.damageComponents(item)) &&
-												validateDamageComponents(actions.damageComponents(item))?.index === index}
-											oninput={(event) => {
-												const value: number | '' =
-													event.currentTarget.value === '' ? '' : event.currentTarget.valueAsNumber;
-												const next = actions.damageComponents(item).map((part, partIndex) =>
-													partIndex === index
-														? {
-																...part,
-																count: value
-															}
-														: part
-												);
-												actions.setDamageComponents(item, next);
-											}}
-										/>
-									</label>
-									<label
-										>{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}
-										<select
-											id={`damage-sides-${actions.weaponKey(item)}-${index}`}
-											value={component.sides}
-											oninput={(event) => {
-												const next = actions
-													.damageComponents(item)
-													.map((part, partIndex) =>
-														partIndex === index
-															? { ...part, sides: Number(event.currentTarget.value) }
-															: part
-													);
-												actions.setDamageComponents(item, next);
-											}}
-											aria-label={`${$appLocale === 'en' ? 'Die type for' : 'Tipo de dado para'} ${item.name}, ${index + 1}`}
-										>
-											{#if !DAMAGE_DIE_TYPES.includes(component.sides as (typeof DAMAGE_DIE_TYPES)[number])}<option
-													value={component.sides}>{component.sides}</option
-												>{/if}
-											{#each DAMAGE_DIE_TYPES as sides (sides)}<option value={sides}
-													>d{sides}</option
-												>{/each}
-										</select>
-									</label>
-									<button
-										type="button"
-										class="danger-button"
-										aria-label={`${$appLocale === 'en' ? 'Remove damage component from' : 'Remover componente de dano de'} ${item.name}`}
-										onclick={() =>
-											actions.setDamageComponents(
-												item,
-												removeDamageComponent(actions.damageComponents(item), index)
-											)}>×</button
-									>
-								</div>
-							{/each}
-							<button
-								type="button"
-								class="secondary-button"
-								id={`damage-add-${actions.weaponKey(item)}`}
-								onclick={() =>
-									actions.setDamageComponents(
-										item,
-										addDamageComponent(actions.damageComponents(item))
-									)}>+ {$appLocale === 'en' ? 'die' : 'dado'}</button
-							>
+							<WeaponDamageBuilder
+								identifier={`${actions.weaponKey(item)}-base`}
+								components={baseComponents}
+								invalidIndex={baseIssue?.index ?? -1}
+								error={item.rules.damageNeedsRepair
+									? $appLocale === 'en'
+										? 'This legacy formula cannot be converted. Rebuild its components explicitly.'
+										: 'Esta fórmula antiga não pode ser convertida. Refaça os componentes explicitamente.'
+									: baseIssue
+										? `${baseIssue.message} Configure quantidade + tipo de dado, até 10 dados no total; valores sem dados vão em Bônus de dano.`
+										: actions.invalidWeaponKey() === actions.weaponKey(item) &&
+											  actions.invalidDamageProfileId() === null &&
+											  actions.invalidWeaponField() === 'damage'
+											? 'Configure quantidade + tipo de dado, até 10 dados no total; valores sem dados vão em Bônus de dano.'
+											: ''}
+								onchange={(components) => actions.setDamageComponents(item, components)}
+							/>
 							<label class="damage-bonus-field"
 								>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
-									id={`damage-bonus-${actions.weaponKey(item)}`}
+									id={`damage-bonus-${actions.weaponKey(item)}-base`}
 									type="number"
 									step="1"
 									min="-10000"
 									max="10000"
+									aria-invalid={actions.invalidWeaponKey() === actions.weaponKey(item) &&
+										actions.invalidDamageProfileId() === null &&
+										actions.invalidWeaponField() === 'bonus'}
 									value={Number(item.rules.damageBonus ?? item.rules.bonus) || 0}
 									oninput={(event) =>
 										actions.updateWeaponRules(
@@ -290,14 +235,6 @@
 										)}
 								/></label
 							>
-							{#if actions.invalidWeaponKey() === actions.weaponKey(item)}<p
-									class="damage-error"
-									role="alert"
-								>
-									{$appLocale === 'en'
-										? 'Use a whole dice quantity from 1 to 100 and keep the total at or below 100 dice. Fixed values belong in Damage bonus.'
-										: 'Use uma quantidade inteira de dados entre 1 e 100 e mantenha o total em até 100 dados. Valores fixos devem ficar em Bônus de dano.'}
-								</p>{/if}
 						</fieldset>
 						{#if actions.weaponEffects(item).length}
 							<fieldset class="weapon-effects">
@@ -355,7 +292,9 @@
 								onclick={() => actions.rollWeapon(item, 'damage')}
 								disabled={rollingWeaponAction !== null ||
 									!actions.damageComponents(item).length ||
-									!!validateDamageComponents(actions.damageComponents(item))}
+									!!validateDamageComponents(actions.damageComponents(item)) ||
+									!!validateDamageBonus(item.rules.damageBonus ?? item.rules.bonus) ||
+									!!item.rules.damageNeedsRepair}
 								>{rollingWeaponAction === `${actions.weaponKey(item)}:default:damage`
 									? '…'
 									: $appLocale === 'en'
@@ -371,7 +310,12 @@
 								>+ {$appLocale === 'en' ? 'Alternate attack' : 'Golpe'}</button
 							>
 							{#each actions.weaponProfiles(item) as profile (profile.id)}
-								<details class="weapon-profile">
+								{@const profileComponents = actions.damageComponents(item, profile)}
+								{@const profileIssue = validateDamageComponents(profileComponents)}
+								<details
+									class="weapon-profile"
+									id={`damage-profile-${actions.weaponKey(item)}-${profile.id}`}
+								>
 									<summary>{profile.name}</summary>
 									<div class="weapon-profile-fields">
 										<input
@@ -411,19 +355,42 @@
 													})}
 											/></label
 										>
-										<label
-											>{$appLocale === 'en' ? 'Damage' : 'Dano'}<input
-												value={profile.damage}
-												oninput={(event) =>
-													actions.updateWeaponProfile(item, profile.id, {
-														damage: event.currentTarget.value
-													})}
-											/></label
-										>
+										<fieldset class="profile-damage-builder">
+											<legend>{$appLocale === 'en' ? 'Damage' : 'Dano'}</legend>
+											<WeaponDamageBuilder
+												identifier={`${actions.weaponKey(item)}-${profile.id}`}
+												components={profileComponents}
+												invalidIndex={profileIssue?.index ?? -1}
+												error={profile.damageNeedsRepair
+													? $appLocale === 'en'
+														? 'This legacy formula cannot be converted. Rebuild its components explicitly.'
+														: 'Esta fórmula antiga não pode ser convertida. Refaça os componentes explicitamente.'
+													: profileIssue
+														? $appLocale === 'en'
+															? `${profileIssue.message} The total limit is 10 dice; fixed values belong in Damage bonus.`
+															: `${profileIssue.message} O limite é 10 dados no total; valores sem dados vão em Bônus de dano.`
+														: actions.invalidWeaponKey() === actions.weaponKey(item) &&
+															  actions.invalidDamageProfileId() === profile.id &&
+															  actions.invalidWeaponField() === 'damage'
+															? $appLocale === 'en'
+																? 'Configure quantity + die type, up to 10 dice total; fixed values belong in Damage bonus.'
+																: 'Configure quantidade + tipo de dado, até 10 dados no total; valores sem dados vão em Bônus de dano.'
+															: ''}
+												onchange={(components) =>
+													actions.setDamageComponents(item, components, profile)}
+											/>
+										</fieldset>
 										<label
 											>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}<input
+												id={`damage-bonus-${actions.weaponKey(item)}-${profile.id}`}
 												type="number"
+												min="-10000"
+												max="10000"
+												step="1"
 												value={profile.damageBonus}
+												aria-invalid={actions.invalidWeaponKey() === actions.weaponKey(item) &&
+													actions.invalidDamageProfileId() === profile.id &&
+													actions.invalidWeaponField() === 'bonus'}
 												oninput={(event) =>
 													actions.updateWeaponProfile(item, profile.id, {
 														damageBonus: Number(event.currentTarget.value)
@@ -451,7 +418,11 @@
 											>
 											<button
 												onclick={() => actions.rollWeapon(item, 'damage', profile)}
-												disabled={rollingWeaponAction !== null || !/^\d+d\d+/i.test(profile.damage)}
+												disabled={rollingWeaponAction !== null ||
+													!profileComponents.length ||
+													!!profileIssue ||
+													!!validateDamageBonus(profile.damageBonus) ||
+													!!profile.damageNeedsRepair}
 												>🎲 {$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button
@@ -590,27 +561,10 @@
 		border-radius: 8px;
 		padding: 0.65rem;
 	}
-	.damage-component {
-		min-width: 0;
-		display: grid;
-		grid-template-columns: minmax(5rem, 1fr) minmax(5rem, 1fr) auto;
-		align-items: end;
-		gap: 0.5rem;
-	}
-	.damage-component label,
 	.damage-bonus-field {
 		min-width: 0;
 		display: grid;
 		gap: 0.25rem;
-	}
-	.damage-error {
-		color: #f0a29b;
-		font-size: 0.72rem;
-	}
-	@media (max-width: 520px) {
-		.damage-component {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-		}
 	}
 	.weapon-proficiency {
 		align-self: end;

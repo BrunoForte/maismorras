@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('./httpClient', () => ({ request }));
 
-import { publishSpellToChat } from './eventApi';
+import { publishSpellToChat, rollDice } from './eventApi';
 
 describe('publishSpellToChat', () => {
 	beforeEach(() => request.mockReset());
@@ -43,5 +43,40 @@ describe('publishSpellToChat', () => {
 			tipo: 'texto',
 			canal: 'chat'
 		});
+	});
+});
+
+describe('rollDice', () => {
+	beforeEach(() => request.mockReset());
+
+	it('marca a rolagem de dano de arma para validação e crítico no servidor', async () => {
+		request.mockResolvedValueOnce({ id: 92, type: 'dice.roll', payload: {} });
+		await rollDice(
+			{} as Session,
+			'campaign-1',
+			'2d6+4',
+			undefined,
+			'combat',
+			undefined,
+			true,
+			true
+		);
+
+		expect(request).toHaveBeenCalledWith(
+			expect.anything(),
+			'/api/v1/campaigns/campaign-1/events',
+			expect.objectContaining({
+				body: JSON.stringify({
+					type: 'dice.roll',
+					payload: {
+						expression: '2d6+4',
+						mode: undefined,
+						channel: 'combat',
+						weaponDamage: true,
+						critical: true
+					}
+				})
+			})
+		);
 	});
 });

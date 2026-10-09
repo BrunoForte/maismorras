@@ -94,12 +94,20 @@ export const rollDice = (
 	expression: string,
 	mode?: 'advantage' | 'disadvantage',
 	channel: 'chat' | 'combat' = 'chat',
-	minimumDamageDie?: 0 | 3
+	minimumDamageDie?: 0 | 3,
+	weaponDamage = false,
+	critical = false
 ) =>
 	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
 		body: JSON.stringify({
 			type: 'dice.roll',
-			payload: { expression, mode, channel, ...(minimumDamageDie ? { minimumDamageDie } : {}) }
+			payload: {
+				expression,
+				mode,
+				channel,
+				...(minimumDamageDie ? { minimumDamageDie } : {}),
+				...(weaponDamage ? { weaponDamage: true, critical } : {})
+			}
 		})
 	});

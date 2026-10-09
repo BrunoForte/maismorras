@@ -20,6 +20,7 @@ export type WeaponAttackProfile = {
 	damage: string;
 	attackBonus: number;
 	damageBonus: number;
+	damageNeedsRepair?: boolean;
 	greatWeaponFighting: boolean;
 };
 export type WeaponFeature = { id: string; name: string; description: string };
@@ -56,11 +57,16 @@ export type WeaponCombatActions = {
 		changes: Record<string, unknown>,
 		autosave?: boolean
 	) => void;
-	damageComponents: (item: InventoryItem) => DamageComponent[];
-	setDamageComponents: (item: InventoryItem, components: DamageComponent[]) => void;
+	damageComponents: (item: InventoryItem, profile?: WeaponAttackProfile) => DamageComponent[];
+	setDamageComponents: (
+		item: InventoryItem,
+		components: DamageComponent[],
+		profile?: WeaponAttackProfile
+	) => void;
 	invalidWeaponKey: () => string | null;
 	invalidDamageIndex: () => number;
 	invalidWeaponField: () => 'damage' | 'bonus';
+	invalidDamageProfileId: () => string | null;
 	toggleWeaponEffect: (item: InventoryItem, key: string) => void;
 	addWeaponAttackProfile: (item: InventoryItem) => void;
 	removeWeaponAttackProfile: (item: InventoryItem, id: string) => void;
@@ -255,12 +261,13 @@ export function weaponAttackBonusTotal(
 export function weaponDamageBonusTotal(
 	item: InventoryItem,
 	abilityScores: AbilityScores,
-	effects: readonly WeaponEffect[]
+	effects: readonly WeaponEffect[],
+	includeWeaponDamageBonus = true
 ): number {
 	const ability = weaponAbility(item);
 	return (
 		Math.floor((abilityScores[ability] - 10) / 2) +
-		weaponDamageSpecificBonus(item) +
+		(includeWeaponDamageBonus ? weaponDamageSpecificBonus(item) : 0) +
 		weaponItemBonus(item) +
 		weaponBonusTotals(effects).damage
 	);

@@ -104,7 +104,9 @@ export type CharacterCombatActionDependencies = {
 		expression: string,
 		mode?: 'advantage' | 'disadvantage',
 		channel?: 'chat' | 'combat',
-		minimumDamageDie?: 0 | 3
+		minimumDamageDie?: 0 | 3,
+		weaponDamage?: boolean,
+		critical?: boolean
 	) => Promise<DiceEvent>;
 	rollTokenInitiative: (
 		session: Session,
@@ -577,18 +579,16 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				const damageModifier = legacyDamageBonus + details.damageBonus;
 				const isCritical =
 					lastCriticalWeapon === `${details.stableWeaponKey}:${details.profileKey}`;
-				const rolledComponents = components.map((component) => ({
-					...component,
-					count: Number(component.count) * (isCritical ? 2 : 1)
-				}));
-				const rolledFormula = serializeDamageComponents(rolledComponents);
+				const rolledFormula = serializeDamageComponents(components);
 				const event = await deps.rollDice(
 					context.session,
 					context.campaignId,
 					`${rolledFormula}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
 					undefined,
 					'combat',
-					details.minimumDamageDie
+					details.minimumDamageDie,
+					true,
+					isCritical
 				);
 				if (!isCurrent(operation)) return;
 				const damage = event.payload as {

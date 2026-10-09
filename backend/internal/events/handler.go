@@ -161,6 +161,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 			Mode             string `json:"mode"`
 			Channel          string `json:"channel"`
 			MinimumDamageDie int    `json:"minimumDamageDie"`
+			WeaponDamage     bool   `json:"weaponDamage"`
+			Critical         bool   `json:"critical"`
 		}
 		if err := json.Unmarshal(in.Payload, &payload); err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
@@ -174,7 +176,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 		if payload.MinimumDamageDie != 0 && (payload.MinimumDamageDie != 3 || payload.Channel != "combat" || payload.Mode != "" || !validMinimumDamageRoll(payload.Expression)) {
 			return apperror.BadRequest("INVALID_ROLL", "Regra de dano inválida para esta rolagem.")
 		}
-		result, err := rollWithMode(strings.TrimSpace(payload.Expression), payload.Mode)
+		if payload.Critical && !payload.WeaponDamage {
+			return apperror.BadRequest("INVALID_ROLL", "Crítico inválido para esta rolagem.")
+		}
+		if payload.WeaponDamage && (payload.Channel != "combat" || payload.Mode != "" || !validWeaponDamageRoll(payload.Expression)) {
+			return apperror.BadRequest("INVALID_ROLL", "A rolagem de dano da arma excede os limites permitidos.")
+		}
+		expression := strings.TrimSpace(payload.Expression)
+		if payload.WeaponDamage && payload.Critical {
+			var err error
+			expression, err = doubleDiceExpression(expression)
+			if err != nil {
+				return apperror.BadRequest("INVALID_ROLL", "Dano crítico inválido.")
+			}
+		}
+		result, err := rollWithMode(expression, payload.Mode)
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
 		}
@@ -191,6 +207,34 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 	_ = h.pool.QueryRow(r.Context(), `select display_name from profiles where id=$1`, p.UserID).Scan(&item.Author)
 	return write(w, http.StatusCreated, item)
+}
+
+func validWeaponDamageRoll(expression string) bool {
+	groups, _, err := parseDiceExpression(expression)
+	if err != nil || len(groups) == 0 {
+		return false
+	}
+	total := 0
+	for _, group := range groups {
+		total += group.count
+	}
+	return total <= 10
+}
+
+func doubleDiceExpression(expression string) (string, error) {
+	groups, modifier, err := parseDiceExpression(expression)
+	if err != nil {
+		return "", err
+	}
+	parts := make([]string, 0, len(groups)+1)
+	for _, group := range groups {
+		parts = append(parts, fmt.Sprintf("%dd%d", group.count*2, group.sides))
+	}
+	result := strings.Join(parts, "+")
+	if modifier != 0 {
+		result += fmt.Sprintf("%+d", modifier)
+	}
+	return result, nil
 }
 
 func validMinimumDamageRoll(expression string) bool {

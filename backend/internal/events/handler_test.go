@@ -70,6 +70,26 @@ func TestRollRejectsMoreThanOneHundredDiceAcrossGroups(t *testing.T) {
 	}
 }
 
+func TestWeaponDamageRollValidatesBaseAndDoublesCriticalDice(t *testing.T) {
+	for _, expression := range []string{"10d6", "2d6+3d8+5d10"} {
+		if !validWeaponDamageRoll(expression) {
+			t.Errorf("expected non-critical weapon damage %q to be accepted", expression)
+		}
+	}
+	for _, expression := range []string{"11d6", "5d6+6d8"} {
+		if validWeaponDamageRoll(expression) {
+			t.Errorf("expected non-critical weapon damage %q to be rejected", expression)
+		}
+	}
+	if validWeaponDamageRoll("20d6+5") {
+		t.Fatal("critical damage must be sent as the validated base formula")
+	}
+	doubled, err := doubleDiceExpression("2d6+3d8+5")
+	if err != nil || doubled != "4d6+6d8+5" {
+		t.Fatalf("unexpected critical expression %q, error %v", doubled, err)
+	}
+}
+
 func TestRollRejectsUnsafeExpressions(t *testing.T) {
 	for _, expression := range []string{"", "1d1", "101d20", "1d20+10001", "alert(1)"} {
 		if _, err := roll(expression); err == nil {
