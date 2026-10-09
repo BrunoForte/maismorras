@@ -122,16 +122,16 @@ test.describe('authenticated Sheets tab', () => {
 			await picker.selectOption(first.id);
 			const embedded = gm.locator('.sheet-backdrop.embedded .sheet');
 			await expect(embedded.locator('header h2')).toHaveText('Personagem Aurora');
-			await expect(embedded.locator('.sheet-owner')).toContainText('player-');
+			await expect(embedded.locator('.sheet-owner')).toContainText(fixture.playerDisplayName);
 			await picker.selectOption(second.id);
 			await expect(embedded.locator('header h2')).toHaveText('Personagem Boreal');
-			await expect(embedded.locator('.sheet-owner')).toContainText('player-extra-');
+			await expect(embedded.locator('.sheet-owner')).toContainText(secondPlayer.displayName);
 			await expect(gm.locator('.sheet-backdrop.embedded .sheet')).toHaveCount(1);
 
 			await embedded.getByRole('button', { name: 'Abrir como painel' }).click();
 			const panelSheet = gm.locator('.sheet-backdrop.floating .sheet');
 			await expect(panelSheet.locator('header h2')).toHaveText('Personagem Boreal');
-			await expect(panelSheet.locator('.sheet-owner')).toContainText('player-extra-');
+			await expect(panelSheet.locator('.sheet-owner')).toContainText(secondPlayer.displayName);
 
 			const popupPromise = gm.waitForEvent('popup');
 			await embedded.getByRole('button', { name: 'Abrir em janela auxiliar' }).click();
