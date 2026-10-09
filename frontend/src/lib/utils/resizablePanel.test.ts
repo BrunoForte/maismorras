@@ -27,6 +27,24 @@ afterEach(() => {
 });
 
 describe('resizablePanel', () => {
+	it('skips saved sizing preferences for embedded content', () => {
+		const storage = { getItem: vi.fn(), setItem: vi.fn() };
+		Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+		const style = fakeStyle();
+		const node = { style } as unknown as HTMLElement;
+		const action = resizablePanel(node, {
+			collapsed: false,
+			headerSelector: 'header',
+			storageKey: 'embedded-sheet',
+			skipLayout: true
+		});
+
+		expect(storage.getItem).not.toHaveBeenCalled();
+		expect(style).toEqual({ removeProperty: expect.any(Function) });
+		action.destroy();
+		expect(storage.setItem).not.toHaveBeenCalled();
+	});
+
 	it('fills and tracks the auxiliary window viewport without reading or saving page preferences', () => {
 		let width = 1180;
 		let height = 820;

@@ -139,11 +139,13 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 		characterOwnerName = '',
 		docked = false,
 		hidden = false,
+		embedded = false,
 		standalone = false,
 		focusRequest = 0,
 		actorPanelVisible = false,
 		onCharacterResolved = () => {},
 		onDockChange = () => {},
+		onOpenPanel = () => {},
 		onOpenNewWindow = () => {},
 		onclose,
 		onTokenCreated
@@ -156,12 +158,14 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 		characterOwnerName?: string;
 		docked?: boolean;
 		hidden?: boolean;
+		embedded?: boolean;
 		standalone?: boolean;
 		focusRequest?: number;
 		actorPanelVisible?: boolean;
 		onCharacterResolved?: (characterId: string) => void;
 		onDockChange?: (docked: boolean) => void;
-		onOpenNewWindow?: (characterId: string) => void;
+		onOpenPanel?: (characterId: string) => void;
+		onOpenNewWindow?: (characterId: string) => boolean | void;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
@@ -185,10 +189,11 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	let panelZIndex = $derived(Math.max(raisedPanelLayer, docked ? 9 : 20));
 	let reportedResolvedCharacterId = $state('');
 	$effect(() => {
-		if (!standalone) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
+		if (!standalone && !embedded)
+			minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
 	});
 	$effect(() => {
-		if (standalone || focusRequest === 0) return;
+		if (standalone || embedded || focusRequest === 0) return;
 		minimized = false;
 		raisedPanelLayer = nextFloatingPanelLayer();
 		void tick().then(() => sheetPanelElement?.focus());
@@ -1025,21 +1030,23 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 <div
 	class="sheet-backdrop"
 	class:docked
-	class:floating={!docked && !standalone}
+	class:floating={!embedded && !docked && !standalone}
+	class:embedded
 	class:standalone
 	class:hidden
-	style:z-index={panelZIndex}
-	onpointerdown={bringToFront}
-	onfocusin={bringToFront}
+	style:z-index={embedded ? undefined : panelZIndex}
+	onpointerdown={() => !embedded && bringToFront()}
+	onfocusin={() => !embedded && bringToFront()}
 	role="presentation"
 	onclick={(event) => {
-		if (event.currentTarget === event.target) onclose();
+		if (!embedded && event.currentTarget === event.target) onclose();
 	}}
 >
 	<section
 		bind:this={sheetPanelElement}
 		use:movablePanel={{
 			storageKey: sheetPanelKey,
+			skipLayout: embedded,
 			layoutKey: actorPanelVisible ? 'map-panels' : 'campaign-panels',
 			handleSelector: 'header',
 			minTop: 56,
@@ -1055,29 +1062,59 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
-			collapsed: !standalone && minimized,
+			collapsed: !standalone && !embedded && minimized,
 			headerSelector: 'header',
 			fillViewport: standalone,
 			minWidth: 300,
-			storageKey: standalone ? undefined : sheetPanelKey
+			storageKey: standalone || embedded ? undefined : sheetPanelKey,
+			skipLayout: embedded
 		}}
 		class="sheet"
 		class:minimized
+		class:embedded
 		tabindex="-1"
 		aria-label="Ficha de personagem D&D 2024"
 	>
 		<header
 			role="toolbar"
-			tabindex="0"
-			aria-label={$appLocale === 'en'
-				? 'Move character sheet with pointer or arrow keys'
-				: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
+			tabindex={embedded ? -1 : 0}
+			aria-label={embedded
+				? $appLocale === 'en'
+					? 'Character sheet actions'
+					: 'Ações da ficha'
+				: $appLocale === 'en'
+					? 'Move character sheet with pointer or arrow keys'
+					: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
 		>
 			<div class="sheet-header-content">
 				<div class="sheet-title-row">
 					<div class="sheet-heading">
 						<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
-						{#if !standalone}
+						{#if embedded}
+							<div class="sheet-primary-actions">
+								<button
+									type="button"
+									onclick={() =>
+										onOpenPanel(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
+									disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+									>{$appLocale === 'en' ? 'Open as panel' : 'Abrir como painel'}</button
+								><button
+									type="button"
+									onclick={() => {
+										const id = characterId ?? lifecycle.state.resolvedCharacterId ?? '';
+										if (id && onOpenNewWindow(id) === false)
+											lifecycle.state.message =
+												$appLocale === 'en'
+													? 'The browser blocked the auxiliary window. The sheet remains available here.'
+													: 'O navegador bloqueou a janela auxiliar. A ficha continua acessível aqui.';
+									}}
+									disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+									>{$appLocale === 'en'
+										? 'Open auxiliary window'
+										: 'Abrir em janela auxiliar'}</button
+								>
+							</div>
+						{:else if !standalone}
 							<div class="sheet-primary-actions">
 								<button
 									type="button"
@@ -1110,7 +1147,7 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 						{/if}
 					</div>
 					<div class="sheet-actions">
-						{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
+						{#if !standalone && !embedded}<span class="sheet-mode-status" aria-live="polite">
 								{docked
 									? $appLocale === 'en'
 										? 'Docked'
@@ -1128,11 +1165,12 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 									: $appLocale === 'en'
 										? 'Minimize character sheet'
 										: 'Minimizar ficha'}>{minimized ? '▸' : '−'}</button
-							>{/if}<button
-							type="button"
-							onclick={onclose}
-							aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button
-						>
+							>{/if}{#if !embedded}<button
+								type="button"
+								onclick={onclose}
+								aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}
+								>×</button
+							>{/if}
 					</div>
 				</div>
 			</div>
@@ -1431,7 +1469,8 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 		pointer-events: none;
 	}
 	.sheet-backdrop.hidden {
-		display: none;
+		visibility: hidden;
+		pointer-events: none;
 	}
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
@@ -1859,5 +1898,46 @@ import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 			padding: 0.3rem;
 			font-size: 0.62rem;
 		}
+	}
+	.sheet-backdrop.embedded {
+		position: relative;
+		z-index: auto;
+		inset: auto;
+		display: flex;
+		flex: 1 1 auto;
+		min-width: 0;
+		min-height: 0;
+		width: 100%;
+		height: auto;
+		padding: 0;
+		background: transparent;
+		backdrop-filter: none;
+		pointer-events: auto;
+	}
+	.sheet-backdrop.embedded .sheet {
+		position: relative;
+		inset: auto;
+		flex: 1 1 auto;
+		width: 100%;
+		max-width: none;
+		min-width: 0;
+		height: 100%;
+		min-height: 0;
+		max-height: none;
+		resize: none;
+		border-radius: 10px;
+		box-shadow: none;
+	}
+	.sheet-backdrop.embedded .sheet > header {
+		cursor: default;
+		touch-action: auto;
+	}
+	.sheet-backdrop.embedded .sheet-body {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow: auto;
+	}
+	.sheet-backdrop.embedded .sheet > footer {
+		flex-wrap: wrap;
 	}
 </style>

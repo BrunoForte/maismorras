@@ -37,8 +37,9 @@
 	let {
 		campaignId,
 		session,
-		sheetOpen = false
-	}: { campaignId: string; session: Session; sheetOpen?: boolean } = $props();
+		sheetOpen = false,
+		covered = false
+	}: { campaignId: string; session: Session; sheetOpen?: boolean; covered?: boolean } = $props();
 	// CampaignWorkspace keys this component by campaign, so these are intentionally read once per campaign mount.
 	let open = $state(untrack(() => campaignChatStartsOpen(campaignId)));
 	let docked = $state(untrack(() => campaignChatStartsDocked(campaignId)));
@@ -255,6 +256,7 @@
 	class:closed={!open}
 	class:docked
 	class:sheet-open={sheetOpen}
+	class:covered
 	class="floating-chat"
 	aria-label={$appLocale === 'en' ? 'Table chat' : 'Chat da mesa'}
 	style:z-index={panelZIndex}
@@ -425,6 +427,10 @@
 		background: rgba(27, 22, 26, 0.94);
 		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
 		backdrop-filter: blur(12px);
+	}
+	.floating-chat.covered {
+		visibility: hidden;
+		pointer-events: none;
 	}
 	.floating-chat.docked {
 		top: 6rem;

@@ -76,11 +76,13 @@ export type LocalAuthenticatedFixture = {
 	gmPublisher: Page;
 	gmUserId: string;
 	playerUserId: string;
+	playerDisplayName: string;
 	createCharacter: (
 		ownerId: string,
 		sheetChanges?: Record<string, unknown>
 	) => Promise<{ id: string; sheet: Record<string, unknown> }>;
 	createCharacterToken: (characterId: string) => Promise<string>;
+	addPlayer: () => Promise<{ userId: string; displayName: string; page: Page }>;
 	startAudio: () => Promise<AudioSetup>;
 	close: () => Promise<void>;
 };
@@ -96,6 +98,7 @@ export async function createLocalAuthenticatedFixture(
 	const password = `Local-${randomBytes(24).toString('base64url')}-9!`;
 	const gmEmail = `gm-${suffix}@example.test`;
 	const playerEmail = `player-${suffix}@example.test`;
+	const playerDisplayName = `player-${suffix}`;
 	const admin = await playwrightRequest.newContext({
 		baseURL: supabaseUrl,
 		extraHTTPHeaders: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
@@ -103,6 +106,9 @@ export async function createLocalAuthenticatedFixture(
 	const gmContext = await browser.newContext();
 	const playerContext = await browser.newContext();
 	let overlayContext: BrowserContext | undefined;
+	const additionalContexts: BrowserContext[] = [];
+	const additionalPlayers: string[] = [];
+	const additionalApis: APIRequestContext[] = [];
 	let gmUserId: string | undefined;
 	let playerUserId: string | undefined;
 	let campaignId: string | undefined;
@@ -138,25 +144,36 @@ export async function createLocalAuthenticatedFixture(
 			await Promise.all(
 				[gmApi?.dispose(), playerApi?.dispose(), pairingApi?.dispose()].filter(Boolean)
 			);
-			for (const id of [gmUserId, playerUserId]) {
+			for (const id of [gmUserId, playerUserId, ...additionalPlayers]) {
 				if (id) await admin.delete(`/auth/v1/admin/users/${id}`).catch(() => undefined);
 			}
-			await Promise.all([gmContext.close(), playerContext.close(), admin.dispose()]);
+			await Promise.all([
+				...additionalApis.map((api) => api.dispose()),
+				...additionalContexts.map((context) => context.close()),
+				gmContext.close(),
+				playerContext.close(),
+				admin.dispose()
+			]);
 		}
 	};
 
 	try {
 		setupStage = 'create unique GM/player test users';
-		const createUser = async (email: string) => {
+		const createUser = async (email: string, displayName?: string) => {
 			const response = await admin.post('/auth/v1/admin/users', {
-				data: { email, password, email_confirm: true }
+				data: {
+					email,
+					password,
+					email_confirm: true,
+					...(displayName ? { user_metadata: { full_name: displayName } } : {})
+				}
 			});
 			expect(response.ok()).toBeTruthy();
 			return (await response.json()) as { id: string };
 		};
 		[gmUserId, playerUserId] = await test.step('create unique GM/player test users', async () => [
 			(await createUser(gmEmail)).id,
-			(await createUser(playerEmail)).id
+			(await createUser(playerEmail, playerDisplayName)).id
 		]);
 		const login = async (role: 'GM' | 'player', context: BrowserContext, email: string) =>
 			test.step(`login ${role}`, async () => {
@@ -258,6 +275,7 @@ export async function createLocalAuthenticatedFixture(
 			gmPublisher,
 			gmUserId,
 			playerUserId,
+			playerDisplayName,
 			createCharacter: async (ownerId, sheetChanges = {}) => {
 				const response = await gmApi!.post(`/api/v1/campaigns/${campaignId}/characters`, {
 					data: { ownerId }
@@ -283,6 +301,28 @@ export async function createLocalAuthenticatedFixture(
 				});
 				expect(response.status()).toBe(201);
 				return ((await response.json()) as { id: string }).id;
+			},
+			addPlayer: async () => {
+				const email = `player-extra-${randomBytes(8).toString('hex')}@example.test`;
+				const displayName = email.slice(0, email.indexOf('@'));
+				const userId = (await createUser(email, displayName)).id;
+				additionalPlayers.push(userId);
+				const context = await browser.newContext();
+				additionalContexts.push(context);
+				const loginResult = await login('player', context, email);
+				const api = await playwrightRequest.newContext({
+					baseURL: apiBase,
+					extraHTTPHeaders: { Authorization: `Bearer ${loginResult.token}` }
+				});
+				additionalApis.push(api);
+				const inviteResponse = await gmApi!.post(`/api/v1/campaigns/${campaignId}/invites`, {
+					data: {}
+				});
+				expect(inviteResponse.status()).toBe(201);
+				const invite = (await inviteResponse.json()) as { code: string };
+				const accepted = await api.post(`/api/v1/invites/${invite.code}/accept`, { data: {} });
+				expect(accepted.ok()).toBeTruthy();
+				return { userId, displayName, page: loginResult.page };
 			},
 			startAudio: async () => {
 				if (!withAudio) throw new Error('Audio assets were not provisioned for this scenario.');
