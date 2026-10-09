@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -206,10 +207,19 @@ func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
 			t.Fatalf("decode %s rules: %v", entry.Name, err)
 		}
 		level, ok := rules["level"].(float64)
-		if !ok || (level != 0 && level != 1) {
+		if !ok || level < 0 || level > 9 {
 			if _, audited := rules["mechanicsAudit"]; audited {
 				t.Errorf("out-of-scope spell %s was marked audited", entry.Name)
 			}
+			continue
+		}
+		if level > 6 {
+			if _, audited := rules["mechanicsAudit"]; audited {
+				t.Errorf("out-of-scope spell %s was marked audited", entry.Name)
+			}
+			continue
+		}
+		if level > 1 {
 			continue
 		}
 		counts["spells"]++
@@ -233,6 +243,18 @@ func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
 			components, componentsOK := damage["components"].([]any)
 			if !ok || !componentsOK || len(components) == 0 {
 				t.Errorf("%s has untyped damage data: %#v", entry.Name, rules["damage"])
+			} else {
+				for _, raw := range components {
+					component, ok := raw.(map[string]any)
+					if !ok || strings.TrimSpace(fmt.Sprint(component["formula"])) == "" || strings.TrimSpace(fmt.Sprint(component["type"])) == "" {
+						t.Errorf("%s has a damage component without formula or type: %#v", entry.Name, raw)
+						continue
+					}
+					formula := fmt.Sprint(component["formula"])
+					if dice := regexp.MustCompile(`\d+d\d+`).FindString(formula); dice != "" && !strings.Contains(strings.ToLower(translations["pt-BR.rules.description"]), strings.ToLower(dice)) {
+						t.Errorf("%s damage formula %q is absent from its localized description", entry.Name, formula)
+					}
+				}
 			}
 		}
 		if rules["scaling"] == nil {
@@ -306,13 +328,13 @@ func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
 		"Animal Friendship": "2:additional-targets:1:1:Beast", "Bane": "2:additional-targets:1:1", "Bless": "2:additional-targets:1:1",
 		"Burning Hands": "2:damage-increase:1:1d6:fire", "Charm Person": "2:additional-targets:1:1",
 		"Chromatic Orb": "2:damage-increase:1:1d8:varies;2:maximum-leaps-equals-slot-level",
-		"Command": "2:additional-targets:1:1", "Create or Destroy Water": "2:water-volume-or-cube-size:1:10:5:one-mode",
+		"Command":       "2:additional-targets:1:1", "Create or Destroy Water": "2:water-volume-or-cube-size:1:10:5:one-mode",
 		"Cure Wounds": "2:healing-increase:1:2d8", "Dissonant Whispers": "2:damage-increase:1:1d6:psychic",
 		"Divine Smite": "2:damage-increase:1:1d8:radiant", "Ensnaring Strike": "2:damage-increase:1:1d6:piercing",
 		"False Life": "2:temporary-hit-points-increase:1:5", "Fog Cloud": "2:radius-increase:1:20",
 		"Guiding Bolt": "2:damage-increase:1:1d6:radiant", "Healing Word": "2:healing-increase:1:2d4",
 		"Hellish Rebuke": "2:damage-increase:1:1d10:fire", "Heroism": "2:additional-targets:1:1",
-		"Hex": "2:duration-tier:4 hours;3:duration-tier:8 hours;5:duration-tier:24 hours",
+		"Hex":              "2:duration-tier:4 hours;3:duration-tier:8 hours;5:duration-tier:24 hours",
 		"Hideous Laughter": "2:additional-targets:1:1", "Hunter’s Mark": "3:duration-tier:8 hours;5:duration-tier:24 hours",
 		"Ice Knife": "2:damage-increase:1:1d6:cold:burst-save-fail", "Inflict Wounds": "2:damage-increase:1:1d10:necrotic",
 		"Jump": "2:additional-targets:1:1", "Longstrider": "2:additional-targets:1:1",
@@ -340,6 +362,160 @@ func TestSRDCantripAndFirstLevelMechanicsAreAudited(t *testing.T) {
 	for _, name := range []string{"Hex", "Hunter’s Mark", "Magic Missile", "Create or Destroy Water", "Cure Wounds", "Ice Knife", "Chromatic Orb", "Searing Smite"} {
 		if signature := spellSlotScalingSignature(t, name, spellNames[name]["scaling"].(map[string]any)["spellSlot"].(map[string]any)["effects"]); signature == "" {
 			t.Errorf("%s slot scaling lacks typed effect data", name)
+		}
+	}
+}
+
+func TestSRDSecondThroughSixthLevelSpellTranslationsAreReviewed(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	levels := map[int]int{}
+	counts := map[string]int{"damage": 0, "noDamage": 0, "scaling": 0, "noScaling": 0}
+	count := 0
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		level, ok := rules["level"].(float64)
+		if !ok || level < 2 || level > 6 {
+			continue
+		}
+		count++
+		levels[int(level)]++
+		translations := decodeTranslations(entry.Translations)
+		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.description"} {
+			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				t.Errorf("%s %s translation is absent or not reviewed", entry.Name, key)
+			}
+		}
+		if _, exists := translations["pt-BR.rules.name"]; exists && translations["pt-BR.rules.name.source"] != "reviewed" {
+			t.Errorf("%s rules.name translation is not reviewed", entry.Name)
+		}
+		audit, ok := rules["mechanicsAudit"].(map[string]any)
+		if !ok || audit["status"] != "reviewed" || audit["source"] != "D&D SRD 5.2.1" {
+			t.Errorf("%s mechanics were not audited against the SRD: %#v", entry.Name, rules["mechanicsAudit"])
+		}
+		if rules["damage"] == nil {
+			counts["noDamage"]++
+		} else {
+			counts["damage"]++
+			damage, ok := rules["damage"].(map[string]any)
+			components, componentsOK := damage["components"].([]any)
+			if !ok || !componentsOK || len(components) == 0 {
+				t.Errorf("%s has untyped damage data: %#v", entry.Name, rules["damage"])
+			}
+		}
+		if rules["scaling"] == nil {
+			counts["noScaling"]++
+		} else {
+			counts["scaling"]++
+			scaling, ok := rules["scaling"].(map[string]any)
+			slot, slotOK := scaling["spellSlot"].(map[string]any)
+			if !ok || !slotOK || slot["baseLevel"] != level {
+				t.Errorf("%s has malformed spell-slot scaling: %#v", entry.Name, rules["scaling"])
+				continue
+			}
+			effects, effectsOK := slot["effects"].([]any)
+			if !effectsOK || len(effects) == 0 {
+				t.Errorf("%s spell-slot scaling has no effects", entry.Name)
+				continue
+			}
+			for _, raw := range effects {
+				effect, ok := raw.(map[string]any)
+				if !ok || effect["kind"] != "rule-text" || effect["fromSlotLevel"] != level+1 {
+					t.Errorf("%s has untyped or incorrectly thresholded slot scaling: %#v", entry.Name, raw)
+					continue
+				}
+				text, ok := effect["text"].(map[string]any)
+				if !ok || strings.TrimSpace(fmt.Sprint(text["en"])) == "" || strings.TrimSpace(fmt.Sprint(text["ptBR"])) == "" {
+					t.Errorf("%s slot scaling lacks source and PT-BR text: %#v", entry.Name, effect["text"])
+				} else if !strings.Contains(translations["pt-BR.rules.description"], fmt.Sprint(text["ptBR"])) {
+					t.Errorf("%s typed PT-BR slot effect is absent from its localized description", entry.Name)
+				}
+			}
+		}
+	}
+	wantLevels := map[int]int{2: 56, 3: 42, 4: 34, 5: 38, 6: 31}
+	if count != 201 {
+		t.Fatalf("reviewed spell translations = %d, want 201", count)
+	}
+	for level, want := range wantLevels {
+		if levels[level] != want {
+			t.Errorf("level %d reviewed spell translations = %d, want %d", level, levels[level], want)
+		}
+	}
+	if counts["damage"] != 63 || counts["noDamage"] != 138 || counts["scaling"] != 76 || counts["noScaling"] != 125 {
+		t.Fatalf("level 2–6 applicability = damage %d/%d, scaling %d/%d; want 63/138 and 76/125", counts["damage"], counts["noDamage"], counts["scaling"], counts["noScaling"])
+	}
+	spellByName := map[string]srdEntry{}
+	for _, entry := range pack.Entries {
+		if entry.EntryType == "spell" {
+			spellByName[entry.Name] = entry
+		}
+	}
+	wantDamage := map[string]string{
+		"Animate Objects":  "1d4+3|force|animated-object-slam-medium-or-smaller;2d6+3+modificador da habilidade de conjuração|force|animated-object-slam-large;2d12+3+modificador da habilidade de conjuração|force|animated-object-slam-huge",
+		"Acid Arrow":       "4d4|acid;2d4|acid",
+		"Fireball":         "8d6|fire",
+		"Flame Blade":      "3d6|fire|melee-spell-attack-hit",
+		"Forbiddance":      "5d10|varies|types=radiant,necrotic|entered-area-save-fail",
+		"Glyph of Warding": "5d8|varies|types=acid,cold,fire,lightning,thunder|explosive-rune-failed-save",
+		"Conjure Fey":      "3d12|psychic|fey-spirit-hit",
+		"Find Steed":       "1d8 + nível da magia|varies|types=radiant,psychic,necrotic|steed-slam-hit",
+		"Spiritual Weapon": "1d8 + modificador da habilidade de conjuração|force|weapon-hit",
+	}
+	for name, want := range wantDamage {
+		entry, ok := spellByName[name]
+		if !ok {
+			t.Errorf("missing expected spell %q", name)
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", name, err)
+		}
+		if got := spellDamageSignature(t, name, rules["damage"]); got != want {
+			t.Errorf("%s damage signature = %q, want %q", name, got, want)
+		}
+	}
+	wantNames := map[string]string{
+		"Alter Self": "Alterar-se", "Haste": "Acelerar", "Shining Smite": "Golpe Resplandecente",
+		"Call Lightning": "Invocar Relâmpagos", "Counterspell": "Contramágica",
+		"Glyph of Warding": "Glifo de Proteção", "Find Steed": "Convocar Montaria",
+		"Warding Bond": "Vínculo Guardião", "Conjure Fey": "Conjurar Seres Feéricos",
+	}
+	for name, want := range wantNames {
+		entry := spellByName[name]
+		translations := decodeTranslations(entry.Translations)
+		if got := translations["pt-BR"]; got != want {
+			t.Errorf("%s approved name = %q, want %q", name, got, want)
+		}
+	}
+	wantSlotText := map[string][]string{
+		"Bestow Curse":  {"level 5+ spell slot", "duration becomes 8 hours", "spell lasts until dispelled"},
+		"Create Undead": {"level 7 spell slot", "level 8 spell slot", "level 9 spell slot"},
+		"Fireball":      {"damage increases by 1d6 for each spell slot level above 3"},
+		"Modify Memory": {"7 days ago", "30 days ago", "365 days ago", "any time in the creature’s past"},
+	}
+	for name, fragments := range wantSlotText {
+		entry := spellByName[name]
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", name, err)
+		}
+		scaling := rules["scaling"].(map[string]any)["spellSlot"].(map[string]any)
+		effect := scaling["effects"].([]any)[0].(map[string]any)
+		text := effect["text"].(map[string]any)["en"].(string)
+		for _, fragment := range fragments {
+			if !strings.Contains(text, fragment) {
+				t.Errorf("%s source slot-scaling text %q lacks %q", name, text, fragment)
+			}
 		}
 	}
 }

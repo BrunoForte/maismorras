@@ -35,7 +35,8 @@ export type SpellSlotSpellEffect = {
 		| 'healing-increase'
 		| 'temporary-hit-points-increase'
 		| 'radius-increase'
-		| 'duration-tier';
+		| 'duration-tier'
+		| 'rule-text';
 	fromSlotLevel: number;
 	everySlotLevels?: number;
 	formula?: string;
@@ -50,6 +51,7 @@ export type SpellSlotSpellEffect = {
 	amount?: number;
 	duration?: string;
 	componentTrigger?: string;
+	text?: { en?: string; ptBR?: string };
 };
 
 export type SpellMechanicsRules = {
@@ -106,7 +108,9 @@ const DAMAGE_EN: Record<string, string> = {
 
 function records(value: unknown): Record<string, unknown>[] {
 	return Array.isArray(value)
-		? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+		? value.filter(
+				(item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+			)
 		: [];
 }
 
@@ -114,28 +118,29 @@ function damageLabel(component: SpellDamageComponent, locale: string): string {
 	const names = locale === 'en' ? DAMAGE_EN : DAMAGE_PT;
 	const type = Array.isArray(component.types)
 		? component.types.map((item) => names[item] ?? item).join(locale === 'en' ? ', ' : ', ')
-		: names[component.type] ?? component.type;
-	const trigger = component.trigger
-		? ` · ${triggerLabel(component.trigger, locale)}`
-		: '';
+		: (names[component.type] ?? component.type);
+	const trigger = component.trigger ? ` · ${triggerLabel(component.trigger, locale)}` : '';
 	let label = `${component.formula} ${type}${trigger}`;
 	if (component.instances && component.instances > 1) {
 		label += locale === 'en' ? ` × ${component.instances}` : ` × ${component.instances}`;
 	}
 	if (component.explodingDice) {
-		const maximum = component.explodingDice.maxAdditionalDice === 'spellcasting-ability-modifier'
-			? locale === 'en'
-				? 'spellcasting ability modifier'
-				: 'modificador da habilidade de conjuração'
-			: component.explodingDice.maxAdditionalDice;
-		label += locale === 'en'
-			? `; on ${component.explodingDice.triggersOn}, roll another ${component.explodingDice.die}, up to ${maximum}`
-			: `; ao obter ${component.explodingDice.triggersOn}, role outro ${component.explodingDice.die}, até ${maximum}`;
+		const maximum =
+			component.explodingDice.maxAdditionalDice === 'spellcasting-ability-modifier'
+				? locale === 'en'
+					? 'spellcasting ability modifier'
+					: 'modificador da habilidade de conjuração'
+				: component.explodingDice.maxAdditionalDice;
+		label +=
+			locale === 'en'
+				? `; on ${component.explodingDice.triggersOn}, roll another ${component.explodingDice.die}, up to ${maximum}`
+				: `; ao obter ${component.explodingDice.triggersOn}, role outro ${component.explodingDice.die}, até ${maximum}`;
 	}
 	for (const extra of component.additional ?? []) {
-		label += locale === 'en'
-			? `; plus ${extra.formula} ${names[extra.type] ?? extra.type}${extra.trigger ? ` (${triggerLabel(extra.trigger, locale)})` : ''}`
-			: `; mais ${extra.formula} ${names[extra.type] ?? extra.type}${extra.trigger ? ` (${triggerLabel(extra.trigger, locale)})` : ''}`;
+		label +=
+			locale === 'en'
+				? `; plus ${extra.formula} ${names[extra.type] ?? extra.type}${extra.trigger ? ` (${triggerLabel(extra.trigger, locale)})` : ''}`
+				: `; mais ${extra.formula} ${names[extra.type] ?? extra.type}${extra.trigger ? ` (${triggerLabel(extra.trigger, locale)})` : ''}`;
 	}
 	return label;
 }
@@ -145,10 +150,64 @@ function triggerLabel(trigger: string, locale: string): string {
 		'per-beam': ['por feixe', 'per beam'],
 		'weapon-hit': ['ao acertar com arma', 'when a weapon hits'],
 		'attack-hit': ['ao acertar com um ataque', 'when an attack hits'],
-		'restrained-start-of-turn': ['no início do turno enquanto Impedido', 'at the start of a turn while Restrained'],
+		'restrained-start-of-turn': [
+			'no início do turno enquanto Impedido',
+			'at the start of a turn while Restrained'
+		],
 		'burst-save-fail': ['na explosão, se falhar na salvaguarda', 'on the burst, on a failed save'],
 		'automatic-hit': ['acerta automaticamente', 'hits automatically'],
-		'fiend-or-undead': ['contra Corruptores ou Mortos-vivos', 'against Fiends or Undead']
+		'fiend-or-undead': ['contra Corruptores ou Mortos-vivos', 'against Fiends or Undead'],
+		'natural-weapon-hit': ['ao acertar com arma natural', 'when a natural weapon hits'],
+		'melee-hit': ['quando atingido por ataque corpo a corpo', 'when hit by a melee attack'],
+		'turn-or-entry': [
+			'no início do turno ou ao entrar na área',
+			'at the start of a turn or on entering the area'
+		],
+		'sting-hit': ['ao acertar com a ferroada', 'when the sting hits'],
+		'web-bolt-hit': ['ao acertar com o disparo de teia', 'when the web bolt hits'],
+		'rend-hit': ['ao acertar com Dilacerar', 'when Rend hits'],
+		'breath-failed-save': [
+			'ao falhar na salvaguarda contra o Sopro',
+			'on a failed save against Breath'
+		],
+		'tiny-or-small-object-slam': [
+			'impacto de objeto Minúsculo ou Pequeno',
+			'Tiny or Small object Slam'
+		],
+		'large-object-slam': ['impacto de objeto Grande', 'Large object Slam'],
+		'huge-object-slam': ['impacto de objeto Enorme', 'Huge object Slam'],
+		'explosive-rune-failed-save': [
+			'runa explosiva, em salvaguarda falha',
+			'explosive rune, on a failed save'
+		],
+		'entered-area-save-fail': [
+			'ao entrar na área e falhar na salvaguarda',
+			'on entering the area and failing the save'
+		],
+		'start-of-turn': ['no início do turno', 'at the start of a turn'],
+		'failed-save': ['em salvaguarda falha', 'on a failed save'],
+		'failed-save-or-contact': [
+			'em salvaguarda falha ou ao tocar a esfera',
+			'on a failed save or touching the sphere'
+		],
+		'ray-hit': ['ao acertar com o raio', 'when a ray hits'],
+		'melee-spell-attack-hit': [
+			'ao acertar com ataque mágico corpo a corpo',
+			'when a melee spell attack hits'
+		],
+		'fey-spirit-hit': ['ao acertar com o espírito feérico', 'when the Fey spirit hits'],
+		'wall-appears-or-start-turn': [
+			'quando a muralha surge ou no início do turno',
+			'when the wall appears or at the start of a turn'
+		],
+		'moving-through-wall': ['ao atravessar a muralha', 'when moving through the wall'],
+		'steed-slam-hit': ['ao acertar com o Impacto Sobrenatural', 'when Otherworldly Slam hits'],
+		'animated-object-slam-medium-or-smaller': [
+			'Pancada de objeto Médio ou menor',
+			'Medium or smaller object Slam'
+		],
+		'animated-object-slam-large': ['Pancada de objeto Grande', 'Large object Slam'],
+		'animated-object-slam-huge': ['Pancada de objeto Enorme', 'Huge object Slam']
 	};
 	return labels[trigger]?.[locale === 'en' ? 1 : 0] ?? trigger;
 }
@@ -174,13 +233,19 @@ function scalingLabel(effect: Record<string, unknown>, locale: string): string {
 		case 'beam-count':
 			return en ? `${levelText}: ${effect.count} beams` : `${levelText}: ${effect.count} feixes`;
 		case 'weapon-damage-die':
-			return en ? `${levelText}: weapon damage die ${effect.die}` : `${levelText}: dado de dano da arma ${effect.die}`;
+			return en
+				? `${levelText}: weapon damage die ${effect.die}`
+				: `${levelText}: dado de dano da arma ${effect.die}`;
 		case 'range-feet':
-			return en ? `${levelText}: range ${effect.feet} ft.` : `${levelText}: alcance ${effect.feet} pés`;
+			return en
+				? `${levelText}: range ${effect.feet} ft.`
+				: `${levelText}: alcance ${effect.feet} pés`;
 		case 'damage-increase':
-			return `${en
-				? `Slot ${effect.fromSlotLevel}+: +${effect.formula} ${names[String(effect.type)] ?? effect.type} per slot level`
-				: `Espaço de nível ${effect.fromSlotLevel}+: +${effect.formula} ${names[String(effect.type)] ?? effect.type} por nível do espaço`}${effect.componentTrigger ? ` (${triggerLabel(String(effect.componentTrigger), locale)})` : ''}`;
+			return `${
+				en
+					? `Slot ${effect.fromSlotLevel}+: +${effect.formula} ${names[String(effect.type)] ?? effect.type} per slot level`
+					: `Espaço de nível ${effect.fromSlotLevel}+: +${effect.formula} ${names[String(effect.type)] ?? effect.type} por nível do espaço`
+			}${effect.componentTrigger ? ` (${triggerLabel(String(effect.componentTrigger), locale)})` : ''}`;
 		case 'damage-increase-all-components':
 			return en
 				? `Slot ${effect.fromSlotLevel}+: all damage increases by ${effect.formula} per slot level`
@@ -190,7 +255,9 @@ function scalingLabel(effect: Record<string, unknown>, locale: string): string {
 				? `Slot ${effect.fromSlotLevel}+: ${effect.count} additional instance per slot level (${effect.componentFormula} ${names[String(effect.type)] ?? effect.type})`
 				: `Espaço de nível ${effect.fromSlotLevel}+: ${effect.count} instância adicional por nível do espaço (${effect.componentFormula} ${names[String(effect.type)] ?? effect.type})`;
 		case 'maximum-leaps-equals-slot-level':
-			return en ? 'At slot level 2+: maximum leaps equal the expended slot level' : 'Com espaço de nível 2+: o máximo de saltos é igual ao nível do espaço gasto';
+			return en
+				? 'At slot level 2+: maximum leaps equal the expended slot level'
+				: 'Com espaço de nível 2+: o máximo de saltos é igual ao nível do espaço gasto';
 		case 'additional-targets':
 			return en
 				? `Slot ${effect.fromSlotLevel}+: +${effect.count} target per slot level${effect.targetType ? ` (${effect.targetType})` : ''}`
@@ -200,13 +267,27 @@ function scalingLabel(effect: Record<string, unknown>, locale: string): string {
 				? `Slot ${effect.fromSlotLevel}+: +${effect.additionalGallons} gallons or +${effect.cubeSideFeet} ft. to Cube size per slot level`
 				: `Espaço de nível ${effect.fromSlotLevel}+: +${effect.additionalGallons} galões ou +${effect.cubeSideFeet} pés no lado do Cubo por nível do espaço`;
 		case 'healing-increase':
-			return en ? `Slot ${effect.fromSlotLevel}+: healing +${effect.formula} per slot level` : `Espaço de nível ${effect.fromSlotLevel}+: cura +${effect.formula} por nível do espaço`;
+			return en
+				? `Slot ${effect.fromSlotLevel}+: healing +${effect.formula} per slot level`
+				: `Espaço de nível ${effect.fromSlotLevel}+: cura +${effect.formula} por nível do espaço`;
 		case 'temporary-hit-points-increase':
-			return en ? `Slot ${effect.fromSlotLevel}+: +${effect.amount} Temporary Hit Points per slot level` : `Espaço de nível ${effect.fromSlotLevel}+: +${effect.amount} Pontos de Vida Temporários por nível do espaço`;
+			return en
+				? `Slot ${effect.fromSlotLevel}+: +${effect.amount} Temporary Hit Points per slot level`
+				: `Espaço de nível ${effect.fromSlotLevel}+: +${effect.amount} Pontos de Vida Temporários por nível do espaço`;
 		case 'radius-increase':
-			return en ? `Slot ${effect.fromSlotLevel}+: radius +${effect.feet} ft. per slot level` : `Espaço de nível ${effect.fromSlotLevel}+: raio +${effect.feet} pés por nível do espaço`;
+			return en
+				? `Slot ${effect.fromSlotLevel}+: radius +${effect.feet} ft. per slot level`
+				: `Espaço de nível ${effect.fromSlotLevel}+: raio +${effect.feet} pés por nível do espaço`;
 		case 'duration-tier':
-			return en ? `Slot ${effect.fromSlotLevel}+: duration up to ${effect.duration}` : `Espaço de nível ${effect.fromSlotLevel}+: duração de até ${durationLabel(String(effect.duration ?? ''), locale)}`;
+			return en
+				? `Slot ${effect.fromSlotLevel}+: duration up to ${effect.duration}`
+				: `Espaço de nível ${effect.fromSlotLevel}+: duração de até ${durationLabel(String(effect.duration ?? ''), locale)}`;
+		case 'rule-text': {
+			const localizedText = effect.text as { en?: string; ptBR?: string } | undefined;
+			const text = localizedText?.[en ? 'en' : 'ptBR'] ?? '';
+			const slotText = en ? `Slot ${level}+:` : `Espaço de nível ${level}+:`;
+			return text ? `${slotText} ${text}` : '';
+		}
 		default:
 			return '';
 	}
@@ -219,9 +300,13 @@ export function presentSpellMechanics(
 	const mechanics = (rules ?? {}) as SpellMechanicsRules;
 	const reviewed = mechanics.mechanicsAudit?.status === 'reviewed';
 	if (!reviewed) return { reviewed: false, damage: [], characterLevel: [], spellSlot: [] };
-	const damage = (mechanics.damage?.components ?? []).map((component) => damageLabel(component, locale));
+	const damage = (mechanics.damage?.components ?? []).map((component) =>
+		damageLabel(component, locale)
+	);
 	const characterLevel = records(mechanics.scaling?.characterLevel)
-		.flatMap((milestone) => records(milestone.effects).map((effect) => ({ level: milestone.level, ...effect })))
+		.flatMap((milestone) =>
+			records(milestone.effects).map((effect) => ({ level: milestone.level, ...effect }))
+		)
 		.map((effect) => scalingLabel(effect, locale))
 		.filter(Boolean);
 	const spellSlot = records(mechanics.scaling?.spellSlot?.effects)
