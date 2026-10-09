@@ -9,7 +9,7 @@
 		describedBy,
 		onchange
 	}: {
-		sides: number;
+		sides: number | '';
 		label: string;
 		invalid?: boolean;
 		describedBy?: string;
@@ -35,15 +35,16 @@
 
 <details class="die-type-picker">
 	<summary
-		aria-label={`${label}: d${sides}`}
+		aria-label={`${label}: ${sides === '' ? '—' : `d${sides}`}`}
 		aria-describedby={invalid ? describedBy : undefined}
-		title={`d${sides}`}
+		title={sides === '' ? label : `d${sides}`}
 	>
-		<RpgIcon name={`d${sides}`} size={24} />
-		<span class="visually-hidden">d{sides}</span>
+		{#if sides === ''}<span class="empty-die">—</span>
+		{:else}<RpgIcon name={`d${sides}`} size={24} />{/if}
+		<span class="visually-hidden">{sides === '' ? label : `d${sides}`}</span>
 	</summary>
 	<div class="die-type-options" role="group" aria-label={label}>
-		{#if !DAMAGE_DIE_TYPES.includes(sides as (typeof DAMAGE_DIE_TYPES)[number])}
+		{#if typeof sides === 'number' && !DAMAGE_DIE_TYPES.includes(sides as (typeof DAMAGE_DIE_TYPES)[number])}
 			<button
 				type="button"
 				aria-pressed="true"
@@ -126,6 +127,10 @@
 	}
 	.die-type-options span {
 		font-size: 0.78rem;
+	}
+	.empty-die {
+		color: #f0a29b;
+		font-size: 1.1rem;
 	}
 	.visually-hidden {
 		position: absolute;
