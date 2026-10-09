@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { request as httpRequest } from './httpClient';
 import { EMPTY_DND2024_MONEY, normalizeDnd2024Money } from '$lib/utils/character/dnd2024Money';
 import type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
+import { parseDamageExpression, parseLegacyDamage } from '$lib/utils/weaponDamageBuilder';
 
 export type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 
@@ -16,7 +17,6 @@ export type AbilityScores = {
 export type Attack = {
 	name: string;
 	attackBonus: number;
-	damageBonus?: number;
 	damage: string;
 	notes: string;
 	attackType?: 'melee' | 'ranged';
@@ -127,15 +127,35 @@ async function request<T>(session: Session, path: string, init: RequestInit = {}
 // Fichas criadas antes do inventário estruturado possuem arrays serializados
 // como null. Normalizar na borda mantém os dados antigos compatíveis.
 function normalizeCharacter(character: Character): Character {
+	const normalizeInventoryItem = (item: InventoryItem): InventoryItem => {
+		if (!item || typeof item !== 'object' || !item.rules || typeof item.rules !== 'object')
+			return item;
+		const rules = { ...item.rules };
+		if (String(rules.category ?? '') === 'weapon' || rules.damage !== undefined) {
+			const damage = parseDamageExpression(rules.damage);
+			const legacyDamage = damage === null ? parseLegacyDamage(rules.damage) : null;
+			if (damage !== null || legacyDamage !== null) {
+				if (rules.attackBonus === undefined || rules.damageBonus === undefined) {
+					const legacyBonus = Number(rules.bonus) || 0;
+					rules.attackBonus ??= legacyBonus;
+					rules.damageBonus ??= legacyBonus + (legacyDamage?.damageBonus ?? 0);
+					rules.damage = legacyDamage?.damage ?? String(rules.damage ?? '');
+				} else {
+					rules.damage = String(rules.damage ?? '');
+				}
+			} else {
+				// Preserve unsupported legacy text so the player can repair it explicitly.
+				rules.damageNeedsRepair = true;
+			}
+		}
+		return { ...item, rules };
+	};
 	character.sheet = {
 		...character.sheet,
-		attacks: (character.sheet.attacks ?? []).map((attack) => ({
-			...attack,
-			damageBonus: attack.damageBonus ?? 0
-		})),
+		attacks: character.sheet.attacks ?? [],
 		spells: character.sheet.spells ?? [],
 		spellcastingOverride: character.sheet.spellcastingOverride ?? false,
-		inventory: character.sheet.inventory ?? [],
+		inventory: (character.sheet.inventory ?? []).map(normalizeInventoryItem),
 		savingThrows: character.sheet.savingThrows ?? [],
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
 		skillExpertise: character.sheet.skillExpertise ?? [],

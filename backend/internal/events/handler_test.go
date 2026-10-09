@@ -42,6 +42,34 @@ func TestRollProducesAResultWithinRequestedDiceBounds(t *testing.T) {
 	}
 }
 
+func TestRollSupportsEveryAdditiveDamageGroupAndModifier(t *testing.T) {
+	result, err := roll("2d6+3d8+4d10+5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Dice) != 9 || result.Modifier != 5 || result.Total < 14 || result.Total > 81 {
+		t.Fatalf("unexpected multi-group result: %+v", result)
+	}
+	for i, die := range result.Dice {
+		limit := 6
+		if i >= 2 && i < 5 {
+			limit = 8
+		}
+		if i >= 5 {
+			limit = 10
+		}
+		if die < 1 || die > limit {
+			t.Fatalf("die %d has invalid face %d", i, die)
+		}
+	}
+}
+
+func TestRollRejectsMoreThanOneHundredDiceAcrossGroups(t *testing.T) {
+	if _, err := roll("50d6+51d8"); err == nil {
+		t.Fatal("expected total dice limit to be enforced")
+	}
+}
+
 func TestRollRejectsUnsafeExpressions(t *testing.T) {
 	for _, expression := range []string{"", "1d1", "101d20", "1d20+10001", "alert(1)"} {
 		if _, err := roll(expression); err == nil {
@@ -80,7 +108,7 @@ func TestApplyMinimumDamageDieDoesNotChangeHigherFaces(t *testing.T) {
 }
 
 func TestValidMinimumDamageRollOnlyAcceptsStandardDamageDice(t *testing.T) {
-	for _, expression := range []string{"1d4", "2d6+3", "1d8-1", "2d10", "1d12"} {
+	for _, expression := range []string{"1d4", "2d6+3", "1d8-1", "2d10", "1d12", "2d6+3d8+4d10"} {
 		if !validMinimumDamageRoll(expression) {
 			t.Errorf("expected %q to be a valid damage roll", expression)
 		}

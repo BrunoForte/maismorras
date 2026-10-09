@@ -20,6 +20,13 @@ import {
 	levelHitPointGain
 } from '$lib/utils/character/characterProgressionRules';
 import type { CharacterSheetSaveOperation } from './characterSheetLifecycle.svelte';
+import {
+	parseDamageExpression,
+	parseLegacyDamage,
+	serializeDamageComponents,
+	validateDamageBonus,
+	validateDamageComponents
+} from '$lib/utils/weaponDamageBuilder';
 
 export type CharacterCombatContext = {
 	campaignId: string;
@@ -479,17 +486,29 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const context = deps.getContext();
 		const sheet = deps.getSheet();
 		const details = deps.getWeaponRollDetails(item, profile);
-		const damageMatch = details.damageFormula.match(/^([0-9]+)d([0-9]+)(?:\s*([+-])\s*([0-9]+))?/i);
+		const parsedDamage =
+			parseDamageExpression(details.damageFormula) ?? parseLegacyDamage(details.damageFormula);
+		const components =
+			parsedDamage && 'damage' in parsedDamage
+				? (parseDamageExpression(parsedDamage.damage) ?? [])
+				: (parsedDamage ?? []);
+		const damageValidation = validateDamageComponents(components);
 		const actionKey = `${details.stableWeaponKey}:${details.profileKey}:${action}`;
 		if (!deps.isWeapon(item) || state.rollingWeaponAction) return;
-		if (action === 'damage' && !damageMatch) {
+		if (action === 'damage' && (!components.length || damageValidation || !parsedDamage)) {
 			deps.setMessage(
 				localized(
 					context.locale,
-					'Esta arma não tem uma fórmula de dano.',
-					'This weapon has no damage formula.'
+					'Configure o dano com componentes de quantidade + tipo de dado; valores fixos ficam em Bônus de dano.',
+					'Configure damage as quantity + die type components; fixed values belong in Damage bonus.'
 				)
 			);
+			return;
+		}
+		const legacyDamageBonus =
+			parsedDamage && 'damageBonus' in parsedDamage ? parsedDamage.damageBonus : 0;
+		if (action === 'damage' && validateDamageBonus(legacyDamageBonus + details.damageBonus)) {
+			deps.setMessage('O bônus total de dano deve ser um inteiro entre -10000 e 10000.');
 			return;
 		}
 		if (
@@ -555,16 +574,18 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					nonce: String(event.id)
 				});
 			} else {
-				const baseModifier =
-					damageMatch?.[3] === '-' ? -Number(damageMatch[4] ?? 0) : Number(damageMatch?.[4] ?? 0);
-				const damageModifier = baseModifier + details.damageBonus;
+				const damageModifier = legacyDamageBonus + details.damageBonus;
 				const isCritical =
 					lastCriticalWeapon === `${details.stableWeaponKey}:${details.profileKey}`;
-				const diceCount = Number(damageMatch![1]) * (isCritical ? 2 : 1);
+				const rolledComponents = components.map((component) => ({
+					...component,
+					count: Number(component.count) * (isCritical ? 2 : 1)
+				}));
+				const rolledFormula = serializeDamageComponents(rolledComponents);
 				const event = await deps.rollDice(
 					context.session,
 					context.campaignId,
-					`${diceCount}d${damageMatch![2]}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
+					`${rolledFormula}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
 					undefined,
 					'combat',
 					details.minimumDamageDie
@@ -659,12 +680,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		});
 	}
 
-	async function rollSheetDamage(
-		label: string,
-		damage: string,
-		attackIndex: number,
-		damageBonus = 0
-	) {
+	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
 		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
 		if (!match) return;
 		const operation = captureOperation();
@@ -673,7 +689,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const critical = lastCriticalAttack === attackIndex;
 		const count = Number(match[1]) * (critical ? 2 : 1);
 		const formulaModifier = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
-		const modifier = formulaModifier + damageBonus;
+		const modifier = formulaModifier;
 		const event = await deps.rollDice(
 			context.session,
 			context.campaignId,
@@ -747,8 +763,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			await rollSheetDamage(
 				attack.name || localized(context.locale, 'Ataque', 'Attack'),
 				attack.damage,
-				index,
-				attack.damageBonus ?? 0
+				index
 			);
 		} catch {
 			if (isCurrent(operation))

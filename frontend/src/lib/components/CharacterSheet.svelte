@@ -120,6 +120,13 @@
 		synchronizeDndFeatGrantActivation
 	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
+	import {
+		parseDamageExpression,
+		serializeDamageComponents,
+		validateDamageBonus,
+		validateDamageComponents,
+		type DamageComponent
+	} from '$lib/utils/weaponDamageBuilder';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
@@ -171,6 +178,10 @@
 	} = $props();
 	const sheetPanelKey = $derived(`character-sheet:${campaignId}:${characterId ?? 'mine'}`);
 	let sheet = $state<Sheet>(createEmptySheet());
+	let damageDrafts = $state<Record<string, DamageComponent[]>>({});
+	let invalidWeaponKey = $state<string | null>(null);
+	let invalidDamageIndex = $state(0);
+	let invalidWeaponField = $state<'damage' | 'bonus'>('damage');
 	let sheetOwnerId = $state('');
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let compendiumSources = $state<CompendiumSource[]>([]);
@@ -345,6 +356,37 @@
 		},
 		getSheet: () => sheet,
 		setSheet: (next) => (sheet = next),
+		validateBeforeSave: () => {
+			for (const item of sheet.inventory) {
+				if (equipmentCategory(item) !== 'weapon') continue;
+				const key = weaponKey(item);
+				const bonusIssue = validateDamageBonus(item.rules.damageBonus ?? item.rules.bonus ?? 0);
+				if (bonusIssue) {
+					invalidWeaponKey = key;
+					invalidWeaponField = 'bonus';
+					return `${item.name}: ${bonusIssue}`;
+				}
+				const components = damageDrafts[key] ?? parseDamageExpression(item.rules.damage);
+				if (item.rules.damageNeedsRepair || components === null) {
+					invalidWeaponKey = key;
+					invalidWeaponField = 'damage';
+					invalidDamageIndex = 0;
+					return `Corrija o dano de ${item.name}: configure cada componente com quantidade + tipo de dado; valores sem dados devem ir em “Bônus de dano”.`;
+				}
+				const issue = validateDamageComponents(components);
+				if (issue) {
+					invalidWeaponKey = key;
+					invalidWeaponField = 'damage';
+					invalidDamageIndex = issue.index;
+					return `${item.name}: ${issue.message} Configure componentes como quantidade + tipo de dado; valores sem dados devem ir em “Bônus de dano”.`;
+				}
+			}
+			invalidWeaponKey = null;
+			invalidWeaponField = 'damage';
+			invalidDamageIndex = 0;
+			return null;
+		},
+		onValidationFailure: () => (activeTab = 'combat'),
 		calculateArmorClass: () => calculatedArmorClass(),
 		getCompendium,
 		onCompendiumLoaded: (sources, entries) => {
@@ -362,6 +404,10 @@
 		onCharacterLoaded: (loadedCharacter) => {
 			sheetOwnerId = loadedCharacter.ownerId;
 			sheet = loadedCharacter.sheet;
+			damageDrafts = {};
+			invalidWeaponKey = null;
+			invalidDamageIndex = 0;
+			invalidWeaponField = 'damage';
 			sheet.attacks ??= [];
 			sheet.attacks = sheet.attacks.map((attack) => {
 				const attackType =
@@ -478,10 +524,16 @@
 			const abilityAdjustment =
 				modifier(sheet.abilityScores[attackAbility]) -
 				modifier(sheet.abilityScores[defaultAbility]);
+			const draft = damageDrafts[weaponKey(item)];
+			const damageFormula = draft
+				? validateDamageComponents(draft)
+					? ''
+					: serializeDamageComponents(draft)
+				: String(item.rules.damage ?? '');
 			return {
 				attackBonus: weaponAttackBonusTotal(item) + abilityAdjustment + (profile?.attackBonus ?? 0),
 				damageBonus: weaponDamageBonusTotal(item) + abilityAdjustment + (profile?.damageBonus ?? 0),
-				damageFormula: profile?.damage || String(item.rules.damage ?? ''),
+				damageFormula: profile?.damage || damageFormula,
 				stableWeaponKey: weaponKey(item),
 				profileKey: profile?.id ?? 'default',
 				damageType: String(item.rules.damageType ?? ''),
@@ -544,6 +596,22 @@
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
 	const itemEntries = () => filterItemEntries(compendiumEntries, inventoryFilter);
 	const weaponKey = (item: InventoryItem) => `${item.entryId}:${sheet.inventory.indexOf(item)}`;
+	const damageComponents = (item: InventoryItem): DamageComponent[] => {
+		const key = weaponKey(item);
+		if (damageDrafts[key]) return damageDrafts[key];
+		return parseDamageExpression(item.rules.damage) ?? [];
+	};
+	function setDamageComponents(item: InventoryItem, components: DamageComponent[]) {
+		const key = weaponKey(item);
+		damageDrafts[key] = components;
+		invalidWeaponKey = key;
+		const issue = validateDamageComponents(components);
+		invalidDamageIndex = issue?.index ?? 0;
+		if (issue) return;
+		const damage = components.map(({ count, sides }) => `${count}d${sides}`).join('+');
+		updateWeaponRules(item, { damage, damageNeedsRepair: false }, true);
+		invalidWeaponKey = null;
+	}
 	const visibleInventory = () => projectInventory(sheet.inventory, inventoryFilter);
 	const inventoryWeight = () => totalInventoryWeight(sheet.inventory);
 	const weaponProficiencyStatus = (item: InventoryItem) => {
@@ -986,7 +1054,6 @@
 				attackType: 'melee',
 				ability: 'strength',
 				attackBonus: 0,
-				damageBonus: 0,
 				damage: '',
 				notes: ''
 			}
@@ -1283,6 +1350,11 @@
 								hasGreatWeaponFighting,
 								weaponSupportsGreatWeaponFighting,
 								updateWeaponRules,
+								damageComponents,
+								setDamageComponents,
+								invalidWeaponKey: () => invalidWeaponKey,
+								invalidDamageIndex: () => invalidDamageIndex,
+								invalidWeaponField: () => invalidWeaponField,
 								toggleWeaponEffect,
 								addWeaponAttackProfile,
 								removeWeaponAttackProfile,

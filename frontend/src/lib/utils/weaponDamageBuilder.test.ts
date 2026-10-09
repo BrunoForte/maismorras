@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+import {
+	parseDamageExpression,
+	parseLegacyDamage,
+	addDamageComponent,
+	removeDamageComponent,
+	serializeDamageComponents,
+	validateDamageBonus,
+	validateDamageComponents
+} from './weaponDamageBuilder';
+
+describe('weapon damage builder', () => {
+	it('round-trips additive damage groups', () => {
+		const components = parseDamageExpression('2d6+3d8+4d10');
+		expect(components).toEqual([
+			{ count: 2, sides: 6 },
+			{ count: 3, sides: 8 },
+			{ count: 4, sides: 10 }
+		]);
+		expect(serializeDamageComponents(components!)).toBe('2d6+3d8+4d10');
+	});
+
+	it('converts supported legacy fixed modifiers separately', () => {
+		expect(parseLegacyDamage('2d6+1d4-3')).toEqual({ damage: '2d6+1d4', damageBonus: -3 });
+		expect(parseDamageExpression('')).toEqual([]);
+		expect(parseDamageExpression('2d6+')).toBeNull();
+		expect(parseLegacyDamage('damage varies')).toBeNull();
+	});
+
+	it('adds and removes only the selected damage component', () => {
+		const initial = [
+			{ count: 2, sides: 6 },
+			{ count: 3, sides: 8 }
+		];
+		const added = addDamageComponent(initial);
+		expect(added).toEqual([...initial, { count: 1, sides: 6 }]);
+		expect(removeDamageComponent(added, 1)).toEqual([initial[0], added[2]]);
+		expect(initial).toEqual([
+			{ count: 2, sides: 6 },
+			{ count: 3, sides: 8 }
+		]);
+	});
+
+	it('rejects empty, fractional, nonpositive, and over-limit quantities and invalid die sizes', () => {
+		for (const count of ['', 0, -1, 1.5, 101])
+			expect(validateDamageComponents([{ count: count as number | '', sides: 6 }])).not.toBeNull();
+		expect(validateDamageComponents([{ count: 1, sides: 1001 }])).not.toBeNull();
+		expect(
+			validateDamageComponents([
+				{ count: 50, sides: 6 },
+				{ count: 51, sides: 8 }
+			])
+		).not.toBeNull();
+		expect(
+			validateDamageComponents([
+				{ count: 50, sides: 6 },
+				{ count: 50, sides: 8 }
+			])
+		).toBeNull();
+	});
+
+	it('limits the fixed damage modifier to the server roll bound', () => {
+		expect(validateDamageBonus(-10000)).toBeNull();
+		expect(validateDamageBonus(10000)).toBeNull();
+		expect(validateDamageBonus(10001)).not.toBeNull();
+		expect(validateDamageBonus(1.5)).not.toBeNull();
+	});
+});

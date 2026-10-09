@@ -75,13 +75,23 @@ export function weaponAbility(item: EquipmentLike): AbilityKey {
 }
 
 export function weaponItemBonus(item: EquipmentLike): number {
-	const bonus = Number(item.rules.bonus) || 0;
 	const enchantment = Number(item.rules.enchantmentBonus) || 0;
+	if (item.rules.attackBonus !== undefined || item.rules.damageBonus !== undefined)
+		return enchantment;
+	const legacyBonus = Number(item.rules.bonus) || 0;
 	if (item.rules.bonus !== undefined || item.rules.enchantmentBonus !== undefined)
-		return bonus + enchantment;
+		return legacyBonus + enchantment;
 	const description = `${String(item.rules.description ?? '')} ${String(item.rules.summary ?? '')}`;
 	const match = description.match(/\+(\d+)\s+bonus to attack rolls? and damage rolls?/i);
 	return match ? Number(match[1]) : 0;
+}
+
+export function weaponAttackSpecificBonus(item: EquipmentLike): number {
+	return Number(item.rules.attackBonus) || 0;
+}
+
+export function weaponDamageSpecificBonus(item: EquipmentLike): number {
+	return Number(item.rules.damageBonus) || 0;
 }
 
 export function itemWeight(item: EquipmentLike & { quantity: number }): number {

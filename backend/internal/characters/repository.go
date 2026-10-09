@@ -115,7 +115,6 @@ type AbilityScores struct {
 type Attack struct {
 	Name        string `json:"name"`
 	AttackBonus int    `json:"attackBonus"`
-	DamageBonus int    `json:"damageBonus,omitempty"`
 	Damage      string `json:"damage"`
 	Notes       string `json:"notes"`
 	AttackType  string `json:"attackType,omitempty"`

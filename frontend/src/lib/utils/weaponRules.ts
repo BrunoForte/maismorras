@@ -3,10 +3,13 @@ import { hasWeaponProficiency, hasWeaponProficiencyInText } from './weaponProfic
 import {
 	modifierText,
 	weaponAbility,
+	weaponAttackSpecificBonus,
+	weaponDamageSpecificBonus,
 	weaponItemBonus,
 	weaponRange,
 	weaponRangeFromText
 } from './characterEquipment';
+import type { DamageComponent } from './weaponDamageBuilder';
 
 export type WeaponEffect = { key: string; name: string; attackBonus: number; damageBonus: number };
 export type WeaponAttackProfile = {
@@ -53,6 +56,11 @@ export type WeaponCombatActions = {
 		changes: Record<string, unknown>,
 		autosave?: boolean
 	) => void;
+	damageComponents: (item: InventoryItem) => DamageComponent[];
+	setDamageComponents: (item: InventoryItem, components: DamageComponent[]) => void;
+	invalidWeaponKey: () => string | null;
+	invalidDamageIndex: () => number;
+	invalidWeaponField: () => 'damage' | 'bonus';
 	toggleWeaponEffect: (item: InventoryItem, key: string) => void;
 	addWeaponAttackProfile: (item: InventoryItem) => void;
 	removeWeaponAttackProfile: (item: InventoryItem, id: string) => void;
@@ -238,6 +246,7 @@ export function weaponAttackBonusTotal(
 	return (
 		Math.floor((abilityScores[ability] - 10) / 2) +
 		(proficiencyBonus || 0) +
+		weaponAttackSpecificBonus(item) +
 		weaponItemBonus(item) +
 		weaponBonusTotals(effects).attack
 	);
@@ -251,6 +260,7 @@ export function weaponDamageBonusTotal(
 	const ability = weaponAbility(item);
 	return (
 		Math.floor((abilityScores[ability] - 10) / 2) +
+		weaponDamageSpecificBonus(item) +
 		weaponItemBonus(item) +
 		weaponBonusTotals(effects).damage
 	);
