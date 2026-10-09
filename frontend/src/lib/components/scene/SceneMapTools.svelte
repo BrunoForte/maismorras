@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { SceneMapToolsActions, SceneMapToolsState } from '$lib/utils/sceneMapTools';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let { state, actions }: { state: SceneMapToolsState; actions: SceneMapToolsActions } = $props();
 </script>
@@ -135,7 +136,10 @@
 					aria-expanded={state.openTool === 'barriers'}
 					onclick={() => actions.onToolToggle('barriers')}
 					aria-label={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}
-					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
+					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}><RpgIcon
+						name="barrier-arch"
+						size={22}
+					/></button
 				>{#if state.openTool === 'barriers'}
 					<div
 						class="wall-tools map-tool-menu"

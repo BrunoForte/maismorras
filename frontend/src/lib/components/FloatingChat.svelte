@@ -2,7 +2,8 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { Session } from '@supabase/supabase-js';
-	import { chatMensagens } from '$lib/stores/chatStore';
+	import { chatMensagens, type Mensagem } from '$lib/stores/chatStore';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import {
 		campaignEventToMessage,
 		loadMessages,
@@ -45,7 +46,11 @@
 	let docked = $state(untrack(() => campaignChatStartsDocked(campaignId)));
 	let panelZIndex = $state(8);
 	let sending = $state(false);
-	let expanded = $state<{ author: string; text: string } | null>(null);
+	let expanded = $state<{
+		author: string;
+		text: string;
+		icon: 'combat' | 'spell' | null;
+	} | null>(null);
 	let channel = $state<'all' | 'chat' | 'combat' | 'info'>('all');
 	let campaignSocket: CampaignSocket | null = null;
 	let messagesElement = $state<HTMLDivElement>();
@@ -91,6 +96,24 @@
 		message.texto.split(' · ')[0] ||
 		message.detalhesRolagem?.expressao ||
 		($appLocale === 'en' ? 'Roll' : 'Rolagem');
+	const messagePresentation = (message: Pick<Mensagem, 'texto' | 'canal'>) => {
+		if (message.texto.startsWith('⚔️')) {
+			return {
+				icon: 'combat' as const,
+				text: message.texto.slice('⚔️'.length).replace(/^ /, '')
+			};
+		}
+		if (message.texto.startsWith('✨')) {
+			return {
+				icon: 'spell' as const,
+				text: message.texto.slice('✨'.length).replace(/^ /, '')
+			};
+		}
+		return {
+			icon: message.canal === 'combat' ? ('combat' as const) : null,
+			text: message.texto
+		};
+	};
 
 	function consumeEvent(event: StoredEvent, animate = true) {
 		const message = campaignEventToMessage(event);
@@ -336,17 +359,33 @@
 									: 'Converse com o grupo ou use /r 1d20+2.'}
 					</p>{/if}
 				{#each visibleMessages as message (message.id)}
+					{@const presentation = messagePresentation(message)}
 					<article
 						data-event-id={message.id}
 						class:combat={message.canal === 'combat'}
 						class:info={message.canal === 'info'}
 						class:roll-article={message.tipo === 'rolagem'}
 					>
-						{#if message.tipo === 'texto'}<strong>{message.autor}</strong><span
-								>{message.texto}</span
-							>{#if message.texto.length > 80}<button
+						{#if message.tipo === 'texto'}<strong>{message.autor}</strong><div class="message-content">
+								{#if presentation.icon}<RpgIcon
+									name={presentation.icon}
+									size={18}
+									title={presentation.icon === 'combat'
+										? $appLocale === 'en'
+											? 'Combat event'
+											: 'Evento de combate'
+										: $appLocale === 'en'
+											? 'Magic event'
+											: 'Evento de magia'}
+								/> {/if}<span>{presentation.text}</span>
+							</div>{#if message.texto.length > 80}<button
 									class="expand"
-									onclick={() => (expanded = { author: message.autor, text: message.texto })}
+									onclick={() =>
+										(expanded = {
+											author: message.autor,
+											text: presentation.text,
+											icon: presentation.icon
+										})}
 									>{$appLocale === 'en' ? 'Read in focus' : 'Ler em destaque'}</button
 								>{/if}
 						{:else if message.detalhesRolagem}<div class="roll-heading">
@@ -403,7 +442,19 @@
 				aria-label={$appLocale === 'en' ? 'Close' : 'Fechar'}
 				onclick={() => (expanded = null)}>×</button
 			><small>{expanded.author}</small>
-			<p>{expanded.text}</p>
+			<div class="expanded-message">
+				{#if expanded.icon}<RpgIcon
+					name={expanded.icon}
+					size={28}
+					title={expanded.icon === 'combat'
+						? $appLocale === 'en'
+							? 'Combat event'
+							: 'Evento de combate'
+						: $appLocale === 'en'
+							? 'Magic event'
+							: 'Evento de magia'}
+				/> {/if}<p>{expanded.text}</p>
+			</div>
 		</section>
 	</div>{/if}
 
@@ -639,6 +690,20 @@
 		line-height: 1.4;
 		word-break: break-word;
 	}
+	.message-content {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.4rem;
+		min-width: 0;
+	}
+	.message-content :global(svg) {
+		flex: 0 0 auto;
+		margin-top: 0.05rem;
+		color: var(--mm-accent-bright, #e0b86f);
+	}
+	.message-content span {
+		min-width: 0;
+	}
 	.roll {
 		display: flex;
 		flex-direction: column;
@@ -785,9 +850,21 @@
 		letter-spacing: 0.12em;
 	}
 	.reading-backdrop p {
+		margin: 0;
 		white-space: pre-wrap;
 		font:
 			1.05rem/1.75 Georgia,
 			serif;
+	}
+	.expanded-message {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.8rem;
+		margin-top: 0.8rem;
+	}
+	.expanded-message :global(svg) {
+		flex: 0 0 auto;
+		margin-top: 0.2rem;
+		color: var(--mm-accent-bright, #e0b86f);
 	}
 </style>

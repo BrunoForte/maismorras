@@ -17,6 +17,7 @@
 	import { rulerMode, type RulerMode } from '$lib/stores/tableToolsStore';
 	import { appLocale } from '$lib/stores/locale';
 	import { QUICK_DICE_SIDES, quickDiceExpression } from '$lib/utils/quickDice';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let {
 		campaignId,
@@ -265,14 +266,14 @@
 			aria-expanded={initiativeOpen}
 			aria-label={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}
 			onclick={() => togglePanel('initiative')}
-			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}>⚔️</button
+			title={$appLocale === 'en' ? 'Initiative' : 'Iniciativa'}><RpgIcon name="initiative" size={22} /></button
 		><button
 			class:active={diceOpen}
 			aria-expanded={diceOpen}
 			aria-label={$appLocale === 'en' ? 'Dice' : 'Dados'}
 			onclick={() => togglePanel('dice')}
 			disabled={rolling}
-			title={$appLocale === 'en' ? 'Dice' : 'Dados'}>🎲</button
+			title={$appLocale === 'en' ? 'Dice' : 'Dados'}><RpgIcon name="dice-stack" size={24} /></button
 		>
 		{#if isGM}<button
 				class:active={activeMapTool === 'layers'}
@@ -291,7 +292,7 @@
 				aria-expanded={activeMapTool === 'barriers'}
 				aria-label={$appLocale === 'en' ? 'Barriers' : 'Barreiras'}
 				onclick={() => toggleMapTool('barriers')}
-				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
+				title={$appLocale === 'en' ? 'Walls and doors' : 'Paredes e portas'}><RpgIcon name="barrier-arch" size={22} /></button
 			>{/if}<button
 			class:active={pingArmed}
 			data-testid="map-signal-button"

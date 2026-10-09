@@ -6,6 +6,7 @@
 		{
 			title: 'Dados',
 			icons: [
+				['dice-stack', 'Dados da mesa'],
 				['d4', 'D4'],
 				['d6', 'D6'],
 				['d8', 'D8'],
@@ -33,6 +34,7 @@
 				['campaign', 'Campanha'],
 				['map', 'Mapa'],
 				['token', 'Token'],
+				['barrier-arch', 'Barreira'],
 				['combat', 'Combate'],
 				['chat', 'Chat'],
 				['notes', 'Notas'],
