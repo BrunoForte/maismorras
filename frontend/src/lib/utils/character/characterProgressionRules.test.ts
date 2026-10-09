@@ -71,6 +71,34 @@ describe('character progression rules', () => {
 		);
 	});
 
+	it('uses localized feature names and descriptions in the character progression, with source fallback', () => {
+		const classEntry: CompendiumEntry = {
+			...featureEntry('fighter', 'class', 'Fighter', [
+				{ id: 'second-wind', name: 'Second Wind', level: 1, description: 'Regain hit points.' }
+			]),
+			translations: {
+				'pt-BR.rules.features.0.name': 'Segundo Fôlego',
+				'pt-BR.rules.features.0.description': 'Recupere pontos de vida.'
+			}
+		};
+		const localized = deriveCharacterFeatures(classEntry, undefined, [], 'fighter', 1, '', 'pt-BR');
+		expect(localized).toContainEqual(
+			expect.objectContaining({ name: 'Segundo Fôlego', description: 'Recupere pontos de vida.' })
+		);
+		const fallback = deriveCharacterFeatures(
+			{ ...classEntry, translations: {} },
+			undefined,
+			[],
+			'fighter',
+			1,
+			'',
+			'pt-BR'
+		);
+		expect(fallback).toContainEqual(
+			expect.objectContaining({ name: 'Second Wind', description: 'Regain hit points.' })
+		);
+	});
+
 	it('keeps local class fallback when a subclass entry exists but has no feature list', () => {
 		const derived = deriveCharacterFeatures(
 			featureEntry('fighter', 'class', 'Guerreiro'),

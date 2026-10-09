@@ -31,6 +31,10 @@
 		translatedCompendiumText(entry, `rules.${field}`, value, locale);
 	const displayAction = (index: number, field: string, value: unknown) =>
 		translatedCompendiumText(entry, `rules.actions.${index}.${field}`, value, locale);
+	const displayFeature = (index: number, field: string, value: unknown) =>
+		translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale);
+	const displayBenefit = (index: number, value: unknown) =>
+		translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale);
 </script>
 
 <aside class="entry-detail">
@@ -217,24 +221,30 @@
 				>{/if}
 		</div>
 	{:else if entry.entryType === 'class'}
+		{@const classDescription = displayRule('description', detail.description)}
+		{#if classDescription}<p>{classDescription}</p>{/if}
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Hit Die' : 'Dado de vida'} d{String(detail.hitDie ?? '—')}</b>
 		</div>
 		{#if Array.isArray(detail.features) && detail.features.length}
 			<div class="feature-detail-list">
-				<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+				<h4>{$appLocale === 'en' ? 'Features by level' : 'Características por nível'}</h4>
 				{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}
 					{@const item = feature as Record<string, unknown>}
 					<article>
 						<strong
 							>{$appLocale === 'en' ? 'Level' : 'Nível'}
-							{String(item.level ?? '—')} · {String(item.name ?? '')}</strong
-						>{#if item.description}<p>{String(item.description)}</p>{/if}
+							{String(item.level ?? '—')} · {displayFeature(index, 'name', item.name)}</strong
+						>{#if item.description}<p>
+								{displayFeature(index, 'description', item.description)}
+							</p>{/if}
 					</article>
 				{/each}
 			</div>
 		{/if}
 	{:else if entry.entryType === 'subclass'}
+		{@const subclassDescription = displayRule('description', detail.description)}
+		{#if subclassDescription}<p>{subclassDescription}</p>{/if}
 		<div class="rules">
 			<b
 				>{$appLocale === 'en' ? 'Base class' : 'Classe-base'}: {displayRule(
@@ -245,17 +255,29 @@
 		</div>
 		{#if Array.isArray(detail.features) && detail.features.length}
 			<div class="feature-detail-list">
-				<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+				<h4>{$appLocale === 'en' ? 'Features by level' : 'Características por nível'}</h4>
 				{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}
 					{@const item = feature as Record<string, unknown>}
 					<article>
 						<strong
 							>{$appLocale === 'en' ? 'Level' : 'Nível'}
-							{String(item.level ?? '—')} · {String(item.name ?? '')}</strong
-						>{#if item.description}<p>{String(item.description)}</p>{/if}
+							{String(item.level ?? '—')} · {displayFeature(index, 'name', item.name)}</strong
+						>{#if item.description}<p>
+								{displayFeature(index, 'description', item.description)}
+							</p>{/if}
 					</article>
 				{/each}
 			</div>
+		{/if}
+	{:else if entry.entryType === 'feat' || entry.entryType === 'feature'}
+		{@const localizedDescription = displayRule('description', detail.description ?? entry.summary)}
+		{#if localizedDescription}<p class="feat-description">{localizedDescription}</p>{/if}
+		{#if entry.entryType === 'feat' && Array.isArray(detail.benefits) && detail.benefits.length}
+			<ul class="feat-benefits">
+				{#each detail.benefits as benefit, index (index)}<li>
+						{displayBenefit(index, benefit)}
+					</li>{/each}
+			</ul>
 		{/if}
 	{:else if entry.entryType === 'species'}
 		<div class="rules">
