@@ -50,38 +50,83 @@ describe('createEmptySheet', () => {
 		expect(character.sheet.inventory).toEqual([]);
 	});
 
-	it('normalizes legacy attack damage bonus to zero and preserves independent values', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					id: 'actor-1',
-					campaignId: 'campaign-1',
-					ownerId: 'player-1',
-					sheet: {
-						...createEmptySheet(),
-						attacks: [
-							{ name: 'Ataque antigo', attackBonus: 4, damage: '1d6+2', notes: '' },
-							{
-								name: 'Ataque novo',
-								attackBonus: 1,
-								damageBonus: 3,
-								damage: '1d8',
-								notes: ''
-							}
+	it('normalizes legacy weapon damage and unified bonus once without discarding unsupported text', async () => {
+		const legacySheet = {
+			...createEmptySheet(),
+			inventory: [
+				{
+					entryId: 'old',
+					name: 'Machado',
+					quantity: 1,
+					equipped: true,
+					rules: {
+						category: 'weapon',
+						damage: '2d6+3',
+						bonus: 2,
+						enchantmentBonus: 1,
+						attackProfiles: [
+							{ id: 'flurry', damage: '1d8+2', attackBonus: 1, damageBonus: 1 },
+							{ id: 'old-heavy', damage: '11d6+3', attackBonus: 0, damageBonus: 2 }
 						]
 					}
-				}),
-				{ status: 200 }
-			)
-		);
+				},
+				{
+					entryId: 'ambiguous',
+					name: 'Arma especial',
+					quantity: 1,
+					equipped: true,
+					rules: {
+						category: 'weapon',
+						damage: 'dano variável',
+						bonus: 4,
+						attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 0 }]
+					}
+				},
+				{
+					entryId: 'longbow',
+					name: 'Arco longo',
+					quantity: 1,
+					equipped: true,
+					rules: { category: 'weapon', damage: '1d8+1d6', bonus: -1, enchantmentBonus: 2 }
+				}
+			]
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(
+					JSON.stringify({ id: 'a', campaignId: 'c', ownerId: 'p', sheet: legacySheet }),
+					{ status: 200 }
+				)
+			);
 		vi.stubGlobal('fetch', fetchMock);
-
-		const character = await getMyCharacter(session, 'campaign-1');
-
-		expect(character.sheet.attacks).toMatchObject([
-			{ attackBonus: 4, damageBonus: 0 },
-			{ attackBonus: 1, damageBonus: 3 }
+		const normalized = await getMyCharacter(session, 'campaign-1');
+		expect(normalized.sheet.inventory[0].rules).toMatchObject({
+			damage: '2d6',
+			attackBonus: 2,
+			damageBonus: 5,
+			enchantmentBonus: 1
+		});
+		expect(normalized.sheet.inventory[0].rules.attackProfiles).toEqual([
+			{ id: 'flurry', damage: '1d8', attackBonus: 1, damageBonus: 5, damageNeedsRepair: false },
+			{ id: 'old-heavy', damage: '11d6', attackBonus: 0, damageBonus: 7, damageNeedsRepair: false }
 		]);
+		expect(normalized.sheet.inventory[1].rules).toMatchObject({
+			damage: 'dano variável',
+			damageNeedsRepair: true,
+			attackBonus: 4,
+			damageBonus: 4,
+			attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 4 }]
+		});
+		expect(normalized.sheet.inventory[2].rules).toMatchObject({
+			damage: '1d8+1d6',
+			attackBonus: -1,
+			damageBonus: -1,
+			enchantmentBonus: 2
+		});
+		fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(normalized), { status: 200 }));
+		const reloaded = await getMyCharacter(session, 'campaign-1');
+		expect(reloaded.sheet.inventory).toEqual(normalized.sheet.inventory);
 	});
 
 	it('persists D&D money separately from inventory when saving a sheet', async () => {
