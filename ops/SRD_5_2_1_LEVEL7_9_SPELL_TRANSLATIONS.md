@@ -54,11 +54,11 @@ Caído, Petrificado, Amedrontado, Invisível, Morto-vivo, Constructo e Corruptor
 Planos e tipos de criatura conservam seus nomes canônicos traduzidos pelo
 glossário do projeto.
 
-Os títulos deste lote são escolhas editoriais da localização; não representam
-aprovação individual do proprietário. Formas como **Etéreo**, **Mente Vazia**,
-**Transição Planar**, **Pesadelo** e **Lábia** podem ser revistas pelo
-proprietário para harmonização com futuras categorias. Nomes ingleses-fonte
-permanecem intactos.
+O proprietário aprovou estas formas: Etherealness → **Forma Etérea**, Mind
+Blank → **Mente Vazia**, Plane Shift → **Viagem Planar**, Weird → **Estranho**
+e Glibness → **Loquacidade**. Os demais títulos são escolhas editoriais do
+lote, sem aprovação individual registrada. Nomes ingleses-fonte permanecem
+intactos.
 
 ## Sincronização e escopo
 

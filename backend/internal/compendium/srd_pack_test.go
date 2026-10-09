@@ -576,6 +576,13 @@ func TestSRDSeventhThroughNinthLevelSpellTranslationsAndMechanicsAreReviewed(t *
 		t.Fatal(err)
 	}
 	wantLevels := map[int]int{7: 20, 8: 16, 9: 16}
+	wantApprovedTitles := map[string]string{
+		"Etherealness": "Forma Etérea",
+		"Glibness":     "Loquacidade",
+		"Mind Blank":   "Mente Vazia",
+		"Plane Shift":  "Viagem Planar",
+		"Weird":        "Estranho",
+	}
 	levels := map[int]int{}
 	counts := map[string]int{"damage": 0, "noDamage": 0, "scaling": 0, "noScaling": 0}
 	spellCount := 0
@@ -594,6 +601,9 @@ func TestSRDSeventhThroughNinthLevelSpellTranslationsAndMechanicsAreReviewed(t *
 		}
 		levels[int(level)]++
 		translations := decodeTranslations(entry.Translations)
+		if want, ok := wantApprovedTitles[entry.Name]; ok && translations["pt-BR"] != want {
+			t.Errorf("%s approved title = %q, want %q", entry.Name, translations["pt-BR"], want)
+		}
 		for _, key := range []string{"pt-BR", "pt-BR.summary", "pt-BR.rules.description"} {
 			if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
 				t.Errorf("%s %s translation is absent or not reviewed", entry.Name, key)
