@@ -40,7 +40,7 @@
 					aria-expanded={state.openTool === 'layers'}
 					onclick={() => actions.onToolToggle('layers')}
 					aria-label={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}
-					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
+					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}><RpgIcon name="map" size={22} /></button
 				>{#if state.openTool === 'layers'}
 					<div
 						class="layer-tools map-tool-menu"

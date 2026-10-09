@@ -413,7 +413,9 @@
 									</div>
 									<b>{message.detalhesRolagem.total}</b>
 								</div>{:else}<div class="roll pending">
-									<small>🎲 {$appLocale === 'en' ? 'Rolling…' : 'Rolando…'}</small>
+									<small><RpgIcon name="dice-stack" size={16} /> {$appLocale === 'en'
+										? 'Rolling…'
+										: 'Rolando…'}</small>
 								</div>{/if}{/if}
 					</article>
 				{/each}

@@ -2,6 +2,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import type { LibraryAsset } from './libraryTypes';
 
 	type AssetFilter = 'all' | 'image' | 'map' | 'audio' | 'document';
@@ -307,7 +308,7 @@
 											aria-label={$appLocale === 'en'
 												? `Show ${asset.name} to the table`
 												: `Exibir ${asset.name} para a mesa`}
-											onclick={() => actions.present(asset)}>👁</button
+							onclick={() => actions.present(asset)}><RpgIcon name="camera" size={18} /></button
 										>
 									{/if}
 								</div>
@@ -606,6 +607,9 @@
 		accent-color: #d8ad67;
 	}
 	.asset-present {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		border: 1px solid #5a493b;
 		border-radius: 5px;
 		padding: 0.3rem 0.45rem;

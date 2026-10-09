@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import type { Session } from '@supabase/supabase-js';
 	import CampaignWorkspace from '$lib/components/CampaignWorkspace.svelte';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { getSupabaseClient, supabaseConfigured } from '$lib/services/supabase';
 	import { appLocale, restoreAppLocale } from '$lib/stores/locale';
 
@@ -151,9 +152,15 @@
 				class="feature-list"
 				aria-label={$appLocale === 'en' ? 'Platform features' : 'Recursos da plataforma'}
 			>
-				<span>⌘ {$appLocale === 'en' ? 'Real-time table' : 'Mesa em tempo real'}</span>
-				<span>✦ {$appLocale === 'en' ? 'Persistent campaigns' : 'Campanhas persistentes'}</span>
-				<span>◈ {$appLocale === 'en' ? 'Game-master tools' : 'Ferramentas para narrar'}</span>
+				<span><RpgIcon name="map" size={18} /> {$appLocale === 'en'
+					? 'Real-time table'
+					: 'Mesa em tempo real'}</span>
+				<span><RpgIcon name="campaign" size={18} /> {$appLocale === 'en'
+					? 'Persistent campaigns'
+					: 'Campanhas persistentes'}</span>
+				<span><RpgIcon name="settings" size={18} /> {$appLocale === 'en'
+					? 'Game-master tools'
+					: 'Ferramentas para narrar'}</span>
 			</div>
 		</section>
 
@@ -303,6 +310,9 @@
 		font-size: 0.86rem;
 	}
 	.feature-list span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
 		white-space: nowrap;
 	}
 	.auth-card {

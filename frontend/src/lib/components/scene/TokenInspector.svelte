@@ -160,7 +160,9 @@
 		/>
 	{/if}
 	{#if permissions.canInteractWithDoor}<button class="door-interaction" onclick={onInteractWithDoor}
-			>🚪 {isEnglish ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button
+			><RpgIcon name="barrier-arch" size={18} /> {isEnglish
+				? 'Interact with nearby door'
+				: 'Interagir com porta próxima'}</button
 		>{/if}
 	{#if token.actorId && permissions.canOpenSheet}
 		<div class="sheet-actions">
@@ -742,6 +744,10 @@
 		text-align: center;
 	}
 	.door-interaction {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.4rem;
 		width: calc(100% - 2rem);
 		margin: 0 1rem 0.7rem;
 		border: 1px solid #927449;

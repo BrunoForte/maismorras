@@ -280,7 +280,7 @@
 				aria-expanded={activeMapTool === 'layers'}
 				aria-label={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}
 				onclick={() => toggleMapTool('layers')}
-				title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
+			title={$appLocale === 'en' ? 'Map layers' : 'Camadas do mapa'}><RpgIcon name="map" size={22} /></button
 			><button
 				class:active={activeMapTool === 'areas'}
 				aria-expanded={activeMapTool === 'areas'}
