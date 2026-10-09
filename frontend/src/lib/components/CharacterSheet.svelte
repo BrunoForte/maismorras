@@ -44,6 +44,7 @@
 	import { connectSceneSocket } from '$lib/services/sceneRealtime';
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
@@ -328,6 +329,17 @@
 					['details', 'Detalhes']
 				]
 		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
+	const sheetTabIcon = (tab: string) =>
+		(
+			({
+				profile: 'character',
+				skills: 'skill',
+				combat: 'initiative',
+				inventory: 'inventory',
+				spells: 'spell',
+				details: 'notes'
+			}) as Record<string, string>
+		)[tab] ?? 'character';
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	function onSpeciesChanged() {
 		const profile = getSpeciesProfile(sheet.species);
@@ -1289,7 +1301,8 @@
 				{#each sheetTabs() as [tab, label] (tab)}
 					<button
 						class:active={activeTab === tab}
-						onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button
+						onclick={() => (activeTab = tab as typeof activeTab)}
+						><RpgIcon name={sheetTabIcon(tab)} size={17} />{label}</button
 					>
 				{/each}
 			</nav>{/if}
@@ -1848,6 +1861,9 @@
 		background: #1b171a;
 	}
 	.sheet-tabs button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		flex: 0 0 auto;
 		border: 1px solid #4f433d;
 		border-radius: 999px;
@@ -1855,6 +1871,9 @@
 		color: #bcae9f;
 		background: #171316;
 		font-size: 0.72rem;
+	}
+	.sheet-tabs button :global(svg) {
+		flex: 0 0 auto;
 	}
 	.sheet-tabs button.active {
 		border-color: #c89655;

@@ -6,6 +6,7 @@
 		SpellTabActions
 	} from '$lib/utils/character/characterSpellRules';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let {
 		newSpellName,
@@ -304,9 +305,11 @@
 											>{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}</button
 										>{/if}
 									{#if spell.diceFormula?.trim() && spell.level === 0}<button
+											class="roll-effect"
 											type="button"
 											onclick={() => actions.rollEffect(spell)}
-											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
+											><RpgIcon name="dice-stack" size={18} />
+											{$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
 									{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
 										{#if index < 0 && atWillGrant}<small class="feat-casting-source">
@@ -592,6 +595,11 @@
 		color: #e8c786;
 		background: #2a211e;
 		font-size: 0.72rem;
+	}
+	.roll-effect {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 	.section-title {
 		display: flex;

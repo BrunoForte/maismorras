@@ -6,6 +6,7 @@
 	} from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import CharacterWeaponAttacks from './CharacterWeaponAttacks.svelte';
 
 	type GrantedSpell = Sheet['spells'][number];
@@ -261,8 +262,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'attack'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Attack'
-							: '🎲 Ataque'}</button
+							? 'Attack'
+							: 'Ataque'}<RpgIcon name="attack" size={18} /></button
 				>
 				<button
 					class="roll-custom"
@@ -271,8 +272,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'damage'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Damage'
-							: '🎲 Dano'}</button
+							? 'Damage'
+							: 'Dano'}<RpgIcon name="dice-stack" size={18} /></button
 				>
 				<button onclick={() => actions.removeAttack(index)}>×</button>
 			</div>
@@ -489,6 +490,9 @@
 		font-size: 0.72rem;
 	}
 	.roll-custom {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		border: 1px solid #765d3d !important;
 		border-radius: 5px !important;
 		color: #f0d29d !important;
