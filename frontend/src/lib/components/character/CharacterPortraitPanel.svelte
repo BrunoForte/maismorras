@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AppLocale } from '$lib/utils/speciesRules';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let {
 		locale,
@@ -28,7 +29,7 @@
 		{#if portraitPreview}<img
 				src={portraitPreview}
 				alt={`Retrato de ${characterName || 'personagem'}`}
-			/>{:else}<span>◈</span>{/if}
+			/>{:else}<RpgIcon name="character" size={48} />{/if}
 	</div>
 	<div>
 		<h3>{locale === 'en' ? 'Portrait and token' : 'Retrato e token'}</h3>

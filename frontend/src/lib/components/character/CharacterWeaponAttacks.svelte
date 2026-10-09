@@ -2,6 +2,7 @@
 	import type { AbilityScores, InventoryItem } from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { tick } from 'svelte';
 	import WeaponDamageBuilder from './WeaponDamageBuilder.svelte';
 	import {
@@ -285,8 +286,8 @@
 								>{rollingWeaponAction === `${actions.weaponKey(item)}:default:attack`
 									? '…'
 									: $appLocale === 'en'
-										? '🎲 Attack'
-										: '🎲 Ataque'}</button
+										? 'Attack'
+										: 'Ataque'}<RpgIcon name="attack" size={18} /></button
 							>
 							<button
 								onclick={() => actions.rollWeapon(item, 'damage')}
@@ -298,8 +299,8 @@
 								>{rollingWeaponAction === `${actions.weaponKey(item)}:default:damage`
 									? '…'
 									: $appLocale === 'en'
-										? '🎲 Damage'
-										: '🎲 Dano'}</button
+										? 'Damage'
+										: 'Dano'}<RpgIcon name="dice-stack" size={18} /></button
 							>
 						</div>
 						<div class="weapon-profile-list">
@@ -414,7 +415,8 @@
 												class="roll-weapon"
 												onclick={() => actions.rollWeapon(item, 'attack', profile)}
 												disabled={rollingWeaponAction !== null}
-												>🎲 {$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
+												><RpgIcon name="attack" size={18} />
+												{$appLocale === 'en' ? 'Attack' : 'Ataque'}</button
 											>
 											<button
 												onclick={() => actions.rollWeapon(item, 'damage', profile)}
@@ -423,7 +425,8 @@
 													!!profileIssue ||
 													!!validateDamageBonus(profile.damageBonus) ||
 													!!profile.damageNeedsRepair}
-												>🎲 {$appLocale === 'en' ? 'Damage' : 'Dano'}</button
+												><RpgIcon name="dice-stack" size={18} />
+												{$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button
 												class="danger-button"
@@ -678,6 +681,10 @@
 		font-size: 0.68rem;
 	}
 	.weapon-combat-actions button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.4rem;
 		flex: 1;
 		border: 1px solid #725a3b;
 		border-radius: 6px;

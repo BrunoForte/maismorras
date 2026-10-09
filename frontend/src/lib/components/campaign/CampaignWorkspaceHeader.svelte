@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { WorkspaceTab } from '$lib/utils/campaignWorkspaceState';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	type Locale = 'en' | 'pt-BR';
 	type CampaignHeader = { name: string; role: 'gm' | 'player' };
@@ -49,11 +50,11 @@
 	const isEnglish = $derived(locale === 'en');
 	const isGM = $derived(campaign?.role === 'gm');
 	const avatarInitial = $derived(email.slice(0, 1).toUpperCase());
-	const tabs: { id: WorkspaceTab; en: string; pt: string }[] = [
-		{ id: 'map', en: 'Table', pt: 'Mesa' },
-		{ id: 'sheets', en: 'Sheets', pt: 'Fichas' },
-		{ id: 'library', en: 'Library', pt: 'Mídias' },
-		{ id: 'compendium', en: 'Compendium', pt: 'Compêndio' }
+	const tabs: { id: WorkspaceTab; en: string; pt: string; icon: string }[] = [
+		{ id: 'map', en: 'Table', pt: 'Mesa', icon: 'map' },
+		{ id: 'sheets', en: 'Sheets', pt: 'Fichas', icon: 'character' },
+		{ id: 'library', en: 'Library', pt: 'Mídias', icon: 'camera' },
+		{ id: 'compendium', en: 'Compendium', pt: 'Compêndio', icon: 'compendium' }
 	];
 </script>
 
@@ -92,7 +93,8 @@
 						class="scene-add"
 						onclick={onopenscenesettings}
 						title={isEnglish ? 'Configure scene' : 'Configurar cena'}
-						aria-label={isEnglish ? 'Configure scene' : 'Configurar cena'}>⚙</button
+						aria-label={isEnglish ? 'Configure scene' : 'Configurar cena'}
+						><RpgIcon name="settings" size={18} /></button
 					>
 				{/if}
 			</div>
@@ -167,30 +169,32 @@
 			<h1>{campaign.name}</h1>
 		</div>
 		<span class="role-badge {campaign.role}">
+			<RpgIcon name={campaign.role === 'gm' ? 'campaign' : 'character'} size={15} />
 			{campaign.role === 'gm'
 				? isEnglish
-					? '✦ Game Master'
-					: '✦ Narrador'
+					? 'Game Master'
+					: 'Narrador'
 				: isEnglish
-					? '◈ Player'
-					: '◈ Jogador'}
+					? 'Player'
+					: 'Jogador'}
 		</span>
 	</section>
 	<nav class="workspace-tabs" aria-label={isEnglish ? 'Table areas' : 'Áreas da mesa'}>
 		{#each tabs as tab (tab.id)}
 			<button class:active={activeTab === tab.id} onclick={() => ontabchange(tab.id)}>
+				<RpgIcon name={tab.icon} size={18} />
 				{isEnglish ? tab.en : tab.pt}
 			</button>
 		{/each}
 		{#if isGM}
 			<button class:active={activeTab === 'bestiary'} onclick={() => ontabchange('bestiary')}
-				>{isEnglish ? 'Bestiary' : 'Bestiário'}</button
+				><RpgIcon name="bestiary" size={18} />{isEnglish ? 'Bestiary' : 'Bestiário'}</button
 			>
 			<button class:active={activeTab === 'campaign'} onclick={() => ontabchange('campaign')}
-				>{isEnglish ? 'Campaign' : 'Campanha'}</button
+				><RpgIcon name="campaign" size={18} />{isEnglish ? 'Campaign' : 'Campanha'}</button
 			>
 			<button class:active={activeTab === 'overlay'} onclick={() => ontabchange('overlay')}
-				>Overlay</button
+				><RpgIcon name="overlay" size={18} />Overlay</button
 			>
 		{/if}
 	</nav>
@@ -328,6 +332,7 @@
 	.role-badge {
 		display: inline-flex;
 		align-items: center;
+		gap: 0.3rem;
 		width: fit-content;
 		padding: 0.3rem 0.52rem;
 		border: 1px solid;
@@ -369,6 +374,9 @@
 		background: rgba(24, 20, 23, 0.68);
 	}
 	.workspace-tabs button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
 		border: 0;
 		border-bottom: 2px solid transparent;
 		padding: 0.85rem 1rem 0.75rem;
@@ -376,6 +384,9 @@
 		background: transparent;
 		font-size: 0.78rem;
 		font-weight: 750;
+	}
+	.workspace-tabs button :global(svg) {
+		flex: 0 0 auto;
 	}
 	.workspace-tabs button:hover {
 		color: #edcf94;
