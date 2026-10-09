@@ -81,6 +81,7 @@ export type LocalAuthenticatedFixture = {
 		sheetChanges?: Record<string, unknown>
 	) => Promise<{ id: string; sheet: Record<string, unknown> }>;
 	createCharacterToken: (characterId: string) => Promise<string>;
+	addPlayer: () => Promise<{ userId: string; page: Page }>;
 	startAudio: () => Promise<AudioSetup>;
 	close: () => Promise<void>;
 };
@@ -103,6 +104,9 @@ export async function createLocalAuthenticatedFixture(
 	const gmContext = await browser.newContext();
 	const playerContext = await browser.newContext();
 	let overlayContext: BrowserContext | undefined;
+	const additionalContexts: BrowserContext[] = [];
+	const additionalPlayers: string[] = [];
+	const additionalApis: APIRequestContext[] = [];
 	let gmUserId: string | undefined;
 	let playerUserId: string | undefined;
 	let campaignId: string | undefined;
@@ -138,10 +142,16 @@ export async function createLocalAuthenticatedFixture(
 			await Promise.all(
 				[gmApi?.dispose(), playerApi?.dispose(), pairingApi?.dispose()].filter(Boolean)
 			);
-			for (const id of [gmUserId, playerUserId]) {
+			for (const id of [gmUserId, playerUserId, ...additionalPlayers]) {
 				if (id) await admin.delete(`/auth/v1/admin/users/${id}`).catch(() => undefined);
 			}
-			await Promise.all([gmContext.close(), playerContext.close(), admin.dispose()]);
+			await Promise.all([
+				...additionalApis.map((api) => api.dispose()),
+				...additionalContexts.map((context) => context.close()),
+				gmContext.close(),
+				playerContext.close(),
+				admin.dispose()
+			]);
 		}
 	};
 
@@ -283,6 +293,27 @@ export async function createLocalAuthenticatedFixture(
 				});
 				expect(response.status()).toBe(201);
 				return ((await response.json()) as { id: string }).id;
+			},
+			addPlayer: async () => {
+				const email = `player-extra-${randomBytes(8).toString('hex')}@example.test`;
+				const userId = (await createUser(email)).id;
+				additionalPlayers.push(userId);
+				const context = await browser.newContext();
+				additionalContexts.push(context);
+				const loginResult = await login('player', context, email);
+				const api = await playwrightRequest.newContext({
+					baseURL: apiBase,
+					extraHTTPHeaders: { Authorization: `Bearer ${loginResult.token}` }
+				});
+				additionalApis.push(api);
+				const inviteResponse = await gmApi!.post(`/api/v1/campaigns/${campaignId}/invites`, {
+					data: {}
+				});
+				expect(inviteResponse.status()).toBe(201);
+				const invite = (await inviteResponse.json()) as { code: string };
+				const accepted = await api.post(`/api/v1/invites/${invite.code}/accept`, { data: {} });
+				expect(accepted.ok()).toBeTruthy();
+				return { userId, page: loginResult.page };
 			},
 			startAudio: async () => {
 				if (!withAudio) throw new Error('Audio assets were not provisioned for this scenario.');

@@ -749,8 +749,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			if (await chat.evaluate((node) => node.classList.contains('closed')))
 				await page.getByRole('button', { name: 'Abrir chat' }).click();
 			await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-			await page.getByLabel('Participante / personagem').selectOption(fixture!.playerUserId);
-			await page.getByRole('button', { name: 'Exibir ficha selecionada' }).click();
+			await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
+			await page.getByRole('button', { name: 'Abrir como painel' }).click();
 			const sheet = page.locator('.sheet-backdrop.floating .sheet');
 			await expect(sheet).toBeVisible();
 			await page.getByRole('button', { name: 'Mesa', exact: true }).click();
@@ -767,8 +767,10 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const footerBox = (await page.locator('.audio-channels').boundingBox())!;
 				expect(actorBox.y + actorBox.height).toBeLessThanOrEqual(footerBox.y + 2);
 				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(sheet).toBeVisible();
+				await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
+				await expect(sheet).toBeHidden();
 				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await expect(sheet).toBeVisible();
 				await expect(page.locator('canvas').first()).toBeVisible();
 				await expect(sheet).toBeVisible();
 			});
@@ -925,7 +927,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					openMap(fixture.gm, fixture.campaignId, fixture.sceneId)
 				]);
 				await fixture.player.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await fixture.player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				await fixture.player.getByRole('button', { name: 'Abrir como painel' }).click();
 			});
 			const player = fixture!.player;
 			const sheet = player.locator('.sheet-backdrop.floating .sheet');
@@ -1008,7 +1010,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await player.setViewportSize({ width: viewport.width, height: viewport.height });
 				await openMap(player, fixture.campaignId, fixture.sceneId);
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				await player.getByRole('button', { name: 'Abrir como painel' }).click();
 				const sheet = player.locator('.sheet-backdrop.floating .sheet');
 				await expect(sheet).toBeVisible();
 
@@ -1047,9 +1049,10 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await expectUsableGeometry();
 
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await player.getByRole('button', { name: 'Abrir como painel' }).click();
 				await player.getByRole('button', { name: 'Fechar ficha' }).click();
-				await expect(player.locator('.sheet-backdrop')).toHaveCount(0);
-				await player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
+				await expect(player.locator('.sheet-backdrop.floating .sheet')).toHaveCount(0);
+				await player.getByRole('button', { name: 'Abrir como painel' }).click();
 				await expect(sheet).toBeVisible();
 				await expectUsableGeometry();
 			} finally {
@@ -2365,32 +2368,30 @@ test.describe('local authenticated map and character sheet E2E', () => {
 		}
 	});
 
-	test('GM selects different participants and the panel shows the requested character', async ({
+	test('GM selects a player sheet in the tab and can still create a GM sheet', async ({
 		browser
 	}) => {
 		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
 		try {
-			await test.step('prepare a player sheet and choose it from the explicit participant selector', async () => {
+			await test.step('prepare and show a player sheet directly in the tab', async () => {
 				fixture = await createLocalAuthenticatedFixture(browser);
 				await fixture.createCharacter(fixture.playerUserId, { name: 'Ficha alvo jogador E2E' });
 				await fixture.gm.goto(`/?campaign=${fixture.campaignId}&scene=${fixture.sceneId}`);
 				await fixture.gm.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(fixture.gm.getByLabel('Participante / personagem')).toBeVisible();
-				await fixture.gm.getByLabel('Participante / personagem').selectOption(fixture.playerUserId);
-				await fixture.gm.getByRole('button', { name: 'Exibir ficha selecionada' }).click();
-				await expect(fixture.gm.locator('.sheet-backdrop.floating .sheet header h2')).toHaveText(
+				await expect(fixture.gm.getByLabel('Personagem da campanha')).toBeVisible();
+				await expect(fixture.gm.locator('.sheet-backdrop.embedded .sheet header h2')).toHaveText(
 					'Ficha alvo jogador E2E'
 				);
 			});
 			const gm = fixture!.gm;
-			const sheet = gm.locator('.sheet-backdrop .sheet');
-			await test.step('select a participant without a sheet and create it through the existing flow', async () => {
-				await expect(gm.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
-				await gm.getByLabel('Participante / personagem').selectOption(fixture!.gmUserId);
-				await gm.getByRole('button', { name: 'Criar e exibir ficha' }).click();
+			const sheet = gm.locator('.sheet-backdrop.embedded .sheet');
+			await test.step('keep the existing create flow for a participant without a sheet', async () => {
+				await gm.getByRole('button', { name: 'Mesa', exact: true }).click();
+				await gm.getByRole('button', { name: 'Fichas', exact: true }).click();
+				await gm.getByRole('button', { name: 'Voltar ao elenco' }).click();
+				await gm.getByRole('button', { name: 'Criar ficha' }).click();
 				await expect(sheet.locator('header h2')).toHaveText('Novo personagem');
-				await expect(gm.locator('.sheet-backdrop .sheet')).toHaveCount(1);
-				await expect(sheet.locator('.sheet-mode-status')).toHaveText('Flutuante');
+				await expect(gm.locator('.sheet-backdrop.embedded .sheet')).toHaveCount(1);
 			});
 		} finally {
 			await fixture?.close();
@@ -2492,8 +2493,7 @@ async function prepareSavedPlayerSheet(browser: Browser, testInfo: TestInfo) {
 					await fixture.player.getByRole('button', { name: 'Fichas', exact: true }).click();
 					await expect(fixture.player.locator('.sheets-view')).toBeVisible();
 					phase = 'open linked sheet';
-					await fixture.player.getByRole('button', { name: 'Abrir minha ficha' }).first().click();
-					const sheet = fixture.player.locator('.sheet-backdrop.floating .sheet');
+					const sheet = fixture.player.locator('.sheet-backdrop.embedded .sheet');
 					await expect(sheet).toBeVisible({ timeout: 20_000 });
 					phase = 'save player sheet';
 					await fixture.player.getByPlaceholder('Nome do personagem').fill('Ficha persistida E2E');
