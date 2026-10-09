@@ -128,6 +128,7 @@
 	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import {
+		normalizeDamageComponents,
 		parseDamageExpression,
 		serializeDamageComponents,
 		validateDamageBonus,
@@ -650,14 +651,15 @@
 		profile?: WeaponAttackProfile
 	) {
 		const key = damageDraftKey(item, profile);
-		damageDrafts[key] = components;
+		const normalizedComponents = normalizeDamageComponents(components);
+		damageDrafts[key] = normalizedComponents;
 		invalidWeaponKey = weaponKey(item);
 		invalidDamageProfileId = profile?.id ?? null;
 		invalidWeaponField = 'damage';
-		const issue = validateDamageComponents(components);
+		const issue = validateDamageComponents(normalizedComponents);
 		invalidDamageIndex = issue?.index ?? 0;
 		if (issue) return;
-		const damage = components.map(({ count, sides }) => `${count}d${sides}`).join('+');
+		const damage = serializeDamageComponents(normalizedComponents);
 		if (profile) updateWeaponProfile(item, profile.id, { damage, damageNeedsRepair: false });
 		else updateWeaponRules(item, { damage, damageNeedsRepair: false }, true);
 		invalidWeaponKey = null;
