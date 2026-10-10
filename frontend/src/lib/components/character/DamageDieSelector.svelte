@@ -97,7 +97,9 @@
 	}
 	.die-type-options {
 		position: absolute;
-		bottom: calc(100% + 0.35rem);
+		top: calc(100% + 0.35rem);
+		max-height: min(16rem, 50vh);
+		overflow-y: auto;
 		left: 0;
 		z-index: 20;
 		min-width: 7rem;

@@ -245,6 +245,42 @@ describe('character combat actions', () => {
 		expect(test.rollDice.mock.calls[1][7]).toBe(true);
 	});
 
+	it('rola dano fixo sem dados e mantém o bônus uma vez mesmo em crítico', async () => {
+		const test = setup({
+			getWeaponRollDetails: () => ({
+				attackBonus: 5,
+				damageBonus: 4,
+				damageFormula: '',
+				stableWeaponKey: 'weapon-1',
+				profileKey: 'default',
+				damageType: 'contundente'
+			}),
+			rollDice: vi
+				.fn()
+				.mockResolvedValueOnce({
+					id: 'critical-attack',
+					payload: { expressao: '1d20+5', dados: [20], total: 25 }
+				})
+				.mockResolvedValueOnce({
+					id: 'fixed-damage',
+					payload: { expressao: '4', dados: [], total: 4 }
+				})
+		});
+		const fixedWeapon = { ...weapon, rules: { ...weapon.rules, damage: '' } };
+
+		await test.controller.rollWeapon(fixedWeapon, 'attack');
+		await test.controller.rollWeapon(fixedWeapon, 'damage');
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '4']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
+		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({
+			modificador: 4,
+			dados: [],
+			total: 4
+		});
+	});
+
 	it('aplica o bônus de ataque somente ao ataque e mantém o modificador da fórmula de dano', async () => {
 		const test = setup();
 		const attack = {

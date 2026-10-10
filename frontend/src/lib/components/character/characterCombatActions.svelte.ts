@@ -497,7 +497,10 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const damageValidation = validateDamageComponents(components);
 		const actionKey = `${details.stableWeaponKey}:${details.profileKey}:${action}`;
 		if (!deps.isWeapon(item) || state.rollingWeaponAction) return;
-		if (action === 'damage' && (!components.length || damageValidation || !parsedDamage)) {
+		const legacyDamageBonus =
+			parsedDamage && 'damageBonus' in parsedDamage ? parsedDamage.damageBonus : 0;
+		const damageModifier = legacyDamageBonus + details.damageBonus;
+		if (action === 'damage' && (damageValidation || !parsedDamage)) {
 			deps.setMessage(
 				localized(
 					context.locale,
@@ -507,9 +510,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			);
 			return;
 		}
-		const legacyDamageBonus =
-			parsedDamage && 'damageBonus' in parsedDamage ? parsedDamage.damageBonus : 0;
-		if (action === 'damage' && validateDamageBonus(legacyDamageBonus + details.damageBonus)) {
+		if (action === 'damage' && validateDamageBonus(damageModifier)) {
 			deps.setMessage('O bônus total de dano deve ser um inteiro entre -10000 e 10000.');
 			return;
 		}
@@ -576,17 +577,19 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					nonce: String(event.id)
 				});
 			} else {
-				const damageModifier = legacyDamageBonus + details.damageBonus;
 				const isCritical =
 					lastCriticalWeapon === `${details.stableWeaponKey}:${details.profileKey}`;
 				const rolledFormula = serializeDamageComponents(components);
+				const damageExpression = rolledFormula
+					? `${rolledFormula}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`
+					: String(damageModifier);
 				const event = await deps.rollDice(
 					context.session,
 					context.campaignId,
-					`${rolledFormula}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
+					damageExpression,
 					undefined,
 					'combat',
-					details.minimumDamageDie,
+					components.length ? details.minimumDamageDie : undefined,
 					true,
 					isCritical
 				);
