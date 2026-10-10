@@ -224,10 +224,84 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if providerCalls.Load() != 1 {
 		t.Fatal("completed shared translation was requested again")
 	}
+	sharedSourceID := sharedA.SourceID
+
+	// Exercise the current creature pack through the same persisted catalog
+	// path used when campaigns load the compendium after an application deploy.
+	hippogriff := findEntryByName(entriesA, "other", "Hippogriff")
+	if hippogriff.ID == "" {
+		t.Fatal("Hippogriff is missing from the shared creature catalog")
+	}
+	var hippogriffPackEntry srdEntry
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType == "other" && entry.Name == "Hippogriff" {
+			hippogriffPackEntry = entry
+			break
+		}
+	}
+	approvedHippogriffTranslations := decodeTranslations(hippogriffPackEntry.Translations)
+	approvedHippogriffSummary := approvedHippogriffTranslations["pt-BR.summary"]
+	if approvedHippogriffSummary == "" || approvedHippogriffTranslations["pt-BR.summary.source"] != "reviewed" {
+		t.Fatalf("Hippogriff summary is not reviewed in the package: %v", approvedHippogriffTranslations)
+	}
+	var originalHippogriffTranslations json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, hippogriff.ID).Scan(&originalHippogriffTranslations); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_entries set translations=$1 where id=$2`, originalHippogriffTranslations, hippogriff.ID)
+	}()
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Hippogriff IA antigo','pt-BR.source','ai','pt-BR.summary','Resumo antigo de IA','pt-BR.summary.source','ai') where id=$1`, hippogriff.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,translations,updated_by) values($1,$2,$3,$5),($4,$2,$6,$5) on conflict(campaign_id,catalog_entry_id) do update set translations=excluded.translations`, campaignA, hippogriff.ID, json.RawMessage(`{"pt-BR.summary":"Resumo IA antigo","pt-BR.summary.source":"ai"}`), campaignB, owner, json.RawMessage(`{"pt-BR.summary":"Resumo manual da campanha B","pt-BR.summary.source":"manual"}`)); err != nil {
+		t.Fatal(err)
+	}
+	_, creatureEntriesA, err := repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, creatureEntriesB, err := repo.List(ctx, campaignB, gmB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(findEntryByName(creatureEntriesA, "other", "Hippogriff").Translations)["pt-BR.summary"]; got != approvedHippogriffSummary {
+		t.Fatalf("AI campaign override hid reviewed Hippogriff summary: got %q, want %q", got, approvedHippogriffSummary)
+	}
+	if got := decodeTranslations(findEntryByName(creatureEntriesB, "other", "Hippogriff").Translations)["pt-BR.summary"]; got != "Resumo manual da campanha B" {
+		t.Fatalf("protected campaign override was not preserved: got %q", got)
+	}
+	var persistedHippogriff json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, hippogriff.ID).Scan(&persistedHippogriff); err != nil {
+		t.Fatal(err)
+	}
+	if translations := decodeTranslations(persistedHippogriff); translations["pt-BR.summary"] != approvedHippogriffSummary || translations["pt-BR.summary.source"] != "reviewed" {
+		t.Fatalf("reviewed Hippogriff summary was not persisted canonically: %v", translations)
+	}
+	creatureSyncReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, []srdEntry{hippogriffPackEntry})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(creatureSyncReport.Updated) != 0 || len(creatureSyncReport.Unresolved) != 0 {
+		t.Fatalf("repeated Hippogriff sync was not idempotent: %+v", creatureSyncReport)
+	}
+	if _, err = pool.Exec(ctx, `update campaign_srd_entry_overrides set translations=$1 where campaign_id=$2 and catalog_entry_id=$3`, json.RawMessage(`{"pt-BR.summary":"Resumo antigo sem origem"}`), campaignA, hippogriff.ID); err != nil {
+		t.Fatal(err)
+	}
+	_, creatureEntriesA, err = repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(findEntryByName(creatureEntriesA, "other", "Hippogriff").Translations)["pt-BR.summary"]; got != approvedHippogriffSummary {
+		t.Fatalf("unmarked campaign override hid reviewed Hippogriff summary: got %q, want %q", got, approvedHippogriffSummary)
+	}
 
 	// Simulate an existing catalog and campaign overrides written by prior AI
 	// translation runs, plus protected and unmarked legacy values.
-	sharedSourceID := sharedA.SourceID
 	var originalRevision string
 	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSourceID).Scan(&originalRevision); err != nil {
 		t.Fatal(err)
@@ -303,10 +377,6 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_build_object('pt-BR','Pique legado de origem externa','pt-BR.source','external') where source_id=$1 and entry_type='item' and name='Pike'`, sharedSourceID); err != nil {
-		t.Fatal(err)
-	}
-	pack, err := loadSRDPack()
-	if err != nil {
 		t.Fatal(err)
 	}
 	syncReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, uniqueEntries(pack.Entries))
