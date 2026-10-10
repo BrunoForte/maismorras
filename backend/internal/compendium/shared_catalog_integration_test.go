@@ -156,26 +156,19 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_set(jsonb_set(translations,'{pt-BR.summary}','"Resumo oficial"'::jsonb,true),'{pt-BR.summary.source}','"official"'::jsonb,true) where id=$1`, sharedA.ID); err != nil {
 		t.Fatal(err)
 	}
-	// Keep one field pending so this provider-concurrency scenario remains
-	// meaningful now that Fireball is fully reviewed in the embedded pack.
-	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=(translations - 'pt-BR.source') || jsonb_build_object('pt-BR', name) where id=$1`, sharedA.ID); err != nil {
+	// Use a test-only canonical entry for the provider-concurrency scenario.
+	// Fireball is fully reviewed in the embedded pack and must remain canonical.
+	var pendingSharedID string
+	if err = pool.QueryRow(ctx, `insert into srd_catalog_entries(source_id,entry_type,name,summary,rules,translations,is_published) values($1,'spell','Integration Pending Spell','Pending fixture summary','{}'::jsonb,jsonb_build_object('pt-BR.summary','Resumo oficial','pt-BR.summary.source','official'),true) returning id::text`, sharedA.SourceID).Scan(&pendingSharedID); err != nil {
 		t.Fatal(err)
-	}
-	var pendingFixtureTranslations json.RawMessage
-	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, sharedA.ID).Scan(&pendingFixtureTranslations); err != nil {
-		t.Fatal(err)
-	}
-	pendingFixture := decodeTranslations(pendingFixtureTranslations)
-	if pendingFixture["pt-BR"] != "Fireball" || pendingFixture["pt-BR.source"] != "" {
-		t.Fatalf("failed to create an unmarked untranslated fixture: %v", pendingFixture)
 	}
 	started, release := make(chan struct{}), make(chan struct{})
 	var providerCalls atomic.Int32
 	translate := func(_ context.Context, fields map[string]string) (map[string]string, error) {
 		providerCalls.Add(1)
-		if fields["pt-BR"] != "Fireball" {
+		if fields["pt-BR"] != "Integration Pending Spell" {
 			close(started)
-			return nil, errors.New("unmarked source-text field was not sent to the provider")
+			return nil, errors.New("pending canonical name was not sent to the provider")
 		}
 		close(started)
 		<-release
@@ -187,7 +180,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}
 	first := make(chan error, 1)
 	go func() {
-		item, callErr := repo.TranslateShared(ctx, campaignA, sharedA.ID, owner, translate)
+		item, callErr := repo.TranslateShared(ctx, campaignA, pendingSharedID, owner, translate)
 		if callErr == nil && decodeTranslations(item.Translations)["pt-BR.summary"] != "Resumo oficial" {
 			callErr = errors.New("official translation was overwritten")
 		}
@@ -200,7 +193,7 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}
 	second := make(chan error, 1)
 	go func() {
-		_, callErr := repo.TranslateShared(ctx, campaignB, sharedB.ID, owner, func(context.Context, map[string]string) (map[string]string, error) {
+		_, callErr := repo.TranslateShared(ctx, campaignB, pendingSharedID, owner, func(context.Context, map[string]string) (map[string]string, error) {
 			providerCalls.Add(1)
 			return map[string]string{}, nil
 		})
@@ -220,11 +213,11 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	translatedB := findEntryByName(entriesB, "spell", "Fireball")
-	if translatedB.ID != sharedA.ID || decodeTranslations(translatedB.Translations)["pt-BR.summary"] != "Resumo oficial" || decodeTranslations(translatedB.Translations)["pt-BR"] != "PT: Fireball" {
+	translatedB := findEntryByName(entriesB, "spell", "Integration Pending Spell")
+	if translatedB.ID != pendingSharedID || decodeTranslations(translatedB.Translations)["pt-BR.summary"] != "Resumo oficial" || decodeTranslations(translatedB.Translations)["pt-BR"] != "PT: Integration Pending Spell" {
 		t.Fatalf("campaign B did not see safe shared translation: %#v", decodeTranslations(translatedB.Translations))
 	}
-	_, err = repo.TranslateShared(ctx, campaignB, sharedB.ID, owner, func(context.Context, map[string]string) (map[string]string, error) {
+	_, err = repo.TranslateShared(ctx, campaignB, pendingSharedID, owner, func(context.Context, map[string]string) (map[string]string, error) {
 		providerCalls.Add(1)
 		return nil, nil
 	})
