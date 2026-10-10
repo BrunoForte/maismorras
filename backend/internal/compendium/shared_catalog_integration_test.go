@@ -158,8 +158,16 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}
 	// Keep one field pending so this provider-concurrency scenario remains
 	// meaningful now that Fireball is fully reviewed in the embedded pack.
-	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=(jsonb_set(translations,'{pt-BR.rules.name}','"Bola de fogo antiga"'::jsonb,true) - 'pt-BR.rules.name.source') where id=$1`, sharedA.ID); err != nil {
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=(translations - 'pt-BR.rules.name.source') || jsonb_build_object('pt-BR.rules.name', name) where id=$1`, sharedA.ID); err != nil {
 		t.Fatal(err)
+	}
+	var pendingFixtureTranslations json.RawMessage
+	if err = pool.QueryRow(ctx, `select translations from srd_catalog_entries where id=$1`, sharedA.ID).Scan(&pendingFixtureTranslations); err != nil {
+		t.Fatal(err)
+	}
+	pendingFixture := decodeTranslations(pendingFixtureTranslations)
+	if pendingFixture["pt-BR.rules.name"] != "Fireball" || pendingFixture["pt-BR.rules.name.source"] != "" {
+		t.Fatalf("failed to create an unmarked untranslated fixture: %v", pendingFixture)
 	}
 	fields, err := repo.TranslationFields(ctx, campaignA, sharedA.ID, owner)
 	if err != nil {
@@ -168,8 +176,8 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if _, ok := fields["pt-BR.summary"]; ok {
 		t.Fatal("official translation appeared as pending")
 	}
-	if fields["pt-BR.rules.name"] != "Bola de fogo antiga" {
-		t.Fatalf("expected unmarked legacy translation to be pending, got %v", fields)
+	if fields["pt-BR.rules.name"] != "Fireball" {
+		t.Fatalf("expected unmarked source-text field to be pending, got %v", fields)
 	}
 	started, release := make(chan struct{}), make(chan struct{})
 	var providerCalls atomic.Int32
