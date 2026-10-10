@@ -156,12 +156,20 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_set(jsonb_set(translations,'{pt-BR.summary}','"Resumo oficial"'::jsonb,true),'{pt-BR.summary.source}','"official"'::jsonb,true) where id=$1`, sharedA.ID); err != nil {
 		t.Fatal(err)
 	}
+	// Keep one field pending so this provider-concurrency scenario remains
+	// meaningful now that Fireball is fully reviewed in the embedded pack.
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=(jsonb_set(translations,'{pt-BR.rules.name}','"Fireball"'::jsonb,true) - 'pt-BR.rules.name.source') where id=$1`, sharedA.ID); err != nil {
+		t.Fatal(err)
+	}
 	fields, err := repo.TranslationFields(ctx, campaignA, sharedA.ID, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := fields["pt-BR.summary"]; ok {
 		t.Fatal("official translation appeared as pending")
+	}
+	if fields["pt-BR.rules.name"] != "Fireball" {
+		t.Fatalf("expected unmarked Fireball name to be pending, got %v", fields)
 	}
 	started, release := make(chan struct{}), make(chan struct{})
 	var providerCalls atomic.Int32
