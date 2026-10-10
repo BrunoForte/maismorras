@@ -52,7 +52,13 @@ describe('CharacterInventoryTab compendium picker', () => {
 			props: {
 				itemEntries: entries,
 				visibleItems: [],
-				totalWeight: 0,
+				carriedWeight: 151,
+				capacityLb: 150,
+				loadIncomplete: true,
+				unknownItemCount: 1,
+				canUseLargeForm: true,
+				largeFormActive: true,
+				onLargeFormChange: vi.fn(),
 				money: { cp: 2, sp: 3, ep: 4, gp: 5, pp: 6 },
 				onMoneyChange: vi.fn(),
 				inventoryFilter: 'all',
@@ -74,5 +80,10 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html).toContain('Dinheiro');
 		expect(html).toContain('aria-label="PC · Cobre"');
 		expect(html).toContain('value="5"');
+		expect(html).toContain('Peso carregado / capacidade máxima');
+		expect(html).toContain('151 / 150 lb');
+		expect(html).toContain('O total pode estar incompleto');
+		expect(html).toContain('Acima da capacidade de carga');
+		expect(html).toContain('Forma Grande ativa');
 	});
 });

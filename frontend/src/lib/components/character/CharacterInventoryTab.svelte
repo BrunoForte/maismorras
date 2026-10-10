@@ -14,7 +14,13 @@
 	let {
 		itemEntries,
 		visibleItems,
-		totalWeight,
+		carriedWeight,
+		capacityLb,
+		loadIncomplete,
+		unknownItemCount,
+		canUseLargeForm,
+		largeFormActive,
+		onLargeFormChange,
 		money,
 		onMoneyChange,
 		inventoryFilter = $bindable(),
@@ -27,7 +33,13 @@
 	}: {
 		itemEntries: CompendiumEntry[];
 		visibleItems: { item: InventoryItem; index: number }[];
-		totalWeight: number;
+		carriedWeight: number;
+		capacityLb: number | null;
+		loadIncomplete: boolean;
+		unknownItemCount: number;
+		canUseLargeForm: boolean;
+		largeFormActive: boolean;
+		onLargeFormChange: (active: boolean) => void;
 		money: Dnd2024Money;
 		onMoneyChange: (money: Dnd2024Money) => void;
 		inventoryFilter: InventoryCategory;
@@ -61,6 +73,12 @@
 	const itemOptionGroups = $derived(
 		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
 	);
+	const formatWeight = (weight: number | null) =>
+		weight === null
+			? '—'
+			: new Intl.NumberFormat($appLocale === 'en' ? 'en-US' : 'pt-BR', {
+					maximumFractionDigits: 2
+				}).format(weight);
 	const moneyFields: { key: keyof Dnd2024Money; labelPt: string; labelEn: string }[] = [
 		{ key: 'cp', labelPt: 'PC · Cobre', labelEn: 'CP · Copper' },
 		{ key: 'sp', labelPt: 'PP · Prata', labelEn: 'SP · Silver' },
@@ -112,9 +130,48 @@
 <section class="inventory-section">
 	<div class="section-title">
 		<h3>{$appLocale === 'en' ? 'Equipment' : 'Equipamento'}</h3>
-		<span class="defense-hint"
-			>{$appLocale === 'en' ? 'Total weight' : 'Peso total'}: {totalWeight} lb</span
+	</div>
+	<div
+		class="carrying-capacity"
+		aria-label={$appLocale === 'en' ? 'Carrying capacity' : 'Capacidade de carga'}
+	>
+		<strong
+			>{$appLocale === 'en'
+				? 'Carried weight / maximum capacity'
+				: 'Peso carregado / capacidade máxima'}</strong
 		>
+		<span data-testid="carrying-weight"
+			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} lb</span
+		>
+		{#if loadIncomplete}
+			<small role="status">
+				{$appLocale === 'en'
+					? `The total may be incomplete: ${unknownItemCount} item(s) have missing or invalid weight or quantity.`
+					: `O total pode estar incompleto: ${unknownItemCount} item(ns) têm peso ou quantidade ausente ou inválida.`}
+			</small>
+		{/if}
+		{#if capacityLb !== null && carriedWeight > capacityLb}
+			<small role="status" class="over-capacity">
+				{$appLocale === 'en'
+					? 'Above carrying capacity; resolve according to the table rules.'
+					: 'Acima da capacidade de carga; adjudique conforme as regras da mesa.'}
+			</small>
+		{/if}
+		{#if canUseLargeForm}
+			<label class="large-form-toggle">
+				<input
+					type="checkbox"
+					checked={largeFormActive}
+					onchange={(event) => onLargeFormChange(event.currentTarget.checked)}
+				/>
+				{$appLocale === 'en' ? 'Large Form active' : 'Forma Grande ativa'}
+				<small
+					>{$appLocale === 'en'
+						? 'Turn off when the 10-minute effect ends.'
+						: 'Desative quando o efeito de 10 minutos terminar.'}</small
+				>
+			</label>
+		{/if}
 	</div>
 	<fieldset class="money-panel">
 		<legend>{$appLocale === 'en' ? 'Money' : 'Dinheiro'}</legend>
@@ -304,6 +361,42 @@
 		display: grid;
 		gap: 0.75rem;
 	}
+	.carrying-capacity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 0.65rem;
+		border: 1px solid #554841;
+		border-radius: 7px;
+		padding: 0.65rem 0.8rem;
+		background: #1c1718;
+	}
+	.carrying-capacity strong {
+		color: #e7c98c;
+	}
+	.carrying-capacity > span {
+		font-variant-numeric: tabular-nums;
+	}
+	.carrying-capacity > small {
+		flex-basis: 100%;
+		color: #e2bc76;
+	}
+	.over-capacity {
+		color: #f0a29b !important;
+	}
+	.large-form-toggle {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		color: #d7cec4;
+	}
+	.large-form-toggle small {
+		flex-basis: 100%;
+		margin-left: 1.25rem;
+		color: #a99c91;
+	}
 	.section-title {
 		display: flex;
 		align-items: center;
@@ -344,10 +437,6 @@
 		color: #eee4d6;
 		background: #161216;
 		font: inherit;
-	}
-	.defense-hint {
-		color: #aa9d91;
-		font-size: 0.72rem;
 	}
 	.inventory-filters {
 		display: flex;
