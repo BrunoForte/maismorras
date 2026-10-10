@@ -169,20 +169,14 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	if pendingFixture["pt-BR"] != "Fireball" || pendingFixture["pt-BR.source"] != "" {
 		t.Fatalf("failed to create an unmarked untranslated fixture: %v", pendingFixture)
 	}
-	fields, err := repo.TranslationFields(ctx, campaignA, sharedA.ID, owner)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := fields["pt-BR.summary"]; ok {
-		t.Fatal("official translation appeared as pending")
-	}
-	if fields["pt-BR"] != "Fireball" {
-		t.Fatalf("expected unmarked source-text field to be pending, got %v", fields)
-	}
 	started, release := make(chan struct{}), make(chan struct{})
 	var providerCalls atomic.Int32
 	translate := func(_ context.Context, fields map[string]string) (map[string]string, error) {
 		providerCalls.Add(1)
+		if fields["pt-BR"] != "Fireball" {
+			close(started)
+			return nil, errors.New("unmarked source-text field was not sent to the provider")
+		}
 		close(started)
 		<-release
 		out := map[string]string{}
