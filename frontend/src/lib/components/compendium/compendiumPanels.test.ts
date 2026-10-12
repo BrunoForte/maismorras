@@ -132,6 +132,51 @@ describe('compendium panels', () => {
 			'The bag can hold up to 500 pounds and weighs 5 pounds.'
 		);
 
+		const weapon: CompendiumEntry = {
+			...monster,
+			id: 'shortbow',
+			entryType: 'item',
+			name: 'Shortbow',
+			summary: '',
+			rules: {
+				category: 'Martial Ranged',
+				damage: '1d6',
+				damageType: 'Piercing',
+				properties: ['Ammunition (80/320)', 'Heavy', 'Two-Handed']
+			},
+			translations: {},
+			isPublished: true
+		};
+		const localizedWeaponHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(weapon), actions }
+		}).body;
+		expect(localizedWeaponHtml).toContain('Armas Marciais à Distância');
+		expect(localizedWeaponHtml).toContain('Munição (80/320), Pesada, Duas Mãos');
+		expect(weapon.rules).toEqual({
+			category: 'Martial Ranged',
+			damage: '1d6',
+			damageType: 'Piercing',
+			properties: ['Ammunition (80/320)', 'Heavy', 'Two-Handed']
+		});
+
+		setAppLocale('en');
+		const englishWeaponHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(weapon), actions }
+		}).body;
+		expect(englishWeaponHtml).toContain('Martial Ranged');
+		expect(englishWeaponHtml).toContain('Ammunition (80/320), Heavy, Two-Handed');
+		setAppLocale('pt-BR');
+
+		const unknownWeapon: CompendiumEntry = {
+			...weapon,
+			rules: { ...weapon.rules, category: 'Homebrew Category', properties: ['Custom Property'] }
+		};
+		const unknownWeaponHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(unknownWeapon), actions }
+		}).body;
+		expect(unknownWeaponHtml).toContain('Homebrew Category');
+		expect(unknownWeaponHtml).toContain('Custom Property');
+
 		const localizedMonster: CompendiumEntry = {
 			...monster,
 			translations: {

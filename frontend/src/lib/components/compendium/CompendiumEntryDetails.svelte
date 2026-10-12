@@ -3,6 +3,7 @@
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { CompendiumDetailsView } from './compendiumTypes';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
+	import { displayItemCategory, displayWeaponProperties } from '$lib/utils/compendium/itemLabels';
 	import {
 		compendiumTranslationHasAI,
 		compendiumTranslationIsOfficial,
@@ -233,15 +234,11 @@
 		{/if}
 	{:else if entry.entryType === 'item'}
 		<div class="rules">
-			<b>{displayRule('category', detail.category ?? 'item')}</b>
+			<b>{displayItemCategory(displayRule('category', detail.category ?? 'item'), locale)}</b>
 			{#if detail.damage}<b>{displayRule('damage', detail.damage)}</b>{/if}
 			{#if detail.armorClass}<b>{$appLocale === 'en' ? 'AC' : 'CA'} +{String(detail.armorClass)}</b
 				>{/if}
-			{#if detail.properties}<b
-					>{Array.isArray(detail.properties)
-						? (detail.properties as string[]).join(', ')
-						: String(detail.properties)}</b
-				>{/if}
+			{#if detail.properties}<b>{displayWeaponProperties(detail.properties, locale)}</b>{/if}
 		</div>
 	{:else if entry.entryType === 'other' && detail.catalog === 'magic-item'}
 		{@const magicItemDescription = displayRule('description', detail.description)}
