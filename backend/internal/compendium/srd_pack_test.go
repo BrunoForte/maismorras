@@ -82,14 +82,17 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		if strings.TrimSpace(localized) == "" || localized == name || translations["pt-BR.source"] != "reviewed" {
 			t.Errorf("%s lacks a distinct reviewed Portuguese name", name)
 		}
-		if len(translations) != 2 {
+		if len(translations) != 4 {
 			t.Errorf("%s has unexpected localized fields: %#v", name, translations)
+		}
+		if strings.TrimSpace(fmt.Sprint(translations["pt-BR.rules.description"])) == "" || translations["pt-BR.rules.description.source"] != "reviewed" {
+			t.Errorf("%s lacks a reviewed PT-BR rules.description", name)
 		}
 		if entry["summary"] != "Item mágico do System Reference Document 5.2.1." {
 			t.Errorf("%s generic summary changed", name)
 		}
-		if _, exists := rules["description"]; exists {
-			t.Errorf("%s gained an unsupported description", name)
+		if rules["catalog"] != "magic-item" || len(rules) != 2 || strings.TrimSpace(fmt.Sprint(rules["description"])) == "" {
+			t.Errorf("%s has unexpected mechanics or lacks the official English description: %#v", name, rules)
 		}
 		if previous, exists := localizedNames[localized]; exists {
 			t.Errorf("localized name collision %q: %s and %s", localized, previous, name)
@@ -139,16 +142,41 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 	if overlaps != 17 {
 		t.Errorf("typed-item overlaps = %d, want 17", overlaps)
 	}
+	if armor := bySourceName["Armor of Resistance"]["rules"].(map[string]any); strings.Contains(fmt.Sprint(armor["description"]), "Apparatus of the Crab Levers") {
+		t.Error("Apparatus of the Crab lever table leaked into Armor of Resistance")
+	}
+	if apparatus := bySourceName["Apparatus of the Crab"]["rules"].(map[string]any); !strings.Contains(fmt.Sprint(apparatus["description"]), "Apparatus of the Crab Levers") {
+		t.Error("Apparatus of the Crab source description is missing its lever table")
+	}
+	if spellguard := bySourceName["Spellguard Shield"]["rules"].(map[string]any); strings.Contains(fmt.Sprint(spellguard["description"]), "Spell Scroll") {
+		t.Error("generic Spell Scroll text leaked into Spellguard Shield")
+	}
+	featherText := fmt.Sprint(bySourceName["Feather Token"]["translations"].(map[string]any)["pt-BR.rules.description"])
+	for _, required := range []string{"232 km por dia", "descansando 1 hora a cada 3 horas", "água com pelo menos 18 m de diâmetro"} {
+		if !strings.Contains(featherText, required) {
+			t.Errorf("Feather Token description is missing source detail %q", required)
+		}
+	}
+	deckText := fmt.Sprint(bySourceName["Mysterious Deck"]["translations"].(map[string]any)["pt-BR.rules.description"])
+	for _, required := range []string{"1 hora após a anterior", "Avatar da Morte", "intervenção divina", "desejo"} {
+		if !strings.Contains(strings.ToLower(deckText), strings.ToLower(required)) {
+			t.Errorf("Mysterious Deck description is missing source detail %q", required)
+		}
+	}
 
 	// Exercise the same field-level policy used by the persisted catalog sync
 	// for a real item in this batch: legacy AI and missing provenance update,
 	// protected editorial values remain intact, and a second sync is a no-op.
 	bag := bySourceName["Bag of Holding"]
 	bagTranslations, _ := bag["translations"].(map[string]any)
+	bagTitleTranslations := map[string]any{
+		"pt-BR":        bagTranslations["pt-BR"],
+		"pt-BR.source": bagTranslations["pt-BR.source"],
+	}
 	bagEntry := srdEntry{
 		EntryType:    "other",
 		Name:         "Bag of Holding",
-		Translations: mustJSON(t, bagTranslations),
+		Translations: mustJSON(t, bagTitleTranslations),
 	}
 	for _, current := range []map[string]string{
 		{"pt-BR": "Bolsa gerada anteriormente", "pt-BR.source": "ai"},
@@ -168,18 +196,22 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Errorf("manual Bag of Holding title was overwritten: %v", protected)
 	}
 
-	// Excluding only the target translation maps, the complete package must
-	// match the reviewed main-base snapshot. This protects every source field,
-	// mechanical rule, typed item and unrelated category.
+	// Removing only the description fields added by this batch and restoring the
+	// prior package revision must reproduce the main-base snapshot. Existing
+	// reviewed names and their provenance are part of the base and stay intact.
 	for _, entry := range targets {
-		delete(entry, "translations")
+		translations, _ := entry["translations"].(map[string]any)
+		delete(translations, "pt-BR.rules.description")
+		delete(translations, "pt-BR.rules.description.source")
+		delete(entry["rules"].(map[string]any), "description")
 	}
+	pack["revision"] = "cartridge-import-5"
 	canonical, err := json.Marshal(pack)
 	if err != nil {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "f79d7862be82e5597273307703dc0d385204407fd9dcc01bd2abe1f11c3f3c2d" {
+	if got := hex.EncodeToString(digest[:]); got != "79533818737ec5478ec96fe9b3fd7bdea98df8636140e7dee2dc381a3e70ec4c" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -300,6 +332,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	stripTranslations(source)
+	source["revision"] = "cartridge-import-5"
 	canonical, err := json.Marshal(source)
 	if err != nil {
 		t.Fatal(err)
@@ -314,6 +347,11 @@ func stripTranslations(value any) {
 	switch node := value.(type) {
 	case map[string]any:
 		delete(node, "translations")
+		if node["entryType"] == "other" {
+			if rules, ok := node["rules"].(map[string]any); ok && rules["catalog"] == "magic-item" {
+				delete(rules, "description")
+			}
+		}
 		for _, child := range node {
 			stripTranslations(child)
 		}
@@ -341,6 +379,9 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		var rules map[string]any
 		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
 			t.Fatalf("%s %q rules: %v", entry.EntryType, entry.Name, err)
+		}
+		if entry.EntryType == "other" && rules["catalog"] == "magic-item" {
+			delete(rules, "description")
 		}
 		projected = append(projected, projection{EntryType: entry.EntryType, Name: entry.Name, Summary: entry.Summary, Rules: rules})
 		if entry.EntryType != "species" && entry.EntryType != "background" {
@@ -688,11 +729,22 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 	entries := uniqueEntries(pack.Entries)
 	records := make([]sourceRecord, 0, len(entries))
 	for _, entry := range entries {
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if entry.EntryType == "other" && rules["catalog"] == "magic-item" {
+			delete(rules, "description")
+		}
+		mechanicsRules, err := json.Marshal(rules)
+		if err != nil {
+			t.Fatalf("marshal %s rules: %v", entry.Name, err)
+		}
 		records = append(records, sourceRecord{
 			EntryType: entry.EntryType,
 			Name:      entry.Name,
 			Summary:   entry.Summary,
-			Rules:     entry.Rules,
+			Rules:     mechanicsRules,
 		})
 	}
 	sort.Slice(records, func(i, j int) bool {
@@ -706,7 +758,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "1cc5e2419c2d7ce3219915f65320332d4d20c6698b8f9e46f56e383426ad3108"
+	const wantSourceDigest = "82c185cad2b1641d1a8e63b040e3baa6627b38e39626193988414b5e9c51370c"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

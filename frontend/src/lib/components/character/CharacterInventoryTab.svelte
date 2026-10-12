@@ -2,6 +2,7 @@
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { Dnd2024Money, InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
 	import {
 		itemWeight,
 		type InventoryCategory,
@@ -13,6 +14,7 @@
 
 	let {
 		itemEntries,
+		allCompendiumEntries,
 		visibleItems,
 		carriedWeight,
 		capacityLb,
@@ -32,6 +34,7 @@
 		onChangeDescription
 	}: {
 		itemEntries: CompendiumEntry[];
+		allCompendiumEntries: CompendiumEntry[];
 		visibleItems: { item: InventoryItem; index: number }[];
 		carriedWeight: number;
 		capacityLb: number | null;
@@ -73,6 +76,13 @@
 	const itemOptionGroups = $derived(
 		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
 	);
+	const magicItemCatalogEntry = (item: InventoryItem) =>
+		allCompendiumEntries.find(
+			(entry) =>
+				entry.id === item.entryId &&
+				entry.entryType === 'other' &&
+				entry.rules.catalog === 'magic-item'
+		);
 	const formatWeight = (weight: number | null) =>
 		weight === null
 			? '—'
@@ -308,6 +318,15 @@
 	{#if visibleItems.length}
 		<div class="inventory-list">
 			{#each visibleItems as { item, index } (`${item.entryId}:${index}`)}
+				{@const catalogEntry = magicItemCatalogEntry(item)}
+				{@const catalogDescription = catalogEntry
+					? translatedCompendiumText(
+							catalogEntry,
+							'rules.description',
+							catalogEntry.rules.description,
+							$appLocale
+						)
+					: ''}
 				<div class="inventory-item">
 					<button
 						type="button"
@@ -317,6 +336,9 @@
 					>
 						{item.name}<span>{expandedIndex === index ? '⌃' : '⌄'}</span>
 					</button>
+					{#if catalogDescription && expandedIndex !== index}<small class="catalog-item-description"
+							>{catalogDescription}</small
+						>{/if}
 					<input
 						type="number"
 						min="0"
@@ -337,6 +359,9 @@
 					>
 				</div>
 				{#if expandedIndex === index}
+					{#if catalogDescription}<p class="catalog-item-description full">
+							{catalogDescription}
+						</p>{/if}
 					<label class="inventory-item-description"
 						>{$appLocale === 'en' ? 'Description / function' : 'Descrição / função'}<textarea
 							value={String(item.rules.playerDescription ?? '')}
@@ -550,6 +575,24 @@
 		grid-column: 1 / -1;
 		color: #b9aa9d;
 		font-size: 0.7rem;
+	}
+	.catalog-item-description {
+		grid-column: 1 / -1;
+		margin: 0;
+		color: #b9aa9d;
+		font-size: 0.7rem;
+		line-height: 1.35;
+		display: -webkit-box;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+	}
+	.catalog-item-description.full {
+		display: block;
+		line-clamp: unset;
+		-webkit-line-clamp: unset;
+		overflow: visible;
 	}
 	.inventory-item-description textarea {
 		min-height: 3.5rem;

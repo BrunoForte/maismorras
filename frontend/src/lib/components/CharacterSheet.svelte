@@ -1456,6 +1456,7 @@
 				{#if activeTab === 'inventory'}
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
+						allCompendiumEntries={compendiumEntries}
 						visibleItems={visibleInventory()}
 						carriedWeight={carriedWeight().weightLb}
 						capacityLb={carryingCapacity()?.capacityLb ?? null}

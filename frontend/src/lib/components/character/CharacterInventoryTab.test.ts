@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 import CharacterInventoryTab from './CharacterInventoryTab.svelte';
 import type { CompendiumEntry } from '$lib/services/compendiumApi';
+import { setAppLocale } from '$lib/stores/locale';
 
 const entries: CompendiumEntry[] = [
 	{
@@ -50,8 +51,16 @@ const entries: CompendiumEntry[] = [
 		entryType: 'other',
 		name: 'Bag of Holding',
 		summary: 'Item mágico do System Reference Document 5.2.1.',
-		rules: { catalog: 'magic-item' },
-		translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' },
+		rules: {
+			catalog: 'magic-item',
+			description: 'This bag can hold up to 500 pounds and 64 cubic feet.'
+		},
+		translations: {
+			'pt-BR': 'Bolsa de Carga',
+			'pt-BR.source': 'reviewed',
+			'pt-BR.rules.description': 'Esta bolsa comporta até 227 kg e 1,8 m³.',
+			'pt-BR.rules.description.source': 'reviewed'
+		},
 		isPublished: true
 	}
 ];
@@ -61,6 +70,7 @@ describe('CharacterInventoryTab compendium picker', () => {
 		const html = render(CharacterInventoryTab, {
 			props: {
 				itemEntries: entries,
+				allCompendiumEntries: entries,
 				visibleItems: [],
 				carriedWeight: 151,
 				capacityLb: 150,
@@ -97,5 +107,52 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html).toContain('O total pode estar incompleto');
 		expect(html).toContain('Acima da capacidade de carga');
 		expect(html).toContain('Forma Grande ativa');
+	});
+
+	it('shows the localized magic-item description in inventory with English fallback and separate player notes', () => {
+		setAppLocale('pt-BR');
+		const props = {
+			itemEntries: entries,
+			allCompendiumEntries: entries,
+			visibleItems: [
+				{
+					item: {
+						entryId: 'magic-catalog',
+						name: 'Bolsa de Carga',
+						quantity: 1,
+						equipped: false,
+						rules: { playerDescription: 'Nota pessoal da mesa.' }
+					},
+					index: 0
+				}
+			],
+			carriedWeight: 0,
+			capacityLb: 150,
+			loadIncomplete: false,
+			unknownItemCount: 0,
+			canUseLargeForm: false,
+			largeFormActive: false,
+			onLargeFormChange: vi.fn(),
+			money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+			onMoneyChange: vi.fn(),
+			inventoryFilter: 'all' as const,
+			optionLabel: (entry: CompendiumEntry) => entry.translations['pt-BR'] ?? entry.name,
+			onAddCompendiumItem: vi.fn(),
+			onAddCustomItem: vi.fn(async () => true),
+			onRemoveItem: vi.fn(),
+			onChangeQuantity: vi.fn(),
+			onChangeDescription: vi.fn()
+		};
+		const localizedHtml = render(CharacterInventoryTab, { props }).body;
+		expect(localizedHtml).toContain('Esta bolsa comporta até 227 kg e 1,8 m³.');
+		const fallbackEntries = entries.map((entry) =>
+			entry.id === 'magic-catalog'
+				? { ...entry, translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' } }
+				: entry
+		);
+		const fallbackHtml = render(CharacterInventoryTab, {
+			props: { ...props, itemEntries: fallbackEntries, allCompendiumEntries: fallbackEntries }
+		}).body;
+		expect(fallbackHtml).toContain('This bag can hold up to 500 pounds and 64 cubic feet.');
 	});
 });
