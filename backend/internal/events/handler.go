@@ -26,6 +26,7 @@ type Handler struct{ pool *pgxpool.Pool }
 
 var diceExpression = regexp.MustCompile(`^(\d{1,3})d(\d{1,4})(?:\+(\d{1,3})d(\d{1,4}))*(?:([+-])(\d{1,5}))?$`)
 var diceTerm = regexp.MustCompile(`(\d{1,3})d(\d{1,4})`)
+var fixedWeaponDamageExpression = regexp.MustCompile(`^[+-]?\d{1,5}$`)
 
 type diceGroup struct{ count, sides int }
 
@@ -183,14 +184,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 			return apperror.BadRequest("INVALID_ROLL", "A rolagem de dano da arma excede os limites permitidos.")
 		}
 		expression := strings.TrimSpace(payload.Expression)
-		if payload.WeaponDamage && payload.Critical {
-			var err error
-			expression, err = doubleDiceExpression(expression)
-			if err != nil {
-				return apperror.BadRequest("INVALID_ROLL", "Dano crítico inválido.")
-			}
+		var result DiceResult
+		var err error
+		if payload.WeaponDamage {
+			result, err = rollWeaponDamageExpression(expression, payload.Critical)
+		} else {
+			result, err = rollWithMode(expression, payload.Mode)
 		}
-		result, err := rollWithMode(expression, payload.Mode)
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
 		}
@@ -212,13 +212,46 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 func validWeaponDamageRoll(expression string) bool {
 	groups, _, err := parseDiceExpression(expression)
 	if err != nil || len(groups) == 0 {
-		return false
+		_, fixedOnly := fixedWeaponDamageResult(expression)
+		return fixedOnly
 	}
 	total := 0
 	for _, group := range groups {
 		total += group.count
 	}
 	return total <= 10
+}
+
+func fixedWeaponDamageResult(expression string) (DiceResult, bool) {
+	compact := strings.ReplaceAll(strings.TrimSpace(expression), " ", "")
+	if !fixedWeaponDamageExpression.MatchString(compact) {
+		return DiceResult{}, false
+	}
+	modifier, err := strconv.Atoi(compact)
+	if err != nil || modifier < -10000 || modifier > 10000 {
+		return DiceResult{}, false
+	}
+	return DiceResult{
+		Expression: compact,
+		Dice:       []int{},
+		Modifier:   modifier,
+		Total:      modifier,
+	}, true
+}
+
+func rollWeaponDamageExpression(expression string, critical bool) (DiceResult, error) {
+	if fixedResult, fixedOnly := fixedWeaponDamageResult(expression); fixedOnly {
+		// Critical hits double rolled dice only. A fixed damage value remains once.
+		return fixedResult, nil
+	}
+	if critical {
+		var err error
+		expression, err = doubleDiceExpression(expression)
+		if err != nil {
+			return DiceResult{}, err
+		}
+	}
+	return rollWithMode(expression, "")
 }
 
 func doubleDiceExpression(expression string) (string, error) {
