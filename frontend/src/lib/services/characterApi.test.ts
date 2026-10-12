@@ -28,6 +28,7 @@ describe('createEmptySheet', () => {
 		expect(sheet.inventory).toEqual([]);
 		expect(sheet.resources).toEqual([]);
 		expect(sheet.money).toEqual({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+		expect(sheet.largeFormActive).toBe(false);
 		expect(sheet.featSpellGrants).toEqual([]);
 		expect(sheet.initiativeAdvantage).toBe(false);
 	});
@@ -39,7 +40,13 @@ describe('createEmptySheet', () => {
 					id: 'actor-1',
 					campaignId: 'campaign-1',
 					ownerId: 'player-1',
-					sheet: { ...createEmptySheet(), money: { cp: 7, gp: 12 }, featSpellGrants: [] }
+					sheet: {
+						...createEmptySheet(),
+						money: { cp: 7, gp: 12 },
+						creatureSize: undefined,
+						largeFormActive: undefined,
+						featSpellGrants: []
+					}
 				}),
 				{ status: 200 }
 			)
@@ -48,6 +55,8 @@ describe('createEmptySheet', () => {
 		const character = await getMyCharacter(session, 'campaign-1');
 		expect(character.sheet.money).toEqual({ cp: 7, sp: 0, ep: 0, gp: 12, pp: 0 });
 		expect(character.sheet.inventory).toEqual([]);
+		expect(character.sheet.creatureSize).toBeUndefined();
+		expect(character.sheet.largeFormActive).toBe(false);
 	});
 
 	it('normalizes legacy weapon damage and unified bonus once without discarding unsupported text', async () => {
@@ -129,9 +138,11 @@ describe('createEmptySheet', () => {
 		expect(reloaded.sheet.inventory).toEqual(normalized.sheet.inventory);
 	});
 
-	it('persists D&D money separately from inventory when saving a sheet', async () => {
+	it('persists carrying choices and D&D money separately from inventory', async () => {
 		const sheet = {
 			...createEmptySheet(),
+			creatureSize: 'large' as const,
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope', quantity: 1, equipped: false, rules: {} }]
 		};
@@ -149,10 +160,14 @@ describe('createEmptySheet', () => {
 		expect(String(url)).toContain('/campaigns/campaign-1/character');
 		expect(init.method).toBe('PUT');
 		expect(JSON.parse(String(init.body))).toMatchObject({
+			creatureSize: 'large',
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope' }]
 		});
 		expect(saved.sheet.money).toEqual(sheet.money);
+		expect(saved.sheet.creatureSize).toBe('large');
+		expect(saved.sheet.largeFormActive).toBe(true);
 		expect(saved.sheet.inventory).toHaveLength(1);
 	});
 

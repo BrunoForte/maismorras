@@ -79,9 +79,14 @@
 	import {
 		cloneInventoryRules,
 		filterItemEntries,
-		projectInventory,
-		totalInventoryWeight
+		projectInventory
 	} from '$lib/utils/inventoryRules';
+	import {
+		calculateDnd2024CarriedWeight,
+		calculateDnd2024CarryingCapacity,
+		defaultCharacterSize,
+		isDnd2024Size
+	} from '$lib/utils/carryingCapacity';
 	import {
 		addWeaponProfile,
 		deriveWeaponEffects,
@@ -106,7 +111,8 @@
 		getSpeciesProfile,
 		getSpeciesResistances,
 		getSpeciesSpeed,
-		normalizeSpeciesLineage
+		normalizeSpeciesLineage,
+		normalizeSpecies
 	} from '$lib/utils/speciesRules';
 	import CharacterSkillsTab from '$lib/components/character/CharacterSkillsTab.svelte';
 	import CharacterDetailsTab from '$lib/components/character/CharacterDetailsTab.svelte';
@@ -344,6 +350,7 @@
 	function onSpeciesChanged() {
 		const profile = getSpeciesProfile(sheet.species);
 		sheet.speciesLineage = normalizeSpeciesLineage(sheet.species, sheet.speciesLineage);
+		if (normalizeSpecies(sheet.species) !== 'goliath') sheet.largeFormActive = false;
 		if (profile) sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		syncProgression();
 		syncTokenSoon();
@@ -657,7 +664,18 @@
 		invalidDamageProfileId = null;
 	}
 	const visibleInventory = () => projectInventory(sheet.inventory, inventoryFilter);
-	const inventoryWeight = () => totalInventoryWeight(sheet.inventory);
+	const carriedWeight = () => calculateDnd2024CarriedWeight(sheet.inventory, sheet.money);
+	const characterSize = () =>
+		isDnd2024Size(sheet.creatureSize) ? sheet.creatureSize : defaultCharacterSize(sheet.species);
+	const isGoliath = () => normalizeSpecies(sheet.species) === 'goliath';
+	const canUseLargeForm = () => isGoliath() && sheet.level >= 5;
+	const carryingCapacity = () =>
+		calculateDnd2024CarryingCapacity({
+			strength: sheet.abilityScores.strength,
+			size: characterSize(),
+			powerfulBuild: isGoliath(),
+			largeFormActive: canUseLargeForm() && sheet.largeFormActive === true
+		});
 	const weaponProficiencyStatus = (item: InventoryItem) => {
 		const rules = compendiumClass()?.rules ?? {};
 		const baseProficiencies = Array.isArray(rules.weaponProficiencies)
@@ -929,6 +947,7 @@
 		syncTokenSoon();
 	}
 	function onLevelChanged() {
+		if (sheet.level < 5) sheet.largeFormActive = false;
 		if (sheet.level > previousLevel) levelChoiceOpen = true;
 		else {
 			previousLevel = sheet.level;
@@ -1438,7 +1457,13 @@
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
 						visibleItems={visibleInventory()}
-						totalWeight={inventoryWeight()}
+						carriedWeight={carriedWeight().weightLb}
+						capacityLb={carryingCapacity()?.capacityLb ?? null}
+						loadIncomplete={carriedWeight().incomplete}
+						unknownItemCount={carriedWeight().unknownItemCount}
+						canUseLargeForm={canUseLargeForm()}
+						largeFormActive={sheet.largeFormActive === true}
+						onLargeFormChange={(active) => (sheet.largeFormActive = active)}
 						money={sheet.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }}
 						onMoneyChange={(money) => (sheet.money = money)}
 						bind:inventoryFilter

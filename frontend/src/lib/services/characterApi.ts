@@ -3,6 +3,7 @@ import { request as httpRequest } from './httpClient';
 import { EMPTY_DND2024_MONEY, normalizeDnd2024Money } from '$lib/utils/character/dnd2024Money';
 import type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 import { parseDamageExpression, parseLegacyDamage } from '$lib/utils/weaponDamageBuilder';
+import { isDnd2024Size, type Dnd2024Size } from '$lib/utils/carryingCapacity';
 
 export type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 
@@ -80,6 +81,10 @@ export type CharacterSheet = {
 	level: number;
 	species: string;
 	speciesLineage: string;
+	/** Optional for legacy sheets; absent values use the species default, then Medium. */
+	creatureSize?: Dnd2024Size;
+	/** Player-managed temporary Goliath Large Form state; unset when the effect ends. */
+	largeFormActive?: boolean;
 	background: string;
 	alignment: string;
 	abilityScores: AbilityScores;
@@ -187,6 +192,9 @@ function normalizeCharacter(character: Character): Character {
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
 		skillExpertise: character.sheet.skillExpertise ?? [],
 		speciesLineage: character.sheet.speciesLineage ?? '',
+		creatureSize: isDnd2024Size(character.sheet.creatureSize)
+			? character.sheet.creatureSize
+			: undefined,
 		feats: character.sheet.feats ?? '',
 		portraitPath: character.sheet.portraitPath ?? '',
 		resources: character.sheet.resources ?? [],
@@ -199,6 +207,7 @@ function normalizeCharacter(character: Character): Character {
 		resistances: character.sheet.resistances ?? [],
 		automaticTraits: character.sheet.automaticTraits ?? [],
 		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0,
+		largeFormActive: character.sheet.largeFormActive === true,
 		initiative:
 			character.sheet.initiative ??
 			Math.floor(((character.sheet.abilityScores?.dexterity ?? 10) - 10) / 2),
@@ -384,6 +393,7 @@ export function createEmptySheet(): CharacterSheet {
 		visibleRolls: [],
 		resistances: [],
 		automaticTraits: [],
-		speciesHPBonusApplied: 0
+		speciesHPBonusApplied: 0,
+		largeFormActive: false
 	};
 }
