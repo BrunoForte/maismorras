@@ -1,6 +1,9 @@
 package events
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 func TestRollWithModeReturnsKeptFaceAndBothRolledFaces(t *testing.T) {
 	for _, mode := range []string{"advantage", "disadvantage"} {
@@ -71,7 +74,7 @@ func TestRollRejectsMoreThanOneHundredDiceAcrossGroups(t *testing.T) {
 }
 
 func TestWeaponDamageRollValidatesBaseAndDoublesCriticalDice(t *testing.T) {
-	for _, expression := range []string{"10d6", "2d6+3d8+5d10"} {
+	for _, expression := range []string{"10d6", "2d6+3d8+5d10", "1", "+4", "-1", "0"} {
 		if !validWeaponDamageRoll(expression) {
 			t.Errorf("expected non-critical weapon damage %q to be accepted", expression)
 		}
@@ -84,9 +87,27 @@ func TestWeaponDamageRollValidatesBaseAndDoublesCriticalDice(t *testing.T) {
 	if validWeaponDamageRoll("20d6+5") {
 		t.Fatal("critical damage must be sent as the validated base formula")
 	}
+	for _, expression := range []string{"10001", "-10001", "1d6+10001", "", "alert(1)"} {
+		if validWeaponDamageRoll(expression) {
+			t.Errorf("expected invalid weapon damage %q to be rejected", expression)
+		}
+	}
 	doubled, err := doubleDiceExpression("2d6+3d8+5")
 	if err != nil || doubled != "4d6+6d8+5" {
 		t.Fatalf("unexpected critical expression %q, error %v", doubled, err)
+	}
+}
+
+func TestFixedWeaponDamageIsNotDoubledOnCritical(t *testing.T) {
+	for _, expression := range []string{"1", "+4", "-2", "0"} {
+		result, err := rollWeaponDamageExpression(expression, true)
+		if err != nil {
+			t.Fatalf("fixed damage %q failed: %v", expression, err)
+		}
+		want, _ := strconv.Atoi(expression)
+		if len(result.Dice) != 0 || result.Total != want || result.Modifier != want {
+			t.Errorf("fixed critical damage %q was changed: %#v", expression, result)
+		}
 	}
 }
 

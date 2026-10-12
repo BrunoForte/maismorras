@@ -80,6 +80,24 @@
 			>
 		</div>
 	{/each}
+	{#if components.length === 0}
+		<div class="damage-component no-damage-dice" data-testid="no-damage-dice">
+			<label>
+				{$appLocale === 'en' ? 'Dice quantity' : 'Quantidade de dados'}
+				<input type="number" value="" disabled aria-label="Quantidade de dados" />
+			</label>
+			<div class="die-type-field">
+				<span>{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}</span>
+				<span class="no-die-type">{$appLocale === 'en' ? 'No die' : 'Sem dado'}</span>
+			</div>
+			<span aria-hidden="true"></span>
+			<small>
+				{$appLocale === 'en'
+					? 'Only the damage bonus and applicable ability modifier are used.'
+					: 'Usa apenas o bônus de dano e o modificador de atributo aplicável.'}
+			</small>
+		</div>
+	{/if}
 	<button
 		id={`damage-add-${identifier}`}
 		type="button"
@@ -113,6 +131,16 @@
 	.die-type-field > span {
 		color: inherit;
 		font-size: inherit;
+	}
+	.no-die-type {
+		min-height: 2.55rem;
+		display: flex;
+		align-items: center;
+		color: #aa9d91;
+	}
+	.no-damage-dice small {
+		grid-column: 1 / -1;
+		color: #aa9d91;
 	}
 	.damage-error {
 		color: #f0a29b;

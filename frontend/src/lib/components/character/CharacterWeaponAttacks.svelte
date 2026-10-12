@@ -292,7 +292,6 @@
 							<button
 								onclick={() => actions.rollWeapon(item, 'damage')}
 								disabled={rollingWeaponAction !== null ||
-									!actions.damageComponents(item).length ||
 									!!validateDamageComponents(actions.damageComponents(item)) ||
 									!!validateDamageBonus(item.rules.damageBonus ?? item.rules.bonus) ||
 									!!item.rules.damageNeedsRepair}
@@ -421,7 +420,6 @@
 											<button
 												onclick={() => actions.rollWeapon(item, 'damage', profile)}
 												disabled={rollingWeaponAction !== null ||
-													!profileComponents.length ||
 													!!profileIssue ||
 													!!validateDamageBonus(profile.damageBonus) ||
 													!!profile.damageNeedsRepair}
