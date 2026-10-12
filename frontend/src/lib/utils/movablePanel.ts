@@ -12,6 +12,8 @@ export type MovablePanelOptions = {
 	avoidBottomSelectors?: string[];
 	/** Keep a small right-side gutter when clamping this panel after a resize. */
 	constrainToViewport?: boolean;
+	/** Skip all panel geometry and storage for content embedded in a page. */
+	skipLayout?: boolean;
 	enabled?: boolean;
 };
 
@@ -87,6 +89,7 @@ function savePosition(key: string, position: PanelPosition) {
 
 /** Adds title-bar dragging while constraining the panel to the usable viewport. */
 export function movablePanel(node: HTMLElement, initial: MovablePanelOptions) {
+	if (initial.skipLayout) return { update() {}, destroy() {} };
 	let options = initial;
 	let hasCustomPosition = false;
 	let drag: {

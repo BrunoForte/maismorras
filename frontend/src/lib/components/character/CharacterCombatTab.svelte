@@ -6,6 +6,7 @@
 	} from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import CharacterWeaponAttacks from './CharacterWeaponAttacks.svelte';
 
 	type GrantedSpell = Sheet['spells'][number];
@@ -235,12 +236,24 @@
 						>
 					{/each}
 				</select>
-				<input
-					class="attack-bonus"
-					type="number"
-					bind:value={attack.attackBonus}
-					aria-label={$appLocale === 'en' ? 'Additional attack bonus' : 'Bônus adicional de ataque'}
-				/>
+				<label class="attack-bonus-field">
+					<span>{$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}</span>
+					<input
+						class="attack-bonus"
+						type="number"
+						bind:value={attack.attackBonus}
+						aria-label={$appLocale === 'en' ? 'Attack bonus' : 'Bônus de ataque'}
+					/>
+				</label>
+				<label class="attack-damage-bonus-field">
+					<span>{$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}</span>
+					<input
+						class="attack-damage-bonus"
+						type="number"
+						bind:value={attack.damageBonus}
+						aria-label={$appLocale === 'en' ? 'Damage bonus' : 'Bônus de dano'}
+					/>
+				</label>
 				<input class="attack-damage" bind:value={attack.damage} placeholder="Dano" />
 				<button
 					class="roll-custom"
@@ -249,8 +262,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'attack'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Attack'
-							: '🎲 Ataque'}</button
+							? 'Attack'
+							: 'Ataque'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button
 					class="roll-custom"
@@ -259,8 +272,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'damage'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Damage'
-							: '🎲 Dano'}</button
+							? 'Damage'
+							: 'Dano'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button onclick={() => actions.removeAttack(index)}>×</button>
 			</div>
@@ -431,7 +444,7 @@
 	.line-item.attack-row {
 		grid-template-columns:
 			28px minmax(110px, 2fr) minmax(80px, 0.8fr) minmax(90px, 0.9fr)
-			60px minmax(80px, 1.1fr) auto auto 32px;
+			60px 60px minmax(80px, 1.1fr) auto auto 32px;
 		align-items: center;
 	}
 	.attack-row > input,
@@ -439,7 +452,16 @@
 		width: 100%;
 		min-width: 0;
 	}
-	.attack-row .attack-bonus {
+	.attack-row .attack-bonus-field,
+	.attack-row .attack-damage-bonus-field {
+		min-width: 0;
+	}
+	.attack-row .attack-bonus,
+	.attack-row .attack-damage-bonus {
+		text-align: center;
+	}
+	.attack-row .attack-bonus-field input,
+	.attack-row .attack-damage-bonus-field input {
 		text-align: center;
 	}
 	.token-roll-toggle {
@@ -468,6 +490,9 @@
 		font-size: 0.72rem;
 	}
 	.roll-custom {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		border: 1px solid #765d3d !important;
 		border-radius: 5px !important;
 		color: #f0d29d !important;
@@ -496,11 +521,14 @@
 		.attack-row .attack-ability {
 			grid-area: 3 / 1 / 4 / 3;
 		}
-		.attack-row .attack-bonus {
+		.attack-row .attack-bonus-field {
 			grid-area: 3 / 3;
 		}
+		.attack-row .attack-damage-bonus-field {
+			grid-area: 4 / 3;
+		}
 		.attack-row .attack-damage {
-			grid-area: 4 / 1 / 5 / 4;
+			grid-area: 5 / 1 / 6 / 4;
 		}
 		.attack-row .roll-custom {
 			grid-column: 1 / -1;

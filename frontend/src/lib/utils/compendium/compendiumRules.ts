@@ -237,6 +237,13 @@ export function isCompendiumTranslationPending(source: unknown, translation: unk
 	);
 }
 
+export function translatedCompendiumName(entry: CompendiumEntry, locale: string): string {
+	const localized = entry.translations?.['pt-BR'];
+	return locale === 'pt-BR' && !isCompendiumTranslationPending(entry.name, localized)
+		? localized
+		: entry.name;
+}
+
 export function translatedCompendiumText(
 	entry: CompendiumEntry,
 	field: string,
@@ -246,6 +253,24 @@ export function translatedCompendiumText(
 	const text = String(fallback ?? '');
 	const localized = entry.translations?.[`pt-BR.${field}`];
 	return locale === 'pt-BR' && !isCompendiumTranslationPending(text, localized) ? localized : text;
+}
+
+export function translatedFeatDetails(entry: CompendiumEntry, locale: string): string {
+	const rules = entry.rules ?? {};
+	const description = translatedCompendiumText(
+		entry,
+		'rules.description',
+		rules.description ?? entry.summary ?? '',
+		locale
+	).trim();
+	const benefits = Array.isArray(rules.benefits)
+		? rules.benefits
+				.map((benefit, index) =>
+					translatedCompendiumText(entry, `rules.benefits.${index}`, benefit, locale).trim()
+				)
+				.filter(Boolean)
+		: [];
+	return [...new Set([description, ...benefits].filter(Boolean))].join('\n\n');
 }
 
 export function compendiumTranslationIsOfficial(

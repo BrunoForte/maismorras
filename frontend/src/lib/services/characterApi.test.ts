@@ -28,6 +28,7 @@ describe('createEmptySheet', () => {
 		expect(sheet.inventory).toEqual([]);
 		expect(sheet.resources).toEqual([]);
 		expect(sheet.money).toEqual({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+		expect(sheet.largeFormActive).toBe(false);
 		expect(sheet.featSpellGrants).toEqual([]);
 		expect(sheet.initiativeAdvantage).toBe(false);
 	});
@@ -39,7 +40,13 @@ describe('createEmptySheet', () => {
 					id: 'actor-1',
 					campaignId: 'campaign-1',
 					ownerId: 'player-1',
-					sheet: { ...createEmptySheet(), money: { cp: 7, gp: 12 }, featSpellGrants: [] }
+					sheet: {
+						...createEmptySheet(),
+						money: { cp: 7, gp: 12 },
+						creatureSize: undefined,
+						largeFormActive: undefined,
+						featSpellGrants: []
+					}
 				}),
 				{ status: 200 }
 			)
@@ -48,11 +55,94 @@ describe('createEmptySheet', () => {
 		const character = await getMyCharacter(session, 'campaign-1');
 		expect(character.sheet.money).toEqual({ cp: 7, sp: 0, ep: 0, gp: 12, pp: 0 });
 		expect(character.sheet.inventory).toEqual([]);
+		expect(character.sheet.creatureSize).toBeUndefined();
+		expect(character.sheet.largeFormActive).toBe(false);
 	});
 
-	it('persists D&D money separately from inventory when saving a sheet', async () => {
+	it('normalizes legacy weapon damage and unified bonus once without discarding unsupported text', async () => {
+		const legacySheet = {
+			...createEmptySheet(),
+			inventory: [
+				{
+					entryId: 'old',
+					name: 'Machado',
+					quantity: 1,
+					equipped: true,
+					rules: {
+						category: 'weapon',
+						damage: '2d6+3',
+						bonus: 2,
+						enchantmentBonus: 1,
+						attackProfiles: [
+							{ id: 'flurry', damage: '1d8+2', attackBonus: 1, damageBonus: 1 },
+							{ id: 'old-heavy', damage: '11d6+3', attackBonus: 0, damageBonus: 2 }
+						]
+					}
+				},
+				{
+					entryId: 'ambiguous',
+					name: 'Arma especial',
+					quantity: 1,
+					equipped: true,
+					rules: {
+						category: 'weapon',
+						damage: 'dano variável',
+						bonus: 4,
+						attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 0 }]
+					}
+				},
+				{
+					entryId: 'longbow',
+					name: 'Arco longo',
+					quantity: 1,
+					equipped: true,
+					rules: { category: 'weapon', damage: '1d8+1d6', bonus: -1, enchantmentBonus: 2 }
+				}
+			]
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(
+					JSON.stringify({ id: 'a', campaignId: 'c', ownerId: 'p', sheet: legacySheet }),
+					{ status: 200 }
+				)
+			);
+		vi.stubGlobal('fetch', fetchMock);
+		const normalized = await getMyCharacter(session, 'campaign-1');
+		expect(normalized.sheet.inventory[0].rules).toMatchObject({
+			damage: '2d6',
+			attackBonus: 2,
+			damageBonus: 5,
+			enchantmentBonus: 1
+		});
+		expect(normalized.sheet.inventory[0].rules.attackProfiles).toEqual([
+			{ id: 'flurry', damage: '1d8', attackBonus: 1, damageBonus: 5, damageNeedsRepair: false },
+			{ id: 'old-heavy', damage: '11d6', attackBonus: 0, damageBonus: 7, damageNeedsRepair: false }
+		]);
+		expect(normalized.sheet.inventory[1].rules).toMatchObject({
+			damage: 'dano variável',
+			damageNeedsRepair: true,
+			attackBonus: 4,
+			damageBonus: 4,
+			attackProfiles: [{ id: 'special', damage: '1d4', attackBonus: 0, damageBonus: 4 }]
+		});
+		expect(normalized.sheet.inventory[2].rules).toMatchObject({
+			damage: '1d8+1d6',
+			attackBonus: -1,
+			damageBonus: -1,
+			enchantmentBonus: 2
+		});
+		fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(normalized), { status: 200 }));
+		const reloaded = await getMyCharacter(session, 'campaign-1');
+		expect(reloaded.sheet.inventory).toEqual(normalized.sheet.inventory);
+	});
+
+	it('persists carrying choices and D&D money separately from inventory', async () => {
 		const sheet = {
 			...createEmptySheet(),
+			creatureSize: 'large' as const,
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope', quantity: 1, equipped: false, rules: {} }]
 		};
@@ -70,10 +160,14 @@ describe('createEmptySheet', () => {
 		expect(String(url)).toContain('/campaigns/campaign-1/character');
 		expect(init.method).toBe('PUT');
 		expect(JSON.parse(String(init.body))).toMatchObject({
+			creatureSize: 'large',
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope' }]
 		});
 		expect(saved.sheet.money).toEqual(sheet.money);
+		expect(saved.sheet.creatureSize).toBe('large');
+		expect(saved.sheet.largeFormActive).toBe(true);
 		expect(saved.sheet.inventory).toHaveLength(1);
 	});
 

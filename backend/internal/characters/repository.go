@@ -22,6 +22,7 @@ var (
 	ErrNotFound    = errors.New("character not found")
 	ErrNoHitDice   = errors.New("no hit dice available")
 	ErrInvalidRest = errors.New("invalid rest")
+	sceneIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 )
 
 // Sheet deliberately stores the D&D 2024 MVP without rules text from the books.
@@ -114,6 +115,7 @@ type AbilityScores struct {
 type Attack struct {
 	Name        string `json:"name"`
 	AttackBonus int    `json:"attackBonus"`
+	DamageBonus int    `json:"damageBonus,omitempty"`
 	Damage      string `json:"damage"`
 	Notes       string `json:"notes"`
 	AttackType  string `json:"attackType,omitempty"`
@@ -185,6 +187,8 @@ type SpellCastResult struct {
 	BaseLevel           int    `json:"baseLevel"`
 	SlotLevel           int    `json:"slotLevel"`
 	Effect              string `json:"effect"`
+	ChatText            string `json:"chatText"`
+	PresentationUpdated bool   `json:"presentationUpdated,omitempty"`
 	Expression          string `json:"expression,omitempty"`
 	Dice                []int  `json:"dados,omitempty"`
 	Modifier            int    `json:"modificador,omitempty"`
@@ -194,11 +198,12 @@ type SpellCastResult struct {
 }
 
 type SpellCastInput struct {
-	SpellIndex int
-	SlotLevel  int
-	GrantID    string
-	EntryID    string
-	FreeCast   bool
+	SpellIndex          int
+	SlotLevel           int
+	GrantID             string
+	EntryID             string
+	FreeCast            bool
+	PresentationSceneID string
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
@@ -321,7 +326,7 @@ func joinDice(dice []int) string {
 // CastSpell locks the character row and consumes a compatible slot together
 // with the chat event, preventing duplicate spending from concurrent clients.
 func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, input SpellCastInput) (SpellCastResult, error) {
-	if (input.GrantID == "" && input.SpellIndex < 0) || input.SlotLevel < 0 || len(input.GrantID) > 80 || len(input.EntryID) > 120 {
+	if (input.GrantID == "" && input.SpellIndex < 0) || input.SlotLevel < 0 || len(input.GrantID) > 80 || len(input.EntryID) > 120 || (input.PresentationSceneID != "" && !sceneIDPattern.MatchString(input.PresentationSceneID)) {
 		return SpellCastResult{}, fmt.Errorf("invalid spell")
 	}
 	member, err := r.isMember(ctx, campaignID, userID)
@@ -440,14 +445,16 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			if !campaignGrantRule.CanUseExistingSlots || slotLevel < spell.Level {
 				return SpellCastResult{}, fmt.Errorf("campaign feat spell cannot use this slot")
 			}
-			if !consumeCharacterSpellSlot(&sheet, slotLevel) {
-				return SpellCastResult{}, fmt.Errorf("no compatible spell slot")
+			if costErr := consumeSpellSlotForCast(&sheet, spell.Level, slotLevel); costErr != nil {
+				return SpellCastResult{}, costErr
 			}
 		} else if slotLevel != 0 || campaignGrantRule.FreeUses > 0 {
 			if campaignGrantRule.FreeUses > 0 {
 				return SpellCastResult{}, fmt.Errorf("limited feat cantrip requires its free use")
 			}
-			return SpellCastResult{}, fmt.Errorf("cantrips do not consume spell slots")
+			if costErr := consumeSpellSlotForCast(&sheet, spell.Level, slotLevel); costErr != nil {
+				return SpellCastResult{}, costErr
+			}
 		}
 	} else if freeCast {
 		rule := dnd2024FeatSpellRules[selectedGrant.FeatID]
@@ -455,18 +462,13 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			return SpellCastResult{}, fmt.Errorf("no free feat casting available")
 		}
 		selectedGrant.FreeCastsRemaining--
-	} else if spell.Level > 0 {
-		if selectedGrant != nil && !dnd2024FeatSpellRules[selectedGrant.FeatID].CanUseExistingSlots {
+	} else {
+		if spell.Level > 0 && selectedGrant != nil && !dnd2024FeatSpellRules[selectedGrant.FeatID].CanUseExistingSlots {
 			return SpellCastResult{}, fmt.Errorf("this feat spell cannot use existing slots")
 		}
-		if slotLevel < spell.Level {
-			return SpellCastResult{}, fmt.Errorf("incompatible spell slot")
+		if costErr := consumeSpellSlotForCast(&sheet, spell.Level, slotLevel); costErr != nil {
+			return SpellCastResult{}, costErr
 		}
-		if !consumeCharacterSpellSlot(&sheet, slotLevel) {
-			return SpellCastResult{}, fmt.Errorf("no compatible spell slot")
-		}
-	} else if slotLevel != 0 {
-		return SpellCastResult{}, fmt.Errorf("cantrips do not consume spell slots")
 	}
 	if rules == nil {
 		if spell.EntryID == "" {
@@ -490,14 +492,19 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			}
 		}
 	}
-	effect := spellEffect(rules, spell.Level, slotLevel)
-	if spell.EntryID == "" && slotLevel > spell.Level && strings.TrimSpace(spell.HigherLevels) != "" {
-		effect = strings.TrimSpace(effect + " " + strings.TrimSpace(spell.HigherLevels))
+	var effect, expression string
+	var dice []int
+	modifier, total := 0, 0
+	if spell.Level > 0 {
+		effect = spellEffect(rules, spell.Level, slotLevel)
+		if spell.EntryID == "" && slotLevel > spell.Level && strings.TrimSpace(spell.HigherLevels) != "" {
+			effect = strings.TrimSpace(effect + " " + strings.TrimSpace(spell.HigherLevels))
+		}
+		if effect == "" {
+			effect = "Efeito não definido."
+		}
+		expression, dice, modifier, total = rollSpellEffect(rules, spell.Level, slotLevel)
 	}
-	if effect == "" {
-		effect = "Efeito não definido."
-	}
-	expression, dice, modifier, total := rollSpellEffect(rules, spell.Level, slotLevel)
 	raw, err = json.Marshal(sheet)
 	if err != nil {
 		return SpellCastResult{}, err
@@ -523,10 +530,35 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 	} else if slotLevel > 0 {
 		castCost = fmt.Sprintf("1 espaço de nível %d", slotLevel)
 	}
-	payload, _ := json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "label": spell.Name, "text": fmt.Sprintf("✨ %s · nível base %d · custo: %s · rolagem: %s · resultado: %d · efeito: %s", spell.Name, spell.Level, castCost, expression, total, effect), "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect, "spellcastingAbility": castingAbility})
+	chatText := fmt.Sprintf("✨ %s · nível base %d · custo: %s · rolagem: %s · resultado: %d · efeito: %s", spell.Name, spell.Level, castCost, expression, total, effect)
+	eventType := "dice.roll"
+	var payload []byte
+	if spell.Level == 0 {
+		chatText = fmt.Sprintf("✨ %s conjurou %s · truque · nenhum espaço consumido", sheet.Name, spell.Name)
+		eventType = "chat.message"
+		payload, _ = json.Marshal(map[string]any{"text": chatText, "channel": "chat", "spellCast": true, "spellName": spell.Name, "baseLevel": 0, "slotLevel": 0})
+	} else {
+		payload, _ = json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "label": spell.Name, "text": chatText, "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect, "spellcastingAbility": castingAbility})
+	}
 	var eventID int64
-	if err = tx.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&eventID); err != nil {
+	if err = tx.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,$3,$4) returning id`, campaignID, userID, eventType, payload).Scan(&eventID); err != nil {
 		return SpellCastResult{}, err
+	}
+	presentationUpdated := false
+	if spell.Level == 0 && input.PresentationSceneID != "" {
+		description, _ := rules["description"].(string)
+		if strings.TrimSpace(description) == "" {
+			description = spell.Description
+		}
+		if len([]rune(spell.Name)) <= 200 && len([]rune(description)) <= 12_000 {
+			presentationResult, presentationErr := tx.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible,visible_user_ids,audience_restricted,overlay_visible)
+				select id,campaign_id,'',$3,$4,true,array[]::uuid[],false,false from scenes where id=$1 and campaign_id=$2
+				on conflict(scene_id) do update set asset_path='',title=excluded.title,description=excluded.description,visible=true,visible_user_ids=array[]::uuid[],audience_restricted=false,overlay_visible=false,updated_at=now()`, input.PresentationSceneID, campaignID, spell.Name, description)
+			if presentationErr != nil {
+				return SpellCastResult{}, presentationErr
+			}
+			presentationUpdated = presentationResult.RowsAffected() == 1
+		}
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return SpellCastResult{}, err
@@ -537,7 +569,23 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 	} else if selectedCampaignGrant != nil {
 		remaining = selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
 	}
-	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, Expression: expression, Dice: dice, Modifier: modifier, Total: total, SpellcastingAbility: castingAbility, FreeCastRemaining: remaining}, nil
+	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, ChatText: chatText, PresentationUpdated: presentationUpdated, Expression: expression, Dice: dice, Modifier: modifier, Total: total, SpellcastingAbility: castingAbility, FreeCastRemaining: remaining}, nil
+}
+
+func consumeSpellSlotForCast(sheet *Sheet, spellLevel, slotLevel int) error {
+	if spellLevel == 0 {
+		if slotLevel != 0 {
+			return fmt.Errorf("cantrips do not consume spell slots")
+		}
+		return nil
+	}
+	if slotLevel < spellLevel {
+		return fmt.Errorf("incompatible spell slot")
+	}
+	if !consumeCharacterSpellSlot(sheet, slotLevel) {
+		return fmt.Errorf("no compatible spell slot")
+	}
+	return nil
 }
 
 func consumeCharacterSpellSlot(sheet *Sheet, slotLevel int) bool {

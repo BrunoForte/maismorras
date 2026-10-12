@@ -24,7 +24,45 @@ type Event struct {
 }
 type Handler struct{ pool *pgxpool.Pool }
 
-var diceExpression = regexp.MustCompile(`^(\d{1,3})d(\d{1,4})(?:([+-])(\d{1,5}))?$`)
+var diceExpression = regexp.MustCompile(`^(\d{1,3})d(\d{1,4})(?:\+(\d{1,3})d(\d{1,4}))*(?:([+-])(\d{1,5}))?$`)
+var diceTerm = regexp.MustCompile(`(\d{1,3})d(\d{1,4})`)
+var fixedWeaponDamageExpression = regexp.MustCompile(`^[+-]?\d{1,5}$`)
+
+type diceGroup struct{ count, sides int }
+
+func parseDiceExpression(expression string) ([]diceGroup, int, error) {
+	compact := strings.ReplaceAll(strings.TrimSpace(expression), " ", "")
+	if !diceExpression.MatchString(compact) {
+		return nil, 0, fmt.Errorf("invalid expression")
+	}
+	groups := make([]diceGroup, 0, 4)
+	totalDice := 0
+	for _, match := range diceTerm.FindAllStringSubmatch(compact, -1) {
+		count, _ := strconv.Atoi(match[1])
+		sides, _ := strconv.Atoi(match[2])
+		if count < 1 || sides < 2 || sides > 1000 {
+			return nil, 0, fmt.Errorf("outside limits")
+		}
+		totalDice += count
+		if totalDice > 100 {
+			return nil, 0, fmt.Errorf("outside limits")
+		}
+		groups = append(groups, diceGroup{count, sides})
+	}
+	modifier := 0
+	if last := compact[len(compact)-1:]; last != "d" {
+		if match := regexp.MustCompile(`([+-])(\d+)$`).FindStringSubmatch(compact); match != nil {
+			modifier, _ = strconv.Atoi(match[2])
+			if match[1] == "-" {
+				modifier = -modifier
+			}
+		}
+	}
+	if modifier < -10000 || modifier > 10000 {
+		return nil, 0, fmt.Errorf("outside limits")
+	}
+	return groups, modifier, nil
+}
 
 type DiceResult struct {
 	Expression   string `json:"expressao"`
@@ -124,6 +162,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 			Mode             string `json:"mode"`
 			Channel          string `json:"channel"`
 			MinimumDamageDie int    `json:"minimumDamageDie"`
+			WeaponDamage     bool   `json:"weaponDamage"`
+			Critical         bool   `json:"critical"`
 		}
 		if err := json.Unmarshal(in.Payload, &payload); err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
@@ -137,7 +177,20 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 		if payload.MinimumDamageDie != 0 && (payload.MinimumDamageDie != 3 || payload.Channel != "combat" || payload.Mode != "" || !validMinimumDamageRoll(payload.Expression)) {
 			return apperror.BadRequest("INVALID_ROLL", "Regra de dano inválida para esta rolagem.")
 		}
-		result, err := rollWithMode(strings.TrimSpace(payload.Expression), payload.Mode)
+		if payload.Critical && !payload.WeaponDamage {
+			return apperror.BadRequest("INVALID_ROLL", "Crítico inválido para esta rolagem.")
+		}
+		if payload.WeaponDamage && (payload.Channel != "combat" || payload.Mode != "" || !validWeaponDamageRoll(payload.Expression)) {
+			return apperror.BadRequest("INVALID_ROLL", "A rolagem de dano da arma excede os limites permitidos.")
+		}
+		expression := strings.TrimSpace(payload.Expression)
+		var result DiceResult
+		var err error
+		if payload.WeaponDamage {
+			result, err = rollWeaponDamageExpression(expression, payload.Critical)
+		} else {
+			result, err = rollWithMode(expression, payload.Mode)
+		}
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
 		}
@@ -156,21 +209,80 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusCreated, item)
 }
 
-func validMinimumDamageRoll(expression string) bool {
-	match := diceExpression.FindStringSubmatch(strings.ReplaceAll(strings.TrimSpace(expression), " ", ""))
-	if match == nil {
-		return false
+func validWeaponDamageRoll(expression string) bool {
+	groups, _, err := parseDiceExpression(expression)
+	if err != nil || len(groups) == 0 {
+		_, fixedOnly := fixedWeaponDamageResult(expression)
+		return fixedOnly
 	}
-	sides, err := strconv.Atoi(match[2])
+	total := 0
+	for _, group := range groups {
+		total += group.count
+	}
+	return total <= 10
+}
+
+func fixedWeaponDamageResult(expression string) (DiceResult, bool) {
+	compact := strings.ReplaceAll(strings.TrimSpace(expression), " ", "")
+	if !fixedWeaponDamageExpression.MatchString(compact) {
+		return DiceResult{}, false
+	}
+	modifier, err := strconv.Atoi(compact)
+	if err != nil || modifier < -10000 || modifier > 10000 {
+		return DiceResult{}, false
+	}
+	return DiceResult{
+		Expression: compact,
+		Dice:       []int{},
+		Modifier:   modifier,
+		Total:      modifier,
+	}, true
+}
+
+func rollWeaponDamageExpression(expression string, critical bool) (DiceResult, error) {
+	if fixedResult, fixedOnly := fixedWeaponDamageResult(expression); fixedOnly {
+		// Critical hits double rolled dice only. A fixed damage value remains once.
+		return fixedResult, nil
+	}
+	if critical {
+		var err error
+		expression, err = doubleDiceExpression(expression)
+		if err != nil {
+			return DiceResult{}, err
+		}
+	}
+	return rollWithMode(expression, "")
+}
+
+func doubleDiceExpression(expression string) (string, error) {
+	groups, modifier, err := parseDiceExpression(expression)
 	if err != nil {
+		return "", err
+	}
+	parts := make([]string, 0, len(groups)+1)
+	for _, group := range groups {
+		parts = append(parts, fmt.Sprintf("%dd%d", group.count*2, group.sides))
+	}
+	result := strings.Join(parts, "+")
+	if modifier != 0 {
+		result += fmt.Sprintf("%+d", modifier)
+	}
+	return result, nil
+}
+
+func validMinimumDamageRoll(expression string) bool {
+	groups, _, err := parseDiceExpression(expression)
+	if err != nil || len(groups) == 0 {
 		return false
 	}
-	switch sides {
-	case 4, 6, 8, 10, 12:
-		return true
-	default:
-		return false
+	for _, group := range groups {
+		switch group.sides {
+		case 4, 6, 8, 10, 12:
+		default:
+			return false
+		}
 	}
+	return true
 }
 
 func applyMinimumDamageDie(result DiceResult, minimum int) DiceResult {
@@ -198,28 +310,25 @@ func applyMinimumDamageDie(result DiceResult, minimum int) DiceResult {
 // expression only; the exact dice faces and total are generated by the API and
 // become the immutable event stored in PostgreSQL.
 func roll(expression string) (DiceResult, error) {
-	match := diceExpression.FindStringSubmatch(strings.ReplaceAll(expression, " ", ""))
-	if match == nil {
-		return DiceResult{}, fmt.Errorf("invalid expression")
+	groups, modifier, err := parseDiceExpression(expression)
+	if err != nil {
+		return DiceResult{}, err
 	}
-	count, _ := strconv.Atoi(match[1])
-	sides, _ := strconv.Atoi(match[2])
-	modifier, _ := strconv.Atoi(match[4])
-	if count < 1 || count > 100 || sides < 2 || sides > 1000 || modifier > 10000 {
-		return DiceResult{}, fmt.Errorf("outside limits")
+	capacity := 0
+	for _, group := range groups {
+		capacity += group.count
 	}
-	if match[3] == "-" {
-		modifier = -modifier
-	}
-	result := DiceResult{Expression: expression, Dice: make([]int, 0, count), Modifier: modifier}
-	for range count {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
-		if err != nil {
-			return DiceResult{}, err
+	result := DiceResult{Expression: expression, Dice: make([]int, 0, capacity), Modifier: modifier}
+	for _, group := range groups {
+		for range group.count {
+			n, err := rand.Int(rand.Reader, big.NewInt(int64(group.sides)))
+			if err != nil {
+				return DiceResult{}, err
+			}
+			value := int(n.Int64()) + 1
+			result.Dice = append(result.Dice, value)
+			result.Total += value
 		}
-		value := int(n.Int64()) + 1
-		result.Dice = append(result.Dice, value)
-		result.Total += value
 	}
 	result.Total += modifier
 	return result, nil
@@ -233,8 +342,8 @@ func rollWithMode(expression, mode string) (DiceResult, error) {
 	if err != nil || mode == "" {
 		return first, err
 	}
-	match := diceExpression.FindStringSubmatch(strings.ReplaceAll(expression, " ", ""))
-	if match == nil || match[1] != "1" || match[2] != "20" {
+	groups, _, parseErr := parseDiceExpression(expression)
+	if parseErr != nil || len(groups) != 1 || groups[0].count != 1 || groups[0].sides != 20 {
 		return DiceResult{}, fmt.Errorf("mode requires 1d20")
 	}
 	second, err := roll(expression)

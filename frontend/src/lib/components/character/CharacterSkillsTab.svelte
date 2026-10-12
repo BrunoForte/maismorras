@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import type { AbilityScores, CharacterSheet } from '$lib/services/characterApi';
 
 	type RollMode = 'normal' | 'advantage' | 'disadvantage';
@@ -72,7 +73,8 @@
 				<button
 					class="skill-roll"
 					onclick={() => void rollSkill(name)}
-					aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}>⚄</button
+					aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}
+					><RpgIcon name="d20" size={20} /></button
 				>
 			</div>
 		{/each}
@@ -157,9 +159,13 @@
 		text-align: center;
 	}
 	.skill-roll {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid #765d3d;
 		border-radius: 6px;
-		padding: 0.32rem 0.4rem;
+		padding: 0;
 		color: #f0d29d;
 		background: #2b211c;
 		cursor: pointer;

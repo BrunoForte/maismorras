@@ -84,7 +84,15 @@ describe('bestiary visual panels', () => {
 		const onPlace = vi.fn();
 		const html = render(BestiarySrdDetails, {
 			props: {
-				entry: srd,
+				entry: {
+					...srd,
+					rules: {
+						...srd.rules,
+						actions: [
+							{ name: 'Bite', damage: '1d8', description: 'Melee Attack Roll: +5. Hit: 1d8.' }
+						]
+					}
+				},
 				locale: 'en',
 				placing: false,
 				formatDistance: (value: string) => value,
@@ -107,5 +115,79 @@ describe('bestiary visual panels', () => {
 		}).body;
 		expect(unavailable).toContain('não pode ser adicionada à cena');
 		expect(unavailable).not.toContain('Add to scene');
+	});
+
+	it('renders localized creature details and falls back to source text when absent', () => {
+		const translated: CompendiumEntry = {
+			...srd,
+			name: 'Hippogriff',
+			translations: {
+				'pt-BR': 'Hipogrifo',
+				'pt-BR.summary': 'Criatura Grande Monstruosidade, Sem alinhamento (ND 1).',
+				'pt-BR.rules.creatureType': 'Grande Monstruosidade, Sem alinhamento',
+				'pt-BR.rules.speed': '9 m, escalada 9 m',
+				'pt-BR.rules.senses': 'Visão no Escuro 18 m; Percepção Passiva 10',
+				'pt-BR.rules.languages': '—',
+				'pt-BR.rules.actions.0.name': 'Dilacerar',
+				'pt-BR.rules.actions.0.damage': '7 (1d8 + 3)',
+				'pt-BR.rules.actions.0.range': 'alcance 1,5 m',
+				'pt-BR.rules.actions.0.description':
+					'Jogada de Ataque Corpo a Corpo: +5, alcance 1,5 m. Acerto: 7 (1d8 + 3)'
+			},
+			rules: {
+				kind: 'monster',
+				challenge: '1',
+				hpMax: 26,
+				armorClass: 14,
+				creatureType: 'Large Beast, Unaligned',
+				speed: '30 ft., Climb 30 ft.',
+				senses: 'Darkvision 60 ft.; Passive Perception 10',
+				languages: '—',
+				actions: [
+					{
+						name: 'Bite',
+						damage: '7 (1d8 + 3) Piercing damage.',
+						range: 'reach 5 ft.',
+						description: 'Melee Attack Roll: +5. Hit: 7 (1d8 + 3) Piercing damage.'
+					}
+				]
+			}
+		};
+		const html = render(BestiarySrdDetails, {
+			props: {
+				entry: translated,
+				locale: 'pt-BR',
+				placing: false,
+				formatDistance: (value: string) => value,
+				onPlace: vi.fn()
+			}
+		}).body;
+		expect(html).toContain('Hipogrifo');
+		expect(html).toContain('Criatura Grande Monstruosidade, Sem alinhamento (ND 1).');
+		expect(html).toContain('Dilacerar');
+		expect(html).toContain(
+			'Jogada de Ataque Corpo a Corpo: +5, alcance 1,5 m. Acerto: 7 (1d8 + 3)'
+		);
+		expect(html).not.toContain('Melee Attack Roll');
+
+		const fallback = render(BestiarySrdDetails, {
+			props: {
+				entry: {
+					...srd,
+					rules: {
+						...srd.rules,
+						actions: [
+							{ name: 'Bite', damage: '1d8', description: 'Melee Attack Roll: +5. Hit: 1d8.' }
+						]
+					}
+				},
+				locale: 'pt-BR',
+				placing: false,
+				formatDistance: (value: string) => value,
+				onPlace: vi.fn()
+			}
+		}).body;
+		expect(fallback).toContain('Bite');
+		expect(fallback).toContain('Melee Attack Roll');
 	});
 });

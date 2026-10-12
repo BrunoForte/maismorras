@@ -43,6 +43,8 @@ export type CharacterSheetLifecycleDependencies = {
 	) => Promise<Character>;
 	getMyCharacter: (session: Session, campaignId: string) => Promise<Character>;
 	onCharacterLoaded: (character: Character) => void;
+	validateBeforeSave?: () => string | null;
+	onValidationFailure?: () => void;
 	loadScene: (session: Session, sceneId: string) => Promise<{ tokens: PersistedToken[] }>;
 	listSceneEffects: (session: Session, sceneId: string) => Promise<{ effects: SceneEffect[] }>;
 	setDiceColor: (color: number) => void;
@@ -146,6 +148,12 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		const savedRevision = editRevision;
 		const generation = contextGeneration;
 		try {
+			const validationMessage = deps.validateBeforeSave?.();
+			if (validationMessage) {
+				state.message = validationMessage;
+				deps.onValidationFailure?.();
+				return;
+			}
 			// Armor class is derived from authoritative sheet data, never a manual override.
 			const sheet = deps.getSheet();
 			sheet.armorClass = deps.calculateArmorClass();
@@ -202,6 +210,12 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		state.saving = true;
 		state.message = '';
 		try {
+			const validationMessage = deps.validateBeforeSave?.();
+			if (validationMessage) {
+				state.message = validationMessage;
+				deps.onValidationFailure?.();
+				return;
+			}
 			const sheet = deps.getSheet();
 			sheet.armorClass = deps.calculateArmorClass();
 			const character = await persist(sheet, context);

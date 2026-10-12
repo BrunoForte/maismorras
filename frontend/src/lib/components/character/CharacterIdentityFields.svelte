@@ -2,6 +2,12 @@
 	import type { CharacterSheet } from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { AppLocale } from '$lib/utils/speciesRules';
+	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
+	import {
+		DND2024_SIZES,
+		defaultCharacterSize,
+		type Dnd2024Size
+	} from '$lib/utils/carryingCapacity';
 
 	let {
 		locale,
@@ -28,6 +34,18 @@
 		onSpeciesChanged: () => void;
 		onLineageChanged: (value: string) => void;
 	} = $props();
+	const shownSize = () => sheet.creatureSize ?? defaultCharacterSize(sheet.species);
+	const sizeLabel = (size: Dnd2024Size) =>
+		locale === 'en'
+			? size[0].toUpperCase() + size.slice(1)
+			: {
+					tiny: 'Miúdo',
+					small: 'Pequeno',
+					medium: 'Médio',
+					large: 'Grande',
+					huge: 'Enorme',
+					gargantuan: 'Imenso'
+				}[size];
 </script>
 
 <section class="identity">
@@ -80,6 +98,15 @@
 			list="background-options"
 		/></label
 	>
+	<label class="identity-size"
+		>{locale === 'en' ? 'Size' : 'Tamanho'}<select
+			aria-label={locale === 'en' ? 'Character size' : 'Tamanho do personagem'}
+			value={shownSize()}
+			onchange={(event) => (sheet.creatureSize = event.currentTarget.value as Dnd2024Size)}
+			>{#each DND2024_SIZES as size (size)}<option value={size}>{sizeLabel(size)}</option
+				>{/each}</select
+		></label
+	>
 	{#if lineageOptions.length}
 		<label class="identity-lineage"
 			>{locale === 'en' ? 'Lineage / legacy' : 'Linhagem / legado'}<select
@@ -109,12 +136,12 @@
 	>
 	<datalist id="species-options"
 		>{#each optionsFor('species') as entry (entry.id)}<option value={optionLabel(entry)}
-				>{entry.summary}</option
+				>{translatedCompendiumText(entry, 'summary', entry.summary, locale)}</option
 			>{/each}</datalist
 	>
 	<datalist id="background-options"
 		>{#each optionsFor('background') as entry (entry.id)}<option value={optionLabel(entry)}
-				>{entry.summary}</option
+				>{translatedCompendiumText(entry, 'summary', entry.summary, locale)}</option
 			>{/each}</datalist
 	>
 </section>
@@ -123,7 +150,7 @@
 	.identity {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		grid-template-areas: 'name class subclass level' 'species background alignment proficiency' 'lineage lineage lineage lineage';
+		grid-template-areas: 'name class subclass level' 'species background size proficiency' 'alignment alignment alignment alignment' 'lineage lineage lineage lineage';
 		gap: 0.7rem;
 	}
 	.identity-name {
@@ -143,6 +170,9 @@
 	}
 	.identity-background {
 		grid-area: background;
+	}
+	.identity-size {
+		grid-area: size;
 	}
 	.identity-alignment {
 		grid-area: alignment;
@@ -174,7 +204,7 @@
 	@media (max-width: 700px) {
 		.identity {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
-			grid-template-areas: 'name name' 'class subclass' 'level level' 'species background' 'alignment proficiency' 'lineage lineage';
+			grid-template-areas: 'name name' 'class subclass' 'level level' 'species background' 'size proficiency' 'alignment alignment' 'lineage lineage';
 		}
 	}
 </style>

@@ -5,6 +5,8 @@ export type ResizablePanelOptions = {
 	fillViewport?: boolean;
 	minWidth?: number;
 	storageKey?: string;
+	/** Skip panel sizing and storage for content embedded in a page. */
+	skipLayout?: boolean;
 };
 
 type PanelSize = { width: number; height: number };
@@ -66,6 +68,7 @@ function viewportSize(size: PanelSize): PanelSize {
 
 /** Preserves resize dimensions and collapsed state across remounts and viewport changes. */
 export function resizablePanel(node: HTMLElement, initial: ResizablePanelOptions) {
+	if (initial.skipLayout) return { update() {}, destroy() {} };
 	let options = initial;
 	const saved =
 		initial.fillViewport || !initial.storageKey ? null : readPreference(initial.storageKey);

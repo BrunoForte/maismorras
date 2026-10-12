@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { CampaignSummary } from '$lib/services/campaignApi';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { filterCampaigns, type CampaignSystemFilter } from '$lib/utils/campaignHub';
 
 	type Props = {
@@ -47,7 +48,7 @@
 					: 'Retome uma história ou abra uma nova mesa para sua próxima aventura.'}
 			</p>
 		</div>
-		<div class="hero-die" aria-hidden="true">⌘</div>
+		<div class="hero-die" aria-hidden="true"><RpgIcon name="d20" size={58} /></div>
 	</section>
 	{#if error}<p class="error">{error}</p>{/if}
 	<div class="campaign-toolbar">
@@ -130,7 +131,7 @@
 			</p>
 		{:else if campaigns.length === 0}
 			<div class="empty-state">
-				<div>◇</div>
+				<div><RpgIcon name="campaign" size={36} /></div>
 				<h3>
 					{$appLocale === 'en'
 						? 'Your first adventure starts here.'
@@ -316,9 +317,10 @@
 		color: #ddb977;
 		background: radial-gradient(circle at 30% 25%, #4a3523, #201a1b 72%);
 		clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
-		font:
-			2.4rem Georgia,
-			serif;
+	}
+	.hero-die :global(svg) {
+		width: 58px;
+		height: 58px;
 	}
 	.campaign-toolbar {
 		display: flex;
@@ -555,6 +557,10 @@
 		margin-bottom: 1rem;
 		color: #d8ad67;
 		font-size: 2rem;
+	}
+	.empty-state > div :global(svg) {
+		width: 36px;
+		height: 36px;
 	}
 	.empty-state h3 {
 		margin-bottom: 0.4rem;

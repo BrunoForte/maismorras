@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	displayedSpeed,
+	catalogSpeciesTraits,
 	getActiveSpeciesTraits,
 	getSpeciesHPBonus,
 	getSpeciesLineageOptions,
@@ -15,6 +16,24 @@ import {
 } from './speciesRules';
 
 describe('species rules', () => {
+	it('uses reviewed catalog species trait text in Portuguese and source text as fallback', () => {
+		const entry = {
+			rules: { traits: [{ name: 'Draconic Ancestry', description: 'Choose a dragon.' }] },
+			translations: {
+				'pt-BR.rules.traits.0.name': 'Ancestralidade Dracônica',
+				'pt-BR.rules.traits.0.description': 'Escolha um dragão.'
+			}
+		};
+		expect(catalogSpeciesTraits(entry, 'pt-BR')).toEqual([
+			{ name: 'Ancestralidade Dracônica', description: 'Escolha um dragão.' }
+		]);
+		expect(catalogSpeciesTraits(entry, 'en')).toEqual([
+			{ name: 'Draconic Ancestry', description: 'Choose a dragon.' }
+		]);
+		expect(catalogSpeciesTraits({ rules: entry.rules }, 'pt-BR')).toEqual([
+			{ name: 'Draconic Ancestry', description: 'Choose a dragon.' }
+		]);
+	});
 	it('normalizes localized, accented, and legacy species names', () => {
 		expect(normalizeSpecies(' Draconáto ')).toBe('dragonborn');
 		expect(normalizeSpecies('ANÃO')).toBe('dwarf');

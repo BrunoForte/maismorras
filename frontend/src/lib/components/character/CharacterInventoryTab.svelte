@@ -2,6 +2,7 @@
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { Dnd2024Money, InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
 	import {
 		itemWeight,
 		type InventoryCategory,
@@ -13,8 +14,15 @@
 
 	let {
 		itemEntries,
+		allCompendiumEntries,
 		visibleItems,
-		totalWeight,
+		carriedWeight,
+		capacityLb,
+		loadIncomplete,
+		unknownItemCount,
+		canUseLargeForm,
+		largeFormActive,
+		onLargeFormChange,
 		money,
 		onMoneyChange,
 		inventoryFilter = $bindable(),
@@ -26,8 +34,15 @@
 		onChangeDescription
 	}: {
 		itemEntries: CompendiumEntry[];
+		allCompendiumEntries: CompendiumEntry[];
 		visibleItems: { item: InventoryItem; index: number }[];
-		totalWeight: number;
+		carriedWeight: number;
+		capacityLb: number | null;
+		loadIncomplete: boolean;
+		unknownItemCount: number;
+		canUseLargeForm: boolean;
+		largeFormActive: boolean;
+		onLargeFormChange: (active: boolean) => void;
 		money: Dnd2024Money;
 		onMoneyChange: (money: Dnd2024Money) => void;
 		inventoryFilter: InventoryCategory;
@@ -61,6 +76,19 @@
 	const itemOptionGroups = $derived(
 		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
 	);
+	const magicItemCatalogEntry = (item: InventoryItem) =>
+		allCompendiumEntries.find(
+			(entry) =>
+				entry.id === item.entryId &&
+				entry.entryType === 'other' &&
+				entry.rules.catalog === 'magic-item'
+		);
+	const formatWeight = (weight: number | null) =>
+		weight === null
+			? '—'
+			: new Intl.NumberFormat($appLocale === 'en' ? 'en-US' : 'pt-BR', {
+					maximumFractionDigits: 2
+				}).format(weight);
 	const moneyFields: { key: keyof Dnd2024Money; labelPt: string; labelEn: string }[] = [
 		{ key: 'cp', labelPt: 'PC · Cobre', labelEn: 'CP · Copper' },
 		{ key: 'sp', labelPt: 'PP · Prata', labelEn: 'SP · Silver' },
@@ -112,9 +140,48 @@
 <section class="inventory-section">
 	<div class="section-title">
 		<h3>{$appLocale === 'en' ? 'Equipment' : 'Equipamento'}</h3>
-		<span class="defense-hint"
-			>{$appLocale === 'en' ? 'Total weight' : 'Peso total'}: {totalWeight} lb</span
+	</div>
+	<div
+		class="carrying-capacity"
+		aria-label={$appLocale === 'en' ? 'Carrying capacity' : 'Capacidade de carga'}
+	>
+		<strong
+			>{$appLocale === 'en'
+				? 'Carried weight / maximum capacity'
+				: 'Peso carregado / capacidade máxima'}</strong
 		>
+		<span data-testid="carrying-weight"
+			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} lb</span
+		>
+		{#if loadIncomplete}
+			<small role="status">
+				{$appLocale === 'en'
+					? `The total may be incomplete: ${unknownItemCount} item(s) have missing or invalid weight or quantity.`
+					: `O total pode estar incompleto: ${unknownItemCount} item(ns) têm peso ou quantidade ausente ou inválida.`}
+			</small>
+		{/if}
+		{#if capacityLb !== null && carriedWeight > capacityLb}
+			<small role="status" class="over-capacity">
+				{$appLocale === 'en'
+					? 'Above carrying capacity; resolve according to the table rules.'
+					: 'Acima da capacidade de carga; adjudique conforme as regras da mesa.'}
+			</small>
+		{/if}
+		{#if canUseLargeForm}
+			<label class="large-form-toggle">
+				<input
+					type="checkbox"
+					checked={largeFormActive}
+					onchange={(event) => onLargeFormChange(event.currentTarget.checked)}
+				/>
+				{$appLocale === 'en' ? 'Large Form active' : 'Forma Grande ativa'}
+				<small
+					>{$appLocale === 'en'
+						? 'Turn off when the 10-minute effect ends.'
+						: 'Desative quando o efeito de 10 minutos terminar.'}</small
+				>
+			</label>
+		{/if}
 	</div>
 	<fieldset class="money-panel">
 		<legend>{$appLocale === 'en' ? 'Money' : 'Dinheiro'}</legend>
@@ -251,6 +318,15 @@
 	{#if visibleItems.length}
 		<div class="inventory-list">
 			{#each visibleItems as { item, index } (`${item.entryId}:${index}`)}
+				{@const catalogEntry = magicItemCatalogEntry(item)}
+				{@const catalogDescription = catalogEntry
+					? translatedCompendiumText(
+							catalogEntry,
+							'rules.description',
+							catalogEntry.rules.description,
+							$appLocale
+						)
+					: ''}
 				<div class="inventory-item">
 					<button
 						type="button"
@@ -260,6 +336,9 @@
 					>
 						{item.name}<span>{expandedIndex === index ? '⌃' : '⌄'}</span>
 					</button>
+					{#if catalogDescription && expandedIndex !== index}<small class="catalog-item-description"
+							>{catalogDescription}</small
+						>{/if}
 					<input
 						type="number"
 						min="0"
@@ -280,6 +359,9 @@
 					>
 				</div>
 				{#if expandedIndex === index}
+					{#if catalogDescription}<p class="catalog-item-description full">
+							{catalogDescription}
+						</p>{/if}
 					<label class="inventory-item-description"
 						>{$appLocale === 'en' ? 'Description / function' : 'Descrição / função'}<textarea
 							value={String(item.rules.playerDescription ?? '')}
@@ -303,6 +385,42 @@
 	.inventory-section {
 		display: grid;
 		gap: 0.75rem;
+	}
+	.carrying-capacity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 0.65rem;
+		border: 1px solid #554841;
+		border-radius: 7px;
+		padding: 0.65rem 0.8rem;
+		background: #1c1718;
+	}
+	.carrying-capacity strong {
+		color: #e7c98c;
+	}
+	.carrying-capacity > span {
+		font-variant-numeric: tabular-nums;
+	}
+	.carrying-capacity > small {
+		flex-basis: 100%;
+		color: #e2bc76;
+	}
+	.over-capacity {
+		color: #f0a29b !important;
+	}
+	.large-form-toggle {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		color: #d7cec4;
+	}
+	.large-form-toggle small {
+		flex-basis: 100%;
+		margin-left: 1.25rem;
+		color: #a99c91;
 	}
 	.section-title {
 		display: flex;
@@ -344,10 +462,6 @@
 		color: #eee4d6;
 		background: #161216;
 		font: inherit;
-	}
-	.defense-hint {
-		color: #aa9d91;
-		font-size: 0.72rem;
 	}
 	.inventory-filters {
 		display: flex;
@@ -461,6 +575,24 @@
 		grid-column: 1 / -1;
 		color: #b9aa9d;
 		font-size: 0.7rem;
+	}
+	.catalog-item-description {
+		grid-column: 1 / -1;
+		margin: 0;
+		color: #b9aa9d;
+		font-size: 0.7rem;
+		line-height: 1.35;
+		display: -webkit-box;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+	}
+	.catalog-item-description.full {
+		display: block;
+		line-clamp: unset;
+		-webkit-line-clamp: unset;
+		overflow: visible;
 	}
 	.inventory-item-description textarea {
 		min-height: 3.5rem;

@@ -84,6 +84,7 @@
 				attack.attackType ?? '',
 				attack.ability ?? '',
 				attack.attackBonus,
+				attack.damageBonus ?? 0,
 				attack.damage,
 				attack.notes
 			]);

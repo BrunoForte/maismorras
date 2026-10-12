@@ -10,7 +10,10 @@ import {
 	filterAndSortCompendiumEntries,
 	hasPendingCompendiumTranslation,
 	isCompendiumTranslationPending,
-	normalizeCompendiumSearch
+	normalizeCompendiumSearch,
+	translatedCompendiumName,
+	translatedCompendiumText,
+	translatedFeatDetails
 } from './compendiumRules';
 
 const sources: CompendiumSource[] = [
@@ -53,6 +56,80 @@ const entry = (
 });
 
 describe('compendium rules', () => {
+	it('shows reviewed magic item names in Portuguese and falls back to source text', () => {
+		const magicItem: CompendiumEntry = {
+			...entry('magic', 'Bag of Holding'),
+			translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' }
+		};
+		expect(translatedCompendiumName(magicItem, 'pt-BR')).toBe('Bolsa de Carga');
+		expect(translatedCompendiumName(magicItem, 'en')).toBe('Bag of Holding');
+		expect(translatedCompendiumName({ ...magicItem, translations: {} }, 'pt-BR')).toBe(
+			'Bag of Holding'
+		);
+	});
+
+	it('resolves nested class features and feat benefits in Portuguese with English fallback', () => {
+		const localized: CompendiumEntry = {
+			...entry('feat', 'Alert', 'feat'),
+			rules: {
+				features: [{ name: 'Second Wind', description: 'Regain hit points.' }],
+				benefits: ['Add proficiency to Initiative.']
+			},
+			translations: {
+				'pt-BR.rules.features.0.name': 'Segundo Fôlego',
+				'pt-BR.rules.features.0.description': 'Recupere pontos de vida.',
+				'pt-BR.rules.benefits.0': 'Adicione proficiência à Iniciativa.'
+			},
+			isPublished: true
+		};
+		expect(
+			translatedCompendiumText(localized, 'rules.features.0.name', 'Second Wind', 'pt-BR')
+		).toBe('Segundo Fôlego');
+		expect(
+			translatedCompendiumText(
+				localized,
+				'rules.benefits.0',
+				'Add proficiency to Initiative.',
+				'pt-BR'
+			)
+		).toBe('Adicione proficiência à Iniciativa.');
+		expect(
+			translatedCompendiumText(
+				localized,
+				'rules.benefits.0',
+				'Add proficiency to Initiative.',
+				'en'
+			)
+		).toBe('Add proficiency to Initiative.');
+		expect(
+			translatedCompendiumText(
+				{ ...localized, translations: {} },
+				'rules.features.0.name',
+				'Second Wind',
+				'pt-BR'
+			)
+		).toBe('Second Wind');
+	});
+
+	it('builds the character-sheet feat text from localized description and benefit keys', () => {
+		const feat: CompendiumEntry = {
+			...entry('alert', 'Alert', 'feat'),
+			summary: 'Always ready.',
+			rules: { description: 'You are always ready.', benefits: ['Add proficiency to Initiative.'] },
+			translations: {
+				'pt-BR.rules.description': 'Você está sempre preparado.',
+				'pt-BR.rules.benefits.0': 'Adicione proficiência à Iniciativa.'
+			},
+			isPublished: true
+		};
+		expect(translatedFeatDetails(feat, 'pt-BR')).toBe(
+			'Você está sempre preparado.\n\nAdicione proficiência à Iniciativa.'
+		);
+		expect(translatedFeatDetails({ ...feat, translations: {} }, 'pt-BR')).toBe(
+			'You are always ready.\n\nAdd proficiency to Initiative.'
+		);
+	});
+
 	it('shows translation capability only for the platform owner on shared SRD and GMs on private sources', () => {
 		const sharedEntry = entry('shared-1', 'Wizard', 'class', 'srd');
 		const privateEntry = entry('private-1', 'Homebrew spell', 'spell', 'home');

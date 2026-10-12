@@ -69,6 +69,11 @@ jobs:
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase test db
+      - name: Test shared SRD catalog synchronization with a creature
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: go test ./internal/compendium -run '^TestSharedSRDCatalogAndOwnerTranslationIntegration$' -count=1
       - name: Configure Go for realtime integration test
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
@@ -341,6 +346,12 @@ jobs:
               & npx @playwrightArgs
               $phaseDurations['Playwright suite'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
               if ($LASTEXITCODE -ne 0) { throw "Authenticated E2E suite '$suiteScope' failed." }
+              if ($env:E2E_SUITE_MODE -eq 'routine') {
+                $phaseWatch.Restart()
+                & npx playwright test e2e/campaign-sheet-tab.spec.ts --project=chromium --workers=1 --global-timeout=300000 --output=test-results/campaign-sheet-tab
+                $phaseDurations['Campaign Sheets tab E2E'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
+                if ($LASTEXITCODE -ne 0) { throw 'Authenticated campaign Sheets tab E2E failed.' }
+              }
             } finally { Pop-Location }
           } finally {
             $phaseWatch.Restart()

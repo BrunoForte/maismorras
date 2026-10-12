@@ -20,6 +20,13 @@ import {
 	levelHitPointGain
 } from '$lib/utils/character/characterProgressionRules';
 import type { CharacterSheetSaveOperation } from './characterSheetLifecycle.svelte';
+import {
+	parseDamageExpression,
+	parseLegacyDamage,
+	serializeDamageComponents,
+	validateDamageBonus,
+	validateDamageComponents
+} from '$lib/utils/weaponDamageBuilder';
 
 export type CharacterCombatContext = {
 	campaignId: string;
@@ -97,7 +104,9 @@ export type CharacterCombatActionDependencies = {
 		expression: string,
 		mode?: 'advantage' | 'disadvantage',
 		channel?: 'chat' | 'combat',
-		minimumDamageDie?: 0 | 3
+		minimumDamageDie?: 0 | 3,
+		weaponDamage?: boolean,
+		critical?: boolean
 	) => Promise<DiceEvent>;
 	rollTokenInitiative: (
 		session: Session,
@@ -121,7 +130,8 @@ export type CharacterCombatActionDependencies = {
 		campaignId: string,
 		spellIndex: number,
 		slotLevel: number,
-		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+		featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+		presentationSceneId?: string
 	) => Promise<SpellCast>;
 	savePresentation: (
 		session: Session,
@@ -478,17 +488,30 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const context = deps.getContext();
 		const sheet = deps.getSheet();
 		const details = deps.getWeaponRollDetails(item, profile);
-		const damageMatch = details.damageFormula.match(/^([0-9]+)d([0-9]+)(?:\s*([+-])\s*([0-9]+))?/i);
+		const parsedDamage =
+			parseDamageExpression(details.damageFormula) ?? parseLegacyDamage(details.damageFormula);
+		const components =
+			parsedDamage && 'damage' in parsedDamage
+				? (parseDamageExpression(parsedDamage.damage) ?? [])
+				: (parsedDamage ?? []);
+		const damageValidation = validateDamageComponents(components);
 		const actionKey = `${details.stableWeaponKey}:${details.profileKey}:${action}`;
 		if (!deps.isWeapon(item) || state.rollingWeaponAction) return;
-		if (action === 'damage' && !damageMatch) {
+		const legacyDamageBonus =
+			parsedDamage && 'damageBonus' in parsedDamage ? parsedDamage.damageBonus : 0;
+		const damageModifier = legacyDamageBonus + details.damageBonus;
+		if (action === 'damage' && (damageValidation || !parsedDamage)) {
 			deps.setMessage(
 				localized(
 					context.locale,
-					'Esta arma não tem uma fórmula de dano.',
-					'This weapon has no damage formula.'
+					'Configure o dano com componentes de quantidade + tipo de dado; valores fixos ficam em Bônus de dano.',
+					'Configure damage as quantity + die type components; fixed values belong in Damage bonus.'
 				)
 			);
+			return;
+		}
+		if (action === 'damage' && validateDamageBonus(damageModifier)) {
+			deps.setMessage('O bônus total de dano deve ser um inteiro entre -10000 e 10000.');
 			return;
 		}
 		if (
@@ -554,19 +577,21 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					nonce: String(event.id)
 				});
 			} else {
-				const baseModifier =
-					damageMatch?.[3] === '-' ? -Number(damageMatch[4] ?? 0) : Number(damageMatch?.[4] ?? 0);
-				const damageModifier = baseModifier + details.damageBonus;
 				const isCritical =
 					lastCriticalWeapon === `${details.stableWeaponKey}:${details.profileKey}`;
-				const diceCount = Number(damageMatch![1]) * (isCritical ? 2 : 1);
+				const rolledFormula = serializeDamageComponents(components);
+				const damageExpression = rolledFormula
+					? `${rolledFormula}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`
+					: String(damageModifier);
 				const event = await deps.rollDice(
 					context.session,
 					context.campaignId,
-					`${diceCount}d${damageMatch![2]}${damageModifier ? `${damageModifier >= 0 ? '+' : ''}${damageModifier}` : ''}`,
+					damageExpression,
 					undefined,
 					'combat',
-					details.minimumDamageDie
+					components.length ? details.minimumDamageDie : undefined,
+					true,
+					isCritical
 				);
 				if (!isCurrent(operation)) return;
 				const damage = event.payload as {
@@ -658,7 +683,12 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		});
 	}
 
-	async function rollSheetDamage(label: string, damage: string, attackIndex: number) {
+	async function rollSheetDamage(
+		label: string,
+		damage: string,
+		attackIndex: number,
+		damageBonus = 0
+	) {
 		const match = damage.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/i);
 		if (!match) return;
 		const operation = captureOperation();
@@ -666,7 +696,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const sheet = deps.getSheet();
 		const critical = lastCriticalAttack === attackIndex;
 		const count = Number(match[1]) * (critical ? 2 : 1);
-		const modifier = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
+		const formulaModifier = match[3] === '-' ? -Number(match[4] ?? 0) : Number(match[4] ?? 0);
+		const modifier = formulaModifier + damageBonus;
 		const event = await deps.rollDice(
 			context.session,
 			context.campaignId,
@@ -740,7 +771,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			await rollSheetDamage(
 				attack.name || localized(context.locale, 'Ataque', 'Attack'),
 				attack.damage,
-				index
+				index,
+				attack.damageBonus ?? 0
 			);
 		} catch {
 			if (isCurrent(operation))
@@ -876,31 +908,56 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const context = deps.getContext();
 		state.castingSpell = index;
 		try {
-			const result = await deps.castMySpell(
-				context.session,
-				context.campaignId,
-				index,
-				spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index),
-				featGrant
-			);
+			const slotLevel = spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index);
+			const result =
+				spell.level === 0 && context.sceneId
+					? await deps.castMySpell(
+							context.session,
+							context.campaignId,
+							index,
+							slotLevel,
+							featGrant,
+							context.sceneId
+						)
+					: await deps.castMySpell(
+							context.session,
+							context.campaignId,
+							index,
+							slotLevel,
+							featGrant
+						);
 			if (!isCurrent(operation)) return;
 			deps.setSheet(result.sheet);
 			const sheet = deps.getSheet();
-			addChat({
-				id: String(result.eventId),
-				autor: sheet.name || 'Personagem',
-				texto: `✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
-				tipo: 'rolagem',
-				canal: 'combat',
-				detalhesRolagem: {
-					expressao: result.expression || 'magia',
-					dados: result.dados ?? [],
-					modificador: result.modificador ?? 0,
-					total: result.total ?? 0,
-					label: result.spellName
-				}
-			});
-			if (result.dados?.length)
+			if (result.baseLevel === 0) {
+				addChat({
+					id: String(result.eventId),
+					autor: sheet.name || 'Personagem',
+					texto:
+						result.chatText ||
+						`✨ ${sheet.name || 'Personagem'} conjurou ${result.spellName} · truque · nenhum espaço consumido`,
+					tipo: 'texto',
+					canal: 'chat'
+				});
+			} else {
+				addChat({
+					id: String(result.eventId),
+					autor: sheet.name || 'Personagem',
+					texto:
+						result.chatText ||
+						`✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
+					tipo: 'rolagem',
+					canal: 'combat',
+					detalhesRolagem: {
+						expressao: result.expression || 'magia',
+						dados: result.dados ?? [],
+						modificador: result.modificador ?? 0,
+						total: result.total ?? 0,
+						label: result.spellName
+					}
+				});
+			}
+			if (result.baseLevel > 0 && result.dados?.length)
 				deps.setDiceOverlay({
 					expression: `${sheet.name || 'Personagem'} · ${result.spellName} · ${result.expression ?? 'rolagem'}`,
 					notation: result.expression,
@@ -908,7 +965,12 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					dice: result.dados,
 					nonce: String(result.eventId)
 				});
-			deps.setMessage('Magia lançada e espaço consumido.');
+			if (result.presentationUpdated) deps.publishPresentationUpdated(undefined);
+			deps.setMessage(
+				result.baseLevel === 0
+					? 'Truque conjurado sem consumir espaço de magia.'
+					: 'Magia lançada e espaço consumido.'
+			);
 		} catch (error) {
 			if (isCurrent(operation))
 				deps.setMessage(

@@ -2,6 +2,8 @@
 	import { appLocale, distanceText } from '$lib/stores/locale';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { CompendiumDetailsView } from './compendiumTypes';
+	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
+	import { displayItemCategory, displayWeaponProperties } from '$lib/utils/compendium/itemLabels';
 	import {
 		compendiumTranslationHasAI,
 		compendiumTranslationIsOfficial,
@@ -30,6 +32,33 @@
 		translatedCompendiumText(entry, `rules.${field}`, value, locale);
 	const displayAction = (index: number, field: string, value: unknown) =>
 		translatedCompendiumText(entry, `rules.actions.${index}.${field}`, value, locale);
+	const displayFeature = (index: number, field: string, value: unknown) =>
+		translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale);
+	const displayBenefit = (index: number, value: unknown) =>
+		translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale);
+	const displaySpeciesTrait = (index: number, field: string, value: unknown) =>
+		translatedCompendiumText(entry, `rules.traits.${index}.${field}`, value, locale);
+	const displayChoice = (value: unknown) => {
+		const labels: Record<string, string> = {
+			str: 'Força',
+			dex: 'Destreza',
+			con: 'Constituição',
+			int: 'Inteligência',
+			wis: 'Sabedoria',
+			cha: 'Carisma'
+		};
+		return locale === 'pt-BR'
+			? (labels[String(value)] ?? String(value ?? ''))
+			: String(value ?? '');
+	};
+	const displaySize = (value: unknown) => {
+		const labels: Record<string, string> = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
+		return locale === 'pt-BR'
+			? (labels[String(value)] ?? String(value ?? ''))
+			: String(value ?? '');
+	};
+	const displayConditionEffect = (index: number, value: unknown) =>
+		translatedCompendiumText(entry, `rules.effects.${index}`, value, locale);
 </script>
 
 <aside class="entry-detail">
@@ -133,8 +162,8 @@
 							? `+${String(actionRecord.toHit)} ${$appLocale === 'en' ? 'to hit' : 'para acertar'} · `
 							: ''}{displayAction(
 							index,
-							'damage',
-							actionRecord.damage ?? actionRecord.description ?? ''
+							'description',
+							actionRecord.description ?? actionRecord.damage ?? ''
 						)}</span
 					>
 				</div>
@@ -156,43 +185,89 @@
 			</button>
 		{/if}
 	{:else if entry.entryType === 'spell'}
+		{@const spellDescription = translatedCompendiumText(
+			entry,
+			'rules.description',
+			detail.description,
+			locale
+		)}
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b>
 			<b>{Array.isArray(detail.classes) ? (detail.classes as string[]).join(', ') : ''}</b>
 			{#if detail.school}<b>{displayRule('school', detail.school)}</b>{/if}
 			{#if detail.range}<b>{distanceText(displayRule('range', detail.range), $appLocale)}</b>{/if}
 		</div>
+		{#if spellDescription}<p class="spell-description">{spellDescription}</p>{/if}
+		{@const spellMechanics = presentSpellMechanics(detail, locale)}
+		{#if spellMechanics.reviewed}
+			<div
+				class="spell-mechanics"
+				aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}
+			>
+				<h4>{$appLocale === 'en' ? 'Damage and scaling' : 'Dano e escalonamento'}</h4>
+				<p>
+					<strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong>
+					{spellMechanics.damage.length
+						? spellMechanics.damage.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
+				<p>
+					<strong>{$appLocale === 'en' ? 'By character level:' : 'Por nível do personagem:'}</strong
+					>
+					{spellMechanics.characterLevel.length
+						? spellMechanics.characterLevel.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
+				<p>
+					<strong>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong>
+					{spellMechanics.spellSlot.length
+						? spellMechanics.spellSlot.join(' · ')
+						: $appLocale === 'en'
+							? 'None'
+							: 'Não se aplica'}
+				</p>
+			</div>
+		{/if}
 	{:else if entry.entryType === 'item'}
 		<div class="rules">
-			<b>{displayRule('category', detail.category ?? 'item')}</b>
+			<b>{displayItemCategory(displayRule('category', detail.category ?? 'item'), locale)}</b>
 			{#if detail.damage}<b>{displayRule('damage', detail.damage)}</b>{/if}
 			{#if detail.armorClass}<b>{$appLocale === 'en' ? 'AC' : 'CA'} +{String(detail.armorClass)}</b
 				>{/if}
-			{#if detail.properties}<b
-					>{Array.isArray(detail.properties)
-						? (detail.properties as string[]).join(', ')
-						: String(detail.properties)}</b
-				>{/if}
+			{#if detail.properties}<b>{displayWeaponProperties(detail.properties, locale)}</b>{/if}
 		</div>
+	{:else if entry.entryType === 'other' && detail.catalog === 'magic-item'}
+		{@const magicItemDescription = displayRule('description', detail.description)}
+		{#if magicItemDescription}<p class="magic-item-description">{magicItemDescription}</p>{/if}
 	{:else if entry.entryType === 'class'}
+		{@const classDescription = displayRule('description', detail.description)}
+		{#if classDescription}<p>{classDescription}</p>{/if}
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Hit Die' : 'Dado de vida'} d{String(detail.hitDie ?? '—')}</b>
 		</div>
 		{#if Array.isArray(detail.features) && detail.features.length}
 			<div class="feature-detail-list">
-				<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+				<h4>{$appLocale === 'en' ? 'Features by level' : 'Características por nível'}</h4>
 				{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}
 					{@const item = feature as Record<string, unknown>}
 					<article>
 						<strong
 							>{$appLocale === 'en' ? 'Level' : 'Nível'}
-							{String(item.level ?? '—')} · {String(item.name ?? '')}</strong
-						>{#if item.description}<p>{String(item.description)}</p>{/if}
+							{String(item.level ?? '—')} · {displayFeature(index, 'name', item.name)}</strong
+						>{#if item.description}<p>
+								{displayFeature(index, 'description', item.description)}
+							</p>{/if}
 					</article>
 				{/each}
 			</div>
 		{/if}
 	{:else if entry.entryType === 'subclass'}
+		{@const subclassDescription = displayRule('description', detail.description)}
+		{#if subclassDescription}<p>{subclassDescription}</p>{/if}
 		<div class="rules">
 			<b
 				>{$appLocale === 'en' ? 'Base class' : 'Classe-base'}: {displayRule(
@@ -203,20 +278,48 @@
 		</div>
 		{#if Array.isArray(detail.features) && detail.features.length}
 			<div class="feature-detail-list">
-				<h4>{$appLocale === 'en' ? 'Features by level' : 'Habilidades por nível'}</h4>
+				<h4>{$appLocale === 'en' ? 'Features by level' : 'Características por nível'}</h4>
 				{#each detail.features as feature, index (String((feature as Record<string, unknown>).id ?? index))}
 					{@const item = feature as Record<string, unknown>}
 					<article>
 						<strong
 							>{$appLocale === 'en' ? 'Level' : 'Nível'}
-							{String(item.level ?? '—')} · {String(item.name ?? '')}</strong
-						>{#if item.description}<p>{String(item.description)}</p>{/if}
+							{String(item.level ?? '—')} · {displayFeature(index, 'name', item.name)}</strong
+						>{#if item.description}<p>
+								{displayFeature(index, 'description', item.description)}
+							</p>{/if}
 					</article>
 				{/each}
 			</div>
 		{/if}
+	{:else if entry.entryType === 'feat' || entry.entryType === 'feature'}
+		{@const localizedDescription = displayRule('description', detail.description ?? entry.summary)}
+		{#if localizedDescription}<p class="feat-description">{localizedDescription}</p>{/if}
+		{#if entry.entryType === 'feat' && Array.isArray(detail.benefits) && detail.benefits.length}
+			<ul class="feat-benefits">
+				{#each detail.benefits as benefit, index (index)}<li>
+						{displayBenefit(index, benefit)}
+					</li>{/each}
+			</ul>
+		{/if}
+	{:else if entry.entryType === 'other' && detail.catalog === 'conditions'}
+		{@const conditionDescription = displayRule('description', detail.description ?? entry.summary)}
+		{#if conditionDescription}<p class="condition-description">{conditionDescription}</p>{/if}
+		{#if Array.isArray(detail.effects) && detail.effects.length}
+			<h4>{$appLocale === 'en' ? 'Effects' : 'Efeitos'}</h4>
+			<ul class="condition-effects">
+				{#each detail.effects as effect, index (index)}<li>
+						{displayConditionEffect(index, effect)}
+					</li>{/each}
+			</ul>
+		{/if}
+		{#if detail.notes}<p class="condition-notes">{displayRule('notes', detail.notes)}</p>{/if}
 	{:else if entry.entryType === 'species'}
+		{@const speciesDescription = displayRule('description', detail.description)}
+		{#if speciesDescription}<p>{speciesDescription}</p>{/if}
 		<div class="rules">
+			{#if detail.size}<b>{$appLocale === 'en' ? 'Size' : 'Tamanho'}: {displaySize(detail.size)}</b
+				>{/if}
 			<b
 				>{$appLocale === 'en' ? 'Speed' : 'Deslocamento'}: {distanceText(
 					displayRule('speed', detail.speed ?? '—'),
@@ -224,6 +327,66 @@
 				)}</b
 			>
 		</div>
+		{#if Array.isArray(detail.traits) && detail.traits.length}
+			<h4>{$appLocale === 'en' ? 'Species traits' : 'Características da espécie'}</h4>
+			<div class="feature-detail-list">
+				{#each detail.traits as trait, index (String((trait as Record<string, unknown>).id ?? index))}
+					{@const item = trait as Record<string, unknown>}
+					<article>
+						<strong>{displaySpeciesTrait(index, 'name', item.name)}</strong>
+						{#if item.description}<p>
+								{displaySpeciesTrait(index, 'description', item.description)}
+							</p>{/if}
+					</article>
+				{/each}
+			</div>
+		{/if}
+	{:else if entry.entryType === 'background'}
+		{@const backgroundDescription = displayRule('description', detail.description)}
+		{#if backgroundDescription}<p>{backgroundDescription}</p>{/if}
+		{#if detail.abilityScoreIncreases}
+			{@const abilityChoices = detail.abilityScoreIncreases as {
+				options?: unknown[];
+				points?: unknown;
+			}}
+			<p>
+				{$appLocale === 'en'
+					? 'Ability score increase options:'
+					: 'Opções de valores de habilidade:'}
+				{Array.isArray(abilityChoices.options)
+					? abilityChoices.options.map(displayChoice).join(', ')
+					: ''}
+				· {String(abilityChoices.points ?? '')}
+				{$appLocale === 'en' ? 'points to distribute' : 'pontos para distribuir'}
+			</p>
+		{/if}
+		{#if Array.isArray(detail.skillProficiencies)}
+			<p>
+				<strong
+					>{$appLocale === 'en' ? 'Skill proficiencies:' : 'Proficiências em perícias:'}</strong
+				>
+				{detail.skillProficiencies
+					.map((value, index) => displayRule(`skillProficiencies.${index}`, value))
+					.join(', ')}
+			</p>
+		{/if}
+		{#if detail.toolProficiency}<p>
+				<strong>{$appLocale === 'en' ? 'Tool proficiency:' : 'Proficiência com ferramenta:'}</strong
+				>
+				{displayRule('toolProficiency', detail.toolProficiency)}
+			</p>{/if}
+		{#if Array.isArray(detail.startingEquipment)}
+			<p>
+				<strong>{$appLocale === 'en' ? 'Starting equipment:' : 'Equipamento inicial:'}</strong>
+				{detail.startingEquipment
+					.map((value, index) => displayRule(`startingEquipment.${index}`, value))
+					.join(', ')}
+			</p>
+		{/if}
+		{#if detail.feat}<p>
+				<strong>{$appLocale === 'en' ? 'Origin feat:' : 'Talento de Origem:'}</strong>
+				{displayRule('feat', detail.feat)}
+			</p>{/if}
 	{/if}
 	<small
 		>{entry.isPublished
@@ -247,6 +410,17 @@
 		border-radius: 10px;
 		padding: 1rem;
 		background: #251e1c;
+	}
+	.spell-mechanics {
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		padding: 0.55rem 0.8rem;
+		color: #e8ddcd;
+		font-size: 0.9rem;
+	}
+	.spell-mechanics h4,
+	.spell-mechanics p {
+		margin: 0.25rem 0;
 	}
 	.entry-detail h3,
 	.entry-detail p {

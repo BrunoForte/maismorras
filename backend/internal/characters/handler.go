@@ -105,13 +105,14 @@ func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 		GrantID    string `json:"grantId"`
 		EntryID    string `json:"entryId"`
 		FreeCast   bool   `json:"freeCast"`
+		SceneID    string `json:"presentationSceneId"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_SPELL_CAST", "Conjuração inválida.")
 	}
 	result, err := h.repo.CastSpell(r.Context(), r.PathValue("campaignID"), p.UserID, SpellCastInput{
 		SpellIndex: in.SpellIndex, SlotLevel: in.SlotLevel, GrantID: strings.TrimSpace(in.GrantID),
-		EntryID: strings.TrimSpace(in.EntryID), FreeCast: in.FreeCast,
+		EntryID: strings.TrimSpace(in.EntryID), FreeCast: in.FreeCast, PresentationSceneID: strings.TrimSpace(in.SceneID),
 	})
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não participa desta campanha.")

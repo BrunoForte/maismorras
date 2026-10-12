@@ -5,8 +5,10 @@ import {
 	type CharacterSheet,
 	type InventoryItem
 } from '$lib/services/characterApi';
+import type { AbilityScores } from '$lib/services/characterApi';
 import type { CharacterCombatActionDependencies } from './characterCombatActions.svelte';
 import { createCharacterCombatActions } from './characterCombatActions.svelte';
+import { weaponAttackBonusTotal, weaponDamageBonusTotal } from '$lib/utils/weaponRules';
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -215,7 +217,7 @@ describe('character combat actions', () => {
 		}
 	});
 
-	it('duplica os dados de dano após crítico e consome a marca crítica', async () => {
+	it('envia a fórmula-base e marca o crítico para duplicação autoritativa', async () => {
 		const test = setup();
 		vi.mocked(test.rollDice)
 			.mockResolvedValueOnce({
@@ -238,7 +240,144 @@ describe('character combat actions', () => {
 		await test.controller.rollWeapon(weapon, 'damage');
 		await test.controller.rollWeapon(weapon, 'damage');
 
-		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '2d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d8+5', '1d8+5']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
+	});
+
+	it('rola dano fixo sem dados e mantém o bônus uma vez mesmo em crítico', async () => {
+		const test = setup({
+			getWeaponRollDetails: () => ({
+				attackBonus: 5,
+				damageBonus: 4,
+				damageFormula: '',
+				stableWeaponKey: 'weapon-1',
+				profileKey: 'default',
+				damageType: 'contundente'
+			}),
+			rollDice: vi
+				.fn()
+				.mockResolvedValueOnce({
+					id: 'critical-attack',
+					payload: { expressao: '1d20+5', dados: [20], total: 25 }
+				})
+				.mockResolvedValueOnce({
+					id: 'fixed-damage',
+					payload: { expressao: '4', dados: [], total: 4 }
+				})
+		});
+		const fixedWeapon = { ...weapon, rules: { ...weapon.rules, damage: '' } };
+
+		await test.controller.rollWeapon(fixedWeapon, 'attack');
+		await test.controller.rollWeapon(fixedWeapon, 'damage');
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '4']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
+		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({
+			modificador: 4,
+			dados: [],
+			total: 4
+		});
+	});
+
+	it('aplica o bônus de ataque somente ao ataque e mantém o modificador da fórmula de dano', async () => {
+		const test = setup();
+		const attack = {
+			name: 'Golpe preciso',
+			attackBonus: 4,
+			damageBonus: 0,
+			damage: '1d8+2',
+			notes: '',
+			ability: 'strength' as const
+		};
+
+		await test.controller.rollCustomAttack(attack, 0);
+		await test.controller.rollCustomDamage(attack, 0);
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d8+2']);
+		expect(test.appendChat.mock.calls[0][0].detalhesRolagem).toMatchObject({ modificador: 5 });
+		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({ modificador: 2 });
+		expect(test.setDiceOverlay.mock.calls.map((call) => call[0].notation)).toEqual([
+			'1d20+5',
+			'1d8+2'
+		]);
+	});
+
+	it('aplica o bônus de dano somente ao dano e mantém o ataque independente', async () => {
+		const test = setup();
+		const attack = {
+			name: 'Golpe pesado',
+			attackBonus: 0,
+			damageBonus: 3,
+			damage: '1d8+2',
+			notes: '',
+			ability: 'strength' as const
+		};
+
+		await test.controller.rollCustomAttack(attack, 0);
+		await test.controller.rollCustomDamage(attack, 0);
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+1', '1d8+5']);
+		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({ modificador: 5 });
+		expect(test.setDiceOverlay.mock.calls[1][0]).toMatchObject({ notation: '1d8+5' });
+	});
+
+	it('trata danoBonus ausente em ataques antigos como zero sem reinterpretar attackBonus', async () => {
+		const test = setup();
+		const legacyAttack = {
+			name: 'Adaga antiga',
+			attackBonus: 4,
+			damage: '1d4+2',
+			notes: ''
+		};
+
+		await test.controller.rollCustomAttack(legacyAttack, 0);
+		await test.controller.rollCustomDamage(legacyAttack, 0);
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d4+2']);
+	});
+
+	it('soma uma vez bônus mágico, bônus de ataque e bônus de dano de arma', async () => {
+		const abilityScores: AbilityScores = {
+			strength: 16,
+			dexterity: 10,
+			constitution: 10,
+			intelligence: 10,
+			wisdom: 10,
+			charisma: 10
+		};
+		const profile = {
+			id: 'heavy-strike',
+			name: 'Golpe pesado',
+			description: '',
+			attackAbility: 'strength' as const,
+			damage: '1d8+1',
+			attackBonus: 5,
+			damageBonus: 4,
+			greatWeaponFighting: false
+		};
+		const test = setup({
+			getWeaponRollDetails: (item, selectedProfile) => ({
+				attackBonus:
+					weaponAttackBonusTotal(item, abilityScores, 2, []) + (selectedProfile?.attackBonus ?? 0),
+				damageBonus:
+					weaponDamageBonusTotal(item, abilityScores, []) + (selectedProfile?.damageBonus ?? 0),
+				damageFormula: selectedProfile?.damage ?? String(item.rules.damage),
+				stableWeaponKey: item.entryId,
+				profileKey: selectedProfile?.id ?? 'default',
+				damageType: 'cortante'
+			})
+		});
+		const magicWeapon = { ...weapon, rules: { ...weapon.rules, bonus: 2 } };
+
+		await test.controller.rollWeapon(magicWeapon, 'attack', profile);
+		await test.controller.rollWeapon(magicWeapon, 'damage', profile);
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+12', '1d8+10']);
+		expect(test.appendChat.mock.calls.map((call) => call[0].detalhesRolagem?.modificador)).toEqual([
+			12, 10
+		]);
 	});
 
 	it('conjura usando slot compatível e atualiza a ficha retornada', async () => {
@@ -268,6 +407,40 @@ describe('character combat actions', () => {
 		expect(test.getSheet().name).toBe('Ficha após conjuração');
 		expect(test.getSheet().spellSlots[1].current).toBe(0);
 		expect(test.appendChat.mock.calls[0][0].texto).toContain('espaço usado 2');
+	});
+
+	it('registra truque sem rolar efeitos, sem gastar espaços e invalida a apresentação da mesa', async () => {
+		const test = setup();
+		const spell = { name: 'Luz', level: 0, notes: '', description: 'Uma luz aparece.' };
+		vi.mocked(test.castMySpell).mockResolvedValueOnce({
+			eventId: 18,
+			sheet: test.getSheet(),
+			spellName: 'Luz',
+			baseLevel: 0,
+			slotLevel: 0,
+			effect: '',
+			chatText: '✨ Heroína conjurou Luz · truque · nenhum espaço consumido',
+			presentationUpdated: true
+		});
+
+		await test.controller.castSpell(spell, 0);
+
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			0,
+			0,
+			undefined,
+			'scene-1'
+		);
+		expect(test.getSheet().spellSlots[0].current).toBe(1);
+		expect(test.appendChat.mock.calls[0][0]).toMatchObject({
+			tipo: 'texto',
+			texto: expect.stringContaining('nenhum espaço consumido')
+		});
+		expect(test.setDiceOverlay).not.toHaveBeenCalled();
+		expect(test.publishChatUpdated).toHaveBeenCalledOnce();
+		expect(test.publishPresentationUpdated).toHaveBeenCalledWith(undefined);
 	});
 
 	it('conjura magia de talento com uso gratuito sem enviar valores de uso como autoridade', async () => {
@@ -363,6 +536,7 @@ describe('character combat actions', () => {
 		);
 		expect(test.appendChat).toHaveBeenCalledOnce();
 		expect(test.publishPresentationUpdated).not.toHaveBeenCalled();
+		expect(test.castMySpell).not.toHaveBeenCalled();
 	});
 
 	it('Exibir do narrador publica no chat e também atualiza apresentação e overlay', async () => {

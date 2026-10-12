@@ -96,8 +96,14 @@
 		FloatingChatComponent ??= (await import('$lib/components/FloatingChat.svelte')).default;
 	}
 	async function ensureTabComponent(tab: WorkspaceTab) {
-		if (tab === 'sheets')
-			CampaignSheetsComponent ??= (await import('$lib/components/CampaignSheets.svelte')).default;
+		if (tab === 'sheets') {
+			const [sheets, sheet] = await Promise.all([
+				import('$lib/components/CampaignSheets.svelte'),
+				import('$lib/components/CharacterSheet.svelte')
+			]);
+			CampaignSheetsComponent ??= sheets.default;
+			CharacterSheetComponent ??= sheet.default;
+		}
 		if (tab === 'library')
 			LibraryViewComponent ??= (await import('$lib/components/LibraryView.svelte')).default;
 		if (tab === 'compendium')
@@ -143,6 +149,8 @@
 	let loadingScene = $state(false);
 	let sheetOpen = $state(false);
 	let editingCharacter = $state<{ id: string; ownerName: string } | null>(null);
+	let embeddedCharacter = $state<{ id: string; ownerName: string } | null>(null);
+	let floatingSheetVisibleOnSheetsTab = $state(false);
 	let resolvedSheetCharacterId = $state<string | null>(null);
 	let sheetDocked = $state(false);
 	let sheetFocusRequest = $state(0);
@@ -340,6 +348,8 @@
 		availableScenes = [];
 		sheetOpen = initialView.sheetOpen;
 		editingCharacter = initialView.editingCharacter;
+		embeddedCharacter = null;
+		floatingSheetVisibleOnSheetsTab = false;
 		participantsOpen = initialView.participantsOpen;
 		npcsOpen = initialView.npcsOpen;
 		sceneSettingsOpen = initialView.sceneSettingsOpen;
@@ -474,7 +484,7 @@
 		sheetFocusRequest += 1;
 	}
 	function openCharacterWindow(characterId: string) {
-		if (!activeCampaign || !characterId) return;
+		if (!activeCampaign || !characterId) return false;
 		const url = new URL('/sheet', window.location.origin);
 		url.searchParams.set('campaign', activeCampaign.id);
 		url.searchParams.set('character', characterId);
@@ -489,7 +499,7 @@
 		const existingWindow = auxiliarySheetWindows[windowName];
 		if (existingWindow && !existingWindow.closed) {
 			existingWindow.focus();
-			return;
+			return true;
 		}
 		const auxiliaryWindow = window.open(
 			url.toString(),
@@ -507,6 +517,16 @@
 					? 'The browser blocked the auxiliary window. Allow pop-ups or keep using the sheet in this page.'
 					: 'O navegador bloqueou a janela auxiliar. Permita pop-ups ou continue usando a ficha nesta página.'
 			);
+		return Boolean(auxiliaryWindow);
+	}
+	function selectEmbeddedCharacter(characterId: string, ownerName: string) {
+		embeddedCharacter = { id: characterId, ownerName };
+	}
+	function openEmbeddedCharacterAsPanel(characterId: string, ownerName: string) {
+		if (!characterId) return;
+		floatingSheetVisibleOnSheetsTab = true;
+		if (activeCampaign?.role === 'gm') openCharacter(characterId, ownerName);
+		else openMySheet();
 	}
 	function selectScene(sceneId: string) {
 		const scene = availableScenes.find((item) => item.id === sceneId);
@@ -741,7 +761,10 @@
 		oncreatescene={() => void addScene()}
 		onopenscenesettings={() => (sceneSettingsOpen = true)}
 		onpublishscenetooverlay={() => void publishOverlayScene()}
-		ontabchange={(tab) => (workspaceTab = tab)}
+		ontabchange={(tab) => {
+			workspaceTab = tab;
+			floatingSheetVisibleOnSheetsTab = false;
+		}}
 		onlanguagechange={(locale) => setAppLocale(locale)}
 		{onlogout}
 	/>
@@ -794,8 +817,17 @@
 				campaignId={activeCampaign.id}
 				{session}
 				isGM={activeCampaign.role === 'gm'}
-				onopenmine={openMySheet}
-				onopencharacter={openCharacter}
+				SheetComponent={CharacterSheetComponent}
+				selectedCharacterId={embeddedCharacter?.id ?? null}
+				selectedCharacterOwnerName={embeddedCharacter?.ownerName ?? ''}
+				onselectcharacter={selectEmbeddedCharacter}
+				onclearselection={() => (embeddedCharacter = null)}
+				onopenpanel={openEmbeddedCharacterAsPanel}
+				onopenwindow={(characterId) => openCharacterWindow(characterId)}
+				onresolved={(characterId) => {
+					if (activeCampaign?.role !== 'gm' && !embeddedCharacter?.id)
+						embeddedCharacter = { id: characterId, ownerName: '' };
+				}}
 			/>
 		{:else if workspaceTab === 'library' && LibraryViewComponent}<LibraryViewComponent
 				campaignId={activeCampaign.id}
@@ -837,6 +869,7 @@
 					campaignId={activeCampaign.id}
 					{session}
 					{sheetOpen}
+					covered={workspaceTab === 'sheets'}
 				/>{/key}{/if}
 		{#if inviteStatus}<p class="invite-status" role="status" aria-live="polite">
 				{inviteStatus}
@@ -861,7 +894,7 @@
 					onDockChange={updateSheetDocked}
 					onOpenNewWindow={openCharacterWindow}
 					actorPanelVisible={workspaceTab === 'map' && activeCampaign.role === 'gm'}
-					hidden={false}
+					hidden={workspaceTab === 'sheets' && !floatingSheetVisibleOnSheetsTab}
 					standalone={false}
 					onclose={() => {
 						sheetOpen = false;

@@ -6,12 +6,14 @@
 		SpellTabActions
 	} from '$lib/utils/character/characterSpellRules';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let {
 		newSpellName,
 		newSpellLevel,
 		expandedSpell,
 		isGM,
+		canCastSpells,
 		castingSpell,
 		spellbook,
 		presentation,
@@ -21,6 +23,7 @@
 		newSpellLevel: number;
 		expandedSpell: number | null;
 		isGM: boolean;
+		canCastSpells: boolean;
 		castingSpell: number | null;
 		spellbook: SpellbookProjection;
 		presentation: SpellPresentation;
@@ -77,6 +80,9 @@
 			</header>
 			{#if spellbook.spellsForCircle(circle).length}
 				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], origins = [] } (key ?? index)}
+					{@const atWillGrant = featGrants.find(
+						(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
+					)}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
@@ -205,6 +211,45 @@
 											</h5>
 											<p>{presentation.higherLevels(spell)}</p>{/if}
 									</section>
+									{@const mechanics = presentation.mechanics(spell)}
+									{#if mechanics.reviewed}
+										<section
+											class="spell-mechanics"
+											aria-label={$appLocale === 'en' ? 'Spell mechanics' : 'Mecânicas da magia'}
+										>
+											<h5>{$appLocale === 'en' ? 'Damage and scaling' : 'Dano e escalonamento'}</h5>
+											<p>
+												<strong>{$appLocale === 'en' ? 'Damage:' : 'Dano:'}</strong>
+												{mechanics.damage.length
+													? mechanics.damage.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
+											<p>
+												<strong
+													>{$appLocale === 'en'
+														? 'By character level:'
+														: 'Por nível do personagem:'}</strong
+												>
+												{mechanics.characterLevel.length
+													? mechanics.characterLevel.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
+											<p>
+												<strong
+													>{$appLocale === 'en' ? 'By spell slot:' : 'Por nível do espaço:'}</strong
+												>
+												{mechanics.spellSlot.length
+													? mechanics.spellSlot.join(' · ')
+													: $appLocale === 'en'
+														? 'None'
+														: 'Não se aplica'}
+											</p>
+										</section>
+									{/if}
 								{:else}
 									<label class="spell-description-field"
 										>{$appLocale === 'en' ? 'Description' : 'Descrição'}
@@ -241,7 +286,7 @@
 												? ` · ${grant.ability}`
 												: ''}
 										</small>
-										{#if grant.freeCastsRemaining > 0}<button
+										{#if canCastSpells && grant.freeCastsRemaining > 0}<button
 												class="free-cast"
 												type="button"
 												disabled={castingSpell === index}
@@ -260,30 +305,35 @@
 											>{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}</button
 										>{/if}
 									{#if spell.diceFormula?.trim() && spell.level === 0}<button
+											class="roll-effect"
 											type="button"
 											onclick={() => actions.rollEffect(spell)}
-											>🎲 {$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
+											><RpgIcon name="d20" size={18} />
+											{$appLocale === 'en' ? 'Roll effect' : 'Rolar efeito'}</button
 										>{/if}
-									{#if spell.level === 0 && index < 0 && featGrants.find((grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0)}
-										{@const atWillGrant = featGrants.find(
-											(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
-										)}
-										<small class="feat-casting-source">
-											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant?.featName}
-										</small>
+									{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
+										{#if index < 0 && atWillGrant}<small class="feat-casting-source">
+												{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant.featName}
+											</small>{/if}
 										<button
 											class="cast-spell"
 											type="button"
 											disabled={castingSpell === index}
 											onclick={() =>
-												actions.cast(spell, index, {
-													grantId: atWillGrant?.id ?? '',
-													entryId: spell.entryId ?? '',
-													freeCast: false
-												})}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
+												actions.cast(
+													spell,
+													index,
+													index < 0 && atWillGrant
+														? {
+																grantId: atWillGrant.id,
+																entryId: spell.entryId ?? '',
+																freeCast: false
+															}
+														: undefined
+												)}>{$appLocale === 'en' ? 'Cast cantrip' : 'Lançar truque'}</button
 										>
 									{/if}
-									{#if spell.level > 0}
+									{#if canCastSpells && spell.level > 0}
 										{@const spellGrant = featGrants.find(
 											(grant) => grant.spellEntryId === spell.entryId && grant.canUseExistingSlots
 										)}
@@ -429,6 +479,21 @@
 		margin: 0.35rem 0 0;
 		line-height: 1.55;
 	}
+	.spell-mechanics {
+		grid-column: 1 / -1;
+		border: 1px solid #493c39;
+		border-radius: 8px;
+		padding: 0.55rem 0.9rem;
+		color: #e8ddcd;
+		font-size: 0.85rem;
+	}
+	.spell-mechanics h5,
+	.spell-mechanics p {
+		margin: 0.25rem 0;
+	}
+	.spell-mechanics h5 {
+		color: #e8c985;
+	}
 	.spell-lore h5 {
 		margin: 0.85rem 0 0;
 		color: #e8c985;
@@ -530,6 +595,11 @@
 		color: #e8c786;
 		background: #2a211e;
 		font-size: 0.72rem;
+	}
+	.roll-effect {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 	.section-title {
 		display: flex;

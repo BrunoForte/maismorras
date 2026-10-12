@@ -5,6 +5,7 @@
 	import type { Attack, CharacterSheet, InventoryItem, Spell } from '$lib/services/characterApi';
 	import type { WeaponAttackProfile } from '$lib/utils/weaponRules';
 	import CharacterMapSummary from './CharacterMapSummary.svelte';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	export type TokenInspectorPermissions = {
 		canEditHitPoints: boolean;
@@ -159,7 +160,8 @@
 		/>
 	{/if}
 	{#if permissions.canInteractWithDoor}<button class="door-interaction" onclick={onInteractWithDoor}
-			>🚪 {isEnglish ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button
+			><RpgIcon name="barrier-arch" size={18} />
+			{isEnglish ? 'Interact with nearby door' : 'Interagir com porta próxima'}</button
 		>{/if}
 	{#if token.actorId && permissions.canOpenSheet}
 		<div class="sheet-actions">
@@ -174,7 +176,8 @@
 	{#if permissions.canRollInitiative}
 		<div class="token-rolls">
 			<button class="token-initiative-button" onclick={onRollInitiative}
-				>⚔️ {isEnglish ? 'Roll initiative' : 'Rolar iniciativa'}</button
+				><RpgIcon name="initiative" size={18} />
+				{isEnglish ? 'Roll initiative' : 'Rolar iniciativa'}</button
 			>
 			{#if token.actorId && !npc}<label class="token-initiative-advantage"
 					><input
@@ -544,6 +547,9 @@
 		cursor: pointer;
 	}
 	.token-rolls .token-initiative-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
 		min-height: 2.25rem;
 		border-color: #8c6d43;
 		border-radius: 7px;
@@ -738,6 +744,10 @@
 		text-align: center;
 	}
 	.door-interaction {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.4rem;
 		width: calc(100% - 2rem);
 		margin: 0 1rem 0.7rem;
 		border: 1px solid #927449;

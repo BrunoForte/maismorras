@@ -44,7 +44,9 @@
 	import { connectSceneSocket } from '$lib/services/sceneRealtime';
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
 		addSpellToSheet,
@@ -77,9 +79,14 @@
 	import {
 		cloneInventoryRules,
 		filterItemEntries,
-		projectInventory,
-		totalInventoryWeight
+		projectInventory
 	} from '$lib/utils/inventoryRules';
+	import {
+		calculateDnd2024CarriedWeight,
+		calculateDnd2024CarryingCapacity,
+		defaultCharacterSize,
+		isDnd2024Size
+	} from '$lib/utils/carryingCapacity';
 	import {
 		addWeaponProfile,
 		deriveWeaponEffects,
@@ -104,7 +111,8 @@
 		getSpeciesProfile,
 		getSpeciesResistances,
 		getSpeciesSpeed,
-		normalizeSpeciesLineage
+		normalizeSpeciesLineage,
+		normalizeSpecies
 	} from '$lib/utils/speciesRules';
 	import CharacterSkillsTab from '$lib/components/character/CharacterSkillsTab.svelte';
 	import CharacterDetailsTab from '$lib/components/character/CharacterDetailsTab.svelte';
@@ -119,6 +127,13 @@
 		synchronizeDndFeatGrantActivation
 	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
+	import {
+		parseDamageExpression,
+		serializeDamageComponents,
+		validateDamageBonus,
+		validateDamageComponents,
+		type DamageComponent
+	} from '$lib/utils/weaponDamageBuilder';
 	import { createCharacterPortraitWorkflow } from '$lib/components/character/characterPortraitWorkflow.svelte.js';
 	import { createCharacterCombatActions } from '$lib/components/character/characterCombatActions.svelte.js';
 	import { gerarImagemToken } from '$lib/services/tokenImageApi';
@@ -138,11 +153,13 @@
 		characterOwnerName = '',
 		docked = false,
 		hidden = false,
+		embedded = false,
 		standalone = false,
 		focusRequest = 0,
 		actorPanelVisible = false,
 		onCharacterResolved = () => {},
 		onDockChange = () => {},
+		onOpenPanel = () => {},
 		onOpenNewWindow = () => {},
 		onclose,
 		onTokenCreated
@@ -155,17 +172,24 @@
 		characterOwnerName?: string;
 		docked?: boolean;
 		hidden?: boolean;
+		embedded?: boolean;
 		standalone?: boolean;
 		focusRequest?: number;
 		actorPanelVisible?: boolean;
 		onCharacterResolved?: (characterId: string) => void;
 		onDockChange?: (docked: boolean) => void;
-		onOpenNewWindow?: (characterId: string) => void;
+		onOpenPanel?: (characterId: string) => void;
+		onOpenNewWindow?: (characterId: string) => boolean | void;
 		onclose: () => void;
 		onTokenCreated: () => void;
 	} = $props();
 	const sheetPanelKey = $derived(`character-sheet:${campaignId}:${characterId ?? 'mine'}`);
 	let sheet = $state<Sheet>(createEmptySheet());
+	let damageDrafts = $state<Record<string, DamageComponent[]>>({});
+	let invalidWeaponKey = $state<string | null>(null);
+	let invalidDamageIndex = $state(0);
+	let invalidWeaponField = $state<'damage' | 'bonus'>('damage');
+	let invalidDamageProfileId = $state<string | null>(null);
 	let sheetOwnerId = $state('');
 	let compendiumEntries = $state<CompendiumEntry[]>([]);
 	let compendiumSources = $state<CompendiumSource[]>([]);
@@ -184,10 +208,11 @@
 	let panelZIndex = $derived(Math.max(raisedPanelLayer, docked ? 9 : 20));
 	let reportedResolvedCharacterId = $state('');
 	$effect(() => {
-		if (!standalone) minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
+		if (!standalone && !embedded)
+			minimized = Boolean(resizablePanelPreference(sheetPanelKey)?.collapsed);
 	});
 	$effect(() => {
-		if (standalone || focusRequest === 0) return;
+		if (standalone || embedded || focusRequest === 0) return;
 		minimized = false;
 		raisedPanelLayer = nextFloatingPanelLayer();
 		void tick().then(() => sheetPanelElement?.focus());
@@ -310,10 +335,22 @@
 					['details', 'Detalhes']
 				]
 		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
+	const sheetTabIcon = (tab: string) =>
+		(
+			({
+				profile: 'character',
+				skills: 'skill',
+				combat: 'initiative',
+				inventory: 'inventory',
+				spells: 'spell',
+				details: 'notes'
+			}) as Record<string, string>
+		)[tab] ?? 'character';
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	function onSpeciesChanged() {
 		const profile = getSpeciesProfile(sheet.species);
 		sheet.speciesLineage = normalizeSpeciesLineage(sheet.species, sheet.speciesLineage);
+		if (normalizeSpecies(sheet.species) !== 'goliath') sheet.largeFormActive = false;
 		if (profile) sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		syncProgression();
 		syncTokenSoon();
@@ -339,6 +376,28 @@
 		},
 		getSheet: () => sheet,
 		setSheet: (next) => (sheet = next),
+		validateBeforeSave: () => {
+			for (const item of sheet.inventory) {
+				if (equipmentCategory(item) !== 'weapon') continue;
+				const targets = [null, ...weaponAttackProfiles(item)];
+				for (const profile of targets) {
+					const issue = validateWeaponDamage(item, profile ?? undefined);
+					if (issue) {
+						invalidWeaponKey = weaponKey(item);
+						invalidDamageProfileId = profile?.id ?? null;
+						invalidWeaponField = issue.field;
+						invalidDamageIndex = issue.index;
+						return `${item.name}${profile ? ` · ${profile.name}` : ''}: ${issue.message} Configure o dano com quantidade + tipo de dado, até 10 dados no total; valores sem dados vão em “Bônus de dano”.`;
+					}
+				}
+			}
+			invalidWeaponKey = null;
+			invalidDamageProfileId = null;
+			invalidWeaponField = 'damage';
+			invalidDamageIndex = 0;
+			return null;
+		},
+		onValidationFailure: () => (activeTab = 'combat'),
 		calculateArmorClass: () => calculatedArmorClass(),
 		getCompendium,
 		onCompendiumLoaded: (sources, entries) => {
@@ -356,6 +415,11 @@
 		onCharacterLoaded: (loadedCharacter) => {
 			sheetOwnerId = loadedCharacter.ownerId;
 			sheet = loadedCharacter.sheet;
+			damageDrafts = {};
+			invalidWeaponKey = null;
+			invalidDamageProfileId = null;
+			invalidDamageIndex = 0;
+			invalidWeaponField = 'damage';
 			sheet.attacks ??= [];
 			sheet.attacks = sheet.attacks.map((attack) => {
 				const attackType =
@@ -472,10 +536,25 @@
 			const abilityAdjustment =
 				modifier(sheet.abilityScores[attackAbility]) -
 				modifier(sheet.abilityScores[defaultAbility]);
+			const draft = damageDrafts[damageDraftKey(item, profile)];
+			const formula = profile?.damage ?? item.rules.damage;
+			const damageFormula = draft
+				? validateDamageComponents(draft)
+					? ''
+					: serializeDamageComponents(draft)
+				: String(formula ?? '');
 			return {
 				attackBonus: weaponAttackBonusTotal(item) + abilityAdjustment + (profile?.attackBonus ?? 0),
-				damageBonus: weaponDamageBonusTotal(item) + abilityAdjustment + (profile?.damageBonus ?? 0),
-				damageFormula: profile?.damage || String(item.rules.damage ?? ''),
+				damageBonus:
+					calculateWeaponDamageBonus(
+						item,
+						sheet.abilityScores,
+						selectedEffectsForWeapon(item),
+						!profile
+					) +
+					abilityAdjustment +
+					(profile?.damageBonus ?? 0),
+				damageFormula,
 				stableWeaponKey: weaponKey(item),
 				profileKey: profile?.id ?? 'default',
 				damageType: String(item.rules.damageType ?? ''),
@@ -538,8 +617,65 @@
 	const entryRules = (entry: CompendiumEntry) => entry.rules as Record<string, unknown>;
 	const itemEntries = () => filterItemEntries(compendiumEntries, inventoryFilter);
 	const weaponKey = (item: InventoryItem) => `${item.entryId}:${sheet.inventory.indexOf(item)}`;
+	const damageDraftKey = (item: InventoryItem, profile?: WeaponAttackProfile) =>
+		`${weaponKey(item)}:${profile?.id ?? 'base'}`;
+	const damageComponents = (
+		item: InventoryItem,
+		profile?: WeaponAttackProfile
+	): DamageComponent[] => {
+		const key = damageDraftKey(item, profile);
+		if (damageDrafts[key]) return damageDrafts[key];
+		return parseDamageExpression(profile?.damage ?? item.rules.damage) ?? [];
+	};
+	function validateWeaponDamage(item: InventoryItem, profile?: WeaponAttackProfile) {
+		const formula = profile?.damage ?? item.rules.damage;
+		const bonus = profile ? profile.damageBonus : (item.rules.damageBonus ?? item.rules.bonus ?? 0);
+		const bonusIssue = validateDamageBonus(bonus);
+		if (bonusIssue) return { field: 'bonus' as const, index: 0, message: bonusIssue };
+		const components =
+			damageDrafts[damageDraftKey(item, profile)] ?? parseDamageExpression(formula);
+		if ((profile?.damageNeedsRepair ?? item.rules.damageNeedsRepair) || components === null)
+			return {
+				field: 'damage' as const,
+				index: 0,
+				message:
+					'A fórmula de dano anterior não pode ser convertida; refaça seus componentes explicitamente.'
+			};
+		const issue = validateDamageComponents(components);
+		return issue ? { field: 'damage' as const, index: issue.index, message: issue.message } : null;
+	}
+	function setDamageComponents(
+		item: InventoryItem,
+		components: DamageComponent[],
+		profile?: WeaponAttackProfile
+	) {
+		const key = damageDraftKey(item, profile);
+		damageDrafts[key] = components;
+		invalidWeaponKey = weaponKey(item);
+		invalidDamageProfileId = profile?.id ?? null;
+		invalidWeaponField = 'damage';
+		const issue = validateDamageComponents(components);
+		invalidDamageIndex = issue?.index ?? 0;
+		if (issue) return;
+		const damage = components.map(({ count, sides }) => `${count}d${sides}`).join('+');
+		if (profile) updateWeaponProfile(item, profile.id, { damage, damageNeedsRepair: false });
+		else updateWeaponRules(item, { damage, damageNeedsRepair: false }, true);
+		invalidWeaponKey = null;
+		invalidDamageProfileId = null;
+	}
 	const visibleInventory = () => projectInventory(sheet.inventory, inventoryFilter);
-	const inventoryWeight = () => totalInventoryWeight(sheet.inventory);
+	const carriedWeight = () => calculateDnd2024CarriedWeight(sheet.inventory, sheet.money);
+	const characterSize = () =>
+		isDnd2024Size(sheet.creatureSize) ? sheet.creatureSize : defaultCharacterSize(sheet.species);
+	const isGoliath = () => normalizeSpecies(sheet.species) === 'goliath';
+	const canUseLargeForm = () => isGoliath() && sheet.level >= 5;
+	const carryingCapacity = () =>
+		calculateDnd2024CarryingCapacity({
+			strength: sheet.abilityScores.strength,
+			size: characterSize(),
+			powerfulBuild: isGoliath(),
+			largeFormActive: canUseLargeForm() && sheet.largeFormActive === true
+		});
 	const weaponProficiencyStatus = (item: InventoryItem) => {
 		const rules = compendiumClass()?.rules ?? {};
 		const baseProficiencies = Array.isArray(rules.weaponProficiencies)
@@ -700,7 +836,8 @@
 			compendiumEntries,
 			sheet.class,
 			sheet.level,
-			sheet.subclass
+			sheet.subclass,
+			$appLocale
 		);
 	};
 	const spellCompendiumEntry = (spell: Sheet['spells'][number]) =>
@@ -729,6 +866,8 @@
 	const spellHasAITranslation = (spell: Sheet['spells'][number]) => {
 		return hasAISpellTranslation(spellCompendiumEntry(spell));
 	};
+	const spellMechanics = (spell: Sheet['spells'][number]) =>
+		presentSpellMechanics(spellCompendiumEntry(spell)?.rules, $appLocale);
 	function syncProgression() {
 		// Proficiência é determinada exclusivamente pelo nível (SRD 5.2.1).
 		// Mantê-la derivada evita bônus antigos quando uma ficha é atualizada.
@@ -808,6 +947,7 @@
 		syncTokenSoon();
 	}
 	function onLevelChanged() {
+		if (sheet.level < 5) sheet.largeFormActive = false;
 		if (sheet.level > previousLevel) levelChoiceOpen = true;
 		else {
 			previousLevel = sheet.level;
@@ -978,6 +1118,7 @@
 				attackType: 'melee',
 				ability: 'strength',
 				attackBonus: 0,
+				damageBonus: 0,
 				damage: '',
 				notes: ''
 			}
@@ -1022,21 +1163,23 @@
 <div
 	class="sheet-backdrop"
 	class:docked
-	class:floating={!docked && !standalone}
+	class:floating={!embedded && !docked && !standalone}
+	class:embedded
 	class:standalone
 	class:hidden
-	style:z-index={panelZIndex}
-	onpointerdown={bringToFront}
-	onfocusin={bringToFront}
+	style:z-index={embedded ? undefined : panelZIndex}
+	onpointerdown={() => !embedded && bringToFront()}
+	onfocusin={() => !embedded && bringToFront()}
 	role="presentation"
 	onclick={(event) => {
-		if (event.currentTarget === event.target) onclose();
+		if (!embedded && event.currentTarget === event.target) onclose();
 	}}
 >
 	<section
 		bind:this={sheetPanelElement}
 		use:movablePanel={{
 			storageKey: sheetPanelKey,
+			skipLayout: embedded,
 			layoutKey: actorPanelVisible ? 'map-panels' : 'campaign-panels',
 			handleSelector: 'header',
 			minTop: 56,
@@ -1052,29 +1195,59 @@
 			enabled: !docked && !standalone
 		}}
 		use:resizablePanel={{
-			collapsed: !standalone && minimized,
+			collapsed: !standalone && !embedded && minimized,
 			headerSelector: 'header',
 			fillViewport: standalone,
 			minWidth: 300,
-			storageKey: standalone ? undefined : sheetPanelKey
+			storageKey: standalone || embedded ? undefined : sheetPanelKey,
+			skipLayout: embedded
 		}}
 		class="sheet"
 		class:minimized
+		class:embedded
 		tabindex="-1"
 		aria-label="Ficha de personagem D&D 2024"
 	>
 		<header
 			role="toolbar"
-			tabindex="0"
-			aria-label={$appLocale === 'en'
-				? 'Move character sheet with pointer or arrow keys'
-				: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
+			tabindex={embedded ? -1 : 0}
+			aria-label={embedded
+				? $appLocale === 'en'
+					? 'Character sheet actions'
+					: 'Ações da ficha'
+				: $appLocale === 'en'
+					? 'Move character sheet with pointer or arrow keys'
+					: 'Mova a ficha pelo cabeçalho ou pelas setas do teclado'}
 		>
 			<div class="sheet-header-content">
 				<div class="sheet-title-row">
 					<div class="sheet-heading">
 						<h2>{sheet.name || ($appLocale === 'en' ? 'New character' : 'Nova ficha')}</h2>
-						{#if !standalone}
+						{#if embedded}
+							<div class="sheet-primary-actions">
+								<button
+									type="button"
+									onclick={() =>
+										onOpenPanel(characterId ?? lifecycle.state.resolvedCharacterId ?? '')}
+									disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+									>{$appLocale === 'en' ? 'Open as panel' : 'Abrir como painel'}</button
+								><button
+									type="button"
+									onclick={() => {
+										const id = characterId ?? lifecycle.state.resolvedCharacterId ?? '';
+										if (id && onOpenNewWindow(id) === false)
+											lifecycle.state.message =
+												$appLocale === 'en'
+													? 'The browser blocked the auxiliary window. The sheet remains available here.'
+													: 'O navegador bloqueou a janela auxiliar. A ficha continua acessível aqui.';
+									}}
+									disabled={!(characterId ?? lifecycle.state.resolvedCharacterId)}
+									>{$appLocale === 'en'
+										? 'Open auxiliary window'
+										: 'Abrir em janela auxiliar'}</button
+								>
+							</div>
+						{:else if !standalone}
 							<div class="sheet-primary-actions">
 								<button
 									type="button"
@@ -1107,7 +1280,7 @@
 						{/if}
 					</div>
 					<div class="sheet-actions">
-						{#if !standalone}<span class="sheet-mode-status" aria-live="polite">
+						{#if !standalone && !embedded}<span class="sheet-mode-status" aria-live="polite">
 								{docked
 									? $appLocale === 'en'
 										? 'Docked'
@@ -1125,11 +1298,12 @@
 									: $appLocale === 'en'
 										? 'Minimize character sheet'
 										: 'Minimizar ficha'}>{minimized ? '▸' : '−'}</button
-							>{/if}<button
-							type="button"
-							onclick={onclose}
-							aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}>×</button
-						>
+							>{/if}{#if !embedded}<button
+								type="button"
+								onclick={onclose}
+								aria-label={$appLocale === 'en' ? 'Close character sheet' : 'Fechar ficha'}
+								>×</button
+							>{/if}
 					</div>
 				</div>
 			</div>
@@ -1146,7 +1320,8 @@
 				{#each sheetTabs() as [tab, label] (tab)}
 					<button
 						class:active={activeTab === tab}
-						onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button
+						onclick={() => (activeTab = tab as typeof activeTab)}
+						><RpgIcon name={sheetTabIcon(tab)} size={17} />{label}</button
 					>
 				{/each}
 			</nav>{/if}
@@ -1241,6 +1416,12 @@
 								hasGreatWeaponFighting,
 								weaponSupportsGreatWeaponFighting,
 								updateWeaponRules,
+								damageComponents,
+								setDamageComponents,
+								invalidWeaponKey: () => invalidWeaponKey,
+								invalidDamageIndex: () => invalidDamageIndex,
+								invalidWeaponField: () => invalidWeaponField,
+								invalidDamageProfileId: () => invalidDamageProfileId,
 								toggleWeaponEffect,
 								addWeaponAttackProfile,
 								removeWeaponAttackProfile,
@@ -1275,8 +1456,15 @@
 				{#if activeTab === 'inventory'}
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
+						allCompendiumEntries={compendiumEntries}
 						visibleItems={visibleInventory()}
-						totalWeight={inventoryWeight()}
+						carriedWeight={carriedWeight().weightLb}
+						capacityLb={carryingCapacity()?.capacityLb ?? null}
+						loadIncomplete={carriedWeight().incomplete}
+						unknownItemCount={carriedWeight().unknownItemCount}
+						canUseLargeForm={canUseLargeForm()}
+						largeFormActive={sheet.largeFormActive === true}
+						onLargeFormChange={(active) => (sheet.largeFormActive = active)}
 						money={sheet.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }}
 						onMoneyChange={(money) => (sheet.money = money)}
 						bind:inventoryFilter
@@ -1301,6 +1489,7 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
 							addableCircles: addableSpellCircles,
@@ -1317,6 +1506,7 @@
 							displayName: spellDisplayName,
 							description: spellDescription,
 							higherLevels: spellHigherLevels,
+							mechanics: (spell) => spellMechanics(spell),
 							hasAITranslation: spellHasAITranslation
 						}}
 						actions={{
@@ -1426,7 +1616,8 @@
 		pointer-events: none;
 	}
 	.sheet-backdrop.hidden {
-		display: none;
+		visibility: hidden;
+		pointer-events: none;
 	}
 	.sheet-backdrop.docked .sheet {
 		position: fixed;
@@ -1696,6 +1887,9 @@
 		background: #1b171a;
 	}
 	.sheet-tabs button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		flex: 0 0 auto;
 		border: 1px solid #4f433d;
 		border-radius: 999px;
@@ -1703,6 +1897,9 @@
 		color: #bcae9f;
 		background: #171316;
 		font-size: 0.72rem;
+	}
+	.sheet-tabs button :global(svg) {
+		flex: 0 0 auto;
 	}
 	.sheet-tabs button.active {
 		border-color: #c89655;
@@ -1854,5 +2051,46 @@
 			padding: 0.3rem;
 			font-size: 0.62rem;
 		}
+	}
+	.sheet-backdrop.embedded {
+		position: relative;
+		z-index: auto;
+		inset: auto;
+		display: flex;
+		flex: 1 1 auto;
+		min-width: 0;
+		min-height: 0;
+		width: 100%;
+		height: auto;
+		padding: 0;
+		background: transparent;
+		backdrop-filter: none;
+		pointer-events: auto;
+	}
+	.sheet-backdrop.embedded .sheet {
+		position: relative;
+		inset: auto;
+		flex: 1 1 auto;
+		width: 100%;
+		max-width: none;
+		min-width: 0;
+		height: 100%;
+		min-height: 0;
+		max-height: none;
+		resize: none;
+		border-radius: 10px;
+		box-shadow: none;
+	}
+	.sheet-backdrop.embedded .sheet > header {
+		cursor: default;
+		touch-action: auto;
+	}
+	.sheet-backdrop.embedded .sheet-body {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow: auto;
+	}
+	.sheet-backdrop.embedded .sheet > footer {
+		flex-wrap: wrap;
 	}
 </style>
