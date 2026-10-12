@@ -120,17 +120,19 @@ describe('bestiary visual panels', () => {
 	it('renders localized creature details and falls back to source text when absent', () => {
 		const translated: CompendiumEntry = {
 			...srd,
+			name: 'Hippogriff',
 			translations: {
-				'pt-BR': 'Aranha Gigante',
-				'pt-BR.summary': 'Besta Grande (ND 1).',
-				'pt-BR.rules.creatureType': 'Besta Grande, sem alinhamento',
+				'pt-BR': 'Hipogrifo',
+				'pt-BR.summary': 'Criatura Grande Monstruosidade, Sem alinhamento (ND 1).',
+				'pt-BR.rules.creatureType': 'Grande Monstruosidade, Sem alinhamento',
 				'pt-BR.rules.speed': '9 m, escalada 9 m',
 				'pt-BR.rules.senses': 'Visão no Escuro 18 m; Percepção Passiva 10',
 				'pt-BR.rules.languages': '—',
-				'pt-BR.rules.actions.0.name': 'Mordida',
-				'pt-BR.rules.actions.0.damage': '7 (1d8 + 3) dano perfurante',
+				'pt-BR.rules.actions.0.name': 'Dilacerar',
+				'pt-BR.rules.actions.0.damage': '7 (1d8 + 3)',
 				'pt-BR.rules.actions.0.range': 'alcance 1,5 m',
-				'pt-BR.rules.actions.0.description': 'Ataque corpo a corpo: acerta e causa dano perfurante.'
+				'pt-BR.rules.actions.0.description':
+					'Jogada de Ataque Corpo a Corpo: +5, alcance 1,5 m. Acerto: 7 (1d8 + 3)'
 			},
 			rules: {
 				kind: 'monster',
@@ -160,10 +162,12 @@ describe('bestiary visual panels', () => {
 				onPlace: vi.fn()
 			}
 		}).body;
-		expect(html).toContain('Aranha Gigante');
-		expect(html).toContain('Besta Grande (ND 1).');
-		expect(html).toContain('Mordida');
-		expect(html).toContain('Ataque corpo a corpo: acerta e causa dano perfurante.');
+		expect(html).toContain('Hipogrifo');
+		expect(html).toContain('Criatura Grande Monstruosidade, Sem alinhamento (ND 1).');
+		expect(html).toContain('Dilacerar');
+		expect(html).toContain(
+			'Jogada de Ataque Corpo a Corpo: +5, alcance 1,5 m. Acerto: 7 (1d8 + 3)'
+		);
 		expect(html).not.toContain('Melee Attack Roll');
 
 		const fallback = render(BestiarySrdDetails, {
