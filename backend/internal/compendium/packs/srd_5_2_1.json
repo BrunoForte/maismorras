@@ -7004,7 +7004,8 @@
       "name": "Adamantine Armor",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Adamantine Armor"
+        "pt-BR": "Armadura de Adamantina",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -7799,7 +7800,8 @@
       "name": "Ammunition of Slaying",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ammunition of Slaying"
+        "pt-BR": "Munição Matadora",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -7810,7 +7812,8 @@
       "name": "Amulet of Health",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Amulet of Health"
+        "pt-BR": "Amuleto da Saúde",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -7821,7 +7824,8 @@
       "name": "Amulet of the Planes",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Amulet of the Planes"
+        "pt-BR": "Amuleto dos Planos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8609,7 +8613,8 @@
       "name": "Animated Shield",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Animated Shield"
+        "pt-BR": "Escudo Animado",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8831,7 +8836,8 @@
       "name": "Apparatus of the Crab",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Apparatus of the Crab"
+        "pt-BR": "Aparato do Caranguejo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8945,7 +8951,8 @@
       "name": "Armor of Invulnerability",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Armor of Invulnerability"
+        "pt-BR": "Armadura da Invulnerabilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8956,7 +8963,8 @@
       "name": "Armor of Resistance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Armor of Resistance"
+        "pt-BR": "Armadura de Resistência",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8967,7 +8975,8 @@
       "name": "Armor of Vulnerability",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Armor of Vulnerability"
+        "pt-BR": "Armadura da Vulnerabilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -8978,7 +8987,8 @@
       "name": "Arrow-Catching Shield",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Arrow-Catching Shield"
+        "pt-BR": "Escudo Captura-Flechas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -9521,7 +9531,8 @@
       "name": "Bag of Beans",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bag of Beans"
+        "pt-BR": "Saco de Feijões",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -9532,7 +9543,8 @@
       "name": "Bag of Devouring",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bag of Devouring"
+        "pt-BR": "Saco Devorador",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -9543,7 +9555,8 @@
       "name": "Bag of Holding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bag of Holding"
+        "pt-BR": "Bolsa de Carga",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -9554,7 +9567,8 @@
       "name": "Bag of Tricks",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bag of Tricks"
+        "pt-BR": "Saco de Truques",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10053,7 +10067,8 @@
       "name": "Bead of Force",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bead of Force"
+        "pt-BR": "Pérola da Força",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10064,7 +10079,8 @@
       "name": "Bead of Nourishment",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bead of Nourishment"
+        "pt-BR": "Pérola da nutrição",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10211,7 +10227,8 @@
       "name": "Belt of Dwarvenkind",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Belt of Dwarvenkind"
+        "pt-BR": "Cinto dos Anões",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10222,7 +10239,8 @@
       "name": "Belt of Giant Strength",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Belt of Giant Strength"
+        "pt-BR": "Cinto de Força de Gigante",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10309,7 +10327,8 @@
       "name": "Berserker Axe",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Berserker Axe"
+        "pt-BR": "Machado do Berserker",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10979,7 +10998,8 @@
       "name": "Boots of Elvenkind",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Boots of Elvenkind"
+        "pt-BR": "Botas Élficas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -10990,7 +11010,8 @@
       "name": "Boots of Levitation",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Boots of Levitation"
+        "pt-BR": "Botas de Levitação",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11001,7 +11022,8 @@
       "name": "Boots of Speed",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Boots of Speed"
+        "pt-BR": "Botas da Velocidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11012,7 +11034,8 @@
       "name": "Boots of Striding and Springing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Boots of Striding and Springing"
+        "pt-BR": "Botas de Passada e Impulsão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11023,7 +11046,8 @@
       "name": "Boots of the Winterlands",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Boots of the Winterlands"
+        "pt-BR": "Botas das Terras Invernais",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11034,7 +11058,8 @@
       "name": "Bowl of Commanding Water Elementals",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bowl of Commanding Water Elementals"
+        "pt-BR": "Tigela de Comando de Elementais da Água",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11045,7 +11070,8 @@
       "name": "Bracers of Archery",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bracers of Archery"
+        "pt-BR": "Braçadeiras de Arquearia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11056,7 +11082,8 @@
       "name": "Bracers of Defense",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Bracers of Defense"
+        "pt-BR": "Braçadeiras de Defesa",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11127,7 +11154,8 @@
       "name": "Brazier of Commanding Fire Elementals",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Brazier of Commanding Fire Elementals"
+        "pt-BR": "Braseiro de Comando de Elementais do Fogo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11214,7 +11242,8 @@
       "name": "Brooch of Shielding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Brooch of Shielding"
+        "pt-BR": "Broche de Proteção",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11225,7 +11254,8 @@
       "name": "Broom of Flying",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Broom of Flying"
+        "pt-BR": "Vassoura Voadora",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11600,7 +11630,8 @@
       "name": "Candle of Invocation",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Candle of Invocation"
+        "pt-BR": "Vela de Invocação",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11611,7 +11642,8 @@
       "name": "Cape of the Mountebank",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cape of the Mountebank"
+        "pt-BR": "Capa do Charlatão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11622,7 +11654,8 @@
       "name": "Carpet of Flying",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Carpet of Flying"
+        "pt-BR": "Tapete Voador",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11725,7 +11758,8 @@
       "name": "Censer of Controlling Air Elementals",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Censer of Controlling Air Elementals"
+        "pt-BR": "Incensário de Controle de Elementais do Ar",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -11885,7 +11919,8 @@
       "name": "Chime of Opening",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Chime of Opening"
+        "pt-BR": "Carrilhão de Abertura",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12016,7 +12051,8 @@
       "name": "Circlet of Blasting",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Circlet of Blasting"
+        "pt-BR": "Diadema de Rajadas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12087,7 +12123,8 @@
       "name": "Cloak of Arachnida",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of Arachnida"
+        "pt-BR": "Manto de Aracnídeo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12098,7 +12135,8 @@
       "name": "Cloak of Displacement",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of Displacement"
+        "pt-BR": "Manto do Deslocamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12109,7 +12147,8 @@
       "name": "Cloak of Elvenkind",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of Elvenkind"
+        "pt-BR": "Manto Élfico",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12120,7 +12159,8 @@
       "name": "Cloak of Invisibility",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of Invisibility"
+        "pt-BR": "Manto da invisibilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12131,7 +12171,8 @@
       "name": "Cloak of Protection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of Protection"
+        "pt-BR": "Manto de Proteção",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12142,7 +12183,8 @@
       "name": "Cloak of the Bat",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of the Bat"
+        "pt-BR": "Manto do Morcego",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12153,7 +12195,8 @@
       "name": "Cloak of the Manta Ray",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cloak of the Manta Ray"
+        "pt-BR": "Manto da Arraia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12799,7 +12842,8 @@
       "name": "Crystal Ball",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Crystal Ball"
+        "pt-BR": "Bola de Cristal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12810,7 +12854,8 @@
       "name": "Crystal Ball of Mind Reading",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Crystal Ball of Mind Reading"
+        "pt-BR": "Bola de Cristal de Leitura Mental",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12821,7 +12866,8 @@
       "name": "Crystal Ball of Telepathy",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Crystal Ball of Telepathy"
+        "pt-BR": "Bola de Cristal de Telepatia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12832,7 +12878,8 @@
       "name": "Crystal Ball of True Seeing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Crystal Ball of True Seeing"
+        "pt-BR": "Bola de Cristal de Visão da Verdade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12843,7 +12890,8 @@
       "name": "Cube of Force",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cube of Force"
+        "pt-BR": "Cubo da Força",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -12854,7 +12902,8 @@
       "name": "Cubic Gate",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Cubic Gate"
+        "pt-BR": "Portal Cúbico",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13033,7 +13082,8 @@
       "name": "Dagger of Venom",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dagger of Venom"
+        "pt-BR": "Adaga Venenosa",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13044,7 +13094,8 @@
       "name": "Dancing Sword",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dancing Sword"
+        "pt-BR": "Espada Dançarina",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13205,7 +13256,8 @@
       "name": "Decanter of Endless Water",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Decanter of Endless Water"
+        "pt-BR": "Jarra de Água Infinita",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13216,7 +13268,8 @@
       "name": "Deck of Illusions",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Deck of Illusions"
+        "pt-BR": "Baralho de Ilusões",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13319,7 +13372,8 @@
       "name": "Defender",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Defender"
+        "pt-BR": "Defensora",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13330,7 +13384,8 @@
       "name": "Demon Armor",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Demon Armor"
+        "pt-BR": "Armadura Demoníaca",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13401,7 +13456,8 @@
       "name": "Dimensional Shackles",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dimensional Shackles"
+        "pt-BR": "Algemas Dimensionais",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13715,7 +13771,8 @@
       "name": "Dragon Orb",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dragon Orb"
+        "pt-BR": "Orbe do Dragão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13726,7 +13783,8 @@
       "name": "Dragon Scale Mail",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dragon Scale Mail"
+        "pt-BR": "Cota de Malha de Escamas de Dragão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -13737,7 +13795,8 @@
       "name": "Dragon Slayer",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dragon Slayer"
+        "pt-BR": "Matador de Dragões",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14220,7 +14279,8 @@
       "name": "Dust of Disappearance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dust of Disappearance"
+        "pt-BR": "Pó do Desaparecimento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14231,7 +14291,8 @@
       "name": "Dust of Dryness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dust of Dryness"
+        "pt-BR": "Pó da Secura",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14242,7 +14303,8 @@
       "name": "Dust of Sneezing and Choking",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dust of Sneezing and Choking"
+        "pt-BR": "Pó de Espirros e Sufocamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14253,7 +14315,8 @@
       "name": "Dwarven Plate",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dwarven Plate"
+        "pt-BR": "Armadura de Placas Anã",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14264,7 +14327,8 @@
       "name": "Dwarven Thrower",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Dwarven Thrower"
+        "pt-BR": "Arremessador Anão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14443,7 +14507,8 @@
       "name": "Efficient Quiver",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Efficient Quiver"
+        "pt-BR": "Aljava Eficiente",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14530,7 +14595,8 @@
       "name": "Efreeti Bottle",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Efreeti Bottle"
+        "pt-BR": "Garrafa de Efreeti",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14541,7 +14607,8 @@
       "name": "Elemental Gem",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Elemental Gem"
+        "pt-BR": "Gema Elemental",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14644,7 +14711,8 @@
       "name": "Elixir of Health",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Elixir of Health"
+        "pt-BR": "Elixir da saúde",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14731,7 +14799,8 @@
       "name": "Elven Chain",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Elven Chain"
+        "pt-BR": "Cota de malha élfica",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14742,7 +14811,8 @@
       "name": "Energy Bow",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Energy Bow"
+        "pt-BR": "Arco de energia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14932,7 +15002,8 @@
       "name": "Eversmoking Bottle",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Eversmoking Bottle"
+        "pt-BR": "Garrafa de Fumaça Incessante",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14988,7 +15059,8 @@
       "name": "Eyes of Charming",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Eyes of Charming"
+        "pt-BR": "Olhos do Encantamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -14999,7 +15071,8 @@
       "name": "Eyes of Minute Seeing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Eyes of Minute Seeing"
+        "pt-BR": "Olhos de Visão Minuciosa",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15010,7 +15083,8 @@
       "name": "Eyes of the Eagle",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Eyes of the Eagle"
+        "pt-BR": "Olhos da Águia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15021,7 +15095,8 @@
       "name": "Feather Token",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Feather Token"
+        "pt-BR": "Ficha de Pena",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15032,7 +15107,8 @@
       "name": "Figurine of Wondrous Power",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Figurine of Wondrous Power"
+        "pt-BR": "Estatueta de Poder Maravilhoso",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15163,7 +15239,8 @@
       "name": "Flame Tongue",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Flame Tongue"
+        "pt-BR": "Língua Flamejante",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15293,7 +15370,8 @@
       "name": "Folding Boat",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Folding Boat"
+        "pt-BR": "Barco Dobrável",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15410,7 +15488,8 @@
       "name": "Frost Brand",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Frost Brand"
+        "pt-BR": "Marca Gélida",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15557,7 +15636,8 @@
       "name": "Gauntlets of Ogre Power",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gauntlets of Ogre Power"
+        "pt-BR": "Manoplas de Força de Ogro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15628,7 +15708,8 @@
       "name": "Gem of Brightness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gem of Brightness"
+        "pt-BR": "Gema do Brilho",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -15639,7 +15720,8 @@
       "name": "Gem of Seeing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gem of Seeing"
+        "pt-BR": "Gema da Visão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -17538,7 +17620,8 @@
       "name": "Giant Slayer",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Giant Slayer"
+        "pt-BR": "Matador de Gigantes",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -18309,7 +18392,8 @@
       "name": "Glamoured Studded Leather",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Glamoured Studded Leather"
+        "pt-BR": "Armadura de Couro Batido Ilusória",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -18320,7 +18404,8 @@
       "name": "Gloves of Missile Snaring",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gloves of Missile Snaring"
+        "pt-BR": "Luvas de Captura de Projéteis",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -18331,7 +18416,8 @@
       "name": "Gloves of Swimming and Climbing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gloves of Swimming and Climbing"
+        "pt-BR": "Luvas de Natação e Escalada",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -18342,7 +18428,8 @@
       "name": "Gloves of Thievery",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Gloves of Thievery"
+        "pt-BR": "Luvas de ladinagem",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -18781,7 +18868,8 @@
       "name": "Goggles of Night",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Goggles of Night"
+        "pt-BR": "Óculos da Noite",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19628,7 +19716,8 @@
       "name": "Hammer of Thunderbolts",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hammer of Thunderbolts"
+        "pt-BR": "Martelo dos Raios",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19639,7 +19728,8 @@
       "name": "Handy Haversack",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Handy Haversack"
+        "pt-BR": "Mochila Prática",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19710,7 +19800,8 @@
       "name": "Hat of Disguise",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hat of Disguise"
+        "pt-BR": "Chapéu do Disfarce",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19721,7 +19812,8 @@
       "name": "Hat of Many Spells",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Hat of Many Spells"
+        "pt-BR": "Chapéu de muitas magias",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19792,7 +19884,8 @@
       "name": "Headband of Intellect",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Headband of Intellect"
+        "pt-BR": "Faixa de Intelecto",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19863,7 +19956,8 @@
       "name": "Helm of Brilliance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Helm of Brilliance"
+        "pt-BR": "Elmo do Brilho",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19874,7 +19968,8 @@
       "name": "Helm of Comprehending Languages",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Helm of Comprehending Languages"
+        "pt-BR": "Elmo da Compreensão de Idiomas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19885,7 +19980,8 @@
       "name": "Helm of Telepathy",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Helm of Telepathy"
+        "pt-BR": "Elmo da Telepatia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -19896,7 +19992,8 @@
       "name": "Helm of Teleportation",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Helm of Teleportation"
+        "pt-BR": "Elmo do Teletransporte",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20365,7 +20462,8 @@
       "name": "Holy Avenger",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Holy Avenger"
+        "pt-BR": "Vingadora Sagrada",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20440,7 +20538,8 @@
       "name": "Horn of Blasting",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Horn of Blasting"
+        "pt-BR": "Trompa Explosiva",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20451,7 +20550,8 @@
       "name": "Horn of Valhalla",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Horn of Valhalla"
+        "pt-BR": "Trompa de Valhala",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20542,7 +20642,8 @@
       "name": "Horseshoes of a Zephyr",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Horseshoes of a Zephyr"
+        "pt-BR": "Ferraduras de Zéfiro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20553,7 +20654,8 @@
       "name": "Horseshoes of Speed",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Horseshoes of Speed"
+        "pt-BR": "Ferraduras da Velocidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -20870,7 +20972,8 @@
       "name": "Immovable Rod",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Immovable Rod"
+        "pt-BR": "Bastão Imóvel",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21023,7 +21126,8 @@
       "name": "Instant Fortress",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Instant Fortress"
+        "pt-BR": "Fortaleza Instantânea",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21120,7 +21224,8 @@
       "name": "Ioun Stone",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ioun Stone"
+        "pt-BR": "Pedra Ioun",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21131,7 +21236,8 @@
       "name": "Iron Bands",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Iron Bands"
+        "pt-BR": "Faixas de Ferro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21142,7 +21248,8 @@
       "name": "Iron Flask",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Iron Flask"
+        "pt-BR": "Frasco de Ferro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21323,7 +21430,8 @@
       "name": "Javelin of Lightning",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Javelin of Lightning"
+        "pt-BR": "Azagaia Relampejante",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21626,7 +21734,8 @@
       "name": "Lantern of Revealing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Lantern of Revealing"
+        "pt-BR": "Lanterna Reveladora",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21900,7 +22009,8 @@
       "name": "Luck Blade",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Luck Blade"
+        "pt-BR": "Lâmina da Sorte",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21911,7 +22021,8 @@
       "name": "Mace of Disruption",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mace of Disruption"
+        "pt-BR": "Maça da Ruptura",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21922,7 +22033,8 @@
       "name": "Mace of Smiting",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mace of Smiting"
+        "pt-BR": "Maça Esmagadora",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -21933,7 +22045,8 @@
       "name": "Mace of Terror",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mace of Terror"
+        "pt-BR": "Maça do Terror",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22333,7 +22446,8 @@
       "name": "Mantle of Spell Resistance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mantle of Spell Resistance"
+        "pt-BR": "Manto de Resistência a Magias",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22344,7 +22458,8 @@
       "name": "Manual of Bodily Health",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Manual of Bodily Health"
+        "pt-BR": "Manual da Saúde Corporal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22355,7 +22470,8 @@
       "name": "Manual of Gainful Exercise",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Manual of Gainful Exercise"
+        "pt-BR": "Manual de Exercícios Físicos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22366,7 +22482,8 @@
       "name": "Manual of Golems",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Manual of Golems"
+        "pt-BR": "Manual dos Golens",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22377,7 +22494,8 @@
       "name": "Manual of Quickness of Action",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Manual of Quickness of Action"
+        "pt-BR": "Manual da Agilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22452,7 +22570,8 @@
       "name": "Marvelous Pigments",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Marvelous Pigments"
+        "pt-BR": "Pigmentos Maravilhosos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -22555,7 +22674,8 @@
       "name": "Medallion of Thoughts",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Medallion of Thoughts"
+        "pt-BR": "Medalhão dos Pensamentos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23048,7 +23168,8 @@
       "name": "Mirror of Life Trapping",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mirror of Life Trapping"
+        "pt-BR": "Espelho Aprisionador de Vidas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23059,7 +23180,8 @@
       "name": "Mithral Armor",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mithral Armor"
+        "pt-BR": "Armadura de Mitral",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23286,7 +23408,8 @@
       "name": "Mysterious Deck",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Mysterious Deck"
+        "pt-BR": "Baralho misterioso",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23361,7 +23484,8 @@
       "name": "Necklace of Adaptation",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Necklace of Adaptation"
+        "pt-BR": "Colar da Adaptação",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23372,7 +23496,8 @@
       "name": "Necklace of Fireballs",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Necklace of Fireballs"
+        "pt-BR": "Colar de Bolas de Fogo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23383,7 +23508,8 @@
       "name": "Necklace of Prayer Beads",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Necklace of Prayer Beads"
+        "pt-BR": "Colar de Contas de Oração",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23521,7 +23647,8 @@
       "name": "Nine Lives Stealer",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Nine Lives Stealer"
+        "pt-BR": "Ladrão de Nove Vidas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23612,7 +23739,8 @@
       "name": "Oathbow",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Oathbow"
+        "pt-BR": "Arco do Juramento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23967,7 +24095,8 @@
       "name": "Oil of Etherealness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Oil of Etherealness"
+        "pt-BR": "Óleo da Forma Etérea",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23978,7 +24107,8 @@
       "name": "Oil of Sharpness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Oil of Sharpness"
+        "pt-BR": "Óleo de Afiamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -23989,7 +24119,8 @@
       "name": "Oil of Slipperiness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Oil of Slipperiness"
+        "pt-BR": "Óleo Escorregadio",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24391,7 +24522,8 @@
       "name": "Pearl of Power",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pearl of Power"
+        "pt-BR": "Pérola do Poder",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24478,7 +24610,8 @@
       "name": "Periapt of Health",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Periapt of Health"
+        "pt-BR": "Periapto da Saúde",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24489,7 +24622,8 @@
       "name": "Periapt of Proof against Poison",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Periapt of Proof against Poison"
+        "pt-BR": "Periapto de Proteção contra Veneno",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24500,7 +24634,8 @@
       "name": "Periapt of Wound Closure",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Periapt of Wound Closure"
+        "pt-BR": "Periapto de Fechamento de Feridas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24625,7 +24760,8 @@
       "name": "Philter of Love",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Philter of Love"
+        "pt-BR": "Filtro do Amor",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24636,7 +24772,8 @@
       "name": "Pipes of Haunting",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pipes of Haunting"
+        "pt-BR": "Flautas Assombradoras",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24647,7 +24784,8 @@
       "name": "Pipes of the Sewers",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Pipes of the Sewers"
+        "pt-BR": "Flautas dos Esgotos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -24954,7 +25092,8 @@
       "name": "Plate Armor of Etherealness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Plate Armor of Etherealness"
+        "pt-BR": "Armadura de Placas da Forma Etérea",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25227,7 +25366,8 @@
       "name": "Portable Hole",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Portable Hole"
+        "pt-BR": "Buraco Portátil",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25238,7 +25378,8 @@
       "name": "Potion of Animal Friendship",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Animal Friendship"
+        "pt-BR": "Poção de Amizade Animal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25249,7 +25390,8 @@
       "name": "Potion of Clairvoyance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Clairvoyance"
+        "pt-BR": "Poção de Clarividência",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25260,7 +25402,8 @@
       "name": "Potion of Climbing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Climbing"
+        "pt-BR": "Poção de Escalada",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25271,7 +25414,8 @@
       "name": "Potion of Diminution",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Diminution"
+        "pt-BR": "Poção de Redução",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25282,7 +25426,8 @@
       "name": "Potion of Flying",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Flying"
+        "pt-BR": "Poção de Voo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25293,7 +25438,8 @@
       "name": "Potion of Gaseous Form",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Gaseous Form"
+        "pt-BR": "Poção de Forma Gasosa",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25304,7 +25450,8 @@
       "name": "Potion of Growth",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Growth"
+        "pt-BR": "Poção de Crescimento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25315,7 +25462,8 @@
       "name": "Potion of Heroism",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Heroism"
+        "pt-BR": "Poção de Heroísmo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25326,7 +25474,8 @@
       "name": "Potion of Invisibility",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Invisibility"
+        "pt-BR": "Poção de Invisibilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25337,7 +25486,8 @@
       "name": "Potion of Invulnerability",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Invulnerability"
+        "pt-BR": "Poção de invulnerabilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25348,7 +25498,8 @@
       "name": "Potion of Longevity",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Longevity"
+        "pt-BR": "Poção da longevidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25359,7 +25510,8 @@
       "name": "Potion of Mind Reading",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Mind Reading"
+        "pt-BR": "Poção de Leitura Mental",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25370,7 +25522,8 @@
       "name": "Potion of Poison",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Poison"
+        "pt-BR": "Poção de Veneno",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25381,7 +25534,8 @@
       "name": "Potion of Resistance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Resistance"
+        "pt-BR": "Poção de Resistência",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25392,7 +25546,8 @@
       "name": "Potion of Speed",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Speed"
+        "pt-BR": "Poção da Velocidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25403,7 +25558,8 @@
       "name": "Potion of Vitality",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Vitality"
+        "pt-BR": "Poção de vitalidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25414,7 +25570,8 @@
       "name": "Potion of Water Breathing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Potion of Water Breathing"
+        "pt-BR": "Poção de Respiração Aquática",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -25860,7 +26017,8 @@
       "name": "Quarterstaff of the Acrobat",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Quarterstaff of the Acrobat"
+        "pt-BR": "Bordão do Acrobata",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26572,7 +26730,8 @@
       "name": "Ring of Animal Influence",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Animal Influence"
+        "pt-BR": "Anel da Influência Animal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26583,7 +26742,8 @@
       "name": "Ring of Djinni Summoning",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Djinni Summoning"
+        "pt-BR": "Anel de Invocação de Djinni",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26594,7 +26754,8 @@
       "name": "Ring of Elemental Command",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Elemental Command"
+        "pt-BR": "Anel de Comando Elemental",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26605,7 +26766,8 @@
       "name": "Ring of Evasion",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Evasion"
+        "pt-BR": "Anel da Evasão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26616,7 +26778,8 @@
       "name": "Ring of Feather Falling",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Feather Falling"
+        "pt-BR": "Anel da Queda Suave",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26627,7 +26790,8 @@
       "name": "Ring of Free Action",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Free Action"
+        "pt-BR": "Anel da Liberdade de Movimento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26638,7 +26802,8 @@
       "name": "Ring of Invisibility",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Invisibility"
+        "pt-BR": "Anel da Invisibilidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26649,7 +26814,8 @@
       "name": "Ring of Jumping",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Jumping"
+        "pt-BR": "Anel do Salto",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26660,7 +26826,8 @@
       "name": "Ring of Mind Shielding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Mind Shielding"
+        "pt-BR": "Anel de Proteção Mental",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26671,7 +26838,8 @@
       "name": "Ring of Protection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Protection"
+        "pt-BR": "Anel de Proteção",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26682,7 +26850,8 @@
       "name": "Ring of Regeneration",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Regeneration"
+        "pt-BR": "Anel de Regeneração",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26693,7 +26862,8 @@
       "name": "Ring of Resistance",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Resistance"
+        "pt-BR": "Anel de Resistência",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26704,7 +26874,8 @@
       "name": "Ring of Shooting Stars",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Shooting Stars"
+        "pt-BR": "Anel das Estrelas Cadentes",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26715,7 +26886,8 @@
       "name": "Ring of Spell Storing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Spell Storing"
+        "pt-BR": "Anel de Armazenamento de Magias",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26726,7 +26898,8 @@
       "name": "Ring of Spell Turning",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Spell Turning"
+        "pt-BR": "Anel de Reflexão de Magias",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26737,7 +26910,8 @@
       "name": "Ring of Swimming",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Swimming"
+        "pt-BR": "Anel de Natação",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26748,7 +26922,8 @@
       "name": "Ring of Telekinesis",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Telekinesis"
+        "pt-BR": "Anel de Telecinese",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26759,7 +26934,8 @@
       "name": "Ring of the Ram",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of the Ram"
+        "pt-BR": "Anel do Carneiro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26770,7 +26946,8 @@
       "name": "Ring of Three Wishes",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Three Wishes"
+        "pt-BR": "Anel dos Três Desejos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26781,7 +26958,8 @@
       "name": "Ring of Warmth",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Warmth"
+        "pt-BR": "Anel do Calor",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26792,7 +26970,8 @@
       "name": "Ring of Water Walking",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of Water Walking"
+        "pt-BR": "Anel de Caminhada sobre a Água",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26803,7 +26982,8 @@
       "name": "Ring of X-ray Vision",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Ring of X-ray Vision"
+        "pt-BR": "Anel de Visão de Raios X",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26814,7 +26994,8 @@
       "name": "Robe of Eyes",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Robe of Eyes"
+        "pt-BR": "Manto dos Olhos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26825,7 +27006,8 @@
       "name": "Robe of Scintillating Colors",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Robe of Scintillating Colors"
+        "pt-BR": "Manto de Cores Cintilantes",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26836,7 +27018,8 @@
       "name": "Robe of Stars",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Robe of Stars"
+        "pt-BR": "Manto das Estrelas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26847,7 +27030,8 @@
       "name": "Robe of the Archmagi",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Robe of the Archmagi"
+        "pt-BR": "Manto dos Arquimagos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26858,7 +27042,8 @@
       "name": "Robe of Useful Items",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Robe of Useful Items"
+        "pt-BR": "Manto de Itens Úteis",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26945,7 +27130,8 @@
       "name": "Rod of Absorption",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Absorption"
+        "pt-BR": "Bastão de Absorção",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26956,7 +27142,8 @@
       "name": "Rod of Alertness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Alertness"
+        "pt-BR": "Bastão de Alerta",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26967,7 +27154,8 @@
       "name": "Rod of Lordly Might",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Lordly Might"
+        "pt-BR": "Bastão da Majestade Senhorial",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26978,7 +27166,8 @@
       "name": "Rod of Resurrection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Resurrection"
+        "pt-BR": "Bastão da ressurreição",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -26989,7 +27178,8 @@
       "name": "Rod of Rulership",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Rulership"
+        "pt-BR": "Bastão de Domínio",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27000,7 +27190,8 @@
       "name": "Rod of Security",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rod of Security"
+        "pt-BR": "Bastão de Segurança",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27011,7 +27202,8 @@
       "name": "Rope of Climbing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rope of Climbing"
+        "pt-BR": "Corda de Escalada",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27022,7 +27214,8 @@
       "name": "Rope of Entanglement",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Rope of Entanglement"
+        "pt-BR": "Corda de Emaranhamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27449,7 +27642,8 @@
       "name": "Scarab of Protection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Scarab of Protection"
+        "pt-BR": "Escaravelho de Proteção",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27460,7 +27654,8 @@
       "name": "Scimitar of Speed",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Scimitar of Speed"
+        "pt-BR": "Cimitarra da Velocidade",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27747,7 +27942,8 @@
       "name": "Sending Stones",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sending Stones"
+        "pt-BR": "Pedras de mensagem",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27758,7 +27954,8 @@
       "name": "Sentinel Shield",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sentinel Shield"
+        "pt-BR": "Escudo sentinela",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27925,7 +28122,8 @@
       "name": "Shield of Missile Attraction",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shield of Missile Attraction"
+        "pt-BR": "Escudo de Atração de Projéteis",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -27936,7 +28134,8 @@
       "name": "Shield of the Cavalier",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Shield of the Cavalier"
+        "pt-BR": "Escudo do Cavaleiro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28213,7 +28412,8 @@
       "name": "Slippers of Spider Climbing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Slippers of Spider Climbing"
+        "pt-BR": "Chinelos de Escalada de Aranha",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28269,7 +28469,8 @@
       "name": "Sovereign Glue",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sovereign Glue"
+        "pt-BR": "Cola Soberana",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28360,7 +28561,8 @@
       "name": "Spellguard Shield",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Spellguard Shield"
+        "pt-BR": "Escudo de Proteção contra Magias",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28371,7 +28573,8 @@
       "name": "Sphere of Annihilation",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sphere of Annihilation"
+        "pt-BR": "Esfera da Aniquilação",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28900,7 +29103,8 @@
       "name": "Staff of Charming",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Charming"
+        "pt-BR": "Cajado do Encantamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28911,7 +29115,8 @@
       "name": "Staff of Fire",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Fire"
+        "pt-BR": "Cajado do Fogo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28922,7 +29127,8 @@
       "name": "Staff of Frost",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Frost"
+        "pt-BR": "Cajado do Gelo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28933,7 +29139,8 @@
       "name": "Staff of Healing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Healing"
+        "pt-BR": "Cajado da Cura",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28944,7 +29151,8 @@
       "name": "Staff of Power",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Power"
+        "pt-BR": "Cajado do Poder",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28955,7 +29163,8 @@
       "name": "Staff of Striking",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Striking"
+        "pt-BR": "Cajado de Golpes",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28966,7 +29175,8 @@
       "name": "Staff of Swarming Insects",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Swarming Insects"
+        "pt-BR": "Cajado de Enxame de Insetos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28977,7 +29187,8 @@
       "name": "Staff of the Magi",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of the Magi"
+        "pt-BR": "Cajado dos Magos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28988,7 +29199,8 @@
       "name": "Staff of the Python",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of the Python"
+        "pt-BR": "Cajado da Píton",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -28999,7 +29211,8 @@
       "name": "Staff of the Woodlands",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of the Woodlands"
+        "pt-BR": "Cajado das Florestas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -29010,7 +29223,8 @@
       "name": "Staff of Thunder and Lightning",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Thunder and Lightning"
+        "pt-BR": "Cajado do Trovão e Relâmpago",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -29021,7 +29235,8 @@
       "name": "Staff of Withering",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Staff of Withering"
+        "pt-BR": "Cajado do Definhamento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -29360,7 +29575,8 @@
       "name": "Stone of Controlling Earth Elementals",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Stone of Controlling Earth Elementals"
+        "pt-BR": "Pedra de Controle de Elementais da Terra",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -29535,7 +29751,8 @@
       "name": "Sun Blade",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sun Blade"
+        "pt-BR": "Lâmina Solar",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30042,7 +30259,8 @@
       "name": "Sword of Life Stealing",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sword of Life Stealing"
+        "pt-BR": "Espada Sugadora de Vidas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30053,7 +30271,8 @@
       "name": "Sword of Sharpness",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sword of Sharpness"
+        "pt-BR": "Espada Afiada",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30064,7 +30283,8 @@
       "name": "Sword of Wounding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Sword of Wounding"
+        "pt-BR": "Espada de Ferimentos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30075,7 +30295,8 @@
       "name": "Talisman of Pure Good",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Talisman of Pure Good"
+        "pt-BR": "Talismã do Bem Absoluto",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30086,7 +30307,8 @@
       "name": "Talisman of the Sphere",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Talisman of the Sphere"
+        "pt-BR": "Talismã da Esfera",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30097,7 +30319,8 @@
       "name": "Talisman of Ultimate Evil",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Talisman of Ultimate Evil"
+        "pt-BR": "Talismã do Mal Supremo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30204,7 +30427,8 @@
       "name": "Thunderous Greatclub",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Thunderous Greatclub"
+        "pt-BR": "Clava trovejante",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30307,7 +30531,8 @@
       "name": "Tome of Clear Thought",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Tome of Clear Thought"
+        "pt-BR": "Tomo do Pensamento Claro",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30318,7 +30543,8 @@
       "name": "Tome of Leadership and Influence",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Tome of Leadership and Influence"
+        "pt-BR": "Tomo da Liderança e Influência",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30329,7 +30555,8 @@
       "name": "Tome of Understanding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Tome of Understanding"
+        "pt-BR": "Tomo da Compreensão",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30696,7 +30923,8 @@
       "name": "Trident of Fish Command",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Trident of Fish Command"
+        "pt-BR": "Tridente de Comando de Peixes",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -30994,7 +31222,8 @@
       "name": "Universal Solvent",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Universal Solvent"
+        "pt-BR": "Solvente Universal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31251,7 +31480,8 @@
       "name": "Vicious Weapon",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Vicious Weapon"
+        "pt-BR": "Arma Cruel",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31340,7 +31570,8 @@
       "name": "Vorpal Sword",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Vorpal Sword"
+        "pt-BR": "Espada Vorpal",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31507,7 +31738,8 @@
       "name": "Wand of Binding",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Binding"
+        "pt-BR": "Varinha de Imobilização",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31518,7 +31750,8 @@
       "name": "Wand of Enemy Detection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Enemy Detection"
+        "pt-BR": "Varinha de Detecção de Inimigos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31529,7 +31762,8 @@
       "name": "Wand of Fear",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Fear"
+        "pt-BR": "Varinha do Medo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31540,7 +31774,8 @@
       "name": "Wand of Fireballs",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Fireballs"
+        "pt-BR": "Varinha de Bolas de Fogo",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31551,7 +31786,8 @@
       "name": "Wand of Lightning Bolts",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Lightning Bolts"
+        "pt-BR": "Varinha de Relâmpagos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31562,7 +31798,8 @@
       "name": "Wand of Magic Detection",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Magic Detection"
+        "pt-BR": "Varinha de Detecção de Magia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31573,7 +31810,8 @@
       "name": "Wand of Magic Missiles",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Magic Missiles"
+        "pt-BR": "Varinha de Mísseis Mágicos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31584,7 +31822,8 @@
       "name": "Wand of Paralysis",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Paralysis"
+        "pt-BR": "Varinha da Paralisia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31595,7 +31834,8 @@
       "name": "Wand of Polymorph",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Polymorph"
+        "pt-BR": "Varinha de Metamorfose",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31606,7 +31846,8 @@
       "name": "Wand of Secrets",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Secrets"
+        "pt-BR": "Varinha dos Segredos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31617,7 +31858,8 @@
       "name": "Wand of Web",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Web"
+        "pt-BR": "Varinha de Teia",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31628,7 +31870,8 @@
       "name": "Wand of Wonder",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wand of Wonder"
+        "pt-BR": "Varinha das Maravilhas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -31984,7 +32227,8 @@
       "name": "Weapon of Warning",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Weapon of Warning"
+        "pt-BR": "Arma de Alerta",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -32055,7 +32299,8 @@
       "name": "Well of Many Worlds",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Well of Many Worlds"
+        "pt-BR": "Poço de Muitos Mundos",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -32619,7 +32864,8 @@
       "name": "Wind Fan",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wind Fan"
+        "pt-BR": "Leque de Vento",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -32630,7 +32876,8 @@
       "name": "Winged Boots",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Winged Boots"
+        "pt-BR": "Botas Aladas",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"
@@ -32641,7 +32888,8 @@
       "name": "Wings of Flying",
       "summary": "Item mágico do System Reference Document 5.2.1.",
       "translations": {
-        "pt-BR": "Wings of Flying"
+        "pt-BR": "Asas Voadoras",
+        "pt-BR.source": "reviewed"
       },
       "rules": {
         "catalog": "magic-item"

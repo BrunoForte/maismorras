@@ -48,11 +48,18 @@ describe('cloneInventoryRules', () => {
 		const entries = [
 			{ id: 'sword', name: 'Espada', entryType: 'item', rules: { category: 'weapon' } },
 			{ id: 'armor', name: 'Cota', entryType: 'item', rules: { category: 'armor' } },
+			{ id: 'magic', name: 'Bolsa de Carga', entryType: 'other', rules: { catalog: 'magic-item' } },
+			{ id: 'monster', name: 'Ogro', entryType: 'other', rules: { catalog: 'monster' } },
 			{ id: 'feat', name: 'Lutador', entryType: 'feat', rules: {} }
 		];
-		expect(filterItemEntries(entries, 'all')).toHaveLength(2);
+		expect(filterItemEntries(entries, 'all').map((entry) => entry.id)).toEqual([
+			'sword',
+			'armor',
+			'magic'
+		]);
 		expect(filterItemEntries(entries, 'weapon').map((entry) => entry.id)).toEqual(['sword']);
 		expect(filterItemEntries(entries, 'tool')).toEqual([]);
+		expect(filterItemEntries(entries, 'gear').map((entry) => entry.id)).toEqual(['magic']);
 	});
 
 	it('groups picker options in the requested order and alphabetizes localized display names', () => {

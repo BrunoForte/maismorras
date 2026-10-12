@@ -237,6 +237,13 @@ export function isCompendiumTranslationPending(source: unknown, translation: unk
 	);
 }
 
+export function translatedCompendiumName(entry: CompendiumEntry, locale: string): string {
+	const localized = entry.translations?.['pt-BR'];
+	return locale === 'pt-BR' && !isCompendiumTranslationPending(entry.name, localized)
+		? localized
+		: entry.name;
+}
+
 export function translatedCompendiumText(
 	entry: CompendiumEntry,
 	field: string,

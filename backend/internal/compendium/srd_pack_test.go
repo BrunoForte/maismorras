@@ -54,6 +54,136 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	}
 }
 
+func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.T) {
+	var pack map[string]any
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	entries, ok := pack["entries"].([]any)
+	if !ok {
+		t.Fatal("SRD entries are not an array")
+	}
+	targets := make([]map[string]any, 0, 248)
+	bySourceName := make(map[string]map[string]any)
+	localizedNames := make(map[string]string)
+	for _, raw := range entries {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		rules, _ := entry["rules"].(map[string]any)
+		if entry["entryType"] != "other" || rules["catalog"] != "magic-item" {
+			continue
+		}
+		targets = append(targets, entry)
+		name, _ := entry["name"].(string)
+		translations, _ := entry["translations"].(map[string]any)
+		localized, _ := translations["pt-BR"].(string)
+		if strings.TrimSpace(localized) == "" || localized == name || translations["pt-BR.source"] != "reviewed" {
+			t.Errorf("%s lacks a distinct reviewed Portuguese name", name)
+		}
+		if len(translations) != 2 {
+			t.Errorf("%s has unexpected localized fields: %#v", name, translations)
+		}
+		if entry["summary"] != "Item mágico do System Reference Document 5.2.1." {
+			t.Errorf("%s generic summary changed", name)
+		}
+		if _, exists := rules["description"]; exists {
+			t.Errorf("%s gained an unsupported description", name)
+		}
+		if previous, exists := localizedNames[localized]; exists {
+			t.Errorf("localized name collision %q: %s and %s", localized, previous, name)
+		}
+		localizedNames[localized] = name
+		bySourceName[name] = entry
+	}
+	if len(targets) != 248 {
+		t.Fatalf("magic-item catalog count = %d, want 248", len(targets))
+	}
+	for _, choice := range []struct{ source, expected string }{
+		{"Bag of Holding", "Bolsa de Carga"},
+		{"Periapt of Health", "Periapto da Saúde"},
+		{"Ammunition of Slaying", "Munição Matadora"},
+		{"Mace of Disruption", "Maça da Ruptura"},
+		{"Ioun Stone", "Pedra Ioun"},
+	} {
+		entry := bySourceName[choice.source]
+		translations, _ := entry["translations"].(map[string]any)
+		if translations["pt-BR"] != choice.expected {
+			t.Errorf("%s translation = %v, want %q", choice.source, translations["pt-BR"], choice.expected)
+		}
+	}
+
+	// These 17 entries also exist in the typed item catalog. Their original
+	// records are left untouched, and both representations use the same label.
+	typedItems := make(map[string]map[string]any)
+	for _, raw := range entries {
+		entry, _ := raw.(map[string]any)
+		if entry["entryType"] == "item" {
+			typedItems[fmt.Sprint(entry["name"])] = entry
+		}
+	}
+	overlaps := 0
+	for name, entry := range bySourceName {
+		typed, exists := typedItems[name]
+		if !exists {
+			continue
+		}
+		overlaps++
+		localized, _ := entry["translations"].(map[string]any)
+		typedTranslations, _ := typed["translations"].(map[string]any)
+		if typedTranslations["pt-BR"] != localized["pt-BR"] {
+			t.Errorf("typed item and catalog record disagree for %s", name)
+		}
+	}
+	if overlaps != 17 {
+		t.Errorf("typed-item overlaps = %d, want 17", overlaps)
+	}
+
+	// Exercise the same field-level policy used by the persisted catalog sync
+	// for a real item in this batch: legacy AI and missing provenance update,
+	// protected editorial values remain intact, and a second sync is a no-op.
+	bag := bySourceName["Bag of Holding"]
+	bagTranslations, _ := bag["translations"].(map[string]any)
+	bagEntry := srdEntry{
+		EntryType:    "other",
+		Name:         "Bag of Holding",
+		Translations: mustJSON(t, bagTranslations),
+	}
+	for _, current := range []map[string]string{
+		{"pt-BR": "Bolsa gerada anteriormente", "pt-BR.source": "ai"},
+		{"pt-BR": "Bolsa antiga sem origem"},
+	} {
+		changed, updated, unresolved := applyReviewedTranslation(current, bagEntry)
+		if !changed || current["pt-BR"] != "Bolsa de Carga" || current["pt-BR.source"] != "reviewed" || len(updated) != 1 || len(unresolved) != 0 {
+			t.Errorf("Bag of Holding legacy translation was not safely updated: changed=%t current=%v updated=%v unresolved=%v", changed, current, updated, unresolved)
+		}
+		changed, updated, unresolved = applyReviewedTranslation(current, bagEntry)
+		if changed || len(updated) != 0 || len(unresolved) != 0 {
+			t.Errorf("Bag of Holding repeated sync was not idempotent: changed=%t updated=%v unresolved=%v", changed, updated, unresolved)
+		}
+	}
+	protected := map[string]string{"pt-BR": "Bolsa da campanha", "pt-BR.source": "manual"}
+	if changed, _, _ := applyReviewedTranslation(protected, bagEntry); changed || protected["pt-BR"] != "Bolsa da campanha" {
+		t.Errorf("manual Bag of Holding title was overwritten: %v", protected)
+	}
+
+	// Excluding only the target translation maps, the complete package must
+	// match the reviewed main-base snapshot. This protects every source field,
+	// mechanical rule, typed item and unrelated category.
+	for _, entry := range targets {
+		delete(entry, "translations")
+	}
+	canonical, err := json.Marshal(pack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(canonical)
+	if got := hex.EncodeToString(digest[:]); got != "f79d7862be82e5597273307703dc0d385204407fd9dcc01bd2abe1f11c3f3c2d" {
+		t.Fatalf("content outside target translations changed: digest=%s", got)
+	}
+}
+
 func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) {
 	type action struct {
 		Name        string `json:"name"`

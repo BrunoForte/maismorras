@@ -11,6 +11,7 @@ import {
 	hasPendingCompendiumTranslation,
 	isCompendiumTranslationPending,
 	normalizeCompendiumSearch,
+	translatedCompendiumName,
 	translatedCompendiumText,
 	translatedFeatDetails
 } from './compendiumRules';
@@ -55,6 +56,18 @@ const entry = (
 });
 
 describe('compendium rules', () => {
+	it('shows reviewed magic item names in Portuguese and falls back to source text', () => {
+		const magicItem: CompendiumEntry = {
+			...entry('magic', 'Bag of Holding'),
+			translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' }
+		};
+		expect(translatedCompendiumName(magicItem, 'pt-BR')).toBe('Bolsa de Carga');
+		expect(translatedCompendiumName(magicItem, 'en')).toBe('Bag of Holding');
+		expect(translatedCompendiumName({ ...magicItem, translations: {} }, 'pt-BR')).toBe(
+			'Bag of Holding'
+		);
+	});
+
 	it('resolves nested class features and feat benefits in Portuguese with English fallback', () => {
 		const localized: CompendiumEntry = {
 			...entry('feat', 'Alert', 'feat'),
