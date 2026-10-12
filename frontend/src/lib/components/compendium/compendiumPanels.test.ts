@@ -106,9 +106,10 @@ describe('compendium panels', () => {
 			...monster,
 			translations: {
 				'pt-BR': 'Ogro',
-				'pt-BR.summary': 'Gigante Grande (ND 2).',
-				'pt-BR.rules.actions.0.name': 'Pancada',
-				'pt-BR.rules.actions.0.description': 'Ataque corpo a corpo: causa dano contundente.'
+				'pt-BR.summary': 'Criatura Grande Gigante, Caótico e mau (ND 2).',
+				'pt-BR.rules.actions.0.name': 'Tacape',
+				'pt-BR.rules.actions.0.description':
+					'Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano contundente.'
 			},
 			rules: {
 				catalog: 'monster',
@@ -117,10 +118,10 @@ describe('compendium panels', () => {
 				challenge: 2,
 				actions: [
 					{
-						name: 'Slam',
+						name: 'Greatclub',
 						toHit: 6,
 						damage: '13 (2d8 + 4) Bludgeoning damage.',
-						description: 'Melee Attack Roll: +6. Hit: 13 (2d8 + 4) Bludgeoning damage.'
+						description: 'Melee Attack Roll: +6, reach 5 ft. Hit: 13 (2d8 + 4) Bludgeoning damage.'
 					}
 				]
 			}
@@ -133,8 +134,10 @@ describe('compendium panels', () => {
 		const localizedMonsterHtml = render(CompendiumEntryDetails, {
 			props: { view: monsterView, actions }
 		}).body;
-		expect(localizedMonsterHtml).toContain('Pancada');
-		expect(localizedMonsterHtml).toContain('Ataque corpo a corpo: causa dano contundente.');
+		expect(localizedMonsterHtml).toContain('Tacape');
+		expect(localizedMonsterHtml).toContain(
+			'Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano contundente.'
+		);
 		expect(localizedMonsterHtml).not.toContain('Melee Attack Roll');
 	});
 
