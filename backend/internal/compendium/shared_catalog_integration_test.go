@@ -303,6 +303,102 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 		t.Fatalf("unmarked campaign override hid reviewed Hippogriff summary: got %q, want %q", got, approvedHippogriffSummary)
 	}
 
+	// Exercise the description-only catalog revision against a row that still
+	// has the older persisted rules shape, alongside campaign-scoped overrides.
+	bagOfHolding := findEntryByName(entriesA, "other", "Bag of Holding")
+	if bagOfHolding.ID == "" {
+		t.Fatal("Bag of Holding is missing from the shared magic-item catalog")
+	}
+	var bagPackEntry srdEntry
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType == "other" && entry.Name == "Bag of Holding" {
+			bagPackEntry = entry
+			break
+		}
+	}
+	if bagPackEntry.Name == "" {
+		t.Fatal("Bag of Holding is missing from the embedded magic-item pack")
+	}
+	approvedBagTranslations := decodeTranslations(bagPackEntry.Translations)
+	approvedBagDescription := approvedBagTranslations["pt-BR.rules.description"]
+	if approvedBagDescription == "" || approvedBagTranslations["pt-BR.rules.description.source"] != "reviewed" {
+		t.Fatal("Bag of Holding description is not reviewed in the embedded pack")
+	}
+	var originalBagRules, originalBagTranslations json.RawMessage
+	if err = pool.QueryRow(ctx, `select rules,translations from srd_catalog_entries where id=$1`, bagOfHolding.ID).Scan(&originalBagRules, &originalBagTranslations); err != nil {
+		t.Fatal(err)
+	}
+	var originalCatalogRevision string
+	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSourceID).Scan(&originalCatalogRevision); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_entries set rules=$1,translations=$2 where id=$3`, originalBagRules, originalBagTranslations, bagOfHolding.ID)
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_sources set revision=$1 where id=$2`, originalCatalogRevision, sharedSourceID)
+	}()
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set rules='{"catalog":"magic-item","legacyRule":"keep"}'::jsonb,translations='{"pt-BR.rules.description":"Descrição IA anterior","pt-BR.rules.description.source":"ai"}'::jsonb where id=$1`, bagOfHolding.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-5' where id=$1`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,translations,updated_by) values($1,$2,$3,$5),($4,$2,$6,$5) on conflict(campaign_id,catalog_entry_id) do update set translations=excluded.translations`, campaignA, bagOfHolding.ID, json.RawMessage(`{"pt-BR.rules.description":"Descrição IA da campanha A","pt-BR.rules.description.source":"ai"}`), campaignB, owner, json.RawMessage(`{"pt-BR.rules.description":"Descrição manual da campanha B","pt-BR.rules.description.source":"manual"}`)); err != nil {
+		t.Fatal(err)
+	}
+	_, bagEntriesA, err := repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, bagEntriesB, err := repo.List(ctx, campaignB, gmB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bagA := findEntryByName(bagEntriesA, "other", "Bag of Holding")
+	bagB := findEntryByName(bagEntriesB, "other", "Bag of Holding")
+	var bagRules, bagSourceRules map[string]any
+	if err = json.Unmarshal(bagA.Rules, &bagRules); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(bagPackEntry.Rules, &bagSourceRules); err != nil {
+		t.Fatal(err)
+	}
+	if bagRules["description"] != bagSourceRules["description"] || bagRules["legacyRule"] != "keep" {
+		t.Fatalf("magic-item source description was not additively persisted: rules=%v", bagRules)
+	}
+	if bagTranslations := decodeTranslations(bagA.Translations); bagTranslations["pt-BR.rules.description"] != approvedBagDescription || bagTranslations["pt-BR.rules.description.source"] != "reviewed" {
+		t.Fatalf("canonical reviewed item description was not persisted: %v", bagTranslations)
+	}
+	if got := decodeTranslations(bagA.Translations)["pt-BR.rules.description"]; got != approvedBagDescription {
+		t.Fatalf("campaign A's AI override hid reviewed description: got %q, want %q", got, approvedBagDescription)
+	}
+	if got := decodeTranslations(bagB.Translations)["pt-BR.rules.description"]; got != "Descrição manual da campanha B" {
+		t.Fatalf("campaign B's manual override was not preserved: %q", got)
+	}
+	bagSyncReport, err := repo.syncReviewedTranslations(ctx, sharedSourceID, []srdEntry{bagPackEntry})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bagSyncReport.Updated) != 0 || len(bagSyncReport.Unresolved) != 0 {
+		t.Fatalf("repeated magic-item description sync was not idempotent: %+v", bagSyncReport)
+	}
+	if _, err = pool.Exec(ctx, `update campaign_srd_entry_overrides set translations=$1 where campaign_id=$2 and catalog_entry_id=$3`, json.RawMessage(`{"pt-BR.rules.description":"Descrição sem proveniência"}`), campaignA, bagOfHolding.ID); err != nil {
+		t.Fatal(err)
+	}
+	_, bagEntriesA, err = repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, bagEntriesB, err = repo.List(ctx, campaignB, gmB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeTranslations(findEntryByName(bagEntriesA, "other", "Bag of Holding").Translations)["pt-BR.rules.description"]; got != approvedBagDescription {
+		t.Fatalf("unmarked campaign override hid reviewed description: got %q, want %q", got, approvedBagDescription)
+	}
+	if got := decodeTranslations(findEntryByName(bagEntriesB, "other", "Bag of Holding").Translations)["pt-BR.rules.description"]; got != "Descrição manual da campanha B" {
+		t.Fatalf("campaign B manual override changed after campaign A sync: %q", got)
+	}
+
 	// Simulate an existing catalog and campaign overrides written by prior AI
 	// translation runs, plus protected and unmarked legacy values.
 	var originalRevision string

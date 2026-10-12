@@ -243,6 +243,9 @@
 						: String(detail.properties)}</b
 				>{/if}
 		</div>
+	{:else if entry.entryType === 'other' && detail.catalog === 'magic-item'}
+		{@const magicItemDescription = displayRule('description', detail.description)}
+		{#if magicItemDescription}<p class="magic-item-description">{magicItemDescription}</p>{/if}
 	{:else if entry.entryType === 'class'}
 		{@const classDescription = displayRule('description', detail.description)}
 		{#if classDescription}<p>{classDescription}</p>{/if}

@@ -102,6 +102,36 @@ describe('compendium panels', () => {
 		expect(featHtml).toContain('Você está sempre preparado.');
 		expect(featHtml).toContain('Adicione proficiência à Iniciativa.');
 
+		const magicItem: CompendiumEntry = {
+			...monster,
+			id: 'bag-of-holding',
+			name: 'Bag of Holding',
+			summary: 'Item mágico do SRD.',
+			rules: {
+				catalog: 'magic-item',
+				description: 'The bag can hold up to 500 pounds and weighs 5 pounds.'
+			},
+			translations: {
+				'pt-BR': 'Bolsa de Carga',
+				'pt-BR.rules.description': 'A bolsa comporta até 227 kg e pesa 2,3 kg.'
+			},
+			isPublished: true
+		};
+		const localizedMagicItemHtml = render(CompendiumEntryDetails, {
+			props: { view: makeView(magicItem), actions }
+		}).body;
+		expect(localizedMagicItemHtml).toContain('A bolsa comporta até 227 kg e pesa 2,3 kg.');
+		expect(localizedMagicItemHtml).not.toContain('The bag can hold up to 500 pounds');
+		const fallbackMagicItemHtml = render(CompendiumEntryDetails, {
+			props: {
+				view: makeView({ ...magicItem, translations: { 'pt-BR': 'Bolsa de Carga' } }),
+				actions
+			}
+		}).body;
+		expect(fallbackMagicItemHtml).toContain(
+			'The bag can hold up to 500 pounds and weighs 5 pounds.'
+		);
+
 		const localizedMonster: CompendiumEntry = {
 			...monster,
 			translations: {
