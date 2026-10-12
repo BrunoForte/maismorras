@@ -34,7 +34,9 @@ export function filterItemEntries<
 >(entries: readonly T[], category: InventoryCategory): T[] {
 	return entries.filter(
 		(entry) =>
-			entry.entryType === 'item' && (category === 'all' || equipmentCategory(entry) === category)
+			(entry.entryType === 'item' ||
+				(entry.entryType === 'other' && entry.rules.catalog === 'magic-item')) &&
+			(category === 'all' || equipmentCategory(entry) === category)
 	);
 }
 

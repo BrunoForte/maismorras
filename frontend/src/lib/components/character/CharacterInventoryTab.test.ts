@@ -43,6 +43,16 @@ const entries: CompendiumEntry[] = [
 		rules: {},
 		translations: {},
 		isPublished: true
+	},
+	{
+		id: 'magic-catalog',
+		sourceId: 'srd',
+		entryType: 'other',
+		name: 'Bag of Holding',
+		summary: 'Item mágico do System Reference Document 5.2.1.',
+		rules: { catalog: 'magic-item' },
+		translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' },
+		isPublished: true
 	}
 ];
 
@@ -62,7 +72,7 @@ describe('CharacterInventoryTab compendium picker', () => {
 				money: { cp: 2, sp: 3, ep: 4, gp: 5, pp: 6 },
 				onMoneyChange: vi.fn(),
 				inventoryFilter: 'all',
-				optionLabel: (entry) => entry.name,
+				optionLabel: (entry) => entry.translations['pt-BR'] ?? entry.name,
 				onAddCompendiumItem: vi.fn(),
 				onAddCustomItem: vi.fn(async () => true),
 				onRemoveItem: vi.fn(),
@@ -77,6 +87,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html.indexOf('value="a"')).toBeLessThan(html.indexOf('value="b"'));
 		expect(html).toContain('value="shield"');
 		expect(html).toContain('value="other"');
+		expect(html).toContain('value="magic-catalog"');
+		expect(html).toContain('Bolsa de Carga');
 		expect(html).toContain('Dinheiro');
 		expect(html).toContain('aria-label="PC · Cobre"');
 		expect(html).toContain('value="5"');
