@@ -2,6 +2,7 @@
 	import type { Dnd2024FeatSpellGrant } from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { spellClassLabel } from '$lib/utils/compendium/spellMetadataLabels';
 	import {
 		availableDndFeatSpellLists,
 		DND2024_FEAT_SPELL_RULES,
@@ -73,16 +74,7 @@
 		);
 	}
 	function spellListLabel(classId: string) {
-		if ($appLocale === 'en') return classId[0].toUpperCase() + classId.slice(1);
-		const labels: Record<string, string> = {
-			bard: 'Bardo',
-			cleric: 'Clérigo',
-			druid: 'Druida',
-			sorcerer: 'Feiticeiro',
-			warlock: 'Bruxo',
-			wizard: 'Mago'
-		};
-		return labels[classId] ?? classId;
+		return spellClassLabel(classId, $appLocale);
 	}
 	function spellListsFor(grant: Dnd2024FeatSpellGrant) {
 		return availableDndFeatSpellLists(grants, grant.featId, grant.id);

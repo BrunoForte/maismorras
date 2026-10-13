@@ -11,6 +11,7 @@ import { DND2024_FEAT_SPELL_RULES } from '$lib/data/dnd2024FeatSpells';
 import { campaignFeatSpellRuleFromEntryRules } from '$lib/utils/compendium/campaignFeatSpellRule';
 import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 import type { SpellMechanicsPresentation } from '$lib/utils/compendium/spellMechanics';
+import { spellSchoolLabel } from '$lib/utils/compendium/spellMetadataLabels';
 
 export type SpellOrigin = NonNullable<Spell['origin']>;
 export type SpellFeatGrantProjection = {
@@ -333,7 +334,8 @@ export function addSpellToSheet(
 	circle: number,
 	addableCircles: readonly number[],
 	entry: CompendiumEntry | undefined,
-	entryLabel: string
+	entryLabel: string,
+	locale = 'en'
 ): Spell[] {
 	const name = nameInput.trim();
 	if (!name || !addableCircles.includes(circle)) return [...spells];
@@ -358,13 +360,14 @@ export function addSpellToSheet(
 			? (rules.damage as Record<string, unknown>)
 			: {};
 	const level = Number(rules.level ?? circle);
+	const school = spellSchoolLabel(rules.school ?? '', locale);
 	return [
 		...spells,
 		{
 			entryId: entry.id,
 			name: entryLabel,
 			level: Number.isFinite(level) && level >= 0 ? level : circle,
-			notes: `SRD · ${String(rules.school ?? '')}${rules.range ? ` · ${String(rules.range)}` : ''}`,
+			notes: `SRD · ${school}${rules.range ? ` · ${String(rules.range)}` : ''}`,
 			description: String(rules.description ?? entry.summary ?? ''),
 			diceFormula: String(damage.dice ?? ''),
 			higherLevels: String(rules.higherLevels ?? rules.atHigherLevels ?? '')

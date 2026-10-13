@@ -23,6 +23,58 @@ const monster: CompendiumEntry = {
 };
 
 describe('compendium panels', () => {
+	it('shows spell schools and class lists in PT-BR while preserving source data', () => {
+		setAppLocale('pt-BR');
+		const spellEntry: CompendiumEntry = {
+			...monster,
+			id: 'fireball',
+			entryType: 'spell',
+			name: 'Fireball',
+			summary: 'A bright streak flashes.',
+			rules: {
+				level: 3,
+				classes: ['wizard', 'Sorcerer', 'Homebrew Adept'],
+				school: 'Evocation'
+			},
+			translations: {},
+			isPublished: true
+		};
+		const view = {
+			entry: spellEntry,
+			artUrl: '',
+			displayName: 'Bola de Fogo',
+			displaySummary: spellEntry.summary,
+			typeLabel: 'Magia',
+			isMonster: false,
+			hasMonsterSheet: false,
+			sourceReadOnly: true,
+			hasPrivateSource: false,
+			isGM: false,
+			canConfigureFeatSpellRule: false,
+			canTranslate: false,
+			translationStatus: 'complete' as const,
+			canPlace: false,
+			translating: false,
+			placing: false
+		};
+		const actions = {
+			close: vi.fn(),
+			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
+			remove: vi.fn(),
+			translate: vi.fn(),
+			copyToCampaign: vi.fn(),
+			place: vi.fn()
+		};
+
+		const html = render(CompendiumEntryDetails, { props: { view, actions } }).body;
+
+		expect(html).toContain('Evocação');
+		expect(html).toContain('Mago, Feiticeiro, Homebrew Adept');
+		expect(spellEntry.rules.school).toBe('Evocation');
+		expect(spellEntry.rules.classes).toEqual(['wizard', 'Sorcerer', 'Homebrew Adept']);
+	});
+
 	it('renders localized class features and feat benefits with source fallback', () => {
 		setAppLocale('pt-BR');
 		const actions = {
