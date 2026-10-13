@@ -211,7 +211,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "79533818737ec5478ec96fe9b3fd7bdea98df8636140e7dee2dc381a3e70ec4c" {
+	if got := hex.EncodeToString(digest[:]); got != "4384ac4e9dbe8544dd41537aa68278829adbf11d5bff8f21a2d3acadb2f8f965" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -338,7 +338,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "08d6c4bc765a41c092f340052b56f63295f5b8cf0fead1ac19b3c17390aa9019" {
+	if got := hex.EncodeToString(digest[:]); got != "769d1111e27d6e8c7da2155263a96398d7993adf0e67b115e0c496c8e9a5428c" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -431,7 +431,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "9867851700853151f4bfe6b929678fea6f0fde720a41912873774c8505968f22" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "df5449dcf6284daf4690225bace4a2a1cf0881ae847dbfcf78510f10564d8a51" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -758,7 +758,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "82c185cad2b1641d1a8e63b040e3baa6627b38e39626193988414b5e9c51370c"
+	const wantSourceDigest = "625bca92e6ca47bd31e08780a46e58a1295b8426b932c64aeaac1f32dcdfe0f0"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}
@@ -1617,4 +1617,36 @@ func TestSRDPackIndexesOpenSRDMonstersAndMagicItems(t *testing.T) {
 	if monsters != 330 || usableMonsters != monsters || monstersWithActions < 290 || magicItems != 248 {
 		t.Fatalf("unexpected SRD index: monsters=%d usable=%d withActions=%d magicItems=%d", monsters, usableMonsters, monstersWithActions, magicItems)
 	}
+}
+
+func TestSorcerousBurstSourceTextMatchesSRD521(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const expected = "You cast sorcerous energy at one creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 1d8 damage of a type you choose: Acid, Cold, Fire, Lightning, Poison, Psychic, or Thunder. If you roll an 8 on a d8 for this spell, you can roll another d8, and add it to the damage. When you cast this spell, the maximum number of these d8s you can add to the spell’s damage equals your spellcasting ability modifier. Cantrip Upgrade. The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8)."
+	for _, entry := range pack.Entries {
+		if entry.EntryType != "spell" || entry.Name != "Sorcerous Burst" {
+			continue
+		}
+		if entry.Summary != expected {
+			t.Errorf("source summary = %q, want full SRD 5.2.1 text", entry.Summary)
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode Sorcerous Burst rules: %v", err)
+		}
+		if rules["description"] != expected {
+			t.Errorf("source description = %q, want full SRD 5.2.1 text", rules["description"])
+		}
+		translations := decodeTranslations(entry.Translations)
+		if translations["pt-BR"] != "Rajada Arcana" || translations["pt-BR.rules.name"] != "Rajada Arcana" {
+			t.Errorf("owner-approved localized name changed: %v", translations)
+		}
+		if translations["pt-BR.rules.description.source"] != "reviewed" || !strings.Contains(translations["pt-BR.rules.description"], "psíquico") {
+			t.Errorf("reviewed Portuguese description was lost or changed: %v", translations)
+		}
+		return
+	}
+	t.Fatal("Sorcerous Burst not found in SRD pack")
 }
