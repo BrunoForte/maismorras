@@ -199,9 +199,8 @@
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b>
 			<b>{displaySpellClasses(detail.classes)}</b>
-			{#if detail.school}<b
-				>{spellSchoolLabel(displayRule('school', detail.school), locale)}</b
-			>{/if}
+			{#if detail.school}<b>{spellSchoolLabel(displayRule('school', detail.school), locale)}</b
+				>{/if}
 			{#if detail.range}<b>{distanceText(displayRule('range', detail.range), $appLocale)}</b>{/if}
 		</div>
 		{#if spellDescription}<p class="spell-description">{spellDescription}</p>{/if}

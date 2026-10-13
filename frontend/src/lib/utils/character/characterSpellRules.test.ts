@@ -327,15 +327,7 @@ describe('character spell rules', () => {
 
 	it('localizes a spell school in the default sheet note without changing the canonical rule', () => {
 		const source = entry({ rules: { level: 3, school: 'Evocation', classes: ['wizard'] } });
-		const added = addSpellToSheet(
-			[],
-			'Fireball',
-			3,
-			[0, 1, 2, 3],
-			source,
-			'Bola de Fogo',
-			'pt-BR'
-		);
+		const added = addSpellToSheet([], 'Fireball', 3, [0, 1, 2, 3], source, 'Bola de Fogo', 'pt-BR');
 
 		expect(added[0].notes).toBe('SRD · Evocação');
 		expect(source.rules.school).toBe('Evocation');
