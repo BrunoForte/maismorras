@@ -1141,7 +1141,8 @@
 			newSpellLevel,
 			addableSpellCircles(),
 			existingSpell,
-			existingSpell ? optionLabel(existingSpell) : ''
+			existingSpell ? optionLabel(existingSpell) : '',
+			$appLocale
 		);
 		if (updated.length === sheet.spells.length) return;
 		sheet.spells = updated;

@@ -4,6 +4,7 @@
 	import type { CompendiumDetailsView } from './compendiumTypes';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import { displayItemCategory, displayWeaponProperties } from '$lib/utils/compendium/itemLabels';
+	import { spellClassLabel, spellSchoolLabel } from '$lib/utils/compendium/spellMetadataLabels';
 	import {
 		compendiumTranslationHasAI,
 		compendiumTranslationIsOfficial,
@@ -30,6 +31,10 @@
 	const locale = $derived($appLocale);
 	const displayRule = (field: string, value: unknown) =>
 		translatedCompendiumText(entry, `rules.${field}`, value, locale);
+	const displaySpellClasses = (value: unknown) =>
+		Array.isArray(value)
+			? value.map((className) => spellClassLabel(className, locale)).join(', ')
+			: '';
 	const displayAction = (index: number, field: string, value: unknown) =>
 		translatedCompendiumText(entry, `rules.actions.${index}.${field}`, value, locale);
 	const displayFeature = (index: number, field: string, value: unknown) =>
@@ -193,8 +198,10 @@
 		)}
 		<div class="rules">
 			<b>{$appLocale === 'en' ? 'Level' : 'Círculo'} {String(detail.level ?? 0)}</b>
-			<b>{Array.isArray(detail.classes) ? (detail.classes as string[]).join(', ') : ''}</b>
-			{#if detail.school}<b>{displayRule('school', detail.school)}</b>{/if}
+			<b>{displaySpellClasses(detail.classes)}</b>
+			{#if detail.school}<b
+				>{spellSchoolLabel(displayRule('school', detail.school), locale)}</b
+			>{/if}
 			{#if detail.range}<b>{distanceText(displayRule('range', detail.range), $appLocale)}</b>{/if}
 		</div>
 		{#if spellDescription}<p class="spell-description">{spellDescription}</p>{/if}

@@ -325,6 +325,23 @@ describe('character spell rules', () => {
 		expect(previous).toHaveLength(1);
 	});
 
+	it('localizes a spell school in the default sheet note without changing the canonical rule', () => {
+		const source = entry({ rules: { level: 3, school: 'Evocation', classes: ['wizard'] } });
+		const added = addSpellToSheet(
+			[],
+			'Fireball',
+			3,
+			[0, 1, 2, 3],
+			source,
+			'Bola de Fogo',
+			'pt-BR'
+		);
+
+		expect(added[0].notes).toBe('SRD · Evocação');
+		expect(source.rules.school).toBe('Evocation');
+		expect(source.rules.classes).toEqual(['wizard']);
+	});
+
 	it('updates and removes spells immutably and safely ignores invalid indexes and malformed rules', () => {
 		const previous = [spell(), spell({ name: 'Escudo', level: 1 })];
 		const changed = updateSpellOnSheet(previous, 0, { notes: 'teste' });

@@ -131,7 +131,7 @@
 	>
 	<datalist id="class-options"
 		>{#each optionsFor('class') as entry (entry.id)}<option value={optionLabel(entry)}
-				>{entry.summary}</option
+				>{translatedCompendiumText(entry, 'summary', entry.summary, locale)}</option
 			>{/each}</datalist
 	>
 	<datalist id="species-options"
