@@ -24,29 +24,8 @@ A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `tr
 
 ## Pendências de auditoria da fonte importada
 
-O lote 001–165 continha 150 alvos de ação. Até esta etapa, 52 foram conferidos e restaurados/traduzidos e 13 foram removidos após cotejo oficial; **85 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
+O lote 001–165 continha 150 alvos de ação. Até esta etapa, 64 foram conferidos e restaurados/traduzidos e 22 foram removidos após cotejo oficial; **64 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
 
-- `other:Constrictor Snake.rules.actions.0`
-- `other:Constrictor Snake.rules.actions.1`
-- `other:Copper Dragon Wyrmling.rules.actions.0`
-- `other:Crab.rules.actions.0`
-- `other:Crab.rules.actions.1`
-- `other:Cultist.rules.actions.1`
-- `other:Cultist.rules.actions.2`
-- `other:Cultist Fanatic.rules.actions.0`
-- `other:Cultist Fanatic.rules.actions.1`
-- `other:Darkmantle.rules.actions.0`
-- `other:Death Dog.rules.actions.0`
-- `other:Deer.rules.actions.2`
-- `other:Deva.rules.actions.0`
-- `other:Dire Wolf.rules.actions.1`
-- `other:Dire Wolf.rules.actions.2`
-- `other:Djinni.rules.actions.0`
-- `other:Djinni.rules.actions.1`
-- `other:Draft Horse.rules.actions.0`
-- `other:Draft Horse.rules.actions.1`
-- `other:Draft Horse.rules.actions.2`
-- `other:Dragon Turtle.rules.actions.1`
 - `other:Druid.rules.actions.0`
 - `other:Eagle.rules.actions.0`
 - `other:Eagle.rules.actions.1`
@@ -112,11 +91,11 @@ O lote 001–165 continha 150 alvos de ação. Até esta etapa, 52 foram conferi
 - `other:Guardian Naga.rules.actions.0`
 - `other:Hawk.rules.actions.0`
 
-O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. As 52 ações restauradas/corrigidas e as 15 removidas estão discriminadas no manifesto e na documentação de integridade; os campos confirmados foram cotejados com o SRD 5.2.1 e com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks). Os quatro bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
+O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Nesta metade, 64 ações foram restauradas/corrigidas e 22 foram removidas após cotejo; 64 alvos continuam pendentes. No manifesto global, 64 foram restauradas/corrigidas, 24 removidas e 99 seguem pendentes. Os campos confirmados foram cotejados com o SRD 5.2.1 e com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks). Os bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
 
 ## Atualização de integridade da fonte
 
-Os 8 campos anteriormente truncados de Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`), Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 52 foram conferidas e restauradas/traduzidas, 13 foram removidas após cotejo oficial e as outras 85 seguem pendentes e inalteradas.
+Os campos de sentidos, idiomas e deslocamento já documentados foram cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 64 foram conferidas e restauradas/traduzidas, 22 foram removidas após cotejo oficial e as outras 64 seguem pendentes e inalteradas. Duas ações adicionais fora dos 187 alvos — Crab/Ram e Deer/Bite — foram removidas porque os blocos oficiais confirmam que não pertencem a essas criaturas; elas são registradas separadamente e não entram nessa contagem.
 
 `Basilisk.rules.actions.1` foi removida: o bloco oficial (p. 262; Creature Stat Blocks, linhas 732–736) contém Bite e Petrifying Gaze em Bonus Actions, não Beard. A remoção não certifica as demais ações do registro.
 

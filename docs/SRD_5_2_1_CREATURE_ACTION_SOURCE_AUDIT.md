@@ -71,27 +71,27 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Cloaker.rules.actions.0` | name/range/damage/description | verificado — restaurado | Attach; SRD p. 274, linhas 24522–24534; Creature Stat Blocks, linhas 2288–2290. +6, alcance 5 ft.; 13 (3d6 + 3) perfurante; texto completo de fixar-se, Cego, redução/repasse de dano e formas de desprender cotejado. |
 | `other:Cloaker.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; SRD p. 274, linhas 24535–24536; Creature Stat Blocks, linhas 2292. +6, alcance 10 ft.; 8 (1d10 + 3) cortante. |
 | `other:Commoner.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 275, linhas 24620–24622; Creature Stat Blocks, linhas 2410–2412: a única ação do plebeu é Club; Rend não consta no bloco. |
-| `other:Constrictor Snake.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Constrictor Snake.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Copper Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Crab.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Crab.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cultist.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cultist.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cultist Fanatic.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cultist Fanatic.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Darkmantle.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Death Dog.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Deer.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Deva.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Dire Wolf.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Dire Wolf.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Djinni.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Djinni.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Draft Horse.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Draft Horse.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Draft Horse.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Dragon Turtle.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Constrictor Snake.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; SRD p. 346, linhas 30891–30893; Creature Stat Blocks, linhas 11173–11174. +4, alcance 5 ft.; 6 (1d8 + 2) perfurante; texto integral cotejado. |
+| `other:Constrictor Snake.rules.actions.1` | name/range/damage/description | verificado — restaurado | Constrict; SRD p. 346, linhas 30894–30897; Creature Stat Blocks, linhas 11175–11176. Salvaguarda de Força CD 12 contra uma criatura Média ou menor visível a até 5 ft.; falha causa 7 (3d4) contundente e Agarrado (CD 12 para escapar); sem bônus de ataque. |
+| `other:Copper Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | Rend; SRD p. 275, linhas 24638–24640; Creature Stat Blocks, linhas 2484–2486. +4, alcance 5 ft.; 7 (1d10 + 2) cortante; texto integral cotejado. |
+| `other:Crab.rules.actions.0` | name/range/damage/description | verificado — restaurado | Claw; SRD p. 347, linhas 30912–30913; Creature Stat Blocks, linhas 11211–11213. +2, alcance 5 ft.; 1 contundente; texto cotejado. |
+| `other:Crab.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30912–30913; Creature Stat Blocks, linhas 11211–11213: o bloco contém somente Claw; Bite não consta. |
+| `other:Cultist.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 278, linhas 24871–24873; Creature Stat Blocks, linhas 2760–2761: Cultist tem somente Ritual Sickle; Pact Blade não consta. |
+| `other:Cultist.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 278, linhas 24871–24873; Creature Stat Blocks, linhas 2760–2761: Cultist tem somente Ritual Sickle; Crush não consta. |
+| `other:Cultist Fanatic.rules.actions.0` | name/range/damage/description | verificado — restaurado | Pact Blade; SRD p. 278, linhas 24887–24889; Creature Stat Blocks, linhas 2794–2797. +4, alcance 5 ft.; 6 (1d8 + 2) cortante + 7 (2d6) necrótico; texto cotejado. |
+| `other:Cultist Fanatic.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 278, linhas 24887–24889; Creature Stat Blocks, linhas 2794–2797: Pact Blade é a única ação; Crush não consta. |
+| `other:Darkmantle.rules.actions.0` | name/range/damage/description | verificado — restaurado | Crush; SRD p. 278, linhas 24913–24925; Creature Stat Blocks, linhas 2840–2844. +5, alcance 5 ft.; 6 (1d6 + 3) contundente; vínculo, condições, deslocamento, resistência a dano enquanto preso e formas de desprender cotejados. |
+| `other:Death Dog.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; SRD p. 279, linhas 24946–24955; Creature Stat Blocks, linhas 2878–2882. +4, alcance 5 ft.; 4 (1d4 + 2) perfurante; salvaguarda CD 12, Envenenado, descanso longo, repetição a cada 24 horas e redução do máximo de PV cotejados. |
+| `other:Deer.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30950–30952; Creature Stat Blocks, linhas 11285–11287: o Deer tem somente Ram; Hooves não consta. |
+| `other:Deva.rules.actions.0` | name/range/damage/description | verificado — restaurado | Holy Mace; SRD p. 279, linhas 24978–24981; Creature Stat Blocks, linhas 2922–2925. +8, alcance 5 ft.; 7 (1d6 + 4) contundente + 18 (4d8) radiante; texto cotejado. |
+| `other:Dire Wolf.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30970–30972; Creature Stat Blocks, linhas 11322–11324: a única ação é Bite; Hooves não consta. |
+| `other:Dire Wolf.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30970–30972; Creature Stat Blocks, linhas 11322–11324: a única ação é Bite; Talons não consta. |
+| `other:Djinni.rules.actions.0` | name/range/damage/description | verificado — restaurado | Storm Blade; SRD p. 280, linhas 25020–25023; Creature Stat Blocks, linhas 2972–2974. +9, alcance 5 ft.; 12 (2d6 + 5) cortante + 7 (2d6) elétrico; texto cotejado. |
+| `other:Djinni.rules.actions.1` | name/range/damage/description | verificado — restaurado | Storm Bolt; SRD p. 280, linhas 25024–25027; Creature Stat Blocks, linhas 2975–2977. +9, alcance 120 ft.; 13 (3d8) trovejante; alvos Grandes ou menores ficam Caídos; texto cotejado. |
+| `other:Draft Horse.rules.actions.0` | name/range/damage/description | verificado — restaurado | Hooves; SRD p. 347, linhas 30984–30986; Creature Stat Blocks, linhas 11354–11356. +6, alcance 5 ft.; 6 (1d4 + 4) contundente; texto cotejado. |
+| `other:Draft Horse.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30984–30986; Creature Stat Blocks, linhas 11354–11356: a única ação é Hooves; Talons não consta. |
+| `other:Draft Horse.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30984–30986; Creature Stat Blocks, linhas 11354–11356: a única ação é Hooves; Gore não consta. |
+| `other:Dragon Turtle.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; SRD p. 281, linhas 25098–25107; Creature Stat Blocks, linhas 3065–3072. +13, alcance 15 ft.; 18 (2d10 + 7) contundente; alvo Imenso ou menor fica Caído; texto cotejado. |
 | `other:Druid.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Eagle.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Eagle.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,4 +194,8 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 15 verificados e removidos, 52 verificados e restaurados/corrigidos, 120 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 24 verificados e removidos, 64 verificados e restaurados/corrigidos, 99 pendentes com texto preservado e sem marcador `reviewed`.
+
+## Divergências adicionais fora dos 187 alvos
+
+Na mesma comparação oficial, foram removidas duas ações indevidas que não correspondem a linhas-alvo do manifesto: `other:Crab.rules.actions` continha Ram além de Claw, e `other:Deer.rules.actions` continha Bite além de Ram. Os blocos oficiais confirmam, respectivamente, Crab com somente Claw (SRD p. 347, linhas 30912–30913; Creature Stat Blocks, linhas 11211–11213) e Deer com somente Ram (SRD p. 347, linhas 30950–30952; Creature Stat Blocks, linhas 11285–11287). Essas correções extras estão cobertas por teste e não alteram a contagem dos 187 alvos originais.
