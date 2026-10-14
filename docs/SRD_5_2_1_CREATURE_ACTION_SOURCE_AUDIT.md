@@ -140,22 +140,22 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Glabrezu.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 289, linhas 25800–25808: Pincer; +9, alcance 10 ft.; 16 (2d10 + 5) cortante; alvo Médio ou menor fica Agarrado, CD 15 para escapar, por uma das pinças. |
 | `other:Gnoll Warrior.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 289, linhas 25851–25859: as ações são Rend e Bone Bow; Rampage é Ação Bônus. Scimitar não consta. |
 | `other:Goat.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 355, linhas 31656–31658: Ram; +2, alcance 5 ft.; 1 contundente ou 2 (1d4) após movimento em linha reta. |
-| `other:Goat.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Boss.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Boss.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Boss.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Minion.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Warrior.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goblin Warrior.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Gold Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Gorgon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Green Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Grick.rules.actions.3` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Griffon.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Grimlock.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Grimlock.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Guardian Naga.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Hawk.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Goat.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 355, linhas 31656–31658: Goat lista somente Ram; Talons não consta. |
+| `other:Goblin Boss.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 290, linhas 25916–25923: Scimitar; +4, alcance 5 ft.; 5 (1d6 + 2) cortante e 2 (1d4) cortante se a jogada tiver Vantagem. |
+| `other:Goblin Boss.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 290, linhas 25916–25923: Shortbow; +4, alcance 80/320 ft.; 5 (1d6 + 2) perfurante e 2 (1d4) perfurante se a jogada tiver Vantagem. |
+| `other:Goblin Boss.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 290, linhas 25916–25923: ações Multiattack, Scimitar e Shortbow; Rend não consta. |
+| `other:Goblin Minion.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 290, linhas 25874–25876: Goblin Minion tem somente Dagger; Shortbow não consta. |
+| `other:Goblin Warrior.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 290, linhas 25893–25900: Scimitar; +4, alcance 5 ft.; 5 (1d6 + 2) cortante e 2 (1d4) cortante se a jogada tiver Vantagem. |
+| `other:Goblin Warrior.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 290, linhas 25893–25900: Shortbow; +4, alcance 80/320 ft.; 5 (1d6 + 2) perfurante e 2 (1d4) perfurante se a jogada tiver Vantagem. |
+| `other:Gold Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 290, linhas 25949–25952: Rend; +6, alcance 5 ft.; 9 (1d10 + 4) cortante. |
+| `other:Gorgon.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 292, linhas 26130–26135: Gore; +8, alcance 5 ft.; 18 (2d12 + 5) perfurante; alvo Grande ou menor fica Caído após investida reta de 20+ ft. |
+| `other:Green Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 293, linhas 26200–26203: Rend; +4, alcance 5 ft.; 7 (1d10 + 2) cortante mais 3 (1d6) venenoso. |
+| `other:Grick.rules.actions.3` | name/range/damage/description | verificado — removido | SRD p. 295, linhas 26375–26383: ações Multiattack, Beak e Tentacles; Bone Cudgel não consta. |
+| `other:Griffon.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 295, linhas 26397–26402: o bloco lista Multiattack e Rend; Bone Cudgel não consta. |
+| `other:Grimlock.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 296, linhas 26416–26418: Bone Cudgel; +5, alcance 5 ft.; 6 (1d6 + 3) contundente mais 2 (1d4) psíquico. |
+| `other:Grimlock.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 296, linhas 26416–26418: Bone Cudgel é a única ação; Bite não consta. |
+| `other:Guardian Naga.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 296, linhas 26438–26442: Bite; +8, alcance 10 ft.; 17 (2d12 + 4) perfurante mais 22 (4d10) venenoso. |
+| `other:Hawk.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 355, linhas 31659–31672: Talons; +5, alcance 5 ft.; 1 cortante. |
 | `other:Hippogriff.rules.actions.2` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Hobgoblin Warrior.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Magmin.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,10 +194,10 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 48 verificados e removidos, 88 verificados e restaurados/corrigidos, 51 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 54 verificados e removidos, 98 verificados e restaurados/corrigidos, 35 pendentes com texto preservado e sem marcador `reviewed`.
 
 
-## Lote atual: Giant Elk–Goat
+## Lote anterior: Giant Elk–Goat
 
 Foram conferidos os próximos 16 alvos pendentes em ordem do manifesto: sete ações válidas restauradas integralmente e nove ações removidas após comparação com seus blocos no SRD 5.2.1. Nomes, bônus de ataque, alcance, dano e descrições foram cotejados campo a campo com o PDF oficial. A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual para o ataque do abutre, não uma forma oficial.
 
@@ -219,6 +219,31 @@ Foram conferidos os próximos 16 alvos pendentes em ordem do manifesto: sete aç
 | Glabrezu.actions.0 | Restaurada: Pincer; +9, 10 ft.; 16 (2d10 + 5) cortante; Agarrado (CD 15) para alvo Médio ou menor | SRD p. 289, linhas 25800–25808 |
 | Gnoll Warrior.actions.2 | Removida: Scimitar; ações Rend/Bone Bow e Rampage como Ação Bônus | SRD p. 289, linhas 25851–25859 |
 | Goat.actions.0 | Restaurada: Ram; +2, 5 ft.; 1 contundente, ou 2 (1d4) após movimento reto | SRD p. 355, linhas 31656–31658 |
+
+## Lote atual: Goat–Hawk
+
+Foram cotejados os próximos 16 alvos na ordem do manifesto com o SRD 5.2.1 oficial. Dez ações foram restauradas/corrigidas, incluindo nome, alcance, bônus, dano e descrição; seis ações que não pertencem ao bloco oficial foram removidas. Os campos localizados das dez ações válidas receberam `reviewed` após cotejo. Isso registra a revisão textual dessas ações, não uma validação mecânica abrangente das criaturas.
+
+| Chave | Resultado | Referência SRD 5.2.1 |
+|---|---|---|
+| `other:Goat.rules.actions.1` | Talons removida; Goat lista somente Ram | p. 355, linhas 31656–31658 |
+| `other:Goblin Boss.rules.actions.0` | Scimitar; +4, 5 ft.; 5 (1d6 + 2) cortante + 2 (1d4) se houver Vantagem | p. 290, linhas 25916–25923 |
+| `other:Goblin Boss.rules.actions.1` | Shortbow; +4, 80/320 ft.; 5 (1d6 + 2) perfurante + 2 (1d4) se houver Vantagem | p. 290, linhas 25916–25923 |
+| `other:Goblin Boss.rules.actions.2` | Rend removida; o bloco lista Multiattack, Scimitar e Shortbow | p. 290, linhas 25916–25923 |
+| `other:Goblin Minion.rules.actions.1` | Shortbow removido; o bloco lista somente Dagger | p. 290, linhas 25874–25876 |
+| `other:Goblin Warrior.rules.actions.0` | Scimitar; +4, 5 ft.; 5 (1d6 + 2) cortante + 2 (1d4) se houver Vantagem | p. 290, linhas 25893–25900 |
+| `other:Goblin Warrior.rules.actions.1` | Shortbow; +4, 80/320 ft.; 5 (1d6 + 2) perfurante + 2 (1d4) se houver Vantagem | p. 290, linhas 25893–25900 |
+| `other:Gold Dragon Wyrmling.rules.actions.0` | Rend; +6, 5 ft.; 9 (1d10 + 4) cortante | p. 290, linhas 25949–25952 |
+| `other:Gorgon.rules.actions.0` | Gore; +8, 5 ft.; 18 (2d12 + 5) perfurante; investida pode deixar alvo Grande ou menor Caído | p. 292, linhas 26130–26135 |
+| `other:Green Dragon Wyrmling.rules.actions.0` | Rend; +4, 5 ft.; 7 (1d10 + 2) cortante + 3 (1d6) venenoso | p. 293, linhas 26200–26203 |
+| `other:Grick.rules.actions.3` | Bone Cudgel removida; ações oficiais: Multiattack, Beak e Tentacles | p. 295, linhas 26375–26383 |
+| `other:Griffon.rules.actions.1` | Bone Cudgel removida; bloco lista Multiattack e Rend | p. 295, linhas 26397–26402 |
+| `other:Grimlock.rules.actions.0` | Bone Cudgel; +5, 5 ft.; 6 (1d6 + 3) contundente + 2 (1d4) psíquico | p. 296, linhas 26416–26418 |
+| `other:Grimlock.rules.actions.1` | Bite removida; Bone Cudgel é a única ação | p. 296, linhas 26416–26418 |
+| `other:Guardian Naga.rules.actions.0` | Bite; +8, 10 ft.; 17 (2d12 + 4) perfurante + 22 (4d10) venenoso | p. 296, linhas 26438–26442 |
+| `other:Hawk.rules.actions.0` | Talons; +5, 5 ft.; 1 cortante | p. 355, linhas 31659–31672 |
+
+`other:Goblin Minion.rules.actions.0` (Scimitar) foi observado como divergente do bloco oficial, que lista Dagger. Como não é um dos 16 alvos deste lote, permaneceu intacto e sem revisão ou correção. Nenhuma outra ação, estatística ou categoria foi alterada neste lote.
 
 Remoções em índices intermediários preservaram as ações sobreviventes e reindexaram somente suas chaves localizadas. Goat.actions.1 permanece pendente e inalterada. A revisão é textual e específica aos campos-alvo; não certifica as demais estatísticas dos registros.
 

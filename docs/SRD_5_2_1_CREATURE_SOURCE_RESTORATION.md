@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 88 ações foram conferidas e restauradas/corrigidas e traduzidas; 48 foram removidas por não constarem no bloco oficial; restam 51 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 98 ações foram conferidas e restauradas/corrigidas e traduzidas; 54 foram removidas por não constarem no bloco oficial; restam 35 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -150,7 +150,7 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. No estado atual, 48 foram removidos e 51 seguem pendentes; os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. Antes do lote atual, 48 haviam sido removidos e 51 permaneciam pendentes; agora, 54 foram removidos e 35 seguem pendentes. Os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
 
 ## Lote anterior: Druid–Frog
 
@@ -200,7 +200,7 @@ Foram cotejados os 16 alvos pendentes seguintes na ordem do manifesto. Oito aç�
 Ao remover alvos que ocupavam posições anteriores a ações preservadas, os índices de localização foram reindexados para continuarem associados à ação correta (Giant Centipede). Outras ações não listadas como alvos foram mantidas intactas. A conferência do bloco oficial também revelou divergências em ações fora deste lote — Giant Ape/Bite, Giant Boar/Bite, Giant Centipede/Claw, Giant Constrictor Snake/Claw, Giant Crocodile/Rend e dano radiante adicional de Giant Eagle/Rend; não foram alteradas e ficam fora da contagem desta auditoria.
 
 
-## Lote atual: Giant Elk–Goat
+## Lote anterior: Giant Elk–Goat
 
 Foram processados os 16 alvos pendentes seguintes em ordem do manifesto: sete ações restauradas/corrigidas e nove removidas. As ações válidas receberam tradução integral e proveniência .source=reviewed somente nos campos conferidos. Fonte primária: [SRD 5.2.1 oficial, PDF](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf); as páginas são as impressas no documento e os números de linha identificam o texto extraído.
 
@@ -223,10 +223,35 @@ Foram processados os 16 alvos pendentes seguintes em ordem do manifesto: sete a�
 | Gnoll Warrior .rules.actions.2 | Scimitar removida; ações Rend e Bone Bow; Rampage é Ação Bônus | p. 289, linhas 25851–25859 |
 | Goat .rules.actions.0 | Ram; +2, 5 ft.; 1 contundente, ou 2 (1d4) após movimento reto | p. 355, linhas 31656–31658 |
 
-A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual, não uma tradução oficial. O alvo Goat.rules.actions.1 continua pendente e não foi alterado. Remoções em índices intermediários preservaram o conteúdo não-alvo e reindexaram apenas as chaves localizadas necessárias. A conferência é textual e específica aos alvos; não certifica outras estatísticas.
+A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual, não uma tradução oficial. Remoções em índices intermediários preservaram o conteúdo não-alvo e reindexaram apenas as chaves localizadas necessárias. A conferência é textual e específica aos alvos; não certifica outras estatísticas.
+
+## Lote atual: Goat–Hawk
+
+Foram cotejados os 16 alvos pendentes seguintes em ordem do manifesto. Dez ações válidas foram restauradas/traduzidas e seis ações ausentes dos blocos oficiais foram removidas. Os campos localizados das dez ações válidas receberam `reviewed` somente após conferência. Esta auditoria textual não certifica as demais estatísticas das criaturas.
+
+| Alvo | Resultado | Referência SRD 5.2.1 |
+|---|---|---|
+| Goat `.rules.actions.1` | Talons removida; somente Ram está listada | p. 355, linhas 31656–31658 |
+| Goblin Boss `.rules.actions.0` | Scimitar; +4, 5 ft.; 5 (1d6 + 2) cortante + 2 (1d4) com Vantagem | p. 290, linhas 25916–25923 |
+| Goblin Boss `.rules.actions.1` | Shortbow; +4, 80/320 ft.; 5 (1d6 + 2) perfurante + 2 (1d4) com Vantagem | p. 290, linhas 25916–25923 |
+| Goblin Boss `.rules.actions.2` | Rend removida; ações Multiattack, Scimitar e Shortbow | p. 290, linhas 25916–25923 |
+| Goblin Minion `.rules.actions.1` | Shortbow removido; somente Dagger está listada | p. 290, linhas 25874–25876 |
+| Goblin Warrior `.rules.actions.0` | Scimitar; +4, 5 ft.; 5 (1d6 + 2) cortante + 2 (1d4) com Vantagem | p. 290, linhas 25893–25900 |
+| Goblin Warrior `.rules.actions.1` | Shortbow; +4, 80/320 ft.; 5 (1d6 + 2) perfurante + 2 (1d4) com Vantagem | p. 290, linhas 25893–25900 |
+| Gold Dragon Wyrmling `.rules.actions.0` | Rend; +6, 5 ft.; 9 (1d10 + 4) cortante | p. 290, linhas 25949–25952 |
+| Gorgon `.rules.actions.0` | Gore; +8, 5 ft.; 18 (2d12 + 5) perfurante; investida pode deixar alvo Grande ou menor Caído | p. 292, linhas 26130–26135 |
+| Green Dragon Wyrmling `.rules.actions.0` | Rend; +4, 5 ft.; 7 (1d10 + 2) cortante + 3 (1d6) venenoso | p. 293, linhas 26200–26203 |
+| Grick `.rules.actions.3` | Bone Cudgel removida; ações Multiattack, Beak e Tentacles | p. 295, linhas 26375–26383 |
+| Griffon `.rules.actions.1` | Bone Cudgel removida; ações Multiattack e Rend | p. 295, linhas 26397–26402 |
+| Grimlock `.rules.actions.0` | Bone Cudgel; +5, 5 ft.; 6 (1d6 + 3) contundente + 2 (1d4) psíquico | p. 296, linhas 26416–26418 |
+| Grimlock `.rules.actions.1` | Bite removida; Bone Cudgel é a única ação | p. 296, linhas 26416–26418 |
+| Guardian Naga `.rules.actions.0` | Bite; +8, 10 ft.; 17 (2d12 + 4) perfurante + 22 (4d10) venenoso | p. 296, linhas 26438–26442 |
+| Hawk `.rules.actions.0` | Talons; +5, 5 ft.; 1 cortante | p. 355, linhas 31659–31672 |
+
+O campo `Goblin Minion.rules.actions.0` (Scimitar) também diverge do bloco oficial, que lista Dagger, mas não fazia parte dos 16 alvos e foi preservado sem revisão. Não alterei ações ou estatísticas fora dos alvos selecionados.
 
 ## Pendências
 
-- Cotejar individualmente os 51 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 35 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
