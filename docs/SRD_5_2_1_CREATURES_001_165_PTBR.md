@@ -9,13 +9,13 @@ Ordenação pelo nome-fonte em inglês, sem diferenciar maiúsculas/minúsculas;
 
 ## Campos localizados
 
-Para cada uma das 165 entradas: nome (`pt-BR`), sumário factual (`pt-BR.summary`), tipo/alinhamento (`pt-BR.rules.creatureType`), deslocamento, sentidos e idiomas quando existentes, e campos existentes de ação (`name`, `damage`, `range`, `description`). Campos efetivamente conferidos com a fonte recebem `.source=reviewed`; os campos de ação pendentes do manifesto estão sem esse marcador. `reviewed` registra revisão textual, não validação mecânica geral do bloco de estatísticas.
+Para cada uma das 165 entradas: nome (`pt-BR`), sumário factual (`pt-BR.summary`), tipo/alinhamento (`pt-BR.rules.creatureType`), deslocamento, sentidos e idiomas quando existentes, e campos existentes de ação (`name`, `damage`, `range`, `description`). Campos efetivamente conferidos com a fonte recebem `.source=reviewed`; os campos de ação do manifesto foram conferidos, sem pendências atuais. `reviewed` registra revisão textual, não validação mecânica geral do bloco de estatísticas.
 
 A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `translatedCompendiumText`; a ficha/bestiário lê as chaves `pt-BR.rules.*` por `localizedMonsterField`. Os campos de ação agora usam essas chaves e o alcance passa por `formatDistance`, que preserva a conversão de pés para unidades métricas. Quando a chave não existe, o texto-fonte continua como fallback. Nos registros do pacote, o bloco aninhado presente é `actions`; não há matrizes de `traits` ou `reactions` para este lote.
 
 ## Decisões editoriais
 
-- Traduções editoriais do projeto, cotejadas com o SRD 5.2.1; nos campos incompletos da extração, a conferência integral permanece pendente. Não são traduções oficiais da Wizards of the Coast. Fonte consultada: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf).
+- Traduções editoriais do projeto, cotejadas com o SRD 5.2.1; os campos anteriormente incompletos foram cotejados com a fonte oficial e documentados. Não são traduções oficiais da Wizards of the Coast. Fonte consultada: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf).
 - Nomes de criaturas foram localizados com termos PT-BR correntes; nomes de espécies fantásticas sem equivalente estável foram preservados (por exemplo, Aboleth, Ankheg, Balor, Behir, Berserker, Bulette, Chuul, Cloaker, Couatl, Deva, Doppelganger, Dretch, Drider, Ettercap, Ettin, Glabrezu, Grick, Grimlock e Hezrou).
 - Sumários foram redigidos como resumos factuais do tipo/alinhamento e ND já presentes no pacote; nenhum dado narrativo ou regra foi acrescentado.
 - Vocabulário aplicado: Aberração, Besta, Celestial, Constructo, Dragão, Elemental, Feérico, Ínfero, Gigante, Humanoide, Monstruosidade, Limo, Planta, Morto-vivo; tipos de dano Contundente, Perfurante, Cortante, Ácido, Frio, Fogo, Elétrico, Veneno, Psíquico, Trovejante, Energia e Necrótico; condições segundo o glossário do projeto.
@@ -24,13 +24,13 @@ A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `tr
 
 ## Pendências de auditoria da fonte importada
 
-Os 150 alvos de ação deste primeiro lote foram conferidos: 98 ações foram restauradas/traduzidas e 52 foram removidas após cotejo oficial. Não restam alvos pendentes neste lote. Os 19 alvos globais ainda pendentes pertencem ao segundo lote e estão listados no manifesto; permanecem sem `.source=reviewed`.
+Os 150 alvos de ação deste primeiro lote foram conferidos: 98 ações foram restauradas/traduzidas e 52 foram removidas após cotejo oficial. Não restam alvos pendentes neste lote. Os 19 alvos finais do segundo lote foram concluídos; não há pendências globais no manifesto.
 
-O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Nesta metade, 98 ações foram restauradas/corrigidas e 52 foram removidas; não há pendências. No total global, 107 foram restauradas/corrigidas, 61 removidas e 19 seguem pendentes no segundo lote. Os campos confirmados foram cotejados com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks) e SRD 5.2.1. Os bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
+O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Nesta metade, 98 ações foram restauradas/corrigidas e 52 foram removidas; não há pendências. No total global, 124 foram restauradas/corrigidas, 63 removidas e 0 seguem pendentes no segundo lote. Os campos confirmados foram cotejados com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks) e SRD 5.2.1. Os bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
 
 ## Atualização de integridade da fonte
 
-Os campos de sentidos, idiomas e deslocamento já documentados foram cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 98 foram conferidas e restauradas/traduzidas e 52 foram removidas após cotejo oficial; não há pendências neste lote. Outras 19 ações permanecem pendentes no segundo lote. Duas ações adicionais fora dos 187 alvos — Crab/Ram e Deer/Bite — foram removidas porque os blocos oficiais confirmam que não pertencem a essas criaturas; elas são registradas separadamente e não entram nessa contagem.
+Os campos de sentidos, idiomas e deslocamento já documentados foram cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 98 foram conferidas e restauradas/traduzidas e 52 foram removidas após cotejo oficial; não há pendências neste lote. O segundo lote também está concluído; não restam ações pendentes. Duas ações adicionais fora dos 187 alvos — Crab/Ram e Deer/Bite — foram removidas porque os blocos oficiais confirmam que não pertencem a essas criaturas; elas são registradas separadamente e não entram nessa contagem.
 
 `Basilisk.rules.actions.1` foi removida: o bloco oficial (p. 262; Creature Stat Blocks, linhas 732–736) contém Bite e Petrifying Gaze em Bonus Actions, não Beard. A remoção não certifica as demais ações do registro.
 

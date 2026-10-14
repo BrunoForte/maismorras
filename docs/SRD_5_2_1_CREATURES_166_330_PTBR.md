@@ -63,7 +63,7 @@ A conferência do texto integral ainda não é possível para os blocos de açã
 
 ### Atualização de integridade da fonte
 
-Os 9 campos anteriormente incompletos de Horned Devil, Imp e Lemure (`rules.senses`), Kraken, Ogre Zombie, Otyugh, Pegasus e Pseudodragon (`rules.languages`) e Werebear (`rules.speed`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Dos 37 blocos de ação inicialmente listados, Venomous Snake e Vulture foram removidos após cotejo oficial; os outros 35 mantêm o conteúdo e seguem pendentes. Seus campos traduzidos de ação não têm mais `.source=reviewed` até a correspondência ser verificada.
+Os 9 campos anteriormente incompletos de Horned Devil, Imp e Lemure (`rules.senses`), Kraken, Ogre Zombie, Otyugh, Pegasus e Pseudodragon (`rules.languages`) e Werebear (`rules.speed`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Os blocos de ação inicialmente incompletos foram cotejados nos lotes da auditoria; seus textos completos foram restaurados quando a fonte permitiu, e os blocos indevidos foram removidos após confirmação oficial. Não há ações pendentes no manifesto.
 
 `Venomous Snake.rules.actions.2` (p. 363; Creature Stat Blocks, linhas 13986–13987) era “Hooves”; o bloco oficial contém somente Bite, já presente, e o bloco extra foi removido. `Vulture.rules.actions.1` (p. 363; linhas 14022–14024) também era “Hooves” e foi removido; a ação seguinte e suas chaves de tradução foram mantidas e reindexadas após compactar a lista. Esses ajustes não validam eventuais discrepâncias em outros campos/ações dos registros. O estado de cada alvo consta no [manifesto de auditoria por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md).
 
@@ -240,3 +240,8 @@ Os 9 campos anteriormente incompletos de Horned Devil, Imp e Lemure (`rules.sens
 - other:Young Silver Dragon — Young Silver Dragon
 - other:Young White Dragon — Young White Dragon
 - other:Zombie — Zombie
+
+
+## Estado final da auditoria de ações
+
+O manifesto contabiliza os 187 alvos originais sem duplicações: 124 restaurados/corrigidos, 63 removidos após confirmação e zero pendentes. Os 19 alvos finais (Planetar–Xorn) foram concluídos; a documentação por campo registra a referência oficial de cada entrada. A tradução foi marcada reviewed apenas nos campos textuais cotejados. Dados e divergências de ações fora dos alvos foram preservados.

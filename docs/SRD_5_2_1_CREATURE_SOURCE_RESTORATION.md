@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 107 ações foram conferidas e restauradas/corrigidas e traduzidas; 61 foram removidas por não constarem no bloco oficial; restam 19 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Ao término da auditoria, os 187 alvos foram contabilizados sem duplicação: 124 ações restauradas/corrigidas e traduzidas, 63 removidas após confirmação oficial e nenhuma pendente. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -150,7 +150,7 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. Antes do lote atual, 48 haviam sido removidos e 51 permaneciam pendentes; agora, antes deste lote, 54 haviam sido removidos e 35 seguiam pendentes; após o lote atual, 61 foram removidos e 19 seguem pendentes. Os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. Antes do lote atual, 48 haviam sido removidos e 51 permaneciam pendentes; agora, antes deste lote, 54 haviam sido removidos e 35 seguiam pendentes; naquele ponto, 61 haviam sido removidos e 19 ainda aguardavam revisão; essa etapa histórica foi concluída no lote final, totalizando 63 removidos e 124 restaurados/corrigidos, sem pendências.
 
 ## Lote anterior: Druid–Frog
 
@@ -252,7 +252,7 @@ O campo `Goblin Minion.rules.actions.0` (Scimitar) também diverge do bloco ofic
 
 ## Pendências
 
-- Cotejar individualmente os 19 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Auditoria dos 187 alvos concluída: 124 restaurados/corrigidos, 63 removidos e nenhum pendente. A revisão textual não equivale à validação mecânica geral das criaturas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
 
@@ -281,3 +281,30 @@ Foram processados os próximos 16 alvos do manifesto, em ordem: nove ações res
 | Piranha .rules.actions.0 | Bite corrigida; +5 com Vantagem se o alvo não tiver todos os PV; 5 ft.; 1 perfurante | p. 358, linhas 31937–31939 |
 
 Piranha.rules.actions.1 (Hooves) foi observado, mas estava fora dos 16 alvos e permaneceu sem alteração. A divergência Goblin Minion/Scimitar também continuou intacta, pois não integra este lote. A remoção intermediária de Ogre Zombie/Bite levou à reindexação das traduções preservadas de Claws e Tail; nenhum outro alvo ou estatística foi alterado.
+
+
+## Lote final de ações: Planetar–Xorn
+
+Os 19 alvos finais foram revisados em ordem do manifesto: 17 ações válidas foram restauradas/corrigidas e traduzidas; duas ações indevidas foram removidas. Nome, ataque, alcance, dano e descrição foram cotejados individualmente com o SRD oficial. As referências de página e linhas estão no manifesto. A proveniência reviewed marca somente a revisão textual desses campos, não uma certificação mecânica geral.
+
+| Alvo | Evidência | Resultado |
+|---|---|---|
+| Planetar/Radiant Sword | p. 315, linhas 28131–28135 | dano radiante completo restaurado |
+| Plesiosaurus/Bite | p. 358, linhas 31955–31957 | dano perfurante completo restaurado |
+| Priest/Mace | p. 316, linhas 28187–28191 | dano contundente e radiante restaurado |
+| Priest Acolyte/Mace | p. 315, linhas 28162–28166 | bônus +4 e dano contundente/radiante corrigidos |
+| Purple Worm/Tail Stinger | p. 316, linhas 28247–28256 | dano de veneno completo restaurado |
+| Stirge/Boulder | p. 329, linhas 29410–29418 | removida; Stirge só possui Proboscis |
+| Stone Giant/Boulder | p. 330, linhas 29432–29439 | efeito Caído restaurado |
+| Storm Giant/Storm Sword e Thunderbolt | p. 330, linhas 29496–29504 | dano elétrico e condições restaurados |
+| Troll Limb/Rend | p. 333, linhas 29752–29754 | dano cortante completo restaurado |
+| Warhorse/Hooves | p. 364, linhas 32424–32429 | dano de investida e Caído restaurados |
+| Wereboar/Gore e Tusk | p. 338, linhas 30121–30138 | maldição e efeito de investida restaurados |
+| Wererat/Bite | p. 338, linhas 30159–30169 | maldição, CD 11 e duração restauradas |
+| Weretiger/Bite | p. 339, linhas 30195–30204 | maldição, CD 13 e duração restauradas |
+| Werewolf/Bite | p. 339, linhas 30239–30248 | maldição, CD 12 e duração restauradas |
+| Wight/Necrotic Sword | p. 341, linhas 30421–30425 | dano necrótico completo restaurado |
+| Wyvern/Claw | p. 343, linhas 30565–30573 | removida; ações oficiais são Bite e Sting |
+| Xorn/Claw | p. 343, linhas 30595–30601 | dano cortante completo restaurado |
+
+As divergências de ações que não constavam entre os 19 alvos foram preservadas. Nenhum banco ou sincronização do catálogo foi acessado.

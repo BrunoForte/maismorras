@@ -24486,9 +24486,13 @@
         "pt-BR.rules.immunities": "Enfeitiçado, Exaustão, Amedrontado",
         "pt-BR.rules.immunities.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Espada Radiante",
-        "pt-BR.rules.actions.0.damage": "14 (2d6 + 7) de dano cortante mais 18 (4d8) Rad-",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "14 (2d6 + 7) de dano cortante mais 18 (4d8) de dano radiante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 10 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 14 (2d6 + 7) de dano cortante mais 18 (4d8) Rad-"
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 14 (2d6 + 7) de dano cortante mais 18 (4d8) de dano radiante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -24518,8 +24522,8 @@
             "kind": "action",
             "toHit": 12,
             "range": "reach 10 ft",
-            "damage": "14 (2d6 + 7) Slashing damage plus 18 (4d8) Radi-",
-            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 14 (2d6 + 7) Slashing damage plus 18 (4d8) Radi-"
+            "damage": "14 (2d6 + 7) Slashing damage plus 18 (4d8) Radiant damage.",
+            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 14 (2d6 + 7) Slashing damage plus 18 (4d8) Radiant damage."
           }
         ]
       }
@@ -24559,9 +24563,13 @@
         "pt-BR.rules.resistances": "Frio",
         "pt-BR.rules.resistances.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "11 (2d6 +",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "11 (2d6 + 4) de dano perfurante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 10 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 11 (2d6 +",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 11 (2d6 + 4) de dano perfurante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Cascos",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "4 (1d4",
@@ -24599,8 +24607,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 10 ft",
-            "damage": "11 (2d6 +",
-            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 +"
+            "damage": "11 (2d6 + 4) Piercing damage.",
+            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 + 4) Piercing damage."
           },
           {
             "name": "Hooves",
@@ -25085,9 +25093,13 @@
         "pt-BR.rules.languages": "Comum mais um outro idioma",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Maça",
-        "pt-BR.rules.actions.0.damage": "6 (1d6 +",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "6 (1d6 + 3) de dano contundente mais 5 (2d4) de dano radiante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 +",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano contundente mais 5 (2d4) de dano radiante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Chama Radiante",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "11 (2d10) de dano radiante.",
@@ -25133,8 +25145,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "6 (1d6 +",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 +"
+            "damage": "6 (1d6 + 3) Bludgeoning damage plus 5 (2d4) Radiant damage.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage plus 5 (2d4) Radiant damage."
           },
           {
             "name": "Radiant Flame",
@@ -25173,9 +25185,13 @@
         "pt-BR.rules.languages": "Comum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Maça",
-        "pt-BR.rules.actions.0.damage": "6 (1d6 +",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "5 (1d6 + 2) de dano contundente mais 2 (1d4) de dano radiante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 +",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 5 (1d6 + 2) de dano contundente mais 2 (1d4) de dano radiante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Chama Radiante",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "11 (2d10) de dano radiante.",
@@ -25211,10 +25227,10 @@
           {
             "name": "Mace",
             "kind": "action",
-            "toHit": 5,
+            "toHit": 4,
             "range": "reach 5 ft",
-            "damage": "6 (1d6 +",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 +"
+            "damage": "5 (1d6 + 2) Bludgeoning damage plus 2 (1d4) Radiant damage.",
+            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6 + 2) Bludgeoning damage plus 2 (1d4) Radiant damage."
           },
           {
             "name": "Radiant Flame",
@@ -25444,9 +25460,13 @@
         "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 22 (3d8 + 9) de dano perfurante.",
         "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Ferrão da Cauda",
-        "pt-BR.rules.actions.1.damage": "16 (2d6 + 9) de dano perfurante mais 35 (10d6) Ven-",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "16 (2d6 + 9) de dano perfurante mais 35 (10d6) de dano de veneno",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 10 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 16 (2d6 + 9) de dano perfurante mais 35 (10d6) Ven-"
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 16 (2d6 + 9) de dano perfurante mais 35 (10d6) de dano de veneno.",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -25484,8 +25504,8 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 10 ft",
-            "damage": "16 (2d6 + 9) Piercing damage plus 35 (10d6) Poi-",
-            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 16 (2d6 + 9) Piercing damage plus 35 (10d6) Poi-"
+            "damage": "16 (2d6 + 9) Piercing damage plus 35 (10d6) Poison damage.",
+            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 16 (2d6 + 9) Piercing damage plus 35 (10d6) Poison damage."
           }
         ]
       }
@@ -28988,11 +29008,7 @@
         "pt-BR.rules.actions.1.range": "alcance 15 ft.",
         "pt-BR.rules.actions.1.range.source": "reviewed",
         "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +9, alcance 15 ft. Acerto: 22 (3d10 + 6) de dano contundente.",
-        "pt-BR.rules.actions.1.description.source": "reviewed",
-        "pt-BR.rules.actions.2.name": "Pedregulho",
-        "pt-BR.rules.actions.2.damage": "15 (2d8 + 6) de dano contundente. Se o alvo é um",
-        "pt-BR.rules.actions.2.range": "alcance 60/240 ft.",
-        "pt-BR.rules.actions.2.description": "Jogada de Ataque à Distância: +9, alcance 60/240 ft. Acerto: 15 (2d8 + 6) de dano contundente. Se o alvo é um"
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -29032,14 +29048,6 @@
             "range": "reach 15 ft",
             "damage": "22 (3d10 + 6) Bludgeoning damage.",
             "description": "Melee Attack Roll: +9, reach 15 ft. Hit: 22 (3d10 + 6) Bludgeoning damage."
-          },
-          {
-            "name": "Boulder",
-            "kind": "action",
-            "toHit": 9,
-            "range": "range 60/240 ft",
-            "damage": "15 (2d8 + 6) Bludgeoning damage. If the target is a",
-            "description": "Ranged Attack Roll: +9, range 60/240 ft. Hit: 15 (2d8 + 6) Bludgeoning damage. If the target is a"
           }
         ]
       }
@@ -29072,9 +29080,13 @@
         "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +9, alcance 15 ft. Acerto: 22 (3d10 + 6) de dano contundente.",
         "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Pedregulho",
-        "pt-BR.rules.actions.1.damage": "15 (2d8 + 6) de dano contundente. Se o alvo é um",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "15 (2d8 + 6) de dano contundente. Se o alvo for uma criatura Grande ou menor, fica Caído.",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 60/240 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque à Distância: +9, alcance 60/240 ft. Acerto: 15 (2d8 + 6) de dano contundente. Se o alvo é um"
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque à Distância: +9, alcance 60/240 ft. Acerto: 15 (2d8 + 6) de dano contundente. Se o alvo for uma criatura Grande ou menor, fica Caído.",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -29112,8 +29124,8 @@
             "kind": "action",
             "toHit": 9,
             "range": "range 60/240 ft",
-            "damage": "15 (2d8 + 6) Bludgeoning damage. If the target is a",
-            "description": "Ranged Attack Roll: +9, range 60/240 ft. Hit: 15 (2d8 + 6) Bludgeoning damage. If the target is a"
+            "damage": "15 (2d8 + 6) Bludgeoning damage. If the target is a Large or smaller creature, it has the Prone condition.",
+            "description": "Ranged Attack Roll: +9, range 60/240 ft. Hit: 15 (2d8 + 6) Bludgeoning damage. If the target is a Large or smaller creature, it has the Prone condition."
           }
         ]
       }
@@ -29251,13 +29263,21 @@
         "pt-BR.rules.immunities": "Elétrico, Trovejante",
         "pt-BR.rules.immunities.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Espada da Tempestade",
-        "pt-BR.rules.actions.0.damage": "23 (4d6 + 9) de dano cortante mais 13 (3d8) Eletr-",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "23 (4d6 + 9) de dano cortante mais 13 (3d8) de dano elétrico",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 10 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 23 (4d6 + 9) de dano cortante mais 13 (3d8) Eletr-",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 23 (4d6 + 9) de dano cortante mais 13 (3d8) de dano elétrico.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Raio Trovejante",
-        "pt-BR.rules.actions.1.damage": "22 (2d12 + 9) de dano elétrico, e o alvo tem",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "22 (2d12 + 9) de dano elétrico, e o alvo fica Cego e Surdo até o início do próximo turno do gigante",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 500 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque à Distância: +14, alcance 500 ft. Acerto: 22 (2d12 + 9) de dano elétrico, e o alvo tem"
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque à Distância: +14, alcance 500 ft. Acerto: 22 (2d12 + 9) de dano elétrico, e o alvo fica Cego e Surdo até o início do próximo turno do gigante.",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -29287,16 +29307,16 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 10 ft",
-            "damage": "23 (4d6 + 9) Slashing damage plus 13 (3d8) Light-",
-            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 23 (4d6 + 9) Slashing damage plus 13 (3d8) Light-"
+            "damage": "23 (4d6 + 9) Slashing damage plus 13 (3d8) Lightning damage.",
+            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 23 (4d6 + 9) Slashing damage plus 13 (3d8) Lightning damage."
           },
           {
             "name": "Thunderbolt",
             "kind": "action",
             "toHit": 14,
             "range": "range 500 ft",
-            "damage": "22 (2d12 + 9) Lightning damage, and the target has",
-            "description": "Ranged Attack Roll: +14, range 500 ft. Hit: 22 (2d12 + 9) Lightning damage, and the target has"
+            "damage": "22 (2d12 + 9) Lightning damage, and the target has the Blinded and Deafened conditions until the start of the giant’s next turn.",
+            "description": "Ranged Attack Roll: +14, range 500 ft. Hit: 22 (2d12 + 9) Lightning damage, and the target has the Blinded and Deafened conditions until the start of the giant’s next turn."
           }
         ]
       }
@@ -30668,9 +30688,13 @@
         "pt-BR.rules.immunities": "Veneno; Enfeitiçado, Paralisado, Envenenado",
         "pt-BR.rules.immunities.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "9 (2d4 +",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "9 (2d4 + 4) de dano cortante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 +"
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 + 4) de dano cortante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -30700,8 +30724,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "9 (2d4 +",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 +"
+            "damage": "9 (2d4 + 4) Slashing damage.",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 + 4) Slashing damage."
           }
         ]
       }
@@ -31579,9 +31603,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Cascos",
-        "pt-BR.rules.actions.0.damage": "9 (2d4 +",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "9 (2d4 + 4) de dano contundente. Se o alvo for uma criatura Grande ou menor e o cavalo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 5 (2d4) de dano contundente adicional e fica Caído.",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 +",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 + 4) de dano contundente. Se o alvo for uma criatura Grande ou menor e o cavalo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 5 (2d4) de dano contundente adicional e fica Caído.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Mordida",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "5 (1d6 + 2)",
@@ -31619,8 +31647,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "9 (2d4 +",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 +"
+            "damage": "9 (2d4 + 4) Bludgeoning damage. If the target is a Large or smaller creature and the horse moved 20+ feet straight toward it immediately before the hit, the target takes an extra 5 (2d4) Bludgeoning damage and has the Prone condition.",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 + 4) Bludgeoning damage. If the target is a Large or smaller creature and the horse moved 20+ feet straight toward it immediately before the hit, the target takes an extra 5 (2d4) Bludgeoning damage and has the Prone condition."
           },
           {
             "name": "Bite",
@@ -32053,13 +32081,21 @@
         "pt-BR.rules.languages": "Comum (não pode falar na forma de javali)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Chifrada (somente na forma de javali ou híbrida)",
-        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Javali-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste javali-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Javali-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste javali-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Presa (somente na forma de javali ou híbrida)",
-        "pt-BR.rules.actions.1.damage": "10 (2d6 + 3) de dano perfurante. Se the",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Média ou menor e o javali-licantropo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 7 (2d6) de dano perfurante adicional e fica Caído.",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se the"
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Média ou menor e o javali-licantropo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 7 (2d6) de dano perfurante adicional e fica Caído.",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -32089,16 +32125,16 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "12 (2d8 + 3) Piercing damage. If",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If"
+            "damage": "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wereboar under the GM’s control and has 10 Hit Points. Success: The target is immune to this wereboar’s curse for 24 hours.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wereboar under the GM’s control and has 10 Hit Points. Success: The target is immune to this wereboar’s curse for 24 hours."
           },
           {
             "name": "Tusk (Boar or Hybrid Form Only)",
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "10 (2d6 + 3) Piercing damage. If the",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the"
+            "damage": "10 (2d6 + 3) Piercing damage. If the target is a Medium or smaller creature and the wereboar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Piercing damage and has the Prone condition.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the target is a Medium or smaller creature and the wereboar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Piercing damage and has the Prone condition."
           }
         ]
       }
@@ -32121,9 +32157,13 @@
         "pt-BR.rules.languages": "Comum (não pode falar na forma de rato)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida (somente na forma de rato ou híbrida)",
-        "pt-BR.rules.actions.0.damage": "8 (2d4 + 3) de dano perfurante. Se the",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "8 (2d4 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 11. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Rato-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste rato-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (2d4 + 3) de dano perfurante. Se the",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (2d4 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 11. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Rato-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste rato-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Arranhão",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "6 (1d6",
@@ -32169,8 +32209,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "8 (2d4 + 3) Piercing damage. If the",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (2d4 + 3) Piercing damage. If the"
+            "damage": "8 (2d4 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 11. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wererat under the GM’s control and has 10 Hit Points. Success: The target is immune to this wererat’s curse for 24 hours.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (2d4 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 11. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wererat under the GM’s control and has 10 Hit Points. Success: The target is immune to this wererat’s curse for 24 hours."
           },
           {
             "name": "Scratch",
@@ -32209,9 +32249,13 @@
         "pt-BR.rules.languages": "Comum (não pode falar na forma de tigre)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida (somente na forma de tigre ou híbrida)",
-        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 13. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Tigre-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste tigre-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 13. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Tigre-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste tigre-licantropo por 24 horas.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Arranhão",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "10 (2d6",
@@ -32249,8 +32293,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "12 (2d8 + 3) Piercing damage. If",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If"
+            "damage": "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 13. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Weretiger under the GM’s control and has 10 Hit Points. Success: The target is immune to this weretiger’s curse for 24 hours.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 13. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Weretiger under the GM’s control and has 10 Hit Points. Success: The target is immune to this weretiger’s curse for 24 hours."
           },
           {
             "name": "Scratch",
@@ -32281,9 +32325,13 @@
         "pt-BR.rules.languages": "Comum (não pode falar na forma de lobo)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida (somente na forma de lobo ou híbrida)",
-        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Lobisomem sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste lobisomem por 24 horas.",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Lobisomem sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste lobisomem por 24 horas.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Arranhão",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "10 (2d6",
@@ -32321,8 +32369,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "12 (2d8 + 3) Piercing damage. If",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If"
+            "damage": "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Werewolf under the GM’s control and has 10 Hit Points. Success: The target is immune to this werewolf’s curse for 24 hours.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Werewolf under the GM’s control and has 10 Hit Points. Success: The target is immune to this werewolf’s curse for 24 hours."
           },
           {
             "name": "Scratch",
@@ -32419,9 +32467,13 @@
         "pt-BR.rules.immunities": "Veneno; Exaustão, Envenenado",
         "pt-BR.rules.immunities.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Espada Necrótica",
-        "pt-BR.rules.actions.0.damage": "6 (1d8 + 2) de dano cortante mais 4 (1d8) Nec-",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "6 (1d8 + 2) de dano cortante mais 4 (1d8) de dano necrótico",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 6 (1d8 + 2) de dano cortante mais 4 (1d8) Nec-"
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 6 (1d8 + 2) de dano cortante mais 4 (1d8) de dano necrótico.",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -32451,8 +32503,8 @@
             "kind": "action",
             "toHit": 4,
             "range": "reach 5 ft",
-            "damage": "6 (1d8 + 2) Slashing damage plus 4 (1d8) Ne-",
-            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage plus 4 (1d8) Ne-"
+            "damage": "6 (1d8 + 2) Slashing damage plus 4 (1d8) Necrotic damage.",
+            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage plus 4 (1d8) Necrotic damage."
           }
         ]
       }
@@ -32860,11 +32912,7 @@
         "pt-BR.rules.actions.0.range": "alcance 5 ft.",
         "pt-BR.rules.actions.0.range.source": "reviewed",
         "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 17 (4d6 + 3)",
-        "pt-BR.rules.actions.0.description.source": "reviewed",
-        "pt-BR.rules.actions.1.name": "Garra",
-        "pt-BR.rules.actions.1.damage": "8 (1d10 +",
-        "pt-BR.rules.actions.1.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 8 (1d10 +"
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -32896,14 +32944,6 @@
             "range": "reach 5 ft",
             "damage": "17 (4d6 + 3)",
             "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 17 (4d6 + 3)"
-          },
-          {
-            "name": "Claw",
-            "kind": "action",
-            "toHit": 6,
-            "range": "reach 5 ft",
-            "damage": "8 (1d10 +",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d10 +"
           }
         ]
       }
@@ -32936,9 +32976,13 @@
         "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 17 (4d6 + 3)",
         "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Garra",
-        "pt-BR.rules.actions.1.damage": "8 (1d10 +",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "8 (1d10 + 3) de dano cortante",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 5 ft.",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 8 (1d10 +",
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 8 (1d10 + 3) de dano cortante.",
+        "pt-BR.rules.actions.1.description.source": "reviewed",
         "pt-BR.rules.actions.2.name": "Pancada",
         "pt-BR.rules.actions.2.name.source": "reviewed",
         "pt-BR.rules.actions.2.damage": "5 (1d8 + 1)",
@@ -32984,8 +33028,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "8 (1d10 +",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d10 +"
+            "damage": "8 (1d10 + 3) Slashing damage.",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d10 + 3) Slashing damage."
           },
           {
             "name": "Slam",

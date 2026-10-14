@@ -213,7 +213,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "9c7b7240ca761a4a7b13117f7325863fbec832dde5df90eca4c4032e6c464c35" {
+	if got := hex.EncodeToString(digest[:]); got != "a395a89154bca54cab3f991d780077ad0ff4366eef49058bade89781ff291f69" {
 		t.Fatalf("SRD package source snapshot changed: digest=%s", got)
 	}
 }
@@ -346,7 +346,7 @@ func TestSRDCreatureCatalogIsLocalizedAndNonTargetMechanicsRemainUnchanged(t *te
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "6242504fb548ee9b2556d5c79f5e56810fc483cf1bcbbbfb0574796b2b131387" {
+	if got := hex.EncodeToString(digest[:]); got != "b018372cfff4ede539f2a4066a8d8743b6a9178af6e9173ceef961f659563f95" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -551,6 +551,23 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 		{creature: "Adult Red Dragon", index: 0, name: "Rend", toHit: 14, damage: "13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage.", localizedName: "Dilacerar", localizedDamage: "13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo.", localizedRange: "alcance 10 ft"},
 		{creature: "Adult Silver Dragon", index: 0, name: "Rend", toHit: 13, damage: "17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage", description: "Melee Attack Roll: +13, reach 10 ft. Hit: 17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +13, alcance 10 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio.", localizedRange: "alcance 10 ft"},
 		{creature: "Adult White Dragon", index: 0, name: "Rend", toHit: 11, damage: "13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage.", localizedName: "Dilacerar", localizedDamage: "13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio.", localizedRange: "alcance 10 ft"},
+		{creature: "Planetar", index: 0, name: "Radiant Sword", toHit: 12, damage: "14 (2d6 + 7) Slashing damage plus 18 (4d8) Radiant damage.", description: "Melee Attack Roll: +12, reach 10 ft. Hit: 14 (2d6 + 7) Slashing damage plus 18 (4d8) Radiant damage.", localizedName: "Espada Radiante", localizedDamage: "14 (2d6 + 7) de dano cortante mais 18 (4d8) de dano radiante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 14 (2d6 + 7) de dano cortante mais 18 (4d8) de dano radiante.", localizedRange: "alcance 10 ft."},
+		{creature: "Plesiosaurus", index: 0, name: "Bite", toHit: 6, damage: "11 (2d6 + 4) Piercing damage.", description: "Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 + 4) Piercing damage.", localizedName: "Mordida", localizedDamage: "11 (2d6 + 4) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 11 (2d6 + 4) de dano perfurante.", localizedRange: "alcance 10 ft."},
+		{creature: "Priest", index: 0, name: "Mace", toHit: 5, damage: "6 (1d6 + 3) Bludgeoning damage plus 5 (2d4) Radiant damage.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage plus 5 (2d4) Radiant damage.", localizedName: "Maça", localizedDamage: "6 (1d6 + 3) de dano contundente mais 5 (2d4) de dano radiante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano contundente mais 5 (2d4) de dano radiante.", localizedRange: "alcance 5 ft."},
+		{creature: "Priest Acolyte", index: 0, name: "Mace", toHit: 4, damage: "5 (1d6 + 2) Bludgeoning damage plus 2 (1d4) Radiant damage.", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6 + 2) Bludgeoning damage plus 2 (1d4) Radiant damage.", localizedName: "Maça", localizedDamage: "5 (1d6 + 2) de dano contundente mais 2 (1d4) de dano radiante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 5 (1d6 + 2) de dano contundente mais 2 (1d4) de dano radiante.", localizedRange: "alcance 5 ft."},
+		{creature: "Purple Worm", index: 1, name: "Tail Stinger", toHit: 14, damage: "16 (2d6 + 9) Piercing damage plus 35 (10d6) Poison damage.", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 16 (2d6 + 9) Piercing damage plus 35 (10d6) Poison damage.", localizedName: "Ferrão da Cauda", localizedDamage: "16 (2d6 + 9) de dano perfurante mais 35 (10d6) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 16 (2d6 + 9) de dano perfurante mais 35 (10d6) de dano de veneno.", localizedRange: "alcance 10 ft."},
+		{creature: "Stone Giant", index: 1, name: "Boulder", toHit: 9, damage: "15 (2d8 + 6) Bludgeoning damage. If the target is a Large or smaller creature, it has the Prone condition.", description: "Ranged Attack Roll: +9, range 60/240 ft. Hit: 15 (2d8 + 6) Bludgeoning damage. If the target is a Large or smaller creature, it has the Prone condition.", localizedName: "Pedregulho", localizedDamage: "15 (2d8 + 6) de dano contundente. Se o alvo for uma criatura Grande ou menor, fica Caído.", localizedDescription: "Jogada de Ataque à Distância: +9, alcance 60/240 ft. Acerto: 15 (2d8 + 6) de dano contundente. Se o alvo for uma criatura Grande ou menor, fica Caído.", localizedRange: "alcance 60/240 ft."},
+		{creature: "Storm Giant", index: 0, name: "Storm Sword", toHit: 14, damage: "23 (4d6 + 9) Slashing damage plus 13 (3d8) Lightning damage.", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 23 (4d6 + 9) Slashing damage plus 13 (3d8) Lightning damage.", localizedName: "Espada da Tempestade", localizedDamage: "23 (4d6 + 9) de dano cortante mais 13 (3d8) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 23 (4d6 + 9) de dano cortante mais 13 (3d8) de dano elétrico.", localizedRange: "alcance 10 ft."},
+		{creature: "Storm Giant", index: 1, name: "Thunderbolt", toHit: 14, damage: "22 (2d12 + 9) Lightning damage, and the target has the Blinded and Deafened conditions until the start of the giant’s next turn.", description: "Ranged Attack Roll: +14, range 500 ft. Hit: 22 (2d12 + 9) Lightning damage, and the target has the Blinded and Deafened conditions until the start of the giant’s next turn.", localizedName: "Raio Trovejante", localizedDamage: "22 (2d12 + 9) de dano elétrico, e o alvo fica Cego e Surdo até o início do próximo turno do gigante", localizedDescription: "Jogada de Ataque à Distância: +14, alcance 500 ft. Acerto: 22 (2d12 + 9) de dano elétrico, e o alvo fica Cego e Surdo até o início do próximo turno do gigante.", localizedRange: "alcance 500 ft."},
+		{creature: "Troll Limb", index: 0, name: "Rend", toHit: 6, damage: "9 (2d4 + 4) Slashing damage.", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 + 4) Slashing damage.", localizedName: "Dilacerar", localizedDamage: "9 (2d4 + 4) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 + 4) de dano cortante.", localizedRange: "alcance 5 ft."},
+		{creature: "Warhorse", index: 0, name: "Hooves", toHit: 6, damage: "9 (2d4 + 4) Bludgeoning damage. If the target is a Large or smaller creature and the horse moved 20+ feet straight toward it immediately before the hit, the target takes an extra 5 (2d4) Bludgeoning damage and has the Prone condition.", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 9 (2d4 + 4) Bludgeoning damage. If the target is a Large or smaller creature and the horse moved 20+ feet straight toward it immediately before the hit, the target takes an extra 5 (2d4) Bludgeoning damage and has the Prone condition.", localizedName: "Cascos", localizedDamage: "9 (2d4 + 4) de dano contundente. Se o alvo for uma criatura Grande ou menor e o cavalo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 5 (2d4) de dano contundente adicional e fica Caído.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 9 (2d4 + 4) de dano contundente. Se o alvo for uma criatura Grande ou menor e o cavalo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 5 (2d4) de dano contundente adicional e fica Caído.", localizedRange: "alcance 5 ft."},
+		{creature: "Wereboar", index: 0, name: "Gore (Boar or Hybrid Form Only)", toHit: 5, damage: "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wereboar under the GM’s control and has 10 Hit Points. Success: The target is immune to this wereboar’s curse for 24 hours.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wereboar under the GM’s control and has 10 Hit Points. Success: The target is immune to this wereboar’s curse for 24 hours.", localizedName: "Chifrada (somente na forma de javali ou híbrida)", localizedDamage: "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Javali-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste javali-licantropo por 24 horas.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Javali-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste javali-licantropo por 24 horas.", localizedRange: "alcance 5 ft."},
+		{creature: "Wereboar", index: 1, name: "Tusk (Boar or Hybrid Form Only)", toHit: 5, damage: "10 (2d6 + 3) Piercing damage. If the target is a Medium or smaller creature and the wereboar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Piercing damage and has the Prone condition.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the target is a Medium or smaller creature and the wereboar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Piercing damage and has the Prone condition.", localizedName: "Presa (somente na forma de javali ou híbrida)", localizedDamage: "10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Média ou menor e o javali-licantropo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 7 (2d6) de dano perfurante adicional e fica Caído.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Média ou menor e o javali-licantropo tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo sofre 7 (2d6) de dano perfurante adicional e fica Caído.", localizedRange: "alcance 5 ft."},
+		{creature: "Wererat", index: 0, name: "Bite (Rat or Hybrid Form Only)", toHit: 5, damage: "8 (2d4 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 11. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wererat under the GM’s control and has 10 Hit Points. Success: The target is immune to this wererat’s curse for 24 hours.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (2d4 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 11. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wererat under the GM’s control and has 10 Hit Points. Success: The target is immune to this wererat’s curse for 24 hours.", localizedName: "Mordida (somente na forma de rato ou híbrida)", localizedDamage: "8 (2d4 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 11. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Rato-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste rato-licantropo por 24 horas.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (2d4 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 11. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Rato-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste rato-licantropo por 24 horas.", localizedRange: "alcance 5 ft."},
+		{creature: "Weretiger", index: 0, name: "Bite (Tiger or Hybrid Form Only)", toHit: 5, damage: "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 13. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Weretiger under the GM’s control and has 10 Hit Points. Success: The target is immune to this weretiger’s curse for 24 hours.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 13. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Weretiger under the GM’s control and has 10 Hit Points. Success: The target is immune to this weretiger’s curse for 24 hours.", localizedName: "Mordida (somente na forma de tigre ou híbrida)", localizedDamage: "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 13. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Tigre-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste tigre-licantropo por 24 horas.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 13. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Tigre-Licantropo sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste tigre-licantropo por 24 horas.", localizedRange: "alcance 5 ft."},
+		{creature: "Werewolf", index: 0, name: "Bite (Wolf or Hybrid Form Only)", toHit: 5, damage: "12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Werewolf under the GM’s control and has 10 Hit Points. Success: The target is immune to this werewolf’s curse for 24 hours.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 12 (2d8 + 3) Piercing damage. If the target is a Humanoid, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Werewolf under the GM’s control and has 10 Hit Points. Success: The target is immune to this werewolf’s curse for 24 hours.", localizedName: "Mordida (somente na forma de lobo ou híbrida)", localizedDamage: "12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Lobisomem sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste lobisomem por 24 horas.", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 12 (2d8 + 3) de dano perfurante. Se o alvo for um Humanoide, sofre o efeito a seguir. Salvaguarda de Constituição: CD 12. Falha: O alvo é amaldiçoado. Se cair a 0 Pontos de Vida, em vez disso se torna um Lobisomem sob o controle do Mestre e tem 10 Pontos de Vida. Sucesso: O alvo fica imune à maldição deste lobisomem por 24 horas.", localizedRange: "alcance 5 ft."},
+		{creature: "Wight", index: 0, name: "Necrotic Sword", toHit: 4, damage: "6 (1d8 + 2) Slashing damage plus 4 (1d8) Necrotic damage.", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage plus 4 (1d8) Necrotic damage.", localizedName: "Espada Necrótica", localizedDamage: "6 (1d8 + 2) de dano cortante mais 4 (1d8) de dano necrótico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 6 (1d8 + 2) de dano cortante mais 4 (1d8) de dano necrótico.", localizedRange: "alcance 5 ft."},
+		{creature: "Xorn", index: 1, name: "Claw", toHit: 6, damage: "8 (1d10 + 3) Slashing damage.", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d10 + 3) Slashing damage.", localizedName: "Garra", localizedDamage: "8 (1d10 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 8 (1d10 + 3) de dano cortante.", localizedRange: "alcance 5 ft."},
 		{creature: "Ancient Black Dragon", index: 0, name: "Rend", toHit: 15, damage: "17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido.", localizedRange: "alcance 15 ft"},
 		{creature: "Ancient Blue Dragon", index: 0, name: "Rend", toHit: 16, damage: "18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage", description: "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico.", localizedRange: "alcance 15 ft"},
 		{creature: "Ancient Brass Dragon", index: 0, name: "Rend", toHit: 14, damage: "19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage", description: "Melee Attack Roll: +14, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage.", localizedName: "Dilacerar", localizedDamage: "19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo.", localizedRange: "alcance 15 ft"},
@@ -685,6 +702,10 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "range 150/600 ft"
 			} else if rangeLabel == "alcance 80/320 ft" {
 				sourceRange = "range 80/320 ft"
+			} else if rangeLabel == "alcance 60/240 ft" {
+				sourceRange = "range 60/240 ft"
+			} else if rangeLabel == "alcance 500 ft" {
+				sourceRange = "range 500 ft"
 			} else if rangeLabel == "linha de 30 ft de comprimento e 5 ft de largura" {
 				sourceRange = "30-foot-long, 5-foot-wide Line"
 			} else if rangeLabel == "linha de 40 ft de comprimento e 5 ft de largura" {
@@ -739,6 +760,7 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 		"Giant Badger": {"Gore"}, "Giant Bat": {"Gore"}, "Giant Crab": {"Bite", "Tail"}, "Giant Eagle": {"Ram"},
 		"Giant Octopus": {"Talons"}, "Giant Owl": {"Bite"}, "Giant Rat": {"Ram"}, "Giant Scorpion": {"Ram"},
 		"Giant Venomous Snake": {"Gouge"}, "Giant Weasel": {"Ram"}, "Giant Wolf Spider": {"Ram", "Talons"}, "Gnoll Warrior": {"Scimitar"},
+		"Stirge": {"Boulder"}, "Wyvern": {"Claw"},
 	}
 	removedTranslations := map[string][]string{
 		"Basilisk": {"Barba"}, "Venomous Snake": {"Cascos"}, "Vulture": {"Cascos"}, "Hippogriff": {"Arco Longo"}, "Manticore": {"Lâmina do Pacto"}, "Octopus": {"Garras"}, "Ogre": {"Raio do Pesadelo"}, "Ogre Zombie": {"Mordida"}, "Panther": {"Mordida"}, "Pegasus": {"Mordida"},
@@ -753,9 +775,10 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 		"Giant Badger": {"Chifrada"}, "Giant Bat": {"Chifrada"}, "Giant Crab": {"Mordida", "Cauda"}, "Giant Eagle": {"Investida"},
 		"Giant Octopus": {"Garras"}, "Giant Owl": {"Mordida"}, "Giant Rat": {"Investida"}, "Giant Scorpion": {"Investida"},
 		"Giant Venomous Snake": {"Escavar"}, "Giant Weasel": {"Investida"}, "Giant Wolf Spider": {"Investida", "Garras"}, "Gnoll Warrior": {"Cimitarra"},
+		"Stirge": {"Pedregulho"}, "Wyvern": {"Garra"},
 	}
 	removedTranslationIndexes := map[string]int{
-		"Hippogriff": 2, "Manticore": 2, "Octopus": 1, "Ogre": 1,
+		"Hippogriff": 2, "Manticore": 2, "Octopus": 1, "Ogre": 1, "Stirge": 2, "Wyvern": 1,
 		"Ogre Zombie": 1, "Panther": 1, "Pegasus": 1,
 	}
 	expectedActionNames := map[string][]string{
@@ -767,6 +790,7 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 		"Giant Octopus": {"Tentacles"}, "Giant Owl": {"Talons"}, "Giant Rat": {"Bite", "Claw", "Sting"},
 		"Giant Scorpion": {"Claw", "Sting"}, "Giant Venomous Snake": {"Bite", "Sting"}, "Giant Weasel": {"Bite"},
 		"Giant Wolf Spider": {"Bite"}, "Gnoll Warrior": {"Rend", "Bone Bow", "Shortbow"},
+		"Stirge": {"Proboscis", "Stone Club"}, "Wyvern": {"Bite"},
 		"Hippogriff": {"Rend", "Longsword"}, "Manticore": {"Rend", "Tail Spike"}, "Octopus": {"Tentacles"}, "Ogre": {"Greatclub"}, "Ogre Zombie": {"Slam", "Claws", "Tail"}, "Panther": {"Rend"}, "Pegasus": {"Hooves"}, "Piranha": {"Bite", "Hooves"},
 	}
 	for creature, actionNames := range removed {
@@ -852,9 +876,15 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		t.Fatalf("action audit manifest rows = %d, want 187", len(rows))
 	}
 	pending := make(map[string]bool)
+	seen := make(map[string]bool, len(rows))
 	verifiedRemoved := 0
 	verifiedRestored := 0
 	for _, row := range rows {
+		key := fmt.Sprintf("%s|%s", row[1], row[2])
+		if seen[key] {
+			t.Fatalf("duplicate creature action audit target %s", key)
+		}
+		seen[key] = true
 		if row[3] == "verificado — removido" {
 			verifiedRemoved++
 			continue
@@ -863,10 +893,10 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 			verifiedRestored++
 			continue
 		}
-		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
+		pending[key] = true
 	}
-	if len(pending) != 19 || verifiedRemoved != 61 || verifiedRestored != 107 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 19, 61 and 107", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 0 || verifiedRemoved != 63 || verifiedRestored != 124 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 0, 63 and 124", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -959,7 +989,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "a9e0d4edf002a464b9171e36e3a9e34ca9bdaf985bcbc7c564ae70f1b376d734" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "490381208a9c245cf2c596749ab9290769b78e8aaeecdd978266fe953ad53f29" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1286,7 +1316,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "a49c9e95746ecb904725cc8ccd3435c2c690f45447561605727531ab55a6fe79"
+	const wantSourceDigest = "36a6e77d4f0a97dd6e5027a483921ee0c37b1fb95369a4baa6cfc52981ff447f"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

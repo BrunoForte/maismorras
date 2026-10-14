@@ -172,29 +172,29 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Pegasus.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 313, linhas 27971–27973: Hooves é a ação; Bite não consta. |
 | `other:Phase Spider.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 313, linhas 27995–28002: Bite +5, alcance 5 ft.; 8 (1d10 + 3) perfurante + 9 (2d8) veneno; alvo a 0 PV fica Estável e Envenenado por 1 hora, também Paralisado enquanto Envenenado. |
 | `other:Piranha.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 358, linhas 31937–31939: Bite +5, com Vantagem se o alvo não tiver todos os PV; alcance 5 ft.; 1 perfurante. |
-| `other:Planetar.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Plesiosaurus.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Priest.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Priest Acolyte.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Purple Worm.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Stirge.rules.actions.2` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Stone Giant.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Storm Giant.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Storm Giant.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Troll Limb.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Planetar.rules.actions.0` | name/range/damage/description | verificado — restaurado | Espada Radiante; +12, 10 ft.; 14 (2d6 + 7) cortante + 18 (4d8) radiante.; p. 315, linhas 28131–28135. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Plesiosaurus.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; +6, 10 ft.; 11 (2d6 + 4) perfurante.; p. 358, linhas 31955–31957. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Priest.rules.actions.0` | name/range/damage/description | verificado — restaurado | Mace; +5, 5 ft.; 6 (1d6 + 3) contundente + 5 (2d4) radiante.; p. 316, linhas 28187–28191. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Priest Acolyte.rules.actions.0` | name/range/damage/description | verificado — restaurado | Mace; +4, 5 ft.; 5 (1d6 + 2) contundente + 2 (1d4) radiante.; p. 315, linhas 28162–28166. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Purple Worm.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail Stinger; +14, 10 ft.; 16 (2d6 + 9) perfurante + 35 (10d6) veneno.; p. 316, linhas 28247–28256. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Stirge.rules.actions.2` | name/range/damage/description | verificado — removido | Boulder removida; bloco completo lista apenas Proboscis.; p. 329, linhas 29410–29418. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Stone Giant.rules.actions.1` | name/range/damage/description | verificado — restaurado | Boulder; +9, 60/240 ft.; 15 (2d8 + 6) contundente; alvo Grande ou menor fica Caído.; p. 330, linhas 29432–29439. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Storm Giant.rules.actions.0` | name/range/damage/description | verificado — restaurado | Storm Sword; +14, 10 ft.; 23 (4d6 + 9) cortante + 13 (3d8) elétrico.; p. 330, linhas 29496–29500. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Storm Giant.rules.actions.1` | name/range/damage/description | verificado — restaurado | Thunderbolt; +14, 500 ft.; 22 (2d12 + 9) elétrico; alvo fica Cego e Surdo até início do próximo turno do gigante.; p. 330, linhas 29501–29504. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Troll Limb.rules.actions.0` | name/range/damage/description | verificado — restaurado | Rend; +6, 5 ft.; 9 (2d4 + 4) cortante.; p. 333, linhas 29752–29754. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
 | `other:Venomous Snake.rules.actions.2` | damage/description | verificado — removido | SRD p. 363; Creature Stat Blocks, Venomous Snake, linhas 13986–13987: somente Bite; não há Hooves. |
 | `other:Vulture.rules.actions.1` | damage/description | verificado — removido | SRD p. 363; Creature Stat Blocks, Vulture, linhas 14022–14024: somente Beak; não há Hooves. |
-| `other:Warhorse.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Wereboar.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Wereboar.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Wererat.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Weretiger.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Werewolf.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Wight.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Warhorse.rules.actions.0` | name/range/damage/description | verificado — restaurado | Hooves; +6, 5 ft.; 9 (2d4 + 4) contundente; investida causa 5 (2d4) adicional e Caído.; p. 364, linhas 32424–32429. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Wereboar.rules.actions.0` | name/range/damage/description | verificado — restaurado | Gore; +5, 5 ft.; 12 (2d8 + 3) perfurante; efeito de maldição em humanoides, Con CD 12.; p. 338, linhas 30121–30130. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Wereboar.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tusk; +5, 5 ft.; 10 (2d6 + 3) perfurante; investida causa 7 (2d6) adicional e Caído.; p. 338, linhas 30134–30138. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Wererat.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; +5, 5 ft.; 8 (2d4 + 3) perfurante; efeito de maldição em humanoides, Con CD 11.; p. 338, linhas 30159–30169. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Weretiger.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; +5, 5 ft.; 12 (2d8 + 3) perfurante; efeito de maldição em humanoides, Con CD 13.; p. 339, linhas 30195–30204. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Werewolf.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; +5, 5 ft.; 12 (2d8 + 3) perfurante; efeito de maldição em humanoides, Con CD 12.; p. 339, linhas 30239–30248. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Wight.rules.actions.0` | name/range/damage/description | verificado — restaurado | Necrotic Sword; +4, 5 ft.; 6 (1d8 + 2) cortante + 4 (1d8) necrótico.; p. 341, linhas 30421–30425. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Wyvern.rules.actions.1` | name/range/damage/description | verificado — removido | Claw removida; o bloco lista Bite e Sting como ações.; p. 343, linhas 30565–30573. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
+| `other:Xorn.rules.actions.1` | name/range/damage/description | verificado — restaurado | Claw; +6, 5 ft.; 8 (1d10 + 3) cortante.; p. 343, linhas 30595–30601. Nome, bônus/ataque, alcance, dano e descrição foram cotejados individualmente com a fonte. |
 
-Total: 187 alvos originais; 61 verificados e removidos, 107 verificados e restaurados/corrigidos, 19 pendentes com texto preservado e sem marcador `reviewed`.
+Total final: 187 alvos originais sem duplicações; 63 verificados e removidos, 124 verificados e restaurados/corrigidos, 0 pendentes. A revisão textual não certifica mecanicamente os demais campos das criaturas.
 
 
 ## Lote anterior: Giant Elk–Goat
@@ -276,3 +276,10 @@ Foram conferidos os próximos 16 alvos pendentes na ordem do manifesto contra o 
 | other:Piranha.rules.actions.0 | Bite corrigida; +5, Vantagem se alvo não estiver com todos os PV, 5 ft.; 1 perfurante | p. 358, linhas 31937–31939 |
 
 A ação indevida Piranha.rules.actions.1 (Hooves) não era um alvo do manifesto e permaneceu inalterada. A divergência Goblin Minion/Scimitar também permaneceu intacta, pois está fora deste lote. Remoções em índice intermediário preservaram as traduções das ações seguintes do Ogre Zombie, reindexando-as para acompanhar a lista de ações.
+
+
+## Lote final: Planetar–Xorn
+
+Os 19 alvos finais foram cotejados individualmente com o SRD 5.2.1 oficial. Dezessete ações válidas foram restauradas/corrigidas e traduzidas; duas ações não pertencentes ao bloco indicado foram removidas. As traduções receberam .source=reviewed nos campos name, range, damage e description efetivamente conferidos. Fontes: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf) e, quando aplicável, [Creature Stat Blocks oficial](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks). As referências de página e linhas estão nas 19 linhas acima.
+
+Stirge/Boulder foi removida: o bloco lista somente Proboscis. Wyvern/Claw foi removida: o bloco lista Bite e Sting, sem Claw. Não foram adicionadas ações oficiais ausentes nem corrigidas divergências que estavam fora destes 19 alvos; os extras existentes em Plesiosaurus, Priest, Priest Acolyte, Stirge, Warhorse e outros registros permanecem intactos.
