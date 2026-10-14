@@ -1455,12 +1455,15 @@
 					/>
 				{/if}
 				{#if activeTab === 'inventory'}
+					{@const weightLimits = carryingCapacity()}
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
 						allCompendiumEntries={compendiumEntries}
 						visibleItems={visibleInventory()}
 						carriedWeight={carriedWeight().weightLb}
-						capacityLb={carryingCapacity()?.capacityLb ?? null}
+						capacityLb={weightLimits?.capacityLb ?? null}
+						pushDragLiftLb={weightLimits?.pushDragLiftLb ?? null}
+						powerfulBuildApplied={weightLimits?.powerfulBuildApplied ?? false}
 						loadIncomplete={carriedWeight().incomplete}
 						unknownItemCount={carriedWeight().unknownItemCount}
 						canUseLargeForm={canUseLargeForm()}

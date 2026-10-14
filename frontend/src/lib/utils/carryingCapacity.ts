@@ -5,13 +5,13 @@ export const DND2024_SIZES = ['tiny', 'small', 'medium', 'large', 'huge', 'garga
 
 export type Dnd2024Size = (typeof DND2024_SIZES)[number];
 
-const carryMultiplier: Record<Dnd2024Size, number> = {
-	tiny: 7.5,
-	small: 15,
-	medium: 15,
-	large: 30,
-	huge: 60,
-	gargantuan: 120
+const sizeWeightMultipliers: Record<Dnd2024Size, { carry: number; pushDragLift: number }> = {
+	tiny: { carry: 7.5, pushDragLift: 15 },
+	small: { carry: 15, pushDragLift: 30 },
+	medium: { carry: 15, pushDragLift: 30 },
+	large: { carry: 30, pushDragLift: 60 },
+	huge: { carry: 60, pushDragLift: 120 },
+	gargantuan: { carry: 120, pushDragLift: 240 }
 };
 
 const nextSize: Record<Dnd2024Size, Dnd2024Size> = {
@@ -39,14 +39,23 @@ export function calculateDnd2024CarryingCapacity(input: {
 	size: Dnd2024Size;
 	powerfulBuild?: boolean;
 	largeFormActive?: boolean;
-}): { effectiveSize: Dnd2024Size; capacityLb: number } | null {
+}): {
+	actualSize: Dnd2024Size;
+	effectiveSize: Dnd2024Size;
+	capacityLb: number;
+	pushDragLiftLb: number;
+	powerfulBuildApplied: boolean;
+} | null {
 	if (!Number.isSafeInteger(input.strength) || input.strength < 1 || input.strength > 30)
 		return null;
 	const actualSize = input.largeFormActive ? 'large' : input.size;
 	const effectiveSize = input.powerfulBuild ? nextSize[actualSize] : actualSize;
 	return {
+		actualSize,
 		effectiveSize,
-		capacityLb: input.strength * carryMultiplier[effectiveSize]
+		capacityLb: input.strength * sizeWeightMultipliers[effectiveSize].carry,
+		pushDragLiftLb: input.strength * sizeWeightMultipliers[actualSize].pushDragLift,
+		powerfulBuildApplied: input.powerfulBuild === true
 	};
 }
 

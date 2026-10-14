@@ -74,6 +74,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 				visibleItems: [],
 				carriedWeight: 151,
 				capacityLb: 150,
+				pushDragLiftLb: 300,
+				powerfulBuildApplied: true,
 				loadIncomplete: true,
 				unknownItemCount: 1,
 				canUseLargeForm: true,
@@ -104,6 +106,10 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html).toContain('value="5"');
 		expect(html).toContain('Peso carregado / capacidade máxima');
 		expect(html).toContain('151 / 150 lb');
+		expect(html).toContain('Limite para empurrar / arrastar / levantar');
+		expect(html).toContain('300 lb</span>');
+		expect(html).toContain('Porte Poderoso altera apenas a capacidade de carga');
+		expect(html).toContain('deslocamento não pode exceder 5 pés');
 		expect(html).toContain('O total pode estar incompleto');
 		expect(html).toContain('Acima da capacidade de carga');
 		expect(html).toContain('Forma Grande ativa');
@@ -128,6 +134,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 			],
 			carriedWeight: 0,
 			capacityLb: 150,
+			pushDragLiftLb: 300,
+			powerfulBuildApplied: false,
 			loadIncomplete: false,
 			unknownItemCount: 0,
 			canUseLargeForm: false,
@@ -145,6 +153,8 @@ describe('CharacterInventoryTab compendium picker', () => {
 		};
 		const localizedHtml = render(CharacterInventoryTab, { props }).body;
 		expect(localizedHtml).toContain('Esta bolsa comporta até 227 kg e 1,8 m³.');
+		expect(localizedHtml).not.toContain('data-testid="powerful-build-capacity-note"');
+		expect(localizedHtml).toContain('data-testid="hauling-speed-limit"');
 		const fallbackEntries = entries.map((entry) =>
 			entry.id === 'magic-catalog'
 				? { ...entry, translations: { 'pt-BR': 'Bolsa de Carga', 'pt-BR.source': 'reviewed' } }

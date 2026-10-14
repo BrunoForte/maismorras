@@ -16,31 +16,47 @@ const item = (weight: unknown, quantity = 1): InventoryItem => ({
 
 describe('D&D 2024 carrying capacity', () => {
 	it.each([
-		['tiny', 7.5],
-		['small', 15],
-		['medium', 15],
-		['large', 30],
-		['huge', 60],
-		['gargantuan', 120]
-	] as const)('uses the SRD size multiplier for %s', (size, multiplier) => {
-		expect(calculateDnd2024CarryingCapacity({ strength: 10, size })?.capacityLb).toBe(
-			10 * multiplier
-		);
+		['tiny', 7.5, 15],
+		['small', 15, 30],
+		['medium', 15, 30],
+		['large', 30, 60],
+		['huge', 60, 120],
+		['gargantuan', 120, 240]
+	] as const)('uses the SRD limits for %s', (size, carryMultiplier, pushDragLiftMultiplier) => {
+		const limits = calculateDnd2024CarryingCapacity({ strength: 10, size });
+		expect(limits?.capacityLb).toBe(10 * carryMultiplier);
+		expect(limits?.pushDragLiftLb).toBe(10 * pushDragLiftMultiplier);
+		expect(limits?.actualSize).toBe(size);
 	});
 
 	it('uses table endpoints and rejects invalid Strength', () => {
-		expect(calculateDnd2024CarryingCapacity({ strength: 1, size: 'tiny' })?.capacityLb).toBe(7.5);
-		expect(calculateDnd2024CarryingCapacity({ strength: 30, size: 'gargantuan' })?.capacityLb).toBe(
-			3600
-		);
+		expect(calculateDnd2024CarryingCapacity({ strength: 1, size: 'tiny' })).toMatchObject({
+			capacityLb: 7.5,
+			pushDragLiftLb: 15
+		});
+		expect(calculateDnd2024CarryingCapacity({ strength: 30, size: 'gargantuan' })).toMatchObject({
+			capacityLb: 3600,
+			pushDragLiftLb: 7200
+		});
 		expect(calculateDnd2024CarryingCapacity({ strength: 0, size: 'medium' })).toBeNull();
 		expect(calculateDnd2024CarryingCapacity({ strength: 31, size: 'medium' })).toBeNull();
+		expect(calculateDnd2024CarryingCapacity({ strength: 10.5, size: 'medium' })).toBeNull();
+		expect(calculateDnd2024CarryingCapacity({ strength: Number.NaN, size: 'medium' })).toBeNull();
+		expect(
+			calculateDnd2024CarryingCapacity({ strength: undefined as unknown as number, size: 'medium' })
+		).toBeNull();
 	});
 
-	it('applies Powerful Build once and Large Form before its size step', () => {
+	it('applies Powerful Build only to carrying capacity and Large Form to actual size', () => {
 		expect(
 			calculateDnd2024CarryingCapacity({ strength: 10, size: 'medium', powerfulBuild: true })
-		).toEqual({ effectiveSize: 'large', capacityLb: 300 });
+		).toEqual({
+			actualSize: 'medium',
+			effectiveSize: 'large',
+			capacityLb: 300,
+			pushDragLiftLb: 300,
+			powerfulBuildApplied: true
+		});
 		expect(
 			calculateDnd2024CarryingCapacity({
 				strength: 10,
@@ -48,10 +64,56 @@ describe('D&D 2024 carrying capacity', () => {
 				powerfulBuild: true,
 				largeFormActive: true
 			})
-		).toEqual({ effectiveSize: 'huge', capacityLb: 600 });
+		).toEqual({
+			actualSize: 'large',
+			effectiveSize: 'huge',
+			capacityLb: 600,
+			pushDragLiftLb: 600,
+			powerfulBuildApplied: true
+		});
 		expect(
 			calculateDnd2024CarryingCapacity({ strength: 10, size: 'medium', largeFormActive: true })
-		).toEqual({ effectiveSize: 'large', capacityLb: 300 });
+		).toEqual({
+			actualSize: 'large',
+			effectiveSize: 'large',
+			capacityLb: 300,
+			pushDragLiftLb: 600,
+			powerfulBuildApplied: false
+		});
+	});
+
+	it('keeps Powerful Build at the table maximum without applying another size step', () => {
+		expect(
+			calculateDnd2024CarryingCapacity({ strength: 10, size: 'gargantuan', powerfulBuild: true })
+		).toEqual({
+			actualSize: 'gargantuan',
+			effectiveSize: 'gargantuan',
+			capacityLb: 1200,
+			pushDragLiftLb: 2400,
+			powerfulBuildApplied: true
+		});
+	});
+
+	it('returns to the recorded size when the temporary Large Form effect ends', () => {
+		const before = calculateDnd2024CarryingCapacity({
+			strength: 12,
+			size: 'medium',
+			powerfulBuild: true
+		});
+		const active = calculateDnd2024CarryingCapacity({
+			strength: 12,
+			size: 'medium',
+			powerfulBuild: true,
+			largeFormActive: true
+		});
+		const ended = calculateDnd2024CarryingCapacity({
+			strength: 12,
+			size: 'medium',
+			powerfulBuild: true
+		});
+		expect(before?.capacityLb).toBe(360);
+		expect(active?.capacityLb).toBe(720);
+		expect(ended).toEqual(before);
 	});
 
 	it('defaults existing fixed Small species to Small and other species to Medium', () => {
