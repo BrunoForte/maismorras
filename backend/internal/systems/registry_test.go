@@ -99,6 +99,24 @@ func TestVersionedCharacterRuleResolutionPreservesDnd2024Behavior(t *testing.T) 
 	}
 }
 
+func TestCharacterTokenInitiativeRulesPreserveDnd2024DexterityModifier(t *testing.T) {
+	rules, ok := ResolveCharacterTokenInitiativeRules(DefaultRef())
+	if !ok {
+		t.Fatal("D&D 2024 token initiative rules must resolve for its registered version")
+	}
+	for _, tt := range []struct{ dexterity, want int }{{1, -5}, {8, -1}, {9, -1}, {10, 0}, {11, 0}, {12, 1}, {16, 3}, {20, 5}, {30, 10}} {
+		if got := rules.InitiativeBonus(tt.dexterity); got != tt.want {
+			t.Errorf("InitiativeBonus(%d) = %d, want %d", tt.dexterity, got, tt.want)
+		}
+	}
+	if _, ok := ResolveCharacterTokenInitiativeRules(Ref{ID: Dnd2024, Version: "9.9.9"}); ok {
+		t.Fatal("unsupported D&D version must not resolve token initiative rules")
+	}
+	if _, ok := ResolveCharacterTokenInitiativeRules(Ref{ID: "dnd35", Version: "1.0.0"}); ok {
+		t.Fatal("unregistered system must not resolve token initiative rules")
+	}
+}
+
 func TestD20RulesRejectInvalidModeAndDieValue(t *testing.T) {
 	rules := Dnd2024Rules{}
 	if _, err := rules.RollD20("exploding", 0, func(int) (int, error) { return 1, nil }); err == nil {

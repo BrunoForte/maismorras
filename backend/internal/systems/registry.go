@@ -30,6 +30,13 @@ type Dnd2024CharacterRules interface {
 	RollD20(mode D20Mode, modifier int, roll DiceRoller) (D20Result, error)
 }
 
+// CharacterTokenInitiativeRules calculates the persisted initiative bonus when
+// a character sheet is first placed on a scene. It is deliberately narrower
+// than the general character rules contract.
+type CharacterTokenInitiativeRules interface {
+	InitiativeBonus(dexterity int) int
+}
+
 // CombatTurnTransitionPolicy decides only the state changes caused by
 // Repository.SetCombat. It does not own persistence, effect definitions, or
 // event delivery.
@@ -125,6 +132,10 @@ var dnd2024CharacterRules = map[Ref]Dnd2024CharacterRules{
 	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024Rules{},
 }
 
+var characterTokenInitiativeRules = map[Ref]CharacterTokenInitiativeRules{
+	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024Rules{},
+}
+
 var combatTurnTransitionPolicies = map[Ref]CombatTurnTransitionPolicy{
 	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024CombatTurnTransitionPolicy{},
 }
@@ -167,6 +178,13 @@ func ResolveRef(ref Ref) (Adapter, bool) {
 // sheet rules; it does not expose a generic operation dispatcher.
 func ResolveDnd2024CharacterRules(ref Ref) (Dnd2024CharacterRules, bool) {
 	rules, ok := dnd2024CharacterRules[ref]
+	return rules, ok
+}
+
+// ResolveCharacterTokenInitiativeRules resolves the rules for seeding a
+// character token's persisted initiative bonus from its campaign reference.
+func ResolveCharacterTokenInitiativeRules(ref Ref) (CharacterTokenInitiativeRules, bool) {
+	rules, ok := characterTokenInitiativeRules[ref]
 	return rules, ok
 }
 
