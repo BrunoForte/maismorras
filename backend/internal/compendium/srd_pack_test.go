@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -211,7 +213,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "4384ac4e9dbe8544dd41537aa68278829adbf11d5bff8f21a2d3acadb2f8f965" {
+	if got := hex.EncodeToString(digest[:]); got != "635c1116a238a78b5ca561cca8bc9a26b65438e80dea13ac0f505ba5cf54668a" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -264,6 +266,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 	if creatures[164].Name != "Hill Giant" || creatures[165].Name != "Hippogriff" {
 		t.Fatalf("unexpected stable split: 165th=%q, 166th=%q", creatures[164].Name, creatures[165].Name)
 	}
+	pendingActionTargets := pendingCreatureActionTargets(t)
 	for index, entry := range creatures {
 		var translations map[string]string
 		var rules monsterRules
@@ -318,7 +321,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 					continue
 				}
 				key := fmt.Sprintf("pt-BR.rules.actions.%d.%s", actionIndex, field.name)
-				if strings.TrimSpace(translations[key]) == "" || translations[key+".source"] != "reviewed" {
+				if strings.TrimSpace(translations[key]) == "" || (translations[key+".source"] != "reviewed" && !pendingActionTargets[fmt.Sprintf("%s|%d", entry.Name, actionIndex)]) {
 					t.Errorf("%s action %d missing reviewed %s translation", entry.Name, actionIndex, field.name)
 				}
 			}
@@ -338,9 +341,336 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "769d1111e27d6e8c7da2155263a96398d7993adf0e67b115e0c496c8e9a5428c" {
+	if got := hex.EncodeToString(digest[:]); got != "607c91ce3c6c641a8eb0ca4fd2f485c8235e25230088043bed6bd81e4c597a17" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
+}
+
+func TestSRDCreatureTruncatedMetadataRestorationsMatchReviewedSource(t *testing.T) {
+	type creatureAction struct {
+		Name string `json:"name"`
+	}
+	type creatureRules struct {
+		Actions []creatureAction `json:"actions"`
+	}
+	type expectedField struct {
+		creature string
+		field    string
+		source   string
+		ptBR     string
+	}
+	want := []expectedField{
+		{"Barbed Devil", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 18", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 18"},
+		{"Bearded Devil", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 10", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 10"},
+		{"Bone Devil", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 12", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 12"},
+		{"Chain Devil", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 11", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 11"},
+		{"Horned Devil", "senses", "Darkvision 150 ft. (unimpeded by magical Darkness); Passive Perception 13", "Visão no Escuro 150 ft. (não é impedida por Escuridão mágica); Percepção Passiva 13"},
+		{"Imp", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 11", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 11"},
+		{"Lemure", "senses", "Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 10", "Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 10"},
+		{"Blink Dog", "languages", "Blink Dog; understands Elvish and Sylvan but can’t speak them", "Cão Teleportador; compreende Élfico e Silvestre, mas não pode falar esses idiomas"},
+		{"Dretch", "languages", "Abyssal; telepathy 60 ft. (works only with creatures that understand Abyssal)", "Abissal; telepatia 60 ft. (funciona apenas com criaturas que compreendem Abissal)"},
+		{"Giant Elk", "languages", "Celestial; understands Common, Elvish, and Sylvan but can’t speak them", "Celestial; compreende Comum, Élfico e Silvestre, mas não pode falar esses idiomas"},
+		{"Giant Owl", "languages", "Celestial; understands Common, Elvish, and Sylvan but can’t speak them", "Celestial; compreende Comum, Élfico e Silvestre, mas não pode falar esses idiomas"},
+		{"Kraken", "languages", "Understands Abyssal, Celestial, Infernal, and Primordial but can’t speak; telepathy 120 ft.", "Compreende Abissal, Celestial, Infernal e Primordial, mas não pode falar; telepatia 120 ft."},
+		{"Ogre Zombie", "languages", "Understands Common and Giant but can’t speak", "Compreende Comum e Gigante, mas não pode falar"},
+		{"Otyugh", "languages", "Otyugh; telepathy 120 ft. (doesn’t allow the receiving creature to respond telepathically)", "Otyugh; telepatia 120 ft. (não permite que a criatura receptora responda telepaticamente)"},
+		{"Pegasus", "languages", "Understands Celestial, Common, Elvish, and Sylvan but can’t speak", "Compreende Celestial, Comum, Élfico e Silvestre, mas não pode falar"},
+		{"Pseudodragon", "languages", "Understands Common and Draconic but can’t speak", "Compreende Comum e Dracônico, mas não pode falar"},
+		{"Werebear", "speed", "30 ft., 40 ft. (bear form only), Climb 30 ft. (bear form only)", "30 ft., 40 ft. (somente na forma de urso), Escalada 30 ft. (somente na forma de urso)"},
+	}
+	var pack srdPack
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	byName := make(map[string]srdEntry, len(pack.Entries))
+	for _, entry := range pack.Entries {
+		if entry.EntryType == "other" {
+			byName[entry.Name] = entry
+		}
+	}
+	for _, field := range want {
+		entry, ok := byName[field.creature]
+		if !ok {
+			t.Errorf("missing creature %q", field.creature)
+			continue
+		}
+		var rules map[string]any
+		var translations map[string]string
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Errorf("decode %s rules: %v", field.creature, err)
+			continue
+		}
+		if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+			t.Errorf("decode %s translations: %v", field.creature, err)
+			continue
+		}
+		key := "pt-BR.rules." + field.field
+		if rules[field.field] != field.source {
+			t.Errorf("%s source %s = %v, want %q", field.creature, field.field, rules[field.field], field.source)
+		}
+		if translations[key] != field.ptBR || translations[key+".source"] != "reviewed" {
+			t.Errorf("%s %s translation/provenance = %q/%q, want %q/reviewed", field.creature, field.field, translations[key], translations[key+".source"], field.ptBR)
+		}
+	}
+	if len(want) != 17 {
+		t.Fatalf("metadata restoration fixture count = %d, want 17", len(want))
+	}
+	for _, check := range []struct {
+		creature string
+		removed  string
+	}{
+		{"Basilisk", "Beard"},
+		{"Venomous Snake", "Hooves"},
+		{"Vulture", "Hooves"},
+	} {
+		var rules creatureRules
+		if err := json.Unmarshal(byName[check.creature].Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", check.creature, err)
+		}
+		for _, action := range rules.Actions {
+			if action.Name == check.removed {
+				t.Errorf("%s retains action %q that the official block does not contain", check.creature, check.removed)
+			}
+		}
+	}
+	var reviewed map[string]string
+	if err := json.Unmarshal(byName["Barbed Devil"].Translations, &reviewed); err != nil {
+		t.Fatal(err)
+	}
+	fieldTranslations := map[string]string{
+		"pt-BR.source":              reviewed["pt-BR.source"],
+		"pt-BR.rules.senses":        reviewed["pt-BR.rules.senses"],
+		"pt-BR.rules.senses.source": reviewed["pt-BR.rules.senses.source"],
+	}
+	entry := srdEntry{EntryType: "other", Name: "Barbed Devil", Translations: mustJSON(t, fieldTranslations)}
+	for _, prior := range []map[string]string{
+		{"pt-BR.rules.senses": "trecho antigo", "pt-BR.rules.senses.source": "ai"},
+		{"pt-BR.rules.senses": "trecho antigo sem origem"},
+	} {
+		changed, updated, unresolved := applyReviewedTranslation(prior, entry)
+		if !changed || prior["pt-BR.rules.senses"] != reviewed["pt-BR.rules.senses"] || prior["pt-BR.rules.senses.source"] != "reviewed" || len(updated) != 1 || len(unresolved) != 0 {
+			t.Errorf("reviewed creature field did not replace legacy catalog value: changed=%t value=%v updated=%v unresolved=%v", changed, prior, updated, unresolved)
+		}
+		changed, updated, unresolved = applyReviewedTranslation(prior, entry)
+		if changed || len(updated) != 0 || len(unresolved) != 0 {
+			t.Errorf("reimporting reviewed creature field was not idempotent: changed=%t updated=%v unresolved=%v", changed, updated, unresolved)
+		}
+	}
+	protected := map[string]string{"pt-BR.rules.senses": "edição protegida", "pt-BR.rules.senses.source": "manual"}
+	if changed, _, _ := applyReviewedTranslation(protected, entry); changed || protected["pt-BR.rules.senses"] != "edição protegida" {
+		t.Errorf("manual creature field was overwritten during sync: %v", protected)
+	}
+}
+
+func TestSRDCreaturePendingActionTargetsAreNotMarkedReviewed(t *testing.T) {
+	var pack srdPack
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	byName := make(map[string]srdEntry, len(pack.Entries))
+	for _, entry := range pack.Entries {
+		if entry.EntryType == "other" {
+			byName[entry.Name] = entry
+		}
+	}
+	for target := range pendingCreatureActionTargets(t) {
+		parts := strings.Split(target, "|")
+		entryName, actionIndex := parts[0], parts[1]
+		entry, ok := byName[entryName]
+		if !ok {
+			t.Errorf("manifest creature %q is missing from SRD pack", entryName)
+			continue
+		}
+		var translations map[string]string
+		if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+			t.Errorf("decode %s translations: %v", entryName, err)
+			continue
+		}
+		for _, field := range []string{"name", "range", "damage", "description"} {
+			key := "pt-BR.rules.actions." + actionIndex + "." + field + ".source"
+			if translations[key] == "reviewed" {
+				t.Errorf("pending action field %s.%s is still marked reviewed", entryName, key)
+			}
+		}
+	}
+}
+
+func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
+	type action struct {
+		Name        string `json:"name"`
+		ToHit       int    `json:"toHit"`
+		Range       string `json:"range"`
+		Damage      string `json:"damage"`
+		Description string `json:"description"`
+	}
+	type rules struct {
+		Actions []action `json:"actions"`
+	}
+	want := []struct {
+		creature, name, damage, description, localizedName, localizedDamage, localizedDescription, localizedRange string
+		index, toHit                                                                                              int
+	}{
+		{
+			creature: "Allosaurus", index: 0, name: "Bite", toHit: 6, damage: "15 (2d10 + 4)",
+			description:   "Melee Attack Roll: +6, reach 5 ft. Hit: 15 (2d10 + 4) Piercing damage.",
+			localizedName: "Mordida", localizedDamage: "15 (2d10 + 4)",
+			localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 15 (2d10 + 4) de dano perfurante.",
+		},
+		{
+			creature: "Allosaurus", index: 1, name: "Claws", toHit: 6, damage: "8 (1d8 + 4)",
+			description:   "Melee Attack Roll: +6, reach 5 ft. Hit: 8 (1d8 + 4) Slashing damage. If the target is a Large or smaller creature and the allosaurus moved 30+ feet straight toward it immediately before the hit, the target has the Prone condition, and the allosaurus can make one Bite attack against it.",
+			localizedName: "Garras", localizedDamage: "8 (1d8 + 4)",
+			localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 8 (1d8 + 4) de dano cortante. Se o alvo for uma criatura Grande ou menor e o alossauro tiver se movido 30+ ft em linha reta na direção dele imediatamente antes do acerto, o alvo fica Caído, e o alossauro pode realizar um ataque de Mordida contra ele.",
+		},
+		{
+			creature: "Awakened Shrub", index: 0, name: "Rake", toHit: 1, damage: "1 Slashing",
+			description:   "Melee Attack Roll: +1, reach 5 ft. Hit: 1 Slashing damage.",
+			localizedName: "Rasgar", localizedDamage: "1 Cortante",
+			localizedDescription: "Jogada de Ataque Corpo a Corpo: +1, alcance 5 ft. Acerto: 1 de dano cortante.",
+		},
+		{
+			creature: "Assassin", index: 0, name: "Shortsword", toHit: 7, damage: "7 (1d6 + 4) Piercing damage plus 17 (5d6) Poison damage",
+			description:   "Melee Attack Roll: +7, reach 5 ft. Hit: 7 (1d6 + 4) Piercing damage plus 17 (5d6) Poison damage, and the target has the Poisoned condition until the start of the assassin’s next turn.",
+			localizedName: "Espada Curta", localizedDamage: "7 (1d6 + 4) de dano perfurante mais 17 (5d6) de dano de veneno",
+			localizedDescription: "Jogada de Ataque Corpo a Corpo: +7, alcance 5 ft. Acerto: 7 (1d6 + 4) de dano perfurante mais 17 (5d6) de dano de veneno, e o alvo fica Envenenado até o início do próximo turno do assassino.", localizedRange: "alcance 5 ft.",
+		},
+	}
+	var pack srdPack
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	byName := make(map[string]srdEntry)
+	for _, entry := range pack.Entries {
+		byName[entry.Name] = entry
+	}
+	for _, test := range want {
+		t.Run(test.creature+"/"+test.name, func(t *testing.T) {
+			entry, ok := byName[test.creature]
+			if !ok {
+				t.Fatalf("missing creature %q", test.creature)
+			}
+			var creatureRules rules
+			var translations map[string]string
+			if err := json.Unmarshal(entry.Rules, &creatureRules); err != nil {
+				t.Fatalf("decode %s rules: %v", test.creature, err)
+			}
+			if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+				t.Fatalf("decode %s translations: %v", test.creature, err)
+			}
+			if test.index >= len(creatureRules.Actions) {
+				t.Fatalf("missing action %s[%d]", test.creature, test.index)
+			}
+			got := creatureRules.Actions[test.index]
+			if got.Name != test.name || got.ToHit != test.toHit || got.Range != "reach 5 ft" || got.Damage != test.damage || got.Description != test.description {
+				t.Errorf("source action = %+v; want name %q, +%d, reach 5 ft, damage %q and complete SRD description", got, test.name, test.toHit, test.damage)
+			}
+			prefix := fmt.Sprintf("pt-BR.rules.actions.%d", test.index)
+			localizedRange := test.localizedRange
+			if localizedRange == "" {
+				localizedRange = "alcance 5 ft"
+			}
+			for field, expected := range map[string]string{
+				"name": test.localizedName, "damage": test.localizedDamage,
+				"range": localizedRange, "description": test.localizedDescription,
+			} {
+				if translations[prefix+"."+field] != expected || translations[prefix+"."+field+".source"] != "reviewed" {
+					t.Errorf("localized %s = %q (%q), want %q (reviewed)", field, translations[prefix+"."+field], translations[prefix+"."+field+".source"], expected)
+				}
+			}
+		})
+	}
+}
+
+func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
+	var pack srdPack
+	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
+		t.Fatal(err)
+	}
+	byName := make(map[string]json.RawMessage, len(pack.Entries))
+	for _, entry := range pack.Entries {
+		byName[entry.Name] = entry.Rules
+	}
+	removed := map[string][]string{
+		"Basilisk": {"Beard"}, "Venomous Snake": {"Hooves"}, "Vulture": {"Hooves"},
+		"Allosaurus": {"Tail"}, "Animated Armor": {"Smother"}, "Animated Flying Sword": {"Smother"},
+		"Awakened Shrub": {"Slam"}, "Blink Dog": {"Rend"}, "Bone Devil": {"Rend"}, "Brown Bear": {"Scratch"},
+	}
+	removedTranslations := map[string][]string{
+		"Basilisk": {"Barba"}, "Venomous Snake": {"Cascos"}, "Vulture": {"Cascos"},
+		"Allosaurus": {"Cauda"}, "Animated Armor": {"Sufocar"}, "Animated Flying Sword": {"Sufocar"},
+		"Awakened Shrub": {"Pancada"}, "Blink Dog": {"Dilacerar"}, "Bone Devil": {"Dilacerar"}, "Brown Bear": {"Arranhar"},
+	}
+	for creature, actionNames := range removed {
+		t.Run(creature, func(t *testing.T) {
+			var rules struct {
+				Actions []struct {
+					Name string `json:"name"`
+				} `json:"actions"`
+			}
+			if err := json.Unmarshal(byName[creature], &rules); err != nil {
+				t.Fatal(err)
+			}
+			for _, removedName := range actionNames {
+				for _, action := range rules.Actions {
+					if action.Name == removedName {
+						t.Errorf("action %q remains in %s", removedName, creature)
+					}
+				}
+			}
+			var entry srdEntry
+			for _, candidate := range pack.Entries {
+				if candidate.EntryType == "other" && candidate.Name == creature {
+					entry = candidate
+					break
+				}
+			}
+			var translations map[string]string
+			if err := json.Unmarshal(entry.Translations, &translations); err != nil {
+				t.Fatal(err)
+			}
+			for key, value := range translations {
+				if strings.HasPrefix(key, "pt-BR.rules.actions.") && strings.HasSuffix(key, ".name") {
+					for _, removedName := range removedTranslations[creature] {
+						if value == removedName {
+							t.Errorf("localized removed action %q remains at %s", value, key)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func pendingCreatureActionTargets(t *testing.T) map[string]bool {
+	t.Helper()
+	manifestPath := filepath.Join("..", "..", "..", "docs", "SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read action audit manifest: %v", err)
+	}
+	rowPattern := regexp.MustCompile("(?m)^\\| `other:(.+)\\.rules\\.actions\\.(\\d+)` \\|.*\\| (pendente — texto preservado, sem reviewed|verificado — removido|verificado — restaurado) \\|")
+	rows := rowPattern.FindAllStringSubmatch(string(manifest), -1)
+	if len(rows) != 187 {
+		t.Fatalf("action audit manifest rows = %d, want 187", len(rows))
+	}
+	pending := make(map[string]bool)
+	verifiedRemoved := 0
+	verifiedRestored := 0
+	for _, row := range rows {
+		if row[3] == "verificado — removido" {
+			verifiedRemoved++
+			continue
+		}
+		if row[3] == "verificado — restaurado" {
+			verifiedRestored++
+			continue
+		}
+		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
+	}
+	if len(pending) != 173 || verifiedRemoved != 10 || verifiedRestored != 4 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 173, 10 and 4", len(pending), verifiedRemoved, verifiedRestored)
+	}
+	return pending
 }
 
 func stripTranslations(value any) {
@@ -431,7 +761,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "df5449dcf6284daf4690225bace4a2a1cf0881ae847dbfcf78510f10564d8a51" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "c17cccf21da60b42720d764792dcdf4a663bbbcd56d0655d1e705ac894a589d7" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -758,7 +1088,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "625bca92e6ca47bd31e08780a46e58a1295b8426b932c64aeaac1f32dcdfe0f0"
+	const wantSourceDigest = "3663486b3fe5187aa1c632f13a0249af25c22b092e161c56bb954544bf54bb8b"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

@@ -9,7 +9,7 @@ Ordenação pelo nome-fonte em inglês, sem diferenciar maiúsculas/minúsculas;
 
 ## Campos localizados
 
-Para cada uma das 165 entradas: nome (`pt-BR`), sumário factual (`pt-BR.summary`), tipo/alinhamento (`pt-BR.rules.creatureType`), deslocamento, sentidos e idiomas quando existentes, e campos existentes de ação (`name`, `damage`, `range`, `description`). Cada tradução gravada recebeu `.source=reviewed`; essa marca registra revisão editorial do texto traduzido, não validação mecânica do bloco de estatísticas.
+Para cada uma das 165 entradas: nome (`pt-BR`), sumário factual (`pt-BR.summary`), tipo/alinhamento (`pt-BR.rules.creatureType`), deslocamento, sentidos e idiomas quando existentes, e campos existentes de ação (`name`, `damage`, `range`, `description`). Campos efetivamente conferidos com a fonte recebem `.source=reviewed`; os campos de ação pendentes do manifesto estão sem esse marcador. `reviewed` registra revisão textual, não validação mecânica geral do bloco de estatísticas.
 
 A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `translatedCompendiumText`; a ficha/bestiário lê as chaves `pt-BR.rules.*` por `localizedMonsterField`. Os campos de ação agora usam essas chaves e o alcance passa por `formatDistance`, que preserva a conversão de pés para unidades métricas. Quando a chave não existe, o texto-fonte continua como fallback. Nos registros do pacote, o bloco aninhado presente é `actions`; não há matrizes de `traits` ou `reactions` para este lote.
 
@@ -24,7 +24,7 @@ A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `tr
 
 ## Pendências da fonte importada
 
-A auditoria encontrou **150 blocos de ação** com campo `description` ou `damage` truncado/incompleto na própria fonte do pacote (parêntese aberto, hífen no final ou frase interrompida). Eles foram preservados sem reconstrução e suas traduções espelham somente o trecho disponível; portanto, esses campos não permitem confirmar o efeito integral até correção/reimportação autorizada da extração. Nenhum conteúdo mecânico foi inferido.
+A auditoria original encontrou **150 blocos de ação** com campo `description` ou `damage` truncado/incompleto na própria fonte do pacote (parêntese aberto, hífen no final ou frase interrompida). O bloco divergente de Basilisk foi removido após cotejo oficial; os outros 149 continuam pendentes, com texto-fonte, valores e traduções preservados. Removi `.source=reviewed` das traduções dos campos de ação pendentes porque a correspondência ainda não foi confirmada. As traduções existentes espelham apenas o trecho disponível e não permitem confirmar o efeito integral. Nenhum conteúdo foi completado por inferência. O estado individual dos alvos está em [`SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md`](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md).
 
 - other:Adult Black Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6”
 - other:Adult Blue Dragon · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8”
@@ -63,7 +63,6 @@ A auditoria encontrou **150 blocos de ação** com campo `description` ou `damag
 - other:Bandit Captain · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6”
 - other:Barbed Devil · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6”
 - other:Barbed Devil · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +6, reach 10 ft. Hit: 14 (2d10”
-- other:Basilisk · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8”
 - other:Bat · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing”
 - other:Bearded Devil · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8”
 - other:Bearded Devil · rules.actions.1.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 10 ft. Hit: 8 (1d10 + 3) Slashing damage. If the target is a crea-”
@@ -177,9 +176,11 @@ A auditoria encontrou **150 blocos de ação** com campo `description` ou `damag
 - other:Guardian Naga · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +8, reach 10 ft. Hit: 17 (2d12”
 - other:Hawk · rules.actions.0.description/damage — fonte incompleta: “Melee Attack Roll: +5, reach 5 ft. Hit: 1 Slash-”
 
-## Outras pendências de campos-fonte
+## Atualização de integridade da fonte
 
-Além das ações acima, há 8 campos textuais truncados no próprio pacote: Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`); Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`). Os trechos foram traduzidos sem completar a frase nem alterar a fonte. A revisão integral desses campos depende da correção/reimportação da extração.
+Os 8 campos anteriormente truncados de Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`), Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, o alvo de Basilisk foi removido após cotejo oficial; os outros 149 seguem pendentes e inalterados.
+
+`Basilisk.rules.actions.1` foi removida: o bloco oficial (p. 262; Creature Stat Blocks, linhas 732–736) contém Bite e Petrifying Gaze em Bonus Actions, não Beard. A remoção não certifica as demais ações do registro.
 
 ## Seleção do lote
 

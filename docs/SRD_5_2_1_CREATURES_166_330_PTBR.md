@@ -21,9 +21,9 @@ Traduções editoriais do projeto, cotejadas com o conteúdo disponível do SRD 
 
 ## Limitações da fonte importada
 
-A conferência do texto integral não é possível nos registros abaixo porque a própria fonte local chega truncada. Foram preservadas as fontes e traduzidos somente os fragmentos disponíveis. Esses trechos não são descrições completas nem podem ser considerados mecanicamente validados. Não se completou texto por inferência.
+A conferência do texto integral ainda não é possível para os blocos de ação abaixo porque a própria fonte local chega truncada. Foram preservadas as fontes e traduzidos somente fragmentos disponíveis. Esses trechos não são descrições completas nem podem ser considerados mecanicamente validados. Não se completou texto por inferência.
 
-### 37 blocos de ação interrompidos
+### 37 blocos de ação interrompidos na auditoria original
 
 - other:Hippogriff — rules.actions.2.damage e rules.actions.2.description
 - other:Hobgoblin Warrior — rules.actions.1.damage e rules.actions.1.description
@@ -51,8 +51,6 @@ A conferência do texto integral não é possível nos registros abaixo porque a
 - other:Storm Giant — rules.actions.0.damage e rules.actions.0.description
 - other:Storm Giant — rules.actions.1.damage e rules.actions.1.description
 - other:Troll Limb — rules.actions.0.damage e rules.actions.0.description
-- other:Venomous Snake — rules.actions.2.damage e rules.actions.2.description
-- other:Vulture — rules.actions.1.damage e rules.actions.1.description
 - other:Warhorse — rules.actions.0.damage e rules.actions.0.description
 - other:Wereboar — rules.actions.0.damage e rules.actions.0.description
 - other:Wereboar — rules.actions.1.damage e rules.actions.1.description
@@ -63,13 +61,11 @@ A conferência do texto integral não é possível nos registros abaixo porque a
 - other:Wyvern — rules.actions.1.damage e rules.actions.1.description
 - other:Xorn — rules.actions.1.damage e rules.actions.1.description
 
-### 9 outros campos incompletos
+### Atualização de integridade da fonte
 
-- other:Horned Devil, other:Imp, other:Lemure — rules.senses (descrição parentética interrompida).
-- other:Kraken, other:Ogre Zombie, other:Otyugh, other:Pegasus, other:Pseudodragon — rules.languages (lista ou frase interrompida).
-- other:Werebear — rules.speed (texto da forma de urso interrompido).
+Os 9 campos anteriormente incompletos de Horned Devil, Imp e Lemure (`rules.senses`), Kraken, Ogre Zombie, Otyugh, Pegasus e Pseudodragon (`rules.languages`) e Werebear (`rules.speed`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Dos 37 blocos de ação inicialmente listados, Venomous Snake e Vulture foram removidos após cotejo oficial; os outros 35 mantêm o conteúdo e seguem pendentes. Seus campos traduzidos de ação não têm mais `.source=reviewed` até a correspondência ser verificada.
 
-Esses 37 blocos e 9 outros campos são pendências da extração do pacote. A eventual correção da fonte exige uma tarefa separada de importação e revisão; este lote não altera esses valores.
+`Venomous Snake.rules.actions.2` (p. 363; Creature Stat Blocks, linhas 13986–13987) era “Hooves”; o bloco oficial contém somente Bite, já presente, e o bloco extra foi removido. `Vulture.rules.actions.1` (p. 363; linhas 14022–14024) também era “Hooves” e foi removido; a ação seguinte e suas chaves de tradução foram mantidas e reindexadas após compactar a lista. Esses ajustes não validam eventuais discrepâncias em outros campos/ações dos registros. O estado de cada alvo consta no [manifesto de auditoria por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md).
 
 ## Glossário do lote
 
