@@ -18,6 +18,8 @@
 		visibleItems,
 		carriedWeight,
 		capacityLb,
+		pushDragLiftLb,
+		powerfulBuildApplied,
 		loadIncomplete,
 		unknownItemCount,
 		canUseLargeForm,
@@ -38,6 +40,8 @@
 		visibleItems: { item: InventoryItem; index: number }[];
 		carriedWeight: number;
 		capacityLb: number | null;
+		pushDragLiftLb: number | null;
+		powerfulBuildApplied: boolean;
 		loadIncomplete: boolean;
 		unknownItemCount: number;
 		canUseLargeForm: boolean;
@@ -153,6 +157,28 @@
 		<span data-testid="carrying-weight"
 			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} lb</span
 		>
+		<div class="weight-limit-row">
+			<strong
+				>{$appLocale === 'en'
+					? 'Push / drag / lift limit'
+					: 'Limite para empurrar / arrastar / levantar'}</strong
+			>
+			<span data-testid="push-drag-lift-limit">{formatWeight(pushDragLiftLb)} lb</span>
+		</div>
+		{#if powerfulBuildApplied}
+			<small class="capacity-adjustment" data-testid="powerful-build-capacity-note">
+				{$appLocale === 'en'
+					? 'Powerful Build changes carrying capacity only; the push, drag, and lift limit uses your actual size.'
+					: 'Porte Poderoso altera apenas a capacidade de carga; o limite para empurrar, arrastar e levantar usa seu tamanho atual.'}
+			</small>
+		{/if}
+		{#if pushDragLiftLb !== null && capacityLb !== null}
+			<small class="movement-limit-note" data-testid="hauling-speed-limit">
+				{$appLocale === 'en'
+					? 'When pushing, dragging, or lifting more than your carrying capacity, your Speed can be no more than 5 feet.'
+					: 'Ao empurrar, arrastar ou levantar mais que sua capacidade de carga, seu deslocamento não pode exceder 5 pés.'}
+			</small>
+		{/if}
 		{#if loadIncomplete}
 			<small role="status">
 				{$appLocale === 'en'
@@ -405,6 +431,25 @@
 	.carrying-capacity > small {
 		flex-basis: 100%;
 		color: #e2bc76;
+	}
+	.weight-limit-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.55rem;
+		align-items: baseline;
+	}
+	.weight-limit-row strong {
+		color: #d7cec4;
+		font-size: 0.82rem;
+	}
+	.weight-limit-row span {
+		font-variant-numeric: tabular-nums;
+	}
+	.carrying-capacity > .capacity-adjustment {
+		color: #b9aa9d;
+	}
+	.carrying-capacity > .movement-limit-note {
+		color: #b9aa9d;
 	}
 	.over-capacity {
 		color: #f0a29b !important;
