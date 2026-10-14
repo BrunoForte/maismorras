@@ -52,25 +52,25 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Blue Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 266, linhas 23773–23776; Creature Stat Blocks, linhas 1169–1175. Rend; +5, alcance 5 ft., 8 (1d10 + 3) cortante + 3 (1d6) elétrico. |
 | `other:Blue Dragon Wyrmling.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 266, linhas 23773–23779; Creature Stat Blocks, linhas 1169–1175. A entrada duplicada Rend (+9, alcance 10 ft.) foi corrigida para Lightning Breath (Recarga 5–6): resistência de Destreza CD 12, linha de 30 ft × 5 ft, 21 (6d6) elétrico; removeu-se o bônus de ataque indevido. |
 | `other:Bone Devil.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 267, linhas 23908–23912; Creature Stat Blocks, linhas 1367–1370. Claw; +8, alcance 10 ft., 13 (2d8 + 4) cortante. |
-| `other:Bone Devil.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Bone Devil.rules.actions.1` | name/range/damage/description | verificado — restaurado | Ferroada Infernal; SRD p. 267, linhas 23913–23917; Creature Stat Blocks, linhas 1370–1372. +8, alcance 10 ft.; 15 (2d10 + 4) perfurante + 18 (4d8) veneno; inclui Envenenado até o próximo turno do diabo e impede recuperar PV enquanto Envenenado. |
 | `other:Bone Devil.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 267, linhas 23908–23917: os ataques são Claw e Infernal Sting; não existe Rend. |
-| `other:Brass Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bronze Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bronze Dragon Wyrmling.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Brass Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 268, linhas 23933–23935; Creature Stat Blocks, linhas 1406–1408. +4, alcance 5 ft.; 7 (1d10 + 2) cortante. |
+| `other:Bronze Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 269, linhas 24106–24108; Creature Stat Blocks, bloco Bronze Dragon Wyrmling. +5, alcance 5 ft.; 8 (1d10 + 3) cortante. |
+| `other:Bronze Dragon Wyrmling.rules.actions.1` | name/range/damage/description | verificado — restaurado | A Rend duplicada foi corrigida para Lightning Breath; SRD p. 269, linhas 24109–24110; Creature Stat Blocks, bloco Bronze Dragon Wyrmling. Recarga 5–6, resistência de Destreza CD 12, linha 40 × 5 ft., 16 (3d10) elétrico; sem bônus de ataque. |
 | `other:Brown Bear.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 346, linhas 30841–30847: os ataques são Bite e Claw; não existe Scratch. |
-| `other:Bugbear Stalker.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bugbear Warrior.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bulette.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Camel.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cat.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cat.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Centaur Trooper.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Chimera.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Chuul.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Clay Golem.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cloaker.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Cloaker.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Commoner.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Bugbear Stalker.rules.actions.0` | name/range/damage/description | verificado — removido | SRD p. 271, linhas 24269–24280; Creature Stat Blocks, linhas 1806–1815: as ações são Multiattack, Javelin e Morningstar; Quick Grapple é ação bônus, não Grab. |
+| `other:Bugbear Warrior.rules.actions.0` | name/range/damage/description | verificado — restaurado | Grab; SRD p. 272, linhas 24297–24300; Creature Stat Blocks, linhas 1852–1854. +4, alcance 10 ft.; 9 (2d6 + 2) contundente; alvo Médio ou menor fica Agarrado, CD 12 para escapar. |
+| `other:Bulette.rules.actions.0` | name/range/damage/description | verificado — restaurado | Pike corrigida para Bite; SRD p. 272, linhas 24318–24321; Creature Stat Blocks, linhas 1982–1986. +7, alcance 5 ft.; 17 (2d12 + 4) perfurante. |
+| `other:Camel.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 346, linhas 30848–30861; Creature Stat Blocks, linhas 11103–11104: o camelo tem somente Bite; Scratch não consta no bloco. |
+| `other:Cat.rules.actions.0` | name/range/damage/description | verificado — restaurado | Scratch; SRD p. 346, linha 30878; Creature Stat Blocks, linhas 11139–11141. +4, alcance 5 ft.; 1 cortante. |
+| `other:Cat.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 346, linhas 30873–30879; Creature Stat Blocks, linhas 11134–11143: a única ação do gato é Scratch; Claw não consta no bloco. |
+| `other:Centaur Trooper.rules.actions.0` | name/range/damage/description | verificado — restaurado | Pike; SRD p. 271, linhas 24345–24349; Creature Stat Blocks, linhas 2063–2068. +6, alcance 10 ft.; 9 (1d10 + 4) perfurante. |
+| `other:Chimera.rules.actions.0` | name/range/damage/description | verificado — removido | SRD p. 273, linhas 24418–24431; Creature Stat Blocks, linhas 2149–2155: ações são Multiattack, Bite, Claw, Ram e Fire Breath; não há Pincer. |
+| `other:Chuul.rules.actions.0` | name/range/damage/description | verificado — restaurado | Pincer; SRD p. 273, linhas 24452–24458; Creature Stat Blocks, linhas 2197–2201. +6, alcance 10 ft.; 9 (1d10 + 4) contundente; alvo Grande ou menor fica Agarrado por uma das duas pinças, CD 14 para escapar. |
+| `other:Clay Golem.rules.actions.0` | name/range/damage/description | verificado — restaurado | Slam; SRD p. 273, linhas 24495–24500; Creature Stat Blocks, linhas 2242–2246. +9, alcance 5 ft.; 10 (1d10 + 5) contundente + 6 (1d12) ácido; reduz o máximo de PV pelo dano ácido sofrido. |
+| `other:Cloaker.rules.actions.0` | name/range/damage/description | verificado — restaurado | Attach; SRD p. 274, linhas 24522–24534; Creature Stat Blocks, linhas 2288–2290. +6, alcance 5 ft.; 13 (3d6 + 3) perfurante; texto completo de fixar-se, Cego, redução/repasse de dano e formas de desprender cotejado. |
+| `other:Cloaker.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; SRD p. 274, linhas 24535–24536; Creature Stat Blocks, linhas 2292. +6, alcance 10 ft.; 8 (1d10 + 3) cortante. |
+| `other:Commoner.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 275, linhas 24620–24622; Creature Stat Blocks, linhas 2410–2412: a única ação do plebeu é Club; Rend não consta no bloco. |
 | `other:Constrictor Snake.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Constrictor Snake.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Copper Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,4 +194,4 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 10 verificados e removidos, 40 verificados e restaurados/corrigidos, 137 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 15 verificados e removidos, 52 verificados e restaurados/corrigidos, 120 pendentes com texto preservado e sem marcador `reviewed`.
