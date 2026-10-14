@@ -342,7 +342,7 @@ func TestSRDCreatureCatalogIsLocalizedAndNonTargetMechanicsRemainUnchanged(t *te
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "3d6ff5e4684e9d81ea8b56ecc4cae154e9155090ba1ad9b1fc6c52708da75072" {
+	if got := hex.EncodeToString(digest[:]); got != "6172748df5fefe702e6d7d87ac3e7e5cb3e718262442129ee0e7c46afcfd08aa" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -499,6 +499,7 @@ func TestSRDCreaturePendingActionTargetsAreNotMarkedReviewed(t *testing.T) {
 func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 	type action struct {
 		Name        string `json:"name"`
+		Kind        string `json:"kind"`
 		ToHit       *int   `json:"toHit"`
 		Range       string `json:"range"`
 		Damage      string `json:"damage"`
@@ -605,6 +606,14 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 		{creature: "Fire Elemental", index: 0, name: "Burn", toHit: 6, damage: "10 (2d6 + 3) Fire damage.", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 + 3) Fire damage. If the target is a creature or a flammable object, it starts burning.", localizedName: "Queimar", localizedDamage: "10 (2d6 + 3) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano de fogo. Se o alvo for uma criatura ou um objeto inflamável, começa a queimar."},
 		{creature: "Flying Snake", index: 0, name: "Bite", toHit: 4, damage: "1 Piercing damage plus 5 (2d4) Poison damage.", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing damage plus 5 (2d4) Poison damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante mais 5 (2d4) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 de dano perfurante mais 5 (2d4) de dano de veneno."},
 		{creature: "Frog", index: 0, name: "Bite", toHit: 3, damage: "1 Piercing damage.", description: "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 de dano perfurante."},
+		{creature: "Frost Giant", index: 1, name: "Great Bow", toHit: 9, damage: "17 (2d10 + 6) Piercing damage plus 7 (2d6) Cold damage.", description: "Ranged Attack Roll: +9, range 150/600 ft. Hit: 17 (2d10 + 6) Piercing damage plus 7 (2d6) Cold damage, and the target’s Speed decreases by 10 feet until the end of its next turn.", localizedName: "Arco Grande", localizedDamage: "17 (2d10 + 6) de dano perfurante mais 7 (2d6) de dano de frio", localizedDescription: "Jogada de Ataque à Distância: +9, alcance 150/600 ft. Acerto: 17 (2d10 + 6) de dano perfurante mais 7 (2d6) de dano de frio, e o Deslocamento do alvo diminui em 10 ft até o fim do próximo turno dele.", localizedRange: "alcance 150/600 ft"},
+		{creature: "Ghast", index: 1, name: "Claw", toHit: 5, damage: "10 (2d6 + 3) Slashing damage.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Slashing damage. If the target is a non-Undead creature, it is subjected to the following effect. Constitution Saving Throw: DC 10. Failure: The target has the Paralyzed condition until the end of its next turn.", localizedName: "Garra", localizedDamage: "10 (2d6 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano cortante. Se o alvo não for um Morto-vivo, fica sujeito ao efeito a seguir. Salvaguarda de Constituição: CD 10. Falha: o alvo fica Paralisado até o fim do próximo turno dele."},
+		{creature: "Ghoul", index: 1, name: "Claw", toHit: 4, damage: "4 (1d4 + 2) Slashing damage.", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Slashing damage. If the target is a creature that isn’t an Undead or an elf, it is subjected to the following effect. Constitution Saving Throw: DC 10. Failure: The target has the Paralyzed condition until the end of its next turn.", localizedName: "Garra", localizedDamage: "4 (1d4 + 2) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 4 (1d4 + 2) de dano cortante. Se o alvo não for um Morto-vivo nem um elfo, fica sujeito ao efeito a seguir. Salvaguarda de Constituição: CD 10. Falha: o alvo fica Paralisado até o fim do próximo turno dele."},
+		{creature: "Giant Ape", index: 0, name: "Fist", toHit: 9, damage: "22 (3d10 + 6) Bludgeoning damage.", description: "Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10 + 6) Bludgeoning damage.", localizedName: "Punho", localizedDamage: "22 (3d10 + 6) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +9, alcance 10 ft. Acerto: 22 (3d10 + 6) de dano contundente.", localizedRange: "alcance 10 ft"},
+		{creature: "Giant Boar", index: 0, name: "Gore", toHit: 5, damage: "10 (2d6 + 3) Piercing damage.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the target is a Large or smaller creature and the boar moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Piercing damage and has the Prone condition.", localizedName: "Chifrada", localizedDamage: "10 (2d6 + 3) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Grande ou menor e o javali tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, sofre 7 (2d6) de dano perfurante adicional e fica Caído."},
+		{creature: "Giant Constrictor Snake", index: 0, name: "Bite", toHit: 6, damage: "11 (2d6 + 4) Piercing damage.", description: "Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 + 4) Piercing damage.", localizedName: "Mordida", localizedDamage: "11 (2d6 + 4) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 11 (2d6 + 4) de dano perfurante.", localizedRange: "alcance 10 ft"},
+		{creature: "Giant Crocodile", index: 0, name: "Bite", toHit: 8, damage: "21 (3d10 + 5) Piercing damage.", description: "Melee Attack Roll: +8, reach 5 ft. Hit: 21 (3d10 + 5) Piercing damage. If the target is a Large or smaller creature, it has the Grappled condition (escape DC 15). While Grappled, the target has the Restrained condition and can’t be targeted by the crocodile’s Tail.", localizedName: "Mordida", localizedDamage: "21 (3d10 + 5) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 21 (3d10 + 5) de dano perfurante. Se o alvo for uma criatura Grande ou menor, fica Agarrado (CD de escape 15). Enquanto estiver Agarrado, fica Restringido e não pode ser alvo da Cauda do crocodilo."},
+		{creature: "Giant Crocodile", index: 1, name: "Tail", toHit: 8, damage: "18 (3d8 + 5) Bludgeoning damage.", description: "Melee Attack Roll: +8, reach 10 ft. Hit: 18 (3d8 + 5) Bludgeoning damage. If the target is a Large or smaller creature, it has the Prone condition.", localizedName: "Cauda", localizedDamage: "18 (3d8 + 5) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 18 (3d8 + 5) de dano contundente. Se o alvo for uma criatura Grande ou menor, fica Caído.", localizedRange: "alcance 10 ft"},
 	}
 	var pack srdPack
 	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
@@ -641,6 +650,8 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "reach 30 ft"
 			} else if test.localizedRange == "alcance 60 ft" {
 				sourceRange = "range 60 ft"
+			} else if test.localizedRange == "alcance 150/600 ft" {
+				sourceRange = "range 150/600 ft"
 			} else if test.localizedRange == "linha de 30 ft de comprimento e 5 ft de largura" {
 				sourceRange = "30-foot-long, 5-foot-wide Line"
 			} else if test.localizedRange == "linha de 40 ft de comprimento e 5 ft de largura" {
@@ -653,7 +664,7 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "range 120 feet"
 			}
 			toHitMatches := (test.expectNoToHit && got.ToHit == nil) || (!test.expectNoToHit && got.ToHit != nil && *got.ToHit == test.toHit)
-			if got.Name != test.name || !toHitMatches || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
+			if got.Kind != "action" || got.Name != test.name || !toHitMatches || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
 				t.Errorf("source action = %+v; want name %q, +%d, %s, damage %q and complete SRD description", got, test.name, test.toHit, sourceRange, test.damage)
 			}
 			prefix := fmt.Sprintf("pt-BR.rules.actions.%d", test.index)
@@ -690,6 +701,7 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 		"Bugbear Stalker": {"Grab"}, "Camel": {"Scratch"}, "Cat": {"Claw"}, "Chimera": {"Pincer"}, "Commoner": {"Rend"},
 		"Crab": {"Bite", "Ram"}, "Cultist": {"Pact Blade", "Crush"}, "Cultist Fanatic": {"Crush"}, "Deer": {"Hooves", "Bite"},
 		"Dire Wolf": {"Hooves", "Talons"}, "Draft Horse": {"Talons", "Gore"},
+		"Giant Badger": {"Gore"}, "Giant Bat": {"Gore"}, "Giant Crab": {"Bite", "Tail"}, "Giant Eagle": {"Ram"},
 	}
 	removedTranslations := map[string][]string{
 		"Basilisk": {"Barba"}, "Venomous Snake": {"Cascos"}, "Vulture": {"Cascos"},
@@ -699,6 +711,12 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 		"Bugbear Stalker": {"Agarrar"}, "Camel": {"Arranhão"}, "Cat": {"Garra"}, "Chimera": {"Pinça"}, "Commoner": {"Dilacerar"},
 		"Crab": {"Mordida", "Investida"}, "Cultist": {"Lâmina do Pacto", "Esmagar"}, "Cultist Fanatic": {"Esmagar"}, "Deer": {"Cascos", "Mordida"},
 		"Dire Wolf": {"Cascos", "Garras"}, "Draft Horse": {"Garras", "Chifrada"},
+		"Giant Badger": {"Chifrada"}, "Giant Bat": {"Chifrada"}, "Giant Crab": {"Mordida", "Cauda"}, "Giant Eagle": {"Investida"},
+	}
+	expectedActionNames := map[string][]string{
+		"Giant Badger": {"Bite"}, "Giant Bat": {"Bite"}, "Giant Boar": {"Gore", "Bite"},
+		"Giant Centipede": {"Bite", "Claw"}, "Giant Constrictor Snake": {"Bite", "Claw"},
+		"Giant Crab": {"Claw"}, "Giant Eagle": {"Rend"},
 	}
 	for creature, actionNames := range removed {
 		t.Run(creature, func(t *testing.T) {
@@ -714,6 +732,17 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 				for _, action := range rules.Actions {
 					if action.Name == removedName {
 						t.Errorf("action %q remains in %s", removedName, creature)
+					}
+				}
+			}
+			if expected, ok := expectedActionNames[creature]; ok {
+				if len(rules.Actions) != len(expected) {
+					t.Errorf("remaining actions in %s = %d; want %d", creature, len(rules.Actions), len(expected))
+				} else {
+					for i, action := range rules.Actions {
+						if action.Name != expected[i] {
+							t.Errorf("remaining action %s[%d] = %q; want %q", creature, i, action.Name, expected[i])
+						}
 					}
 				}
 			}
@@ -767,8 +796,8 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		}
 		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
 	}
-	if len(pending) != 83 || verifiedRemoved != 31 || verifiedRestored != 73 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 83, 31 and 73", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 67 || verifiedRemoved != 39 || verifiedRestored != 81 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 67, 39 and 81", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -1188,7 +1217,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "1eee46463164efb40e66fe01af9bf460123522caf592705340ee9eaf614f4e59"
+	const wantSourceDigest = "4f49584aee94857ed8e9b230acceba47bbe70b2b1c2214619da741ac10cbad77"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

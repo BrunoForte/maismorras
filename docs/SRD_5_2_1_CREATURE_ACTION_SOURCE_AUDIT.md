@@ -108,22 +108,22 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Flying Snake.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Flying Snake, linhas 11492–11495: a única ação é Bite; Fist não consta. |
 | `other:Frog.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; SRD 5.2.1, bloco Frog; Creature Stat Blocks, linhas 11531–11533. +3, alcance 5 ft.; 1 perfurante; texto e dano completos cotejados. |
 | `other:Frog.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Frog, linhas 11531–11534: a única ação é Bite; Fist não consta. |
-| `other:Frost Giant.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ghast.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ghoul.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Ape.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Badger.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Bat.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Boar.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Boar.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Centipede.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Constrictor Snake.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Constrictor Snake.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Crab.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Crab.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Crocodile.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Crocodile.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Eagle.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Frost Giant.rules.actions.1` | name/range/damage/description | verificado — restaurado | Great Bow; Creature Stat Blocks, Frost Giant, linhas 3644–3648. +9, alcance 150/600 ft.; 17 (2d10 + 6) perfurante + 7 (2d6) frio; redução de 10 ft. no Deslocamento até o fim do próximo turno cotejada. |
+| `other:Ghast.rules.actions.1` | name/range/damage/description | verificado — restaurado | Claw; Creature Stat Blocks, Ghast, linha 3777. +5, alcance 5 ft.; 10 (2d6 + 3) cortante; salvaguarda de Constituição CD 10 e Paralisado até o fim do próximo turno em caso de falha. |
+| `other:Ghoul.rules.actions.1` | name/range/damage/description | verificado — restaurado | Claw; Creature Stat Blocks, Ghoul, linha 3863. +4, alcance 5 ft.; 4 (1d4 + 2) cortante; condição de alvo (não Morto-vivo nem elfo), salvaguarda CD 10 e Paralisado cotejados. |
+| `other:Giant Ape.rules.actions.0` | name/range/damage/description | verificado — restaurado | Fist; Creature Stat Blocks, Giant Ape, linhas 11565–11570. +9, alcance 10 ft.; 22 (3d10 + 6) contundente. |
+| `other:Giant Badger.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Badger, linhas 11607–11608: a única ação é Bite; Gore não consta. |
+| `other:Giant Bat.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Bat, linhas 11638–11639: a única ação é Bite; Gore não consta. |
+| `other:Giant Boar.rules.actions.0` | name/range/damage/description | verificado — restaurado | Gore; Creature Stat Blocks, Giant Boar, linhas 11672–11674. +5, alcance 5 ft.; 10 (2d6 + 3) perfurante, dano extra 7 (2d6) e Caído após movimento em linha reta. |
+| `other:Giant Boar.rules.actions.2` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Boar, linhas 11672–11674: a ação listada é Gore; Bite não consta. |
+| `other:Giant Centipede.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Centipede, linhas 11704–11705: há uma única Bite, +4 e alcance 5 ft.; a Bite duplicada não consta. A tradução da Claw que permaneceu foi reindexada com sua ação. |
+| `other:Giant Constrictor Snake.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; Creature Stat Blocks, Giant Constrictor Snake, linhas 11737–11742. +6, alcance 10 ft.; 11 (2d6 + 4) perfurante. |
+| `other:Giant Constrictor Snake.rules.actions.2` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Constrictor Snake, linhas 11737–11742: as ações são Bite e Constrict; Bite adicional com +8/alcance 5 ft. não consta. |
+| `other:Giant Crab.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Crab, linhas 11777–11779: a única ação é Claw; Bite não consta. |
+| `other:Giant Crab.rules.actions.2` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Crab, linhas 11777–11779: a única ação é Claw; Tail não consta. |
+| `other:Giant Crocodile.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; Creature Stat Blocks, Giant Crocodile, linhas 11814–11818. +8, alcance 5 ft.; 21 (3d10 + 5) perfurante, Agarrado/Restringido e restrição de alvo da Tail cotejados. |
+| `other:Giant Crocodile.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; Creature Stat Blocks, Giant Crocodile, linhas 11816–11819. +8, alcance 10 ft.; 18 (3d8 + 5) contundente; alvo Grande ou menor fica Caído. |
+| `other:Giant Eagle.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Eagle, linhas 11852–11856: Multiattack usa Rend; Ram não consta. |
 | `other:Giant Elk.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Giant Octopus.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Giant Owl.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,7 +194,7 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 31 verificados e removidos, 73 verificados e restaurados/corrigidos, 83 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 39 verificados e removidos, 81 verificados e restaurados/corrigidos, 67 pendentes com texto preservado e sem marcador `reviewed`.
 
 ## Divergências adicionais fora dos 187 alvos
 

@@ -20,28 +20,12 @@ A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `tr
 - Sumários foram redigidos como resumos factuais do tipo/alinhamento e ND já presentes no pacote; nenhum dado narrativo ou regra foi acrescentado.
 - Vocabulário aplicado: Aberração, Besta, Celestial, Constructo, Dragão, Elemental, Feérico, Ínfero, Gigante, Humanoide, Monstruosidade, Limo, Planta, Morto-vivo; tipos de dano Contundente, Perfurante, Cortante, Ácido, Frio, Fogo, Elétrico, Veneno, Psíquico, Trovejante, Energia e Necrótico; condições segundo o glossário do projeto.
 - Distâncias mantêm o token de unidade fonte `ft` na chave localizada para que o formatador da interface faça a conversão métrica; nenhum valor numérico foi alterado.
-- Fora dos alvos de ação listados no manifesto, os campos mecânicos e fontes permanecem intactos. Quatro bônus de ataque nesses alvos foram corrigidos com confirmação oficial; os testes mantêm um digest de integridade para os demais dados do pacote.
+- Fora dos alvos de ação listados no manifesto, os campos mecânicos e fontes permanecem intactos. Cinco bônus de ataque em lotes anteriores foram corrigidos com confirmação oficial; os testes mantêm um digest de integridade para os demais dados do pacote.
 
 ## Pendências de auditoria da fonte importada
 
-O lote 001–165 continha 150 alvos de ação. Até esta etapa, 73 foram conferidos e restaurados/traduzidos e 29 foram removidos após cotejo oficial; **48 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
+O lote 001–165 continha 150 alvos de ação. Até esta etapa, 81 foram conferidos e restaurados/traduzidos e 37 foram removidos após cotejo oficial; **32 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
 
-- `other:Frost Giant.rules.actions.1`
-- `other:Ghast.rules.actions.1`
-- `other:Ghoul.rules.actions.1`
-- `other:Giant Ape.rules.actions.0`
-- `other:Giant Badger.rules.actions.1`
-- `other:Giant Bat.rules.actions.1`
-- `other:Giant Boar.rules.actions.0`
-- `other:Giant Boar.rules.actions.2`
-- `other:Giant Centipede.rules.actions.1`
-- `other:Giant Constrictor Snake.rules.actions.0`
-- `other:Giant Constrictor Snake.rules.actions.2`
-- `other:Giant Crab.rules.actions.1`
-- `other:Giant Crab.rules.actions.2`
-- `other:Giant Crocodile.rules.actions.0`
-- `other:Giant Crocodile.rules.actions.1`
-- `other:Giant Eagle.rules.actions.1`
 - `other:Giant Elk.rules.actions.0`
 - `other:Giant Octopus.rules.actions.1`
 - `other:Giant Owl.rules.actions.0`
@@ -75,11 +59,11 @@ O lote 001–165 continha 150 alvos de ação. Até esta etapa, 73 foram conferi
 - `other:Guardian Naga.rules.actions.0`
 - `other:Hawk.rules.actions.0`
 
-O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Nesta metade, 73 ações foram restauradas/corrigidas e 29 foram removidas após cotejo; 48 alvos continuam pendentes. No manifesto global, 73 foram restauradas/corrigidas, 31 removidas e 83 seguem pendentes. Os campos confirmados foram cotejados com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks) e SRD 5.2.1. Os bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
+O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Nesta metade, 81 ações foram restauradas/corrigidas e 37 foram removidas após cotejo; 32 alvos continuam pendentes. No manifesto global, 81 foram restauradas/corrigidas, 39 removidas e 67 seguem pendentes. Os campos confirmados foram cotejados com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks) e SRD 5.2.1. Os bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
 
 ## Atualização de integridade da fonte
 
-Os campos de sentidos, idiomas e deslocamento já documentados foram cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 73 foram conferidas e restauradas/traduzidas, 29 foram removidas após cotejo oficial e as outras 48 seguem pendentes e inalteradas. Duas ações adicionais fora dos 187 alvos — Crab/Ram e Deer/Bite — foram removidas porque os blocos oficiais confirmam que não pertencem a essas criaturas; elas são registradas separadamente e não entram nessa contagem.
+Os campos de sentidos, idiomas e deslocamento já documentados foram cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 81 foram conferidas e restauradas/traduzidas, 37 foram removidas após cotejo oficial e as outras 32 seguem pendentes e inalteradas. Duas ações adicionais fora dos 187 alvos — Crab/Ram e Deer/Bite — foram removidas porque os blocos oficiais confirmam que não pertencem a essas criaturas; elas são registradas separadamente e não entram nessa contagem.
 
 `Basilisk.rules.actions.1` foi removida: o bloco oficial (p. 262; Creature Stat Blocks, linhas 732–736) contém Bite e Petrifying Gaze em Bonus Actions, não Beard. A remoção não certifica as demais ações do registro.
 

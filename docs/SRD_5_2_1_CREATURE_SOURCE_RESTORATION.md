@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 73 ações foram conferidas e restauradas/corrigidas e traduzidas; 31 foram removidas por não constarem no bloco oficial; restam 83 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 81 ações foram conferidas e restauradas/corrigidas e traduzidas; 39 foram removidas por não constarem no bloco oficial; restam 67 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -150,9 +150,9 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para os 31 alvos removidos; os campos traduzidos associados foram removidos. Os outros 83 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para os 39 alvos removidos; os campos traduzidos associados foram removidos. Os outros 67 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
 
-## Lote seguinte: Druid–Frog
+## Lote anterior: Druid–Frog
 
 Foram cotejados os 16 alvos pendentes seguintes na ordem do manifesto. Nove blocos válidos foram restaurados/traduzidos e os campos localizados receberam `reviewed`; sete ações não pertenciam à criatura indicada e foram removidas junto com suas chaves localizadas. A apresentação mantém os tokens `ft` nas traduções para que `formatDistance` cuide da exibição métrica; os valores-fonte permanecem nas unidades originais.
 
@@ -174,8 +174,33 @@ Foram removidos após confirmação explícita de que não constam nos blocos in
 
 O compêndio usa `translatedCompendiumText` para os campos aninhados de regras. A ficha/bestiário usa `localizedMonsterField` para `pt-BR.rules.*` e mantém o inglês como fallback quando uma chave localizada não existe. O importador do catálogo compartilhado aplica campos com proveniência `reviewed`, substitui valores existentes com proveniência `ai` ou ausente e preserva fontes protegidas (`manual`, `official`, `reviewed`, `human`, `user`). A rotina é idempotente ao reimportar os mesmos valores. Esta revisão foi somente de código e pacote: nenhum banco foi acessado ou sincronizado.
 
+## Lote seguinte: Frost Giant–Giant Eagle
+
+Foram cotejados os 16 alvos pendentes seguintes na ordem do manifesto. Oito ações válidas foram restauradas/traduzidas, com `.source=reviewed` nos campos textuais conferidos, e oito blocos ausentes do bloco oficial foram removidos junto com suas chaves localizadas.
+
+| Chave | Conferência | Referência oficial |
+|---|---|---|
+| `other:Frost Giant.rules.actions.1` | Great Bow; +9, alcance 150/600 ft.; 17 (2d10 + 6) perfurante + 7 (2d6) frio; redução de 10 ft. no Deslocamento até o fim do próximo turno | Creature Stat Blocks, Frost Giant, linhas 3644–3648 |
+| `other:Ghast.rules.actions.1` | Claw; +5, 5 ft.; 10 (2d6 + 3) cortante; salvaguarda de Constituição CD 10 e Paralisado até o fim do próximo turno em caso de falha | Creature Stat Blocks, Ghast, linha 3777 |
+| `other:Ghoul.rules.actions.1` | Claw; +4, 5 ft.; 4 (1d4 + 2) cortante; a condição exclui Mortos-vivos e elfos; salvaguarda de Constituição CD 10 | Creature Stat Blocks, Ghoul, linha 3863 |
+| `other:Giant Ape.rules.actions.0` | Fist; +9, 10 ft.; 22 (3d10 + 6) contundente | Creature Stat Blocks, Giant Ape, linhas 11565–11570 |
+| `other:Giant Badger.rules.actions.1` | Gore removida: o bloco lista somente Bite | Creature Stat Blocks, Giant Badger, linhas 11607–11608 |
+| `other:Giant Bat.rules.actions.1` | Gore removida: o bloco lista somente Bite | Creature Stat Blocks, Giant Bat, linhas 11638–11639 |
+| `other:Giant Boar.rules.actions.0` | Gore; +5, 5 ft.; 10 (2d6 + 3) perfurante; dano extra 7 (2d6) e Caído após deslocamento em linha reta | Creature Stat Blocks, Giant Boar, linhas 11672–11674 |
+| `other:Giant Boar.rules.actions.2` | Bite removida: o bloco lista Gore como ação | Creature Stat Blocks, Giant Boar, linhas 11672–11674 |
+| `other:Giant Centipede.rules.actions.1` | Bite duplicada removida: o bloco tem uma Bite, +4, 5 ft., 4 (1d4 + 2) perfurante e condição Envenenado | Creature Stat Blocks, Giant Centipede, linhas 11704–11705 |
+| `other:Giant Constrictor Snake.rules.actions.0` | Bite; +6, 10 ft.; 11 (2d6 + 4) perfurante | Creature Stat Blocks, Giant Constrictor Snake, linhas 11737–11742 |
+| `other:Giant Constrictor Snake.rules.actions.2` | Bite adicional removida: as ações são Bite e Constrict; a segunda é salvaguarda de Força CD 14, 10 ft., 13 (2d8 + 4) contundente e Agarrado | Creature Stat Blocks, Giant Constrictor Snake, linhas 11737–11742 |
+| `other:Giant Crab.rules.actions.1` | Bite removida: a única ação é Claw | Creature Stat Blocks, Giant Crab, linhas 11777–11779 |
+| `other:Giant Crab.rules.actions.2` | Tail removida: a única ação é Claw | Creature Stat Blocks, Giant Crab, linhas 11777–11779 |
+| `other:Giant Crocodile.rules.actions.0` | Bite; +8, 5 ft.; 21 (3d10 + 5) perfurante; Agarrado (CD 15), Restringido e imunidade a alvo da Tail enquanto agarrado | Creature Stat Blocks, Giant Crocodile, linhas 11814–11818 |
+| `other:Giant Crocodile.rules.actions.1` | Tail; +8, 10 ft.; 18 (3d8 + 5) contundente; alvo Grande ou menor fica Caído | Creature Stat Blocks, Giant Crocodile, linhas 11816–11819 |
+| `other:Giant Eagle.rules.actions.1` | Ram removida: Multiattack usa Rend; Ram não consta | Creature Stat Blocks, Giant Eagle, linhas 11852–11856 |
+
+Ao remover alvos que ocupavam posições anteriores a ações preservadas, os índices de localização foram reindexados para continuarem associados à ação correta (Giant Centipede). Outras ações não listadas como alvos foram mantidas intactas. A conferência do bloco oficial também revelou divergências em ações fora deste lote — Giant Ape/Bite, Giant Boar/Bite, Giant Centipede/Claw, Giant Constrictor Snake/Claw, Giant Crocodile/Rend e dano radiante adicional de Giant Eagle/Rend; não foram alteradas e ficam fora da contagem desta auditoria.
+
 ## Pendências
 
-- Cotejar individualmente os 83 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 67 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
