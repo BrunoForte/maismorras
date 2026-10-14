@@ -124,22 +124,22 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Giant Crocodile.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; Creature Stat Blocks, Giant Crocodile, linhas 11814–11818. +8, alcance 5 ft.; 21 (3d10 + 5) perfurante, Agarrado/Restringido e restrição de alvo da Tail cotejados. |
 | `other:Giant Crocodile.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; Creature Stat Blocks, Giant Crocodile, linhas 11816–11819. +8, alcance 10 ft.; 18 (3d8 + 5) contundente; alvo Grande ou menor fica Caído. |
 | `other:Giant Eagle.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Giant Eagle, linhas 11852–11856: Multiattack usa Rend; Ram não consta. |
-| `other:Giant Elk.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Octopus.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Owl.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Owl.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Rat.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Rat.rules.actions.3` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Scorpion.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Seahorse.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Venomous Snake.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Vulture.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Weasel.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Wolf Spider.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Giant Wolf Spider.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Glabrezu.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Gnoll Warrior.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Goat.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Giant Elk.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 350, linhas 31262–31268: Ram; +6, alcance 10 ft.; 11 (2d6 + 4) contundente + 5 (2d4) radiante; condição Caído e dano adicional após deslocamento em linha reta conferidos. |
+| `other:Giant Octopus.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 352, linhas 31386–31394: a única ação é Tentacles; Ink Cloud é Reação. Talons não consta como ação do Giant Octopus. |
+| `other:Giant Owl.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 352, linhas 31412–31419: Talons; +4, alcance 5 ft.; 7 (1d10 + 2) cortante. |
+| `other:Giant Owl.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 352, linhas 31412–31419: a ação de ataque é Talons; Spellcasting aparece em seguida como ação. Bite não consta no bloco do Giant Owl. |
+| `other:Giant Rat.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 353, linhas 31437–31439: Bite; +5, alcance 5 feet; 5 (1d4 + 3) perfurante. |
+| `other:Giant Rat.rules.actions.3` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 353, linhas 31437–31439: a única ação listada é Bite; Ram não consta no bloco do Giant Rat. |
+| `other:Giant Scorpion.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 353, linhas 31451–31459: Multiattack, Claw e Sting; Ram não consta no bloco do Giant Scorpion. |
+| `other:Giant Seahorse.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 353, linhas 31474–31481: Ram; +4, alcance 5 ft.; 9 (2d6 + 2) contundente, ou 11 (2d8 + 2) após movimento em linha reta. |
+| `other:Giant Venomous Snake.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 354, linhas 31569–31571: a única ação é Bite; Gouge não consta no bloco do Giant Venomous Snake. |
+| `other:Giant Vulture.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 354, linhas 31589–31592: Gouge; +4, alcance 5 ft.; 9 (2d6 + 2) perfurante; Envenenado até o fim do próximo turno. |
+| `other:Giant Weasel.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 355, linhas 31621–31623: a única ação é Bite; Ram não consta no bloco do Giant Weasel. |
+| `other:Giant Wolf Spider.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 355, linhas 31641–31643: a única ação é Bite; Ram não consta no bloco do Giant Wolf Spider. |
+| `other:Giant Wolf Spider.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 355, linhas 31641–31643: a única ação é Bite; Talons não consta no bloco do Giant Wolf Spider. |
+| `other:Glabrezu.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 289, linhas 25800–25808: Pincer; +9, alcance 10 ft.; 16 (2d10 + 5) cortante; alvo Médio ou menor fica Agarrado, CD 15 para escapar, por uma das pinças. |
+| `other:Gnoll Warrior.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 289, linhas 25851–25859: as ações são Rend e Bone Bow; Rampage é Ação Bônus. Scimitar não consta. |
+| `other:Goat.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 355, linhas 31656–31658: Ram; +2, alcance 5 ft.; 1 contundente ou 2 (1d4) após movimento em linha reta. |
 | `other:Goat.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Goblin Boss.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Goblin Boss.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,7 +194,33 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 39 verificados e removidos, 81 verificados e restaurados/corrigidos, 67 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 48 verificados e removidos, 88 verificados e restaurados/corrigidos, 51 pendentes com texto preservado e sem marcador `reviewed`.
+
+
+## Lote atual: Giant Elk–Goat
+
+Foram conferidos os próximos 16 alvos pendentes em ordem do manifesto: sete ações válidas restauradas integralmente e nove ações removidas após comparação com seus blocos no SRD 5.2.1. Nomes, bônus de ataque, alcance, dano e descrições foram cotejados campo a campo com o PDF oficial. A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual para o ataque do abutre, não uma forma oficial.
+
+| Chave | Estado | Evidência oficial |
+|---|---|---|
+| Giant Elk.actions.0 | Restaurada: Ram; +6, 10 ft.; 11 (2d6 + 4) contundente + 5 (2d4) radiante; dano/Caído após investida | SRD p. 350, linhas 31262–31268 |
+| Giant Octopus.actions.1 | Removida: Talons; Tentacles é ação, Ink Cloud é Reação | SRD p. 352, linhas 31386–31394 |
+| Giant Owl.actions.0 | Restaurada: Talons; +4, 5 ft.; 7 (1d10 + 2) cortante | SRD p. 352, linhas 31412–31419 |
+| Giant Owl.actions.1 | Removida: Bite não consta no bloco | SRD p. 352, linhas 31412–31419 |
+| Giant Rat.actions.0 | Restaurada: Bite; +5, 5 feet; 5 (1d4 + 3) perfurante | SRD p. 353, linhas 31437–31439 |
+| Giant Rat.actions.3 | Removida: Ram; Bite é a única ação listada | SRD p. 353, linhas 31437–31439 |
+| Giant Scorpion.actions.2 | Removida: Ram; ações são Multiattack, Claw e Sting | SRD p. 353, linhas 31451–31459 |
+| Giant Seahorse.actions.0 | Restaurada: Ram; +4, 5 ft.; 9 (2d6 + 2), ou 11 (2d8 + 2) contundente após movimento reto | SRD p. 353, linhas 31474–31481 |
+| Giant Venomous Snake.actions.1 | Removida: Gouge; Bite é a única ação | SRD p. 354, linhas 31569–31571 |
+| Giant Vulture.actions.0 | Restaurada: Gouge; +4, 5 ft.; 9 (2d6 + 2) perfurante; Envenenado até o fim do próximo turno | SRD p. 354, linhas 31589–31592 |
+| Giant Weasel.actions.1 | Removida: Ram; Bite é a única ação | SRD p. 355, linhas 31621–31623 |
+| Giant Wolf Spider.actions.1 | Removida: Ram; Bite é a única ação | SRD p. 355, linhas 31641–31643 |
+| Giant Wolf Spider.actions.2 | Removida: Talons; Bite é a única ação | SRD p. 355, linhas 31641–31643 |
+| Glabrezu.actions.0 | Restaurada: Pincer; +9, 10 ft.; 16 (2d10 + 5) cortante; Agarrado (CD 15) para alvo Médio ou menor | SRD p. 289, linhas 25800–25808 |
+| Gnoll Warrior.actions.2 | Removida: Scimitar; ações Rend/Bone Bow e Rampage como Ação Bônus | SRD p. 289, linhas 25851–25859 |
+| Goat.actions.0 | Restaurada: Ram; +2, 5 ft.; 1 contundente, ou 2 (1d4) após movimento reto | SRD p. 355, linhas 31656–31658 |
+
+Remoções em índices intermediários preservaram as ações sobreviventes e reindexaram somente suas chaves localizadas. Goat.actions.1 permanece pendente e inalterada. A revisão é textual e específica aos campos-alvo; não certifica as demais estatísticas dos registros.
 
 ## Divergências adicionais fora dos 187 alvos
 

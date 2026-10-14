@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 81 ações foram conferidas e restauradas/corrigidas e traduzidas; 39 foram removidas por não constarem no bloco oficial; restam 67 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 88 ações foram conferidas e restauradas/corrigidas e traduzidas; 48 foram removidas por não constarem no bloco oficial; restam 51 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -150,7 +150,7 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para os 39 alvos removidos; os campos traduzidos associados foram removidos. Os outros 67 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. No estado atual, 48 foram removidos e 51 seguem pendentes; os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
 
 ## Lote anterior: Druid–Frog
 
@@ -199,8 +199,34 @@ Foram cotejados os 16 alvos pendentes seguintes na ordem do manifesto. Oito aç�
 
 Ao remover alvos que ocupavam posições anteriores a ações preservadas, os índices de localização foram reindexados para continuarem associados à ação correta (Giant Centipede). Outras ações não listadas como alvos foram mantidas intactas. A conferência do bloco oficial também revelou divergências em ações fora deste lote — Giant Ape/Bite, Giant Boar/Bite, Giant Centipede/Claw, Giant Constrictor Snake/Claw, Giant Crocodile/Rend e dano radiante adicional de Giant Eagle/Rend; não foram alteradas e ficam fora da contagem desta auditoria.
 
+
+## Lote atual: Giant Elk–Goat
+
+Foram processados os 16 alvos pendentes seguintes em ordem do manifesto: sete ações restauradas/corrigidas e nove removidas. As ações válidas receberam tradução integral e proveniência .source=reviewed somente nos campos conferidos. Fonte primária: [SRD 5.2.1 oficial, PDF](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf); as páginas são as impressas no documento e os números de linha identificam o texto extraído.
+
+| Alvo | Resultado verificado | Referência SRD 5.2.1 |
+|---|---|---|
+| Giant Elk .rules.actions.0 | Ram; +6, 10 ft.; 11 (2d6 + 4) contundente + 5 (2d4) radiante; investida causa dano extra e Caído | p. 350, linhas 31262–31268 |
+| Giant Octopus .rules.actions.1 | Talons removida; Tentacles é ação e Ink Cloud é Reação | p. 352, linhas 31386–31394 |
+| Giant Owl .rules.actions.0 | Talons; +4, 5 ft.; 7 (1d10 + 2) cortante | p. 352, linhas 31412–31419 |
+| Giant Owl .rules.actions.1 | Bite removida; não aparece no bloco | p. 352, linhas 31412–31419 |
+| Giant Rat .rules.actions.0 | Bite; +5, 5 feet; 5 (1d4 + 3) perfurante | p. 353, linhas 31437–31439 |
+| Giant Rat .rules.actions.3 | Ram removida; Bite é a única ação | p. 353, linhas 31437–31439 |
+| Giant Scorpion .rules.actions.2 | Ram removida; bloco lista Multiattack, Claw e Sting | p. 353, linhas 31451–31459 |
+| Giant Seahorse .rules.actions.0 | Ram; +4, 5 ft.; 9 (2d6 + 2), ou 11 (2d8 + 2) contundente após movimento reto | p. 353, linhas 31474–31481 |
+| Giant Venomous Snake .rules.actions.1 | Gouge removida; Bite é a única ação | p. 354, linhas 31569–31571 |
+| Giant Vulture .rules.actions.0 | Gouge; +4, 5 ft.; 9 (2d6 + 2) perfurante e Envenenado até o fim do próximo turno | p. 354, linhas 31589–31592 |
+| Giant Weasel .rules.actions.1 | Ram removida; Bite é a única ação | p. 355, linhas 31621–31623 |
+| Giant Wolf Spider .rules.actions.1 | Ram removida; Bite é a única ação | p. 355, linhas 31641–31643 |
+| Giant Wolf Spider .rules.actions.2 | Talons removida; Bite é a única ação | p. 355, linhas 31641–31643 |
+| Glabrezu .rules.actions.0 | Pincer; +9, 10 ft.; 16 (2d10 + 5) cortante; Agarrado (CD 15) em alvo Médio ou menor | p. 289, linhas 25800–25808 |
+| Gnoll Warrior .rules.actions.2 | Scimitar removida; ações Rend e Bone Bow; Rampage é Ação Bônus | p. 289, linhas 25851–25859 |
+| Goat .rules.actions.0 | Ram; +2, 5 ft.; 1 contundente, ou 2 (1d4) após movimento reto | p. 355, linhas 31656–31658 |
+
+A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual, não uma tradução oficial. O alvo Goat.rules.actions.1 continua pendente e não foi alterado. Remoções em índices intermediários preservaram o conteúdo não-alvo e reindexaram apenas as chaves localizadas necessárias. A conferência é textual e específica aos alvos; não certifica outras estatísticas.
+
 ## Pendências
 
-- Cotejar individualmente os 67 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 51 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
