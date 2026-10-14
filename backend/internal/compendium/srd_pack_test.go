@@ -342,7 +342,7 @@ func TestSRDCreatureCatalogIsLocalizedAndNonTargetMechanicsRemainUnchanged(t *te
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "8a6cfb3efca916174800c3b3fa0fd1e40164ce40578edf2eac95c69cb085d3ff" {
+	if got := hex.EncodeToString(digest[:]); got != "3d6ff5e4684e9d81ea8b56ecc4cae154e9155090ba1ad9b1fc6c52708da75072" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -596,6 +596,15 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 		{creature: "Djinni", index: 1, name: "Storm Bolt", toHit: 9, damage: "13 (3d8) Thunder damage", description: "Ranged Attack Roll: +9, range 120 feet. Hit: 13 (3d8) Thunder damage. If the target is a Large or smaller creature, it has the Prone condition.", localizedName: "Raio Tempestuoso", localizedDamage: "13 (3d8) de dano trovejante", localizedDescription: "Jogada de Ataque à Distância: +9, alcance 120 pés. Acerto: 13 (3d8) de dano trovejante. Se o alvo for uma criatura Grande ou menor, fica Caído.", localizedRange: "alcance 120 pés"},
 		{creature: "Draft Horse", index: 0, name: "Hooves", toHit: 6, damage: "6 (1d4 + 4) Bludgeoning damage", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 6 (1d4 + 4) Bludgeoning damage.", localizedName: "Cascos", localizedDamage: "6 (1d4 + 4) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 6 (1d4 + 4) de dano contundente.", localizedRange: "alcance 5 ft"},
 		{creature: "Dragon Turtle", index: 1, name: "Tail", toHit: 13, damage: "18 (2d10 + 7) Bludgeoning damage", description: "Melee Attack Roll: +13, reach 15 ft. Hit: 18 (2d10 + 7) Bludgeoning damage. If the target is a Huge or smaller creature, it has the Prone condition.", localizedName: "Cauda", localizedDamage: "18 (2d10 + 7) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +13, alcance 15 ft. Acerto: 18 (2d10 + 7) de dano contundente. Se o alvo for uma criatura Imensa ou menor, fica Caído.", localizedRange: "alcance 15 ft"},
+		{creature: "Druid", index: 0, name: "Vine Staff", toHit: 5, damage: "7 (1d8 + 3) Bludgeoning damage plus 2 (1d4) Poison damage.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Bludgeoning damage plus 2 (1d4) Poison damage.", localizedName: "Bastão de Vinhas", localizedDamage: "7 (1d8 + 3) de dano contundente mais 2 (1d4) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8 + 3) de dano contundente mais 2 (1d4) de dano de veneno."},
+		{creature: "Eagle", index: 0, name: "Talons", toHit: 4, damage: "4 (1d4 + 2) Slashing damage.", description: "Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4 + 2) Slashing damage.", localizedName: "Garras", localizedDamage: "4 (1d4 + 2) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 4 (1d4 + 2) de dano cortante."},
+		{creature: "Earth Elemental", index: 0, name: "Slam", toHit: 8, damage: "14 (2d8 + 5) Bludgeoning damage.", description: "Melee Attack Roll: +8, reach 10 ft. Hit: 14 (2d8 + 5) Bludgeoning damage.", localizedName: "Pancada", localizedDamage: "14 (2d8 + 5) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 14 (2d8 + 5) de dano contundente.", localizedRange: "alcance 10 ft"},
+		{creature: "Elephant", index: 0, name: "Gore", toHit: 8, damage: "15 (2d8 + 6) Piercing damage.", description: "Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8 + 6) Piercing damage. If the target is a Huge or smaller creature and the elephant moved 20+ feet straight toward it immediately before the hit, the target has the Prone condition.", localizedName: "Chifrada", localizedDamage: "15 (2d8 + 6) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 15 (2d8 + 6) de dano perfurante. Se o alvo for uma criatura Enorme ou menor e o elefante tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, fica Caído."},
+		{creature: "Elk", index: 0, name: "Ram", toHit: 5, damage: "6 (1d6 + 3) Bludgeoning damage.", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage. If the target is a Large or smaller creature and the elk moved 20+ feet straight toward it immediately before the hit, the target takes an extra 3 (1d6) Bludgeoning damage and has the Prone condition.", localizedName: "Investida", localizedDamage: "6 (1d6 + 3) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano contundente. Se o alvo for uma criatura Grande ou menor e o alce tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, sofre 3 (1d6) de dano contundente adicional e fica Caído."},
+		{creature: "Erinyes", index: 0, name: "Withering Sword", toHit: 8, damage: "13 (2d8 + 4) Slashing damage plus 11 (2d10) Necrotic damage.", description: "Melee Attack Roll: +8, reach 5 ft. Hit: 13 (2d8 + 4) Slashing damage plus 11 (2d10) Necrotic damage.", localizedName: "Espada Definhante", localizedDamage: "13 (2d8 + 4) de dano cortante mais 11 (2d10) de dano necrótico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano cortante mais 11 (2d10) de dano necrótico."},
+		{creature: "Fire Elemental", index: 0, name: "Burn", toHit: 6, damage: "10 (2d6 + 3) Fire damage.", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 + 3) Fire damage. If the target is a creature or a flammable object, it starts burning.", localizedName: "Queimar", localizedDamage: "10 (2d6 + 3) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano de fogo. Se o alvo for uma criatura ou um objeto inflamável, começa a queimar."},
+		{creature: "Flying Snake", index: 0, name: "Bite", toHit: 4, damage: "1 Piercing damage plus 5 (2d4) Poison damage.", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing damage plus 5 (2d4) Poison damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante mais 5 (2d4) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 de dano perfurante mais 5 (2d4) de dano de veneno."},
+		{creature: "Frog", index: 0, name: "Bite", toHit: 3, damage: "1 Piercing damage.", description: "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 de dano perfurante."},
 	}
 	var pack srdPack
 	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
@@ -630,13 +639,15 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "reach 15 ft"
 			} else if test.localizedRange == "alcance 30 ft" {
 				sourceRange = "reach 30 ft"
+			} else if test.localizedRange == "alcance 60 ft" {
+				sourceRange = "range 60 ft"
 			} else if test.localizedRange == "linha de 30 ft de comprimento e 5 ft de largura" {
 				sourceRange = "30-foot-long, 5-foot-wide Line"
 			} else if test.localizedRange == "linha de 40 ft de comprimento e 5 ft de largura" {
 				sourceRange = "40-foot-long, 5-foot-wide Line"
 			} else if strings.HasPrefix(test.localizedRange, "uma criatura Média ou menor") {
 				sourceRange = "one Medium or smaller creature the snake can see within 5 ft"
-			} else if test.localizedRange == "alcance 5 pés" {
+			} else if test.creature == "Eagle" || test.localizedRange == "alcance 5 pés" {
 				sourceRange = "reach 5 feet"
 			} else if test.localizedRange == "alcance 120 pés" {
 				sourceRange = "range 120 feet"
@@ -673,6 +684,7 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 	}
 	removed := map[string][]string{
 		"Basilisk": {"Beard"}, "Venomous Snake": {"Hooves"}, "Vulture": {"Hooves"},
+		"Eagle": {"Gore", "Ram"}, "Elephant": {"Ram", "Bite"}, "Elk": {"Bite"}, "Flying Snake": {"Fist"}, "Frog": {"Fist"},
 		"Allosaurus": {"Tail"}, "Animated Armor": {"Smother"}, "Animated Flying Sword": {"Smother"},
 		"Awakened Shrub": {"Slam"}, "Blink Dog": {"Rend"}, "Bone Devil": {"Rend"}, "Brown Bear": {"Scratch"},
 		"Bugbear Stalker": {"Grab"}, "Camel": {"Scratch"}, "Cat": {"Claw"}, "Chimera": {"Pincer"}, "Commoner": {"Rend"},
@@ -681,6 +693,7 @@ func TestSRDCreatureActionsAbsentFromOfficialBlocksWereRemoved(t *testing.T) {
 	}
 	removedTranslations := map[string][]string{
 		"Basilisk": {"Barba"}, "Venomous Snake": {"Cascos"}, "Vulture": {"Cascos"},
+		"Eagle": {"Chifrada", "Investida"}, "Elephant": {"Investida", "Mordida"}, "Elk": {"Mordida"}, "Flying Snake": {"Punho"}, "Frog": {"Punho"},
 		"Allosaurus": {"Cauda"}, "Animated Armor": {"Sufocar"}, "Animated Flying Sword": {"Sufocar"},
 		"Awakened Shrub": {"Pancada"}, "Blink Dog": {"Dilacerar"}, "Bone Devil": {"Dilacerar"}, "Brown Bear": {"Arranhar"},
 		"Bugbear Stalker": {"Agarrar"}, "Camel": {"Arranhão"}, "Cat": {"Garra"}, "Chimera": {"Pinça"}, "Commoner": {"Dilacerar"},
@@ -754,8 +767,8 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		}
 		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
 	}
-	if len(pending) != 99 || verifiedRemoved != 24 || verifiedRestored != 64 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 99, 24 and 64", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 83 || verifiedRemoved != 31 || verifiedRestored != 73 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 83, 31 and 73", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -1175,7 +1188,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "393385985b66dcdcc462ac66e5482f22eb725eb6994b601f5c725b4d8c6024a3"
+	const wantSourceDigest = "1eee46463164efb40e66fe01af9bf460123522caf592705340ee9eaf614f4e59"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

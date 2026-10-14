@@ -92,22 +92,22 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Draft Horse.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30984–30986; Creature Stat Blocks, linhas 11354–11356: a única ação é Hooves; Talons não consta. |
 | `other:Draft Horse.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 347, linhas 30984–30986; Creature Stat Blocks, linhas 11354–11356: a única ação é Hooves; Gore não consta. |
 | `other:Dragon Turtle.rules.actions.1` | name/range/damage/description | verificado — restaurado | Tail; SRD p. 281, linhas 25098–25107; Creature Stat Blocks, linhas 3065–3072. +13, alcance 15 ft.; 18 (2d10 + 7) contundente; alvo Imenso ou menor fica Caído; texto cotejado. |
-| `other:Druid.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Eagle.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Eagle.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Eagle.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Earth Elemental.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Elephant.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Elephant.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Elephant.rules.actions.2` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Elk.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Elk.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Erinyes.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Fire Elemental.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Flying Snake.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Flying Snake.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Frog.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Frog.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Druid.rules.actions.0` | name/range/damage/description | verificado — restaurado | Vine Staff; SRD 5.2.1, bloco Druid; Creature Stat Blocks, linhas 3191–3194. +5, alcance 5 ft.; 7 (1d8 + 3) contundente + 2 (1d4) veneno; texto completo cotejado. |
+| `other:Eagle.rules.actions.0` | name/range/damage/description | verificado — restaurado | Talons; SRD 5.2.1, bloco Eagle; Creature Stat Blocks, linhas 11388–11389. +4, alcance 5 feet; 4 (1d4 + 2) cortante; texto cotejado. |
+| `other:Eagle.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Eagle, linhas 11388–11390: a única ação é Talons; Gore não consta no bloco. |
+| `other:Eagle.rules.actions.2` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Eagle, linhas 11388–11390: a única ação é Talons; Ram não consta no bloco. |
+| `other:Earth Elemental.rules.actions.0` | name/range/damage/description | verificado — restaurado | Slam; SRD 5.2.1, bloco Earth Elemental; Creature Stat Blocks, linhas 3291–3295. +8, alcance 10 ft.; 14 (2d8 + 5) contundente; texto completo cotejado. |
+| `other:Elephant.rules.actions.0` | name/range/damage/description | verificado — restaurado | Gore; SRD 5.2.1, bloco Elephant; Creature Stat Blocks, linhas 11419–11422. +8, alcance 5 ft.; 15 (2d8 + 6) perfurante; condição Caído após deslocamento de 20+ ft. cotejada. |
+| `other:Elephant.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Elephant, linhas 11419–11426: a ação é Gore e Trample é ação bônus; Ram não consta. |
+| `other:Elephant.rules.actions.2` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Elephant, linhas 11419–11426: Bite não consta no bloco de Elephant. |
+| `other:Elk.rules.actions.0` | name/range/damage/description | verificado — restaurado | Ram; SRD 5.2.1, bloco Elk; Creature Stat Blocks, linhas 11458–11459. +5, alcance 5 ft.; 6 (1d6 + 3) contundente; dano adicional e Caído após deslocamento de 20+ ft. cotejados. |
+| `other:Elk.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Elk, linhas 11458–11460: a única ação é Ram; Bite não consta. |
+| `other:Erinyes.rules.actions.0` | name/range/damage/description | verificado — restaurado | Withering Sword; SRD 5.2.1, bloco Erinyes; Creature Stat Blocks, linhas 3386–3389. +8, alcance 5 ft.; 13 (2d8 + 4) cortante + 11 (2d10) necrótico; texto cotejado. |
+| `other:Fire Elemental.rules.actions.0` | name/range/damage/description | verificado — restaurado | Burn; SRD 5.2.1, bloco Fire Elemental; Creature Stat Blocks, linhas 3520–3524. +6, alcance 5 ft.; 10 (2d6 + 3) fogo e efeito de queimar; texto cotejado. |
+| `other:Flying Snake.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; SRD 5.2.1, bloco Flying Snake; Creature Stat Blocks, linhas 11492–11495. Bônus corrigido de +3 para +4; alcance 5 ft.; 1 perfurante + 5 (2d4) veneno. |
+| `other:Flying Snake.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Flying Snake, linhas 11492–11495: a única ação é Bite; Fist não consta. |
+| `other:Frog.rules.actions.0` | name/range/damage/description | verificado — restaurado | Bite; SRD 5.2.1, bloco Frog; Creature Stat Blocks, linhas 11531–11533. +3, alcance 5 ft.; 1 perfurante; texto e dano completos cotejados. |
+| `other:Frog.rules.actions.1` | name/range/damage/description | verificado — removido | Creature Stat Blocks, Frog, linhas 11531–11534: a única ação é Bite; Fist não consta. |
 | `other:Frost Giant.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Ghast.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Ghoul.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,7 +194,7 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 24 verificados e removidos, 64 verificados e restaurados/corrigidos, 99 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 31 verificados e removidos, 73 verificados e restaurados/corrigidos, 83 pendentes com texto preservado e sem marcador `reviewed`.
 
 ## Divergências adicionais fora dos 187 alvos
 

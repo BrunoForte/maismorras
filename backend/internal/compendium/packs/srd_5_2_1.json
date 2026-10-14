@@ -13844,9 +13844,9 @@
         "pt-BR.rules.languages": "Comum, Druídico, Silvestre",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Bastão de Vinhas",
-        "pt-BR.rules.actions.0.damage": "7 (1d8",
+        "pt-BR.rules.actions.0.damage": "7 (1d8 + 3) de dano contundente mais 2 (1d4) de dano de veneno",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8 + 3) de dano contundente mais 2 (1d4) de dano de veneno.",
         "pt-BR.rules.actions.1.name": "Fagulha Verdejante",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "10 (3d6) Radiant dano.",
@@ -13870,7 +13870,11 @@
         "pt-BR.rules.actions.3.range": "alcance 60 ft",
         "pt-BR.rules.actions.3.range.source": "reviewed",
         "pt-BR.rules.actions.3.description": "Jogada de Ataque à Distância: +6, alcance 60 ft. Acerto: 7 (1d6 + 4) dano perfurante.",
-        "pt-BR.rules.actions.3.description.source": "reviewed"
+        "pt-BR.rules.actions.3.description.source": "reviewed",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -13900,8 +13904,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "7 (1d8",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8"
+            "damage": "7 (1d8 + 3) Bludgeoning damage plus 2 (1d4) Poison damage.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Bludgeoning damage plus 2 (1d4) Poison damage."
           },
           {
             "name": "Verdant Wisp",
@@ -14159,17 +14163,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Garras",
-        "pt-BR.rules.actions.0.damage": "4 (1d4",
-        "pt-BR.rules.actions.0.range": "alcance 5 pés",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 pés. Acerto: 4 (1d4",
-        "pt-BR.rules.actions.1.name": "Chifrada",
-        "pt-BR.rules.actions.1.damage": "15 (2d8",
-        "pt-BR.rules.actions.1.range": "alcance 5 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 15 (2d8",
-        "pt-BR.rules.actions.2.name": "Investida",
-        "pt-BR.rules.actions.2.damage": "6 (1d6",
-        "pt-BR.rules.actions.2.range": "alcance 5 ft",
-        "pt-BR.rules.actions.2.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6"
+        "pt-BR.rules.actions.0.damage": "4 (1d4 + 2) de dano cortante",
+        "pt-BR.rules.actions.0.range": "alcance 5 ft",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 4 (1d4 + 2) de dano cortante.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -14199,24 +14199,8 @@
             "kind": "action",
             "toHit": 4,
             "range": "reach 5 feet",
-            "damage": "4 (1d4",
-            "description": "Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4"
-          },
-          {
-            "name": "Gore",
-            "kind": "action",
-            "toHit": 8,
-            "range": "reach 5 ft",
-            "damage": "15 (2d8",
-            "description": "Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8"
-          },
-          {
-            "name": "Ram",
-            "kind": "action",
-            "toHit": 5,
-            "range": "reach 5 ft",
-            "damage": "6 (1d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6"
+            "damage": "4 (1d4 + 2) Slashing damage.",
+            "description": "Melee Attack Roll: +4, reach 5 feet. Hit: 4 (1d4 + 2) Slashing damage."
           }
         ]
       }
@@ -14239,9 +14223,13 @@
         "pt-BR.rules.languages": "Primordial (Terran)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Pancada",
-        "pt-BR.rules.actions.0.damage": "14 (2d8",
+        "pt-BR.rules.actions.0.damage": "14 (2d8 + 5) de dano contundente",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 14 (2d8",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 14 (2d8 + 5) de dano contundente.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Arremesso de Rocha",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "8 (1d6 + 5) dano contundente. If o alvo is a Grande",
@@ -14279,8 +14267,8 @@
             "kind": "action",
             "toHit": 8,
             "range": "reach 10 ft",
-            "damage": "14 (2d8",
-            "description": "Melee Attack Roll: +8, reach 10 ft. Hit: 14 (2d8"
+            "damage": "14 (2d8 + 5) Bludgeoning damage.",
+            "description": "Melee Attack Roll: +8, reach 10 ft. Hit: 14 (2d8 + 5) Bludgeoning damage."
           },
           {
             "name": "Rock Launch",
@@ -14432,17 +14420,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Chifrada",
-        "pt-BR.rules.actions.0.damage": "15 (2d8",
+        "pt-BR.rules.actions.0.damage": "15 (2d8 + 6) de dano perfurante",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 15 (2d8",
-        "pt-BR.rules.actions.1.name": "Investida",
-        "pt-BR.rules.actions.1.damage": "6 (1d6",
-        "pt-BR.rules.actions.1.range": "alcance 5 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6",
-        "pt-BR.rules.actions.2.name": "Mordida",
-        "pt-BR.rules.actions.2.damage": "1 perfurante",
-        "pt-BR.rules.actions.2.range": "alcance 5 ft",
-        "pt-BR.rules.actions.2.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 perfurante"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 15 (2d8 + 6) de dano perfurante. Se o alvo for uma criatura Enorme ou menor e o elefante tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, fica Caído.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -14472,24 +14456,8 @@
             "kind": "action",
             "toHit": 8,
             "range": "reach 5 ft",
-            "damage": "15 (2d8",
-            "description": "Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8"
-          },
-          {
-            "name": "Ram",
-            "kind": "action",
-            "toHit": 5,
-            "range": "reach 5 ft",
-            "damage": "6 (1d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6"
-          },
-          {
-            "name": "Bite",
-            "kind": "action",
-            "toHit": 4,
-            "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing"
+            "damage": "15 (2d8 + 6) Piercing damage.",
+            "description": "Melee Attack Roll: +8, reach 5 ft. Hit: 15 (2d8 + 6) Piercing damage. If the target is a Huge or smaller creature and the elephant moved 20+ feet straight toward it immediately before the hit, the target has the Prone condition."
           }
         ]
       }
@@ -14527,13 +14495,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Investida",
-        "pt-BR.rules.actions.0.damage": "6 (1d6",
+        "pt-BR.rules.actions.0.damage": "6 (1d6 + 3) de dano contundente",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6",
-        "pt-BR.rules.actions.1.name": "Mordida",
-        "pt-BR.rules.actions.1.damage": "1 perfurante",
-        "pt-BR.rules.actions.1.range": "alcance 5 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 perfurante"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano contundente. Se o alvo for uma criatura Grande ou menor e o alce tiver se movido 20+ ft em linha reta na direção dele imediatamente antes do acerto, sofre 3 (1d6) de dano contundente adicional e fica Caído.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -14563,16 +14531,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "6 (1d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6"
-          },
-          {
-            "name": "Bite",
-            "kind": "action",
-            "toHit": 3,
-            "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing"
+            "damage": "6 (1d6 + 3) Bludgeoning damage.",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Bludgeoning damage. If the target is a Large or smaller creature and the elk moved 20+ feet straight toward it immediately before the hit, the target takes an extra 3 (1d6) Bludgeoning damage and has the Prone condition."
           }
         ]
       }
@@ -14625,9 +14585,13 @@
         "pt-BR.rules.languages": "Infernal; telepatia 120 ft.",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Espada Definhante",
-        "pt-BR.rules.actions.0.damage": "13 (2d8 + 4) dano cortante mais 11 (2d10) Necró-",
+        "pt-BR.rules.actions.0.damage": "13 (2d8 + 4) de dano cortante mais 11 (2d10) de dano necrótico",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 13 (2d8 + 4) dano cortante mais 11 (2d10) Necró-"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano cortante mais 11 (2d10) de dano necrótico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -14657,8 +14621,8 @@
             "kind": "action",
             "toHit": 8,
             "range": "reach 5 ft",
-            "damage": "13 (2d8 + 4) Slashing damage plus 11 (2d10) Ne-",
-            "description": "Melee Attack Roll: +8, reach 5 ft. Hit: 13 (2d8 + 4) Slashing damage plus 11 (2d10) Ne-"
+            "damage": "13 (2d8 + 4) Slashing damage plus 11 (2d10) Necrotic damage.",
+            "description": "Melee Attack Roll: +8, reach 5 ft. Hit: 13 (2d8 + 4) Slashing damage plus 11 (2d10) Necrotic damage."
           }
         ]
       }
@@ -14935,9 +14899,13 @@
         "pt-BR.rules.languages": "Primordial (Ignan)",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Queimar",
-        "pt-BR.rules.actions.0.damage": "10 (2d6 +",
+        "pt-BR.rules.actions.0.damage": "10 (2d6 + 3) de dano de fogo",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 +"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano de fogo. Se o alvo for uma criatura ou um objeto inflamável, começa a queimar.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -14967,8 +14935,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "10 (2d6 +",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 +"
+            "damage": "10 (2d6 + 3) Fire damage.",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 + 3) Fire damage. If the target is a creature or a flammable object, it starts burning."
           }
         ]
       }
@@ -15109,13 +15077,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.damage": "1 de dano perfurante mais 5 (2d4) de dano de veneno",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 perfurante",
-        "pt-BR.rules.actions.1.name": "Punho",
-        "pt-BR.rules.actions.1.damage": "22 (3d10",
-        "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +9, alcance 10 ft. Acerto: 22 (3d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 de dano perfurante mais 5 (2d4) de dano de veneno.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -15143,18 +15111,10 @@
           {
             "name": "Bite",
             "kind": "action",
-            "toHit": 3,
+            "toHit": 4,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing"
-          },
-          {
-            "name": "Fist",
-            "kind": "action",
-            "toHit": 9,
-            "range": "reach 10 ft",
-            "damage": "22 (3d10",
-            "description": "Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10"
+            "damage": "1 Piercing damage plus 5 (2d4) Poison damage.",
+            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing damage plus 5 (2d4) Poison damage."
           }
         ]
       }
@@ -15222,13 +15182,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.damage": "1 de dano perfurante",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 perfurante",
-        "pt-BR.rules.actions.1.name": "Punho",
-        "pt-BR.rules.actions.1.damage": "22 (3d10",
-        "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +9, alcance 10 ft. Acerto: 22 (3d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 1 de dano perfurante.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -15258,16 +15218,8 @@
             "kind": "action",
             "toHit": 3,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing"
-          },
-          {
-            "name": "Fist",
-            "kind": "action",
-            "toHit": 9,
-            "range": "reach 10 ft",
-            "damage": "22 (3d10",
-            "description": "Melee Attack Roll: +9, reach 10 ft. Hit: 22 (3d10"
+            "damage": "1 Piercing damage.",
+            "description": "Melee Attack Roll: +3, reach 5 ft. Hit: 1 Piercing damage."
           }
         ]
       }

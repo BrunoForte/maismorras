@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 64 ações foram conferidas e restauradas/corrigidas e traduzidas; 24 foram removidas por não constarem no bloco oficial; restam 99 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 73 ações foram conferidas e restauradas/corrigidas e traduzidas; 31 foram removidas por não constarem no bloco oficial; restam 83 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -94,7 +94,7 @@ As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 | `other:Clay Golem.rules.actions.0` | Slam; +9, alcance 5 ft.; 10 (1d10 + 5) contundente + 6 (1d12) ácido; reduz o máximo de PV pelo dano ácido sofrido | SRD p. 273, linhas 24495–24500; Creature Stat Blocks, linhas 2242–2246 | Fragmento restaurado e tradução integral cotejada |
 | `other:Cloaker.rules.actions.0` | Attach; +6, alcance 5 ft.; 13 (3d6 + 3) perfurante; fixação, Cego, redução/repasse de dano e remoção por movimento ou teste de Atletismo CD 14 | SRD p. 274, linhas 24522–24534; Creature Stat Blocks, linhas 2288–2290 | Fragmento restaurado e descrição integral traduzida |
 | `other:Cloaker.rules.actions.1` | Tail; +6, alcance 10 ft.; 8 (1d10 + 3) cortante | SRD p. 274, linhas 24535–24536; Creature Stat Blocks, linha 2292 | Fragmento restaurado e tradução integral cotejada |
-As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas por inferência a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 64 registros restaurados/corrigidos listados acima. Quatro bônus de ataque foram corrigidos porque os blocos oficiais confirmam valores diferentes do pacote; a revisão destes ataques não certifica estatísticas gerais das criaturas.
+As ações foram cotejadas diretamente com os blocos oficiais, não reconstruídas por inferência a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos registros restaurados/corrigidos listados acima. Cinco bônus de ataque foram corrigidos porque os blocos oficiais confirmam valores diferentes do pacote; a revisão destes ataques não certifica estatísticas gerais das criaturas.
 
 ### Ações verificadas neste lote
 
@@ -114,7 +114,7 @@ As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstr
 | `other:Dragon Turtle.rules.actions.1` | Tail; +13, 15 ft.; 18 (2d10 + 7) contundente; alvo Imenso ou menor fica Caído | SRD p. 281, linhas 25098–25107; Creature Stat Blocks, linhas 3065–3072 |
 
 Ataque, alcance, dano e texto completo foram verificados em cada registro acima. Essa conferência é textual e específica ao campo; não equivale a uma validação mecânica geral do bloco da criatura.
-Outras doze ações foram verificadas como indevidas e removidas:
+Outras dezenove ações foram verificadas como indevidas e removidas:
 
 | Chave | Evidência no SRD 5.2.1 | Estado |
 |---|---|---|
@@ -150,7 +150,25 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para os 24 alvos removidos; os campos traduzidos associados foram removidos. Os outros 99 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para os 31 alvos removidos; os campos traduzidos associados foram removidos. Os outros 83 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+
+## Lote seguinte: Druid–Frog
+
+Foram cotejados os 16 alvos pendentes seguintes na ordem do manifesto. Nove blocos válidos foram restaurados/traduzidos e os campos localizados receberam `reviewed`; sete ações não pertenciam à criatura indicada e foram removidas junto com suas chaves localizadas. A apresentação mantém os tokens `ft` nas traduções para que `formatDistance` cuide da exibição métrica; os valores-fonte permanecem nas unidades originais.
+
+| Chave | Conferência | Referência oficial |
+|---|---|---|
+| `other:Druid.rules.actions.0` | Vine Staff; +5, 5 ft.; 7 (1d8 + 3) contundente + 2 (1d4) veneno | Creature Stat Blocks, Druid, linhas 3189–3195 |
+| `other:Eagle.rules.actions.0` | Talons; +4, 5 feet; 4 (1d4 + 2) cortante | Creature Stat Blocks, Eagle, linhas 11388–11390 |
+| `other:Earth Elemental.rules.actions.0` | Slam; +8, 10 ft.; 14 (2d8 + 5) contundente | Creature Stat Blocks, Earth Elemental, linhas 3291–3295 |
+| `other:Elephant.rules.actions.0` | Gore; +8, 5 ft.; 15 (2d8 + 6) perfurante; condição Caído após deslocamento de 20+ ft. | Creature Stat Blocks, Elephant, linhas 11419–11422 |
+| `other:Elk.rules.actions.0` | Ram; +5, 5 ft.; 6 (1d6 + 3) contundente; dano adicional e Caído após deslocamento de 20+ ft. | Creature Stat Blocks, Elk, linhas 11458–11459 |
+| `other:Erinyes.rules.actions.0` | Withering Sword; +8, 5 ft.; 13 (2d8 + 4) cortante + 11 (2d10) necrótico | Creature Stat Blocks, Erinyes, linhas 3386–3389 |
+| `other:Fire Elemental.rules.actions.0` | Burn; +6, 5 ft.; 10 (2d6 + 3) fogo; criaturas ou objetos inflamáveis começam a queimar | Creature Stat Blocks, Fire Elemental, linhas 3520–3524 |
+| `other:Flying Snake.rules.actions.0` | Bite; bônus corrigido de +3 para +4; 5 ft.; 1 perfurante + 5 (2d4) veneno | Creature Stat Blocks, Flying Snake, linhas 11492–11495 |
+| `other:Frog.rules.actions.0` | Bite; +3, 5 ft.; 1 perfurante | Creature Stat Blocks, Frog, linhas 11531–11533 |
+
+Foram removidos após confirmação explícita de que não constam nos blocos indicados: `Eagle.rules.actions.1` (Gore) e `.2` (Ram), `Elephant.rules.actions.1` (Ram) e `.2` (Bite), `Elk.rules.actions.1` (Bite), `Flying Snake.rules.actions.1` (Fist) e `Frog.rules.actions.1` (Fist). Referências: Eagle, linhas 11388–11390; Elephant, 11419–11426; Elk, 11458–11460; Flying Snake, 11492–11495; Frog, 11531–11534. A ausência das ações extras foi cotejada no bloco completo da criatura; não foram inferidas a partir de fragmentos.
 
 ## Apresentação e catálogo compartilhado
 
@@ -158,6 +176,6 @@ O compêndio usa `translatedCompendiumText` para os campos aninhados de regras. 
 
 ## Pendências
 
-- Cotejar individualmente os 99 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 83 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
