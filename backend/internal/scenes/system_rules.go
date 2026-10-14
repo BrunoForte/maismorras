@@ -32,3 +32,19 @@ func resolveDnd2024Rules(ref systems.Ref) (systems.Dnd2024CharacterRules, error)
 	}
 	return rules, nil
 }
+
+func combatTurnTransitionPolicyForScene(ctx context.Context, sceneID string, queryer campaignReferenceQueryer) (systems.CombatTurnTransitionPolicy, error) {
+	var systemID, systemVersion string
+	if err := queryer.QueryRow(ctx, `select c.system_id,c.system_version from scenes s join campaigns c on c.id=s.campaign_id where s.id=$1`, sceneID).Scan(&systemID, &systemVersion); err != nil {
+		return nil, fmt.Errorf("load scene campaign system reference: %w", err)
+	}
+	return resolveCombatTurnTransitionPolicy(systems.Ref{ID: systems.ID(systemID), Version: systems.Version(systemVersion)})
+}
+
+func resolveCombatTurnTransitionPolicy(ref systems.Ref) (systems.CombatTurnTransitionPolicy, error) {
+	policy, ok := systems.ResolveCombatTurnTransitionPolicy(ref)
+	if !ok {
+		return nil, ErrUnsupportedCampaignSystem
+	}
+	return policy, nil
+}

@@ -28,6 +28,32 @@ func (Dnd2024Adapter) Definition() Definition {
 // Dnd2024Rules contains the currently-supported typed D&D 2024 roll rules.
 type Dnd2024Rules struct{}
 
+// Dnd2024CombatTurnTransitionPolicy preserves the existing SetCombat turn
+// boundaries: ending an active token ticks turn_end, entering one resets its
+// movement and ticks turn_start, and an unchanged active token has no effects.
+type Dnd2024CombatTurnTransitionPolicy struct{}
+
+func (Dnd2024CombatTurnTransitionPolicy) PlanTurnTransition(previousTokenID, nextTokenID string) CombatTurnTransition {
+	if previousTokenID == nextTokenID {
+		return CombatTurnTransition{Kind: CombatTurnUnchanged}
+	}
+
+	transition := CombatTurnTransition{}
+	switch {
+	case previousTokenID == "":
+		transition.Kind = CombatStarted
+	case nextTokenID == "":
+		transition.Kind = CombatEnded
+	default:
+		transition.Kind = CombatTurnAdvanced
+	}
+
+	transition.EndPreviousTurn = previousTokenID != ""
+	transition.StartNextTurn = nextTokenID != ""
+	transition.ResetNextMovement = transition.StartNextTurn
+	return transition
+}
+
 func (Dnd2024Rules) AbilityModifier(score int) int {
 	if score >= 10 {
 		return (score - 10) / 2
@@ -75,3 +101,4 @@ func (Dnd2024Rules) RollD20(mode D20Mode, modifier int, roll DiceRoller) (D20Res
 }
 
 var _ Dnd2024CharacterRules = Dnd2024Rules{}
+var _ CombatTurnTransitionPolicy = Dnd2024CombatTurnTransitionPolicy{}
