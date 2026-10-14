@@ -34,6 +34,10 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if role != "gm" {
 		return Token{}, ErrForbidden
 	}
+	rules, err := characterTokenInitiativeRulesForScene(ctx, sceneID, r.pool)
+	if err != nil {
+		return Token{}, err
+	}
 
 	var ownerID, actorName string
 	var raw []byte
@@ -83,7 +87,7 @@ func (r *Repository) CreateTokenFromCharacter(ctx context.Context, sceneID, acto
 	if err = tx.QueryRow(ctx, `insert into scene_tokens(scene_id,actor_id,owner_id,name,image_url,color,position_x,position_y,size,hp_current,hp_max,armor_class,initiative,statuses,is_hidden,visibility,movement_limit) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id::text`, sceneID, actorID, ownerID, name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, statuses, false, visibility, t.MovementLimit).Scan(&t.ID); err != nil {
 		return Token{}, err
 	}
-	t.InitiativeBonus = abilityModifier(sheet.AbilityScores.Dexterity)
+	t.InitiativeBonus = rules.InitiativeBonus(sheet.AbilityScores.Dexterity)
 	if _, err = tx.Exec(ctx, `update scene_tokens set initiative_bonus=$1 where id=$2`, t.InitiativeBonus, t.ID); err != nil {
 		return Token{}, err
 	}

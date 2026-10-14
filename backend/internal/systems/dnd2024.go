@@ -28,6 +28,10 @@ func (Dnd2024Adapter) Definition() Definition {
 // Dnd2024Rules contains the currently-supported typed D&D 2024 roll rules.
 type Dnd2024Rules struct{}
 
+func (Dnd2024Rules) InitiativeBonus(dexterity int) int {
+	return (Dnd2024Rules{}).AbilityModifier(dexterity)
+}
+
 // Dnd2024CombatTurnTransitionPolicy preserves the existing SetCombat turn
 // boundaries: ending an active token ticks turn_end, entering one resets its
 // movement and ticks turn_start, and an unchanged active token has no effects.
