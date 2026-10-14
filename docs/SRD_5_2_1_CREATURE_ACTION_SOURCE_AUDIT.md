@@ -28,19 +28,19 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Ancient White Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 341; Creature Stat Blocks, bloco Ancient Dragon correspondente. +14, 15 ft.; 17 (2d8 + 8) cortante + 7 (2d6) frio; nome, alcance, ataque, dano e texto integral cotejados. |
 | `other:Animated Armor.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 259, linhas 23138–23141: as ações são Multiattack e Slam; não existe Smother. |
 | `other:Animated Flying Sword.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 259, linhas 23155–23157: a ação de ataque é Slash; não existe Smother. |
-| `other:Animated Rug of Smothering.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ankylosaurus.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Archelon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Animated Rug of Smothering.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 259, linhas 23171–23179; Creature Stat Blocks, linhas 379–381. Texto integral, ataque +5, alcance 5 ft. e dano 10 (2d6 + 3) contundente cotejados. |
+| `other:Ankylosaurus.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 344, linhas 30684–30687; Creature Stat Blocks, linhas 10403–10406. Cauda; ataque +6, alcance 10 ft., 9 (1d10 + 4) contundente e condição Caído cotejados. |
+| `other:Archelon.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 344, linhas 30720–30723; Creature Stat Blocks, linhas 10475–10478. Mordida; ataque +6, alcance 5 ft., 14 (3d6 + 4) perfurante cotejados; bônus de ataque corrigido de +2 para +6. |
 | `other:Assassin.rules.actions.0` | name/range/damage/description | verificado — restaurado | Substituído Rake por Shortsword conforme SRD p. 260, linhas 23227–23231: ataque +7, alcance 5 ft., 7 (1d6 + 4) perfurante + 17 (5d6) veneno, com condição Envenenado até o início do próximo turno do assassino. Texto e tradução integral cotejados. |
 | `other:Awakened Shrub.rules.actions.0` | name/range/damage/description | verificado — restaurado | Rake; SRD p. 260, linha 23252. Ataque +1, alcance 5 ft., dano 1 cortante e texto integral cotejados. |
 | `other:Awakened Shrub.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 260, linhas 23251–23252: Awakened Shrub tem somente a ação Rake; Slam pertence ao bloco seguinte, Awakened Tree. |
-| `other:Awakened Tree.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Baboon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Badger.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Balor.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Balor.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bandit.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bandit Captain.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Awakened Tree.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 260, linhas 23253–23268; Creature Stat Blocks, linhas 530–532. Pancada; ataque +6, alcance 10 ft., 14 (3d6 + 4) contundente cotejados. |
+| `other:Baboon.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 345, linhas 30740–30742; Creature Stat Blocks, linhas 10509–10511. Mordida; ataque +1, alcance 5 ft., 1 (1d4 − 1) perfurante cotejados; bônus corrigido de +4 para +1. |
+| `other:Badger.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 345, linhas 30756–30758; Creature Stat Blocks, linhas 10543–10545. Mordida; ataque +2, alcance 5 ft., 1 perfurante cotejados; bônus corrigido de +4 para +2. |
+| `other:Balor.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23335–23342; Creature Stat Blocks, linhas 642–645. Chicote Flamejante; ataque +14, alcance 30 ft., 18 (3d6 + 8) energia + 17 (5d6) fogo e puxão/condição Caído cotejados. |
+| `other:Balor.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23343–23345; Creature Stat Blocks, linhas 646–647. Lâmina Elétrica; ataque +14, alcance 10 ft., 21 (3d8 + 8) energia + 22 (4d10) elétrico e limite de Reações cotejados. |
+| `other:Bandit.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23363–23365; Creature Stat Blocks, linhas 681–684. Cimitarra; ataque +3, alcance 5 ft., 4 (1d6 + 1) cortante cotejados; bônus corrigido de +5 para +3. |
+| `other:Bandit Captain.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23381–23384; Creature Stat Blocks, linhas 716–720. Cimitarra; ataque +5, alcance 5 ft., 6 (1d6 + 3) cortante cotejados. |
 | `other:Barbed Devil.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Barbed Devil.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Basilisk.rules.actions.1` | description/damage | verificado — removido | SRD p. 262; Creature Stat Blocks, Basilisk, linhas 732–736: Bite e Petrifying Gaze em Bonus Actions; não há Beard. |
@@ -194,4 +194,4 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 10 verificados e removidos, 21 verificados e restaurados/corrigidos, 156 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 10 verificados e removidos, 31 verificados e restaurados/corrigidos, 146 pendentes com texto preservado e sem marcador `reviewed`.

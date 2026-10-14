@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 21 ações foram conferidas e restauradas/traduzidas (quatro verificações anteriores e 17 ações de dragões neste lote); dez ações foram removidas por não constarem no bloco oficial; restam 156 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 31 ações foram conferidas e restauradas/corrigidas e traduzidas (quatro verificações iniciais, 17 ações de dragões e dez ações do lote alfabético A–B); dez ações foram removidas por não constarem no bloco oficial; restam 146 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -62,8 +62,18 @@ As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 | `other:Ancient Copper Dragon.rules.actions.0` | Rend; +15, 15 ft.; 19 (2d10 + 8) cortante + 9 (2d8) ácido | SRD p. 277; Creature Stat Blocks, bloco Ancient Copper Dragon | Restaurada e traduzida integralmente após cotejo |
 | `other:Ancient Green Dragon.rules.actions.0` | Rend; +15, 15 ft.; 17 (2d8 + 8) cortante + 10 (3d6) veneno | SRD p. 294; Creature Stat Blocks, bloco Ancient Green Dragon | Restaurada e traduzida integralmente após cotejo |
 | `other:Ancient White Dragon.rules.actions.0` | Rend; +14, 15 ft.; 17 (2d8 + 8) cortante + 7 (2d6) frio | SRD p. 341; Creature Stat Blocks, bloco Ancient White Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Animated Rug of Smothering.rules.actions.0` | Smother; +5, alcance 5 ft.; 10 (2d6 + 3) contundente; agarrão, condições Cego/Impedido, sufocamento, dano por turno, limite de uma criatura e redução/repasse de dano enquanto agarrando | SRD p. 259, linhas 23171–23179; Creature Stat Blocks, linhas 379–381 | Texto integral cotejado e restaurado; fonte mecânica não validada além do ataque |
+| `other:Ankylosaurus.rules.actions.0` | Tail; +6, alcance 10 ft.; 9 (1d10 + 4) contundente; Caído para alvo Enorme ou menor | SRD p. 344, linhas 30684–30687; Creature Stat Blocks, linhas 10403–10406 | Texto integral cotejado e restaurado |
+| `other:Archelon.rules.actions.0` | Bite; +6, alcance 5 ft.; 14 (3d6 + 4) perfurante | SRD p. 344, linhas 30720–30723; Creature Stat Blocks, linhas 10475–10478 | Ação restaurada e tradução cotejada; bônus de ataque corrigido de +2 para +6 |
+| `other:Awakened Tree.rules.actions.0` | Slam; +6, alcance 10 ft.; 14 (3d6 + 4) contundente | SRD p. 260, linhas 23253–23268; Creature Stat Blocks, linhas 530–532 | Texto integral cotejado e restaurado |
+| `other:Baboon.rules.actions.0` | Bite; +1, alcance 5 ft.; 1 (1d4 − 1) perfurante | SRD p. 345, linhas 30740–30742; Creature Stat Blocks, linhas 10509–10511 | Ação restaurada e tradução cotejada; bônus de ataque corrigido de +4 para +1 |
+| `other:Badger.rules.actions.0` | Bite; +2, alcance 5 ft.; 1 perfurante | SRD p. 345, linhas 30756–30758; Creature Stat Blocks, linhas 10543–10545 | Ação restaurada e tradução cotejada; bônus de ataque corrigido de +4 para +2 |
+| `other:Balor.rules.actions.0` | Flame Whip; +14, alcance 30 ft.; 18 (3d6 + 8) energia + 17 (5d6) fogo; puxão até 25 ft. e Caído | SRD p. 261, linhas 23335–23342; Creature Stat Blocks, linhas 642–645 | Texto integral cotejado e restaurado |
+| `other:Balor.rules.actions.1` | Lightning Blade; +14, alcance 10 ft.; 21 (3d8 + 8) energia + 22 (4d10) elétrico; impede Reações até o início do próximo turno do balor | SRD p. 261, linhas 23343–23345; Creature Stat Blocks, linhas 646–647 | Texto integral cotejado e restaurado |
+| `other:Bandit.rules.actions.0` | Scimitar; +3, alcance 5 ft.; 4 (1d6 + 1) cortante | SRD p. 261, linhas 23363–23365; Creature Stat Blocks, linhas 681–684 | Ação restaurada e tradução cotejada; bônus de ataque corrigido de +5 para +3 |
+| `other:Bandit Captain.rules.actions.0` | Scimitar; +5, alcance 5 ft.; 6 (1d6 + 3) cortante | SRD p. 261, linhas 23381–23384; Creature Stat Blocks, linhas 716–720 | Texto integral cotejado e restaurado |
 
-As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 21 registros restaurados/corrigidos listados acima.
+As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 31 registros restaurados/corrigidos listados acima. Quatro bônus de ataque foram corrigidos porque os blocos oficiais confirmam valores diferentes do pacote; a revisão destes ataques não certifica estatísticas gerais das criaturas.
 Outras sete ações foram verificadas como indevidas e removidas:
 
 | Chave | Evidência no SRD 5.2.1 | Estado |
@@ -84,7 +94,7 @@ As remoções confirmadas foram:
 | `other:Venomous Snake.rules.actions.2` | A única ação é Bite (+4, alcance 5 ft., 4 (1d4 + 2) perfurante + 3 (1d6) veneno). Não existe Hooves. | Creature Stat Blocks, Venomous Snake, linhas 13986–13987; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 | `other:Vulture.rules.actions.1` | A única ação é Beak (+2, alcance 5 ft., 2 (1d4) perfurante). Não existe Hooves. | Creature Stat Blocks, Vulture, linhas 14022–14024; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 156 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 146 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
 
 ## Apresentação e catálogo compartilhado
 
@@ -92,6 +102,6 @@ O compêndio usa `translatedCompendiumText` para os campos aninhados de regras. 
 
 ## Pendências
 
-- Cotejar individualmente os 156 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 146 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.

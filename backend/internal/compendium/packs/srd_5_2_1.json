@@ -8530,9 +8530,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Sufocar",
-        "pt-BR.rules.actions.0.damage": "10 (2d6",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "10 (2d6 + 3) de dano contundente",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6"
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano contundente. Se o alvo for uma criatura Média ou menor, o tapete pode impor a condição Agarrado ao alvo (CD para escapar 13), em vez de causar dano. Enquanto o agarrão durar, o alvo fica com as condições Cego e Impedido, está sufocando e sofre 10 (2d6 + 3) de dano contundente no início de cada um de seus turnos. O tapete só pode sufocar uma criatura por vez. Enquanto estiver agarrando o alvo, o tapete não pode realizar esta ação; o dano que sofre é reduzido à metade (arredondado para baixo), e o alvo sofre a mesma quantidade de dano.",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8562,8 +8566,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "10 (2d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6"
+            "damage": "10 (2d6 + 3) Bludgeoning damage",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Bludgeoning damage. If the target is a Medium or smaller creature, the rug can give it the Grappled condition (escape DC 13) instead of dealing damage. Until the grapple ends, the target has the Blinded and Restrained conditions, is suffocating, and takes 10 (2d6 + 3) Bludgeoning damage at the start of each of its turns. The rug can smother only one creature at a time. While grappling the target, the rug can’t take this action, the rug halves the damage it takes (round down), and the target takes the same amount of damage."
           }
         ]
       }
@@ -8644,9 +8648,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Cauda",
-        "pt-BR.rules.actions.0.damage": "9 (1d10",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "9 (1d10 + 4) de dano contundente",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 9 (1d10",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 9 (1d10 + 4) de dano contundente. Se o alvo for uma criatura Enorme ou menor, fica Caído.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Punho",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "5 (1d4 + 3)",
@@ -8692,8 +8700,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 10 ft",
-            "damage": "9 (1d10",
-            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10"
+            "damage": "9 (1d10 + 4) Bludgeoning damage",
+            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10 + 4) Bludgeoning damage. If the target is a Huge or smaller creature, it has the Prone condition."
           },
           {
             "name": "Fist",
@@ -8823,9 +8831,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "14 (3d6 + 4) de dano perfurante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +2, alcance 5 ft. Acerto: 1 perfurante"
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 14 (3d6 + 4) de dano perfurante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8853,10 +8865,10 @@
           {
             "name": "Bite",
             "kind": "action",
-            "toHit": 2,
+            "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +2, reach 5 ft. Hit: 1 Piercing"
+            "damage": "14 (3d6 + 4) Piercing damage",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 14 (3d6 + 4) Piercing damage."
           }
         ]
       }
@@ -9118,9 +9130,13 @@
         "pt-BR.rules.languages": "Comum e outro idioma",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Pancada",
-        "pt-BR.rules.actions.0.damage": "14 (3d6",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "14 (3d6 + 4) de dano contundente",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (3d6",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (3d6 + 4) de dano contundente.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Bico",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "6 (1d8 + 2)",
@@ -9166,8 +9182,8 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 10 ft",
-            "damage": "14 (3d6",
-            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (3d6"
+            "damage": "14 (3d6 + 4) Bludgeoning damage",
+            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (3d6 + 4) Bludgeoning damage."
           },
           {
             "name": "Beak",
@@ -9342,9 +9358,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "1 (1d4 − 1) de dano perfurante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 perfurante",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +1, alcance 5 ft. Acerto: 1 (1d4 − 1) de dano perfurante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Dilacerar",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "5 (1d6 + 2)",
@@ -9380,10 +9400,10 @@
           {
             "name": "Bite",
             "kind": "action",
-            "toHit": 4,
+            "toHit": 1,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing"
+            "damage": "1 (1d4 − 1) Piercing damage",
+            "description": "Melee Attack Roll: +1, reach 5 ft. Hit: 1 (1d4 − 1) Piercing damage."
           },
           {
             "name": "Rend",
@@ -9414,9 +9434,13 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "1 de dano perfurante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 perfurante",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +2, alcance 5 ft. Acerto: 1 de dano perfurante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Dilacerar",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "5 (1d6 + 2)",
@@ -9452,10 +9476,10 @@
           {
             "name": "Bite",
             "kind": "action",
-            "toHit": 4,
+            "toHit": 2,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing"
+            "damage": "1 Piercing damage",
+            "description": "Melee Attack Roll: +2, reach 5 ft. Hit: 1 Piercing damage."
           },
           {
             "name": "Rend",
@@ -9546,13 +9570,21 @@
         "pt-BR.rules.languages": "Abissal; telepatia 120 ft.",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Chicote Flamejante",
-        "pt-BR.rules.actions.0.damage": "18 (3d6 + 8) dano de energia mais 17 (5d6) dano de fogo. If",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "18 (3d6 + 8) de dano de energia mais 17 (5d6) de dano de fogo",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 30 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 30 ft. Acerto: 18 (3d6 + 8) dano de energia mais 17 (5d6) dano de fogo. Se",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 30 ft. Acerto: 18 (3d6 + 8) de dano de energia mais 17 (5d6) de dano de fogo. Se o alvo for uma criatura Enorme ou menor, o balor puxa o alvo até 25 ft em linha reta na direção dele, e o alvo fica Caído.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Lâmina Elétrica",
-        "pt-BR.rules.actions.1.damage": "21 (3d8 + 8) dano de energia mais 22 (4d10) Elétri-",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.damage": "21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
         "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 21 (3d8 + 8) dano de energia mais 22 (4d10) Elétri-"
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico, e o alvo não pode realizar Reações até o início do próximo turno do balor.",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -9582,16 +9614,16 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 30 ft",
-            "damage": "18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage. If",
-            "description": "Melee Attack Roll: +14, reach 30 ft. Hit: 18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage. If"
+            "damage": "18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage",
+            "description": "Melee Attack Roll: +14, reach 30 ft. Hit: 18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage. If the target is a Huge or smaller creature, the balor pulls the target up to 25 feet straight toward itself, and the target has the Prone condition."
           },
           {
             "name": "Lightning Blade",
             "kind": "action",
             "toHit": 14,
             "range": "reach 10 ft",
-            "damage": "21 (3d8 + 8) Force damage plus 22 (4d10) Light-",
-            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 21 (3d8 + 8) Force damage plus 22 (4d10) Light-"
+            "damage": "21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage",
+            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage, and the target can’t take Reactions until the start of the balor’s next turn."
           }
         ]
       }
@@ -9614,9 +9646,13 @@
         "pt-BR.rules.languages": "Comum, Gíria dos Ladrões",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Cimitarra",
-        "pt-BR.rules.actions.0.damage": "6 (1d6",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "4 (1d6 + 1) de dano cortante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 4 (1d6 + 1) de dano cortante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Pistola",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "8 (1d10 + 3) dano perfurante.",
@@ -9652,10 +9688,10 @@
           {
             "name": "Scimitar",
             "kind": "action",
-            "toHit": 5,
+            "toHit": 3,
             "range": "reach 5 ft",
-            "damage": "6 (1d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6"
+            "damage": "4 (1d6 + 1) Slashing damage",
+            "description": "Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Slashing damage."
           },
           {
             "name": "Pistol",
@@ -9686,9 +9722,13 @@
         "pt-BR.rules.languages": "Comum, Gíria dos Ladrões",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Cimitarra",
-        "pt-BR.rules.actions.0.damage": "6 (1d6",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.damage": "6 (1d6 + 3) de dano cortante",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano cortante.",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
         "pt-BR.rules.actions.1.name": "Pistola",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "8 (1d10 + 3) dano perfurante.",
@@ -9726,8 +9766,8 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "6 (1d6",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6"
+            "damage": "6 (1d6 + 3) Slashing damage",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Slashing damage."
           },
           {
             "name": "Pistol",

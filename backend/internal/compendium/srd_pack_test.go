@@ -213,7 +213,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "42b6f945613cf69ce2ba23e644c72d93617e88e2a621b366c51f8c8ee7e80d6d" {
+	if got := hex.EncodeToString(digest[:]); got != "3727ca371386ea95355637b335a7242c1d8f0831a54369550ed51c05667b58f4" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -341,7 +341,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "6c92e0b84dae3082656b35a529e5e8b0303fa28e0ceff6001a3b5c3ea5c963d5" {
+	if got := hex.EncodeToString(digest[:]); got != "b0b97eae0b27c28c6189a11a02a19eb834c5d46e35dc1b022943d9509c047a33" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -551,6 +551,16 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 		{creature: "Ancient Copper Dragon", index: 0, name: "Rend", toHit: 15, damage: "19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido.", localizedRange: "alcance 15 ft"},
 		{creature: "Ancient Green Dragon", index: 0, name: "Rend", toHit: 15, damage: "17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno.", localizedRange: "alcance 15 ft"},
 		{creature: "Ancient White Dragon", index: 0, name: "Rend", toHit: 14, damage: "17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage", description: "Melee Attack Roll: +14, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio.", localizedRange: "alcance 15 ft"},
+		{creature: "Animated Rug of Smothering", index: 0, name: "Smother", toHit: 5, damage: "10 (2d6 + 3) Bludgeoning damage", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Bludgeoning damage. If the target is a Medium or smaller creature, the rug can give it the Grappled condition (escape DC 13) instead of dealing damage. Until the grapple ends, the target has the Blinded and Restrained conditions, is suffocating, and takes 10 (2d6 + 3) Bludgeoning damage at the start of each of its turns. The rug can smother only one creature at a time. While grappling the target, the rug can’t take this action, the rug halves the damage it takes (round down), and the target takes the same amount of damage.", localizedName: "Sufocar", localizedDamage: "10 (2d6 + 3) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano contundente. Se o alvo for uma criatura Média ou menor, o tapete pode impor a condição Agarrado ao alvo (CD para escapar 13), em vez de causar dano. Enquanto o agarrão durar, o alvo fica com as condições Cego e Impedido, está sufocando e sofre 10 (2d6 + 3) de dano contundente no início de cada um de seus turnos. O tapete só pode sufocar uma criatura por vez. Enquanto estiver agarrando o alvo, o tapete não pode realizar esta ação; o dano que sofre é reduzido à metade (arredondado para baixo), e o alvo sofre a mesma quantidade de dano."},
+		{creature: "Ankylosaurus", index: 0, name: "Tail", toHit: 6, damage: "9 (1d10 + 4) Bludgeoning damage", description: "Melee Attack Roll: +6, reach 10 ft. Hit: 9 (1d10 + 4) Bludgeoning damage. If the target is a Huge or smaller creature, it has the Prone condition.", localizedName: "Cauda", localizedDamage: "9 (1d10 + 4) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 9 (1d10 + 4) de dano contundente. Se o alvo for uma criatura Enorme ou menor, fica Caído.", localizedRange: "alcance 10 ft"},
+		{creature: "Archelon", index: 0, name: "Bite", toHit: 6, damage: "14 (3d6 + 4) Piercing damage", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 14 (3d6 + 4) Piercing damage.", localizedName: "Mordida", localizedDamage: "14 (3d6 + 4) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 14 (3d6 + 4) de dano perfurante."},
+		{creature: "Awakened Tree", index: 0, name: "Slam", toHit: 6, damage: "14 (3d6 + 4) Bludgeoning damage", description: "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (3d6 + 4) Bludgeoning damage.", localizedName: "Pancada", localizedDamage: "14 (3d6 + 4) de dano contundente", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (3d6 + 4) de dano contundente.", localizedRange: "alcance 10 ft"},
+		{creature: "Baboon", index: 0, name: "Bite", toHit: 1, damage: "1 (1d4 − 1) Piercing damage", description: "Melee Attack Roll: +1, reach 5 ft. Hit: 1 (1d4 − 1) Piercing damage.", localizedName: "Mordida", localizedDamage: "1 (1d4 − 1) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +1, alcance 5 ft. Acerto: 1 (1d4 − 1) de dano perfurante."},
+		{creature: "Badger", index: 0, name: "Bite", toHit: 2, damage: "1 Piercing damage", description: "Melee Attack Roll: +2, reach 5 ft. Hit: 1 Piercing damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +2, alcance 5 ft. Acerto: 1 de dano perfurante."},
+		{creature: "Balor", index: 0, name: "Flame Whip", toHit: 14, damage: "18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage", description: "Melee Attack Roll: +14, reach 30 ft. Hit: 18 (3d6 + 8) Force damage plus 17 (5d6) Fire damage. If the target is a Huge or smaller creature, the balor pulls the target up to 25 feet straight toward itself, and the target has the Prone condition.", localizedName: "Chicote Flamejante", localizedDamage: "18 (3d6 + 8) de dano de energia mais 17 (5d6) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 30 ft. Acerto: 18 (3d6 + 8) de dano de energia mais 17 (5d6) de dano de fogo. Se o alvo for uma criatura Enorme ou menor, o balor puxa o alvo até 25 ft em linha reta na direção dele, e o alvo fica Caído.", localizedRange: "alcance 30 ft"},
+		{creature: "Balor", index: 1, name: "Lightning Blade", toHit: 14, damage: "21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage, and the target can’t take Reactions until the start of the balor’s next turn.", localizedName: "Lâmina Elétrica", localizedDamage: "21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico, e o alvo não pode realizar Reações até o início do próximo turno do balor.", localizedRange: "alcance 10 ft"},
+		{creature: "Bandit", index: 0, name: "Scimitar", toHit: 3, damage: "4 (1d6 + 1) Slashing damage", description: "Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Slashing damage.", localizedName: "Cimitarra", localizedDamage: "4 (1d6 + 1) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 4 (1d6 + 1) de dano cortante."},
+		{creature: "Bandit Captain", index: 0, name: "Scimitar", toHit: 5, damage: "6 (1d6 + 3) Slashing damage", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Slashing damage.", localizedName: "Cimitarra", localizedDamage: "6 (1d6 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano cortante."},
 	}
 	var pack srdPack
 	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
@@ -583,6 +593,8 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "reach 10 ft"
 			} else if test.localizedRange == "alcance 15 ft" {
 				sourceRange = "reach 15 ft"
+			} else if test.localizedRange == "alcance 30 ft" {
+				sourceRange = "reach 30 ft"
 			}
 			if got.Name != test.name || got.ToHit != test.toHit || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
 				t.Errorf("source action = %+v; want name %q, +%d, %s, damage %q and complete SRD description", got, test.name, test.toHit, sourceRange, test.damage)
@@ -690,8 +702,8 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		}
 		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
 	}
-	if len(pending) != 156 || verifiedRemoved != 10 || verifiedRestored != 21 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 156, 10 and 21", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 146 || verifiedRemoved != 10 || verifiedRestored != 31 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 146, 10 and 31", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -784,7 +796,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "cdb0bec5accda8dd89936698ab90d4e7841b150ef8876c65249c78c306a1e923" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "3e6f9a898ad2a64111c8007271314b7f87ea99f594c0bc90929af1554bc7cf69" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1111,7 +1123,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "dfe59d0a47d094f6826ac0fe2090f262069f926e431095972d23072d878889eb"
+	const wantSourceDigest = "028a69060f30e50c5b3b6109fbb1022caf7540dec5d91243757ec8ec70a8f5dc"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}
