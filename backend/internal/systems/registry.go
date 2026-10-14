@@ -30,6 +30,31 @@ type Dnd2024CharacterRules interface {
 	RollD20(mode D20Mode, modifier int, roll DiceRoller) (D20Result, error)
 }
 
+// CombatTurnTransitionPolicy decides only the state changes caused by
+// Repository.SetCombat. It does not own persistence, effect definitions, or
+// event delivery.
+type CombatTurnTransitionPolicy interface {
+	PlanTurnTransition(previousTokenID, nextTokenID string) CombatTurnTransition
+}
+
+type CombatTurnTransitionKind uint8
+
+const (
+	CombatTurnUnchanged CombatTurnTransitionKind = iota
+	CombatStarted
+	CombatTurnAdvanced
+	CombatEnded
+)
+
+// CombatTurnTransition is a typed plan for the side effects of one active
+// token change. Empty token IDs represent an empty combat state.
+type CombatTurnTransition struct {
+	Kind              CombatTurnTransitionKind
+	EndPreviousTurn   bool
+	StartNextTurn     bool
+	ResetNextMovement bool
+}
+
 type ID string
 type Version string
 
@@ -100,6 +125,10 @@ var dnd2024CharacterRules = map[Ref]Dnd2024CharacterRules{
 	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024Rules{},
 }
 
+var combatTurnTransitionPolicies = map[Ref]CombatTurnTransitionPolicy{
+	{ID: Dnd2024, Version: Dnd2024V1}: Dnd2024CombatTurnTransitionPolicy{},
+}
+
 var currentVersions = map[ID]Version{Dnd2024: Dnd2024V1}
 
 func Parse(value string) (ID, error) {
@@ -139,6 +168,14 @@ func ResolveRef(ref Ref) (Adapter, bool) {
 func ResolveDnd2024CharacterRules(ref Ref) (Dnd2024CharacterRules, bool) {
 	rules, ok := dnd2024CharacterRules[ref]
 	return rules, ok
+}
+
+// ResolveCombatTurnTransitionPolicy resolves the policy registered for the
+// campaign's immutable system reference. Unsupported references never fall
+// back to the current system.
+func ResolveCombatTurnTransitionPolicy(ref Ref) (CombatTurnTransitionPolicy, bool) {
+	policy, ok := combatTurnTransitionPolicies[ref]
+	return policy, ok
 }
 
 // Resolve remains as a compatibility helper for call sites that still use the

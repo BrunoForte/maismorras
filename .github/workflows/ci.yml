@@ -80,6 +80,11 @@ jobs:
           go-version-file: backend/go.mod
           cache: true
           cache-dependency-path: backend/go.sum
+      - name: Test SetCombat transitions against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: go test ./internal/scenes -run '^TestSetCombatTransitionsPreserveDnd2024EffectsMovementAndEventsIntegration$' -count=1
       - name: Test realtime fanout between independent API instances
         working-directory: backend
         env:

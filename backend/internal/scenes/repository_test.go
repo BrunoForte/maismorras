@@ -132,6 +132,16 @@ func TestResolveDnd2024RulesAndRejectUnknownReference(t *testing.T) {
 	}
 }
 
+func TestResolveCombatTurnTransitionPolicyAndRejectUnknownReference(t *testing.T) {
+	policy, err := resolveCombatTurnTransitionPolicy(systems.DefaultRef())
+	if err != nil || policy == nil {
+		t.Fatalf("resolve registered combat transition policy = %v, %v", policy, err)
+	}
+	if _, err := resolveCombatTurnTransitionPolicy(systems.Ref{ID: systems.Dnd2024, Version: "9.9.9"}); !errors.Is(err, ErrUnsupportedCampaignSystem) {
+		t.Fatalf("unknown combat transition reference error = %v, want unsupported campaign system", err)
+	}
+}
+
 func TestRollD20ModesPreserveDnd2024Results(t *testing.T) {
 	rules, err := resolveDnd2024Rules(systems.DefaultRef())
 	if err != nil {

@@ -105,10 +105,12 @@ func tickEffects(ctx context.Context, tx pgx.Tx, sceneID, tokenID, boundary stri
 	if tokenID == "" {
 		return nil
 	}
-	if _, err := tx.Exec(ctx, `update scene_token_effects set remaining_turns=remaining_turns-1 where scene_id=$1 and token_id=$2 and tick_at=$3::effect_tick and remaining_turns is not null`, sceneID, tokenID, boundary); err != nil {
+	// The table constraint requires positive durations, so delete effects at one
+	// turn before decrementing longer finite effects.
+	if _, err := tx.Exec(ctx, `delete from scene_token_effects where scene_id=$1 and token_id=$2 and tick_at=$3::effect_tick and remaining_turns=1`, sceneID, tokenID, boundary); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `delete from scene_token_effects where scene_id=$1 and token_id=$2 and tick_at=$3::effect_tick and remaining_turns is not null and remaining_turns <= 0`, sceneID, tokenID, boundary)
+	_, err := tx.Exec(ctx, `update scene_token_effects set remaining_turns=remaining_turns-1 where scene_id=$1 and token_id=$2 and tick_at=$3::effect_tick and remaining_turns > 1`, sceneID, tokenID, boundary)
 	return err
 }
 
@@ -126,13 +128,29 @@ func (r *Repository) SetCombat(ctx context.Context, sceneID, tokenID, userID str
 	if err := tx.QueryRow(ctx, `select active_token_id::text from scenes where id=$1 for update`, sceneID).Scan(&previousID); err != nil {
 		return CombatState{}, err
 	}
+	policy, err := combatTurnTransitionPolicyForScene(ctx, sceneID, tx)
+	if err != nil {
+		return CombatState{}, err
+	}
 	if tokenID != "" {
 		var exists bool
 		if err := tx.QueryRow(ctx, `select exists(select 1 from scene_tokens where id=$1 and scene_id=$2)`, tokenID, sceneID).Scan(&exists); err != nil || !exists {
 			return CombatState{}, fmt.Errorf("token not found")
 		}
 	}
-	if previousID != nil && *previousID != tokenID {
+	previousTokenID := ""
+	if previousID != nil {
+		previousTokenID = *previousID
+	}
+	transition := policy.PlanTurnTransition(previousTokenID, tokenID)
+	if transition.Kind == systems.CombatTurnUnchanged {
+		state := CombatState{ActiveTokenID: previousID}
+		if err := tx.Commit(ctx); err != nil {
+			return CombatState{}, err
+		}
+		return state, nil
+	}
+	if transition.EndPreviousTurn {
 		if err := tickEffects(ctx, tx, sceneID, *previousID, "turn_end"); err != nil {
 			return CombatState{}, err
 		}
@@ -141,29 +159,33 @@ func (r *Repository) SetCombat(ctx context.Context, sceneID, tokenID, userID str
 	if err := tx.QueryRow(ctx, `update scenes set active_token_id=nullif($1,'')::uuid,updated_at=now() where id=$2 returning active_token_id::text`, tokenID, sceneID).Scan(&state.ActiveTokenID); err != nil {
 		return CombatState{}, err
 	}
-	if state.ActiveTokenID != nil && (previousID == nil || *previousID != *state.ActiveTokenID) {
-
+	if transition.ResetNextMovement {
 		if _, err := tx.Exec(ctx, `insert into scene_token_turn_movement(scene_id,token_id,spent_squares) values($1,$2,0) on conflict(scene_id,token_id) do update set spent_squares=0,updated_at=now()`, sceneID, *state.ActiveTokenID); err != nil {
 			return CombatState{}, err
 		}
+	}
+	if transition.StartNextTurn {
 		if err := tickEffects(ctx, tx, sceneID, *state.ActiveTokenID, "turn_start"); err != nil {
 			return CombatState{}, err
 		}
 	}
-	if (previousID == nil && state.ActiveTokenID != nil) || (previousID != nil && state.ActiveTokenID == nil) || (previousID != nil && state.ActiveTokenID != nil && *previousID != *state.ActiveTokenID) {
-		if state.ActiveTokenID == nil {
-			state.Message = "⚔️ Combate encerrado."
-		} else {
-			var name string
-			if err := tx.QueryRow(ctx, `select name from scene_tokens where id=$1`, *state.ActiveTokenID).Scan(&name); err != nil {
-				return CombatState{}, err
-			}
-			if previousID == nil {
-				state.Message = fmt.Sprintf("⚔️ Combate iniciado — turno de %s.", name)
-			} else {
-				state.Message = fmt.Sprintf("⚔️ Turno de %s.", name)
-			}
+	switch transition.Kind {
+	case systems.CombatEnded:
+		state.Message = "⚔️ Combate encerrado."
+	case systems.CombatStarted, systems.CombatTurnAdvanced:
+		var name string
+		if err := tx.QueryRow(ctx, `select name from scene_tokens where id=$1`, *state.ActiveTokenID).Scan(&name); err != nil {
+			return CombatState{}, err
 		}
+		if transition.Kind == systems.CombatStarted {
+			state.Message = fmt.Sprintf("⚔️ Combate iniciado — turno de %s.", name)
+		} else {
+			state.Message = fmt.Sprintf("⚔️ Turno de %s.", name)
+		}
+	default:
+		return CombatState{}, fmt.Errorf("invalid combat turn transition kind: %d", transition.Kind)
+	}
+	if state.Message != "" {
 		payload, _ := json.Marshal(map[string]string{"text": state.Message})
 		if _, err := tx.Exec(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) select campaign_id,$1,'combat.log',$2 from scenes where id=$3`, userID, payload, sceneID); err != nil {
 			return CombatState{}, err
