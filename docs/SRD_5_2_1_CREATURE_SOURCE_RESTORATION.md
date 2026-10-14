@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 98 ações foram conferidas e restauradas/corrigidas e traduzidas; 54 foram removidas por não constarem no bloco oficial; restam 35 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 107 ações foram conferidas e restauradas/corrigidas e traduzidas; 61 foram removidas por não constarem no bloco oficial; restam 19 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -150,7 +150,7 @@ As remoções confirmadas foram:
 | `other:Crab.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Claw; a ação adicional Ram foi removida. | Creature Stat Blocks, Crab, linhas 11211–11213; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 | `other:Deer.rules.actions` (fora dos alvos originais) | O bloco oficial contém somente Ram; a ação adicional Bite foi removida. | Creature Stat Blocks, Deer, linhas 11285–11287; SRD 5.2.1, p. 347 | Divergência confirmada e removida; não altera os 187 alvos |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. Antes do lote atual, 48 haviam sido removidos e 51 permaneciam pendentes; agora, 54 foram removidos e 35 seguem pendentes. Os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Naquele ponto histórico da auditoria, 39 alvos haviam sido removidos e 67 permaneciam pendentes. Antes do lote atual, 48 haviam sido removidos e 51 permaneciam pendentes; agora, antes deste lote, 54 haviam sido removidos e 35 seguiam pendentes; após o lote atual, 61 foram removidos e 19 seguem pendentes. Os campos pendentes continuam preservados e sem marcador `reviewed` até a conferência individual de nome, texto completo, alcance e dano.
 
 ## Lote anterior: Druid–Frog
 
@@ -225,7 +225,7 @@ Foram processados os 16 alvos pendentes seguintes em ordem do manifesto: sete a�
 
 A tradução de “Gouge” como “Golpe de Bico” é uma escolha editorial contextual, não uma tradução oficial. Remoções em índices intermediários preservaram o conteúdo não-alvo e reindexaram apenas as chaves localizadas necessárias. A conferência é textual e específica aos alvos; não certifica outras estatísticas.
 
-## Lote atual: Goat–Hawk
+## Lote anterior: Goat–Hawk
 
 Foram cotejados os 16 alvos pendentes seguintes em ordem do manifesto. Dez ações válidas foram restauradas/traduzidas e seis ações ausentes dos blocos oficiais foram removidas. Os campos localizados das dez ações válidas receberam `reviewed` somente após conferência. Esta auditoria textual não certifica as demais estatísticas das criaturas.
 
@@ -252,6 +252,32 @@ O campo `Goblin Minion.rules.actions.0` (Scimitar) também diverge do bloco ofic
 
 ## Pendências
 
-- Cotejar individualmente os 35 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 19 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
+
+
+## Lote atual: Hippogriff–Piranha
+
+Foram processados os próximos 16 alvos do manifesto, em ordem: nove ações restauradas/corrigidas e sete removidas após comparação individual com a fonte oficial. Os campos PT-BR dos nove ataques receberam reviewed apenas após cotejo do nome, tipo de ataque, bônus, alcance, dano e texto completo. Esta revisão é textual e específica aos alvos; não certifica outras estatísticas das criaturas. Fonte primária: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf).
+
+| Alvo | Resultado conferido | Referência oficial |
+|---|---|---|
+| Hippogriff .rules.actions.2 | Longbow removido; Multiattack e Rend são as ações | p. 298, linhas 26649–26652 |
+| Hobgoblin Warrior .rules.actions.1 | Longbow; +3, 150/600 ft.; 5 (1d8 + 1) perfurante + 7 (3d4) veneno | p. 298, linhas 26669–26673 |
+| Magmin .rules.actions.0 | Touch; +4, 5 ft.; 7 (2d4 + 2) fogo; alvo válido começa a queimar | p. 305, linhas 27280–27283 |
+| Manticore .rules.actions.2 | Pact Blade removida; ações Multiattack, Rend e Tail Spike | p. 306, linhas 27301–27307 |
+| Marilith .rules.actions.0 | Pact Blade; +10, 5 ft.; 10 (1d10 + 5) cortante + 7 (2d6) necrótico | p. 306, linhas 27330–27334 |
+| Medusa .rules.actions.1 | Snake Hair; +6, 5 ft.; 5 (1d4 + 3) perfurante + 14 (4d6) veneno | p. 306, linhas 27360–27367 |
+| Minotaur of Baphomet .rules.actions.0 | Abyssal Glaive; +6, 10 ft.; 10 (1d12 + 4) cortante + 10 (3d6) necrótico | p. 309, linhas 27577–27579 |
+| Octopus .rules.actions.1 | Talons removida; Tentacles é ação e Ink Cloud é Reação | p. 358, linhas 31879–31887 |
+| Ogre .rules.actions.1 | Nightmare Ray removida; Greatclub e Javelin constam na fonte; Javelin ausente do pacote não foi acrescentada | p. 312, linhas 27865–27869 |
+| Ogre Zombie .rules.actions.1 | Bite removida; fonte lista somente Slam; Claws/Tail fora do alvo preservadas | p. 344, linhas 30647–30649 |
+| Oni .rules.actions.0 | Nightmare Ray; +5, 60 ft.; 9 (2d6 + 2) psíquico; Amedrontado até o início do próximo turno | p. 312, linhas 27887–27896 |
+| Owl .rules.actions.0 | Talons; +3, 5 ft.; 1 cortante | p. 358, linhas 31903–31904 |
+| Panther .rules.actions.1 | Bite removida; Rend é ação e Nimble Escape é Ação Bônus | p. 358, linhas 31917–31922 |
+| Pegasus .rules.actions.1 | Bite removida; Hooves é a ação | p. 313, linhas 27971–27973 |
+| Phase Spider .rules.actions.0 | Bite; +5, 5 ft.; 8 (1d10 + 3) perfurante + 9 (2d8) veneno; efeitos de Estável, Envenenado e Paralisado | p. 313, linhas 27995–28002 |
+| Piranha .rules.actions.0 | Bite corrigida; +5 com Vantagem se o alvo não tiver todos os PV; 5 ft.; 1 perfurante | p. 358, linhas 31937–31939 |
+
+Piranha.rules.actions.1 (Hooves) foi observado, mas estava fora dos 16 alvos e permaneceu sem alteração. A divergência Goblin Minion/Scimitar também continuou intacta, pois não integra este lote. A remoção intermediária de Ogre Zombie/Bite levou à reindexação das traduções preservadas de Claws e Tail; nenhum outro alvo ou estatística foi alterado.

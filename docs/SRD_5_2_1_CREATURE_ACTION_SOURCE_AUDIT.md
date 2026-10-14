@@ -156,22 +156,22 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Grimlock.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 296, linhas 26416–26418: Bone Cudgel é a única ação; Bite não consta. |
 | `other:Guardian Naga.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 296, linhas 26438–26442: Bite; +8, alcance 10 ft.; 17 (2d12 + 4) perfurante mais 22 (4d10) venenoso. |
 | `other:Hawk.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 355, linhas 31659–31672: Talons; +5, alcance 5 ft.; 1 cortante. |
-| `other:Hippogriff.rules.actions.2` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Hobgoblin Warrior.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Magmin.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Manticore.rules.actions.2` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Marilith.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Medusa.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Minotaur of Baphomet.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Octopus.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ogre.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ogre Zombie.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Oni.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Owl.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Panther.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Pegasus.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Phase Spider.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Piranha.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Hippogriff.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 298, linhas 26649–26652: ações Multiattack e Rend; Longbow não consta. |
+| `other:Hobgoblin Warrior.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 298, linhas 26669–26673: Longbow +3, alcance 150/600 ft.; 5 (1d8 + 1) perfurante + 7 (3d4) veneno. |
+| `other:Magmin.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 305, linhas 27280–27283: Touch +4, alcance 5 ft.; 7 (2d4 + 2) fogo; alvo criatura ou objeto inflamável não vestido/carregado começa a queimar. |
+| `other:Manticore.rules.actions.2` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 306, linhas 27301–27307: Multiattack, Rend e Tail Spike; Pact Blade não consta. |
+| `other:Marilith.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 306, linhas 27330–27334: Pact Blade +10, alcance 5 ft.; 10 (1d10 + 5) cortante + 7 (2d6) necrótico. |
+| `other:Medusa.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 306, linhas 27360–27367: Snake Hair +6, alcance 5 ft.; 5 (1d4 + 3) perfurante + 14 (4d6) veneno. |
+| `other:Minotaur of Baphomet.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 309, linhas 27577–27579: Abyssal Glaive +6, alcance 10 ft.; 10 (1d12 + 4) cortante + 10 (3d6) necrótico. |
+| `other:Octopus.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 358, linhas 31879–31887: Tentacles é a ação; Ink Cloud é Reação; Talons não consta. |
+| `other:Ogre.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 312, linhas 27865–27869: Greatclub e Javelin; Nightmare Ray não consta. Javelin ausente do pacote não foi acrescentada. |
+| `other:Ogre Zombie.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 344, linhas 30647–30649: somente Slam; Bite não consta. Claws/Tail fora do alvo permaneceram intactas. |
+| `other:Oni.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 312, linhas 27887–27896: Nightmare Ray +5, alcance 60 ft.; 9 (2d6 + 2) psíquico; Amedrontado até o início do próximo turno do oni. |
+| `other:Owl.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 358, linhas 31903–31904: Talons +3, alcance 5 ft.; 1 cortante. |
+| `other:Panther.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 358, linhas 31917–31922: Rend é a ação e Nimble Escape é Ação Bônus; Bite não consta. |
+| `other:Pegasus.rules.actions.1` | name/range/damage/description | verificado — removido | SRD 5.2.1 p. 313, linhas 27971–27973: Hooves é a ação; Bite não consta. |
+| `other:Phase Spider.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 313, linhas 27995–28002: Bite +5, alcance 5 ft.; 8 (1d10 + 3) perfurante + 9 (2d8) veneno; alvo a 0 PV fica Estável e Envenenado por 1 hora, também Paralisado enquanto Envenenado. |
+| `other:Piranha.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD 5.2.1 p. 358, linhas 31937–31939: Bite +5, com Vantagem se o alvo não tiver todos os PV; alcance 5 ft.; 1 perfurante. |
 | `other:Planetar.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Plesiosaurus.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Priest.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,7 +194,7 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 54 verificados e removidos, 98 verificados e restaurados/corrigidos, 35 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 61 verificados e removidos, 107 verificados e restaurados/corrigidos, 19 pendentes com texto preservado e sem marcador `reviewed`.
 
 
 ## Lote anterior: Giant Elk–Goat
@@ -220,7 +220,7 @@ Foram conferidos os próximos 16 alvos pendentes em ordem do manifesto: sete aç
 | Gnoll Warrior.actions.2 | Removida: Scimitar; ações Rend/Bone Bow e Rampage como Ação Bônus | SRD p. 289, linhas 25851–25859 |
 | Goat.actions.0 | Restaurada: Ram; +2, 5 ft.; 1 contundente, ou 2 (1d4) após movimento reto | SRD p. 355, linhas 31656–31658 |
 
-## Lote atual: Goat–Hawk
+## Lote anterior: Goat–Hawk
 
 Foram cotejados os próximos 16 alvos na ordem do manifesto com o SRD 5.2.1 oficial. Dez ações foram restauradas/corrigidas, incluindo nome, alcance, bônus, dano e descrição; seis ações que não pertencem ao bloco oficial foram removidas. Os campos localizados das dez ações válidas receberam `reviewed` após cotejo. Isso registra a revisão textual dessas ações, não uma validação mecânica abrangente das criaturas.
 
@@ -250,3 +250,29 @@ Remoções em índices intermediários preservaram as ações sobreviventes e re
 ## Divergências adicionais fora dos 187 alvos
 
 Na mesma comparação oficial, foram removidas duas ações indevidas que não correspondem a linhas-alvo do manifesto: `other:Crab.rules.actions` continha Ram além de Claw, e `other:Deer.rules.actions` continha Bite além de Ram. Os blocos oficiais confirmam, respectivamente, Crab com somente Claw (SRD p. 347, linhas 30912–30913; Creature Stat Blocks, linhas 11211–11213) e Deer com somente Ram (SRD p. 347, linhas 30950–30952; Creature Stat Blocks, linhas 11285–11287). Essas correções extras estão cobertas por teste e não alteram a contagem dos 187 alvos originais.
+
+
+## Lote atual: Hippogriff–Piranha
+
+Foram conferidos os próximos 16 alvos pendentes na ordem do manifesto contra o SRD 5.2.1 oficial. Nove ações válidas foram restauradas/corrigidas e traduzidas integralmente; sete ações que não pertencem ao bloco da criatura foram removidas. Em cada ação restaurada, nome, tipo de ataque, bônus, alcance, dano e descrição foram conferidos; os quatro campos localizados receberam .source=reviewed. As remoções foram confirmadas pela lista de ações do bloco oficial. Isso é uma revisão textual dos alvos, não uma validação mecânica geral das criaturas. Fonte primária: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf).
+
+| Chave | Resultado | Referência SRD 5.2.1 |
+|---|---|---|
+| other:Hippogriff.rules.actions.2 | Longbow removido; ações oficiais Multiattack e Rend | p. 298, linhas 26649–26652 |
+| other:Hobgoblin Warrior.rules.actions.1 | Longbow; +3, 150/600 ft.; 5 (1d8 + 1) perfurante + 7 (3d4) veneno | p. 298, linhas 26669–26673 |
+| other:Magmin.rules.actions.0 | Touch; +4, 5 ft.; 7 (2d4 + 2) fogo; criatura ou objeto inflamável não vestido/carregado começa a queimar | p. 305, linhas 27280–27283 |
+| other:Manticore.rules.actions.2 | Pact Blade removida; ações Multiattack, Rend e Tail Spike | p. 306, linhas 27301–27307 |
+| other:Marilith.rules.actions.0 | Pact Blade; +10, 5 ft.; 10 (1d10 + 5) cortante + 7 (2d6) necrótico | p. 306, linhas 27330–27334 |
+| other:Medusa.rules.actions.1 | Snake Hair; +6, 5 ft.; 5 (1d4 + 3) perfurante + 14 (4d6) veneno | p. 306, linhas 27360–27367 |
+| other:Minotaur of Baphomet.rules.actions.0 | Abyssal Glaive; +6, 10 ft.; 10 (1d12 + 4) cortante + 10 (3d6) necrótico | p. 309, linhas 27577–27579 |
+| other:Octopus.rules.actions.1 | Talons removida; Tentacles é ação e Ink Cloud é Reação | p. 358, linhas 31879–31887 |
+| other:Ogre.rules.actions.1 | Nightmare Ray removida; ações oficiais Greatclub e Javelin | p. 312, linhas 27865–27869 |
+| other:Ogre Zombie.rules.actions.1 | Bite removida; somente Slam consta. Claws/Tail fora do alvo foram preservadas | p. 344, linhas 30647–30649 |
+| other:Oni.rules.actions.0 | Nightmare Ray; +5, 60 ft.; 9 (2d6 + 2) psíquico; Amedrontado até o início do próximo turno | p. 312, linhas 27887–27896 |
+| other:Owl.rules.actions.0 | Talons; +3, 5 ft.; 1 cortante | p. 358, linhas 31903–31904 |
+| other:Panther.rules.actions.1 | Bite removida; Rend é ação e Nimble Escape é Ação Bônus | p. 358, linhas 31917–31922 |
+| other:Pegasus.rules.actions.1 | Bite removida; Hooves é a ação | p. 313, linhas 27971–27973 |
+| other:Phase Spider.rules.actions.0 | Bite; +5, 5 ft.; 8 (1d10 + 3) perfurante + 9 (2d8) veneno; efeitos de Estável, Envenenado e Paralisado restaurados integralmente | p. 313, linhas 27995–28002 |
+| other:Piranha.rules.actions.0 | Bite corrigida; +5, Vantagem se alvo não estiver com todos os PV, 5 ft.; 1 perfurante | p. 358, linhas 31937–31939 |
+
+A ação indevida Piranha.rules.actions.1 (Hooves) não era um alvo do manifesto e permaneceu inalterada. A divergência Goblin Minion/Scimitar também permaneceu intacta, pois está fora deste lote. Remoções em índice intermediário preservaram as traduções das ações seguintes do Ogre Zombie, reindexando-as para acompanhar a lista de ações.
