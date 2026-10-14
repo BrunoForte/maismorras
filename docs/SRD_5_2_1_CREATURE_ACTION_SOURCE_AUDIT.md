@@ -41,17 +41,17 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Balor.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23343–23345; Creature Stat Blocks, linhas 646–647. Lâmina Elétrica; ataque +14, alcance 10 ft., 21 (3d8 + 8) energia + 22 (4d10) elétrico e limite de Reações cotejados. |
 | `other:Bandit.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23363–23365; Creature Stat Blocks, linhas 681–684. Cimitarra; ataque +3, alcance 5 ft., 4 (1d6 + 1) cortante cotejados; bônus corrigido de +5 para +3. |
 | `other:Bandit Captain.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 261, linhas 23381–23384; Creature Stat Blocks, linhas 716–720. Cimitarra; ataque +5, alcance 5 ft., 6 (1d6 + 3) cortante cotejados. |
-| `other:Barbed Devil.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Barbed Devil.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Barbed Devil.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 262, linhas 23417–23423; Creature Stat Blocks, linhas 695–698. Claws; +6, alcance 5 ft., 10 (2d6 + 3) perfurante; agarrão de alvo Grande ou menor, CD 13, pelas duas garras. |
+| `other:Barbed Devil.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 262, linhas 23417–23425; Creature Stat Blocks, linhas 695–700. Tail; +6, alcance 10 ft., 14 (2d10 + 3) cortante. |
 | `other:Basilisk.rules.actions.1` | description/damage | verificado — removido | SRD p. 262; Creature Stat Blocks, Basilisk, linhas 732–736: Bite e Petrifying Gaze em Bonus Actions; não há Beard. |
-| `other:Bat.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bearded Devil.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bearded Devil.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Behir.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Bat.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 345; Creature Stat Blocks, linhas 10928–10930. Bite; +4, alcance 5 ft., 1 perfurante. |
+| `other:Bearded Devil.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 262, linhas 23471–23477; Creature Stat Blocks, linhas 773–776. Beard; +5, alcance 5 ft., 7 (1d8 + 3) perfurante; Envenenado até o início do próximo turno do diabo e sem recuperar PV enquanto o veneno durar. |
+| `other:Bearded Devil.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 262, linhas 23471–23486; Creature Stat Blocks, linhas 773–778. Infernal Glaive; +5, alcance 10 ft., 8 (1d10 + 3) cortante; ferida infernal, teste CD 12, perda de 5 (1d10) PV por turno e todas as formas oficiais de encerramento cotejadas. |
+| `other:Behir.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 263, linhas 23501–23505; Creature Stat Blocks, linhas 810–815. Bite; +10, alcance 10 ft., 19 (2d12 + 6) perfurante + 11 (2d10) elétrico. |
 | `other:Blink Dog.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 266, linhas 23752–23757: a ação é Bite e Teleport aparece como ação bônus; não existe Rend. |
-| `other:Blue Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Blue Dragon Wyrmling.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Bone Devil.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Blue Dragon Wyrmling.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 266, linhas 23773–23776; Creature Stat Blocks, linhas 1169–1175. Rend; +5, alcance 5 ft., 8 (1d10 + 3) cortante + 3 (1d6) elétrico. |
+| `other:Blue Dragon Wyrmling.rules.actions.1` | name/range/damage/description | verificado — restaurado | SRD p. 266, linhas 23773–23779; Creature Stat Blocks, linhas 1169–1175. A entrada duplicada Rend (+9, alcance 10 ft.) foi corrigida para Lightning Breath (Recarga 5–6): resistência de Destreza CD 12, linha de 30 ft × 5 ft, 21 (6d6) elétrico; removeu-se o bônus de ataque indevido. |
+| `other:Bone Devil.rules.actions.0` | name/range/damage/description | verificado — restaurado | SRD p. 267, linhas 23908–23912; Creature Stat Blocks, linhas 1367–1370. Claw; +8, alcance 10 ft., 13 (2d8 + 4) cortante. |
 | `other:Bone Devil.rules.actions.1` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Bone Devil.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 267, linhas 23908–23917: os ataques são Claw e Infernal Sting; não existe Rend. |
 | `other:Brass Dragon Wyrmling.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -194,4 +194,4 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 
-Total: 187 alvos originais; 10 verificados e removidos, 31 verificados e restaurados/corrigidos, 146 pendentes com texto preservado e sem marcador `reviewed`.
+Total: 187 alvos originais; 10 verificados e removidos, 40 verificados e restaurados/corrigidos, 137 pendentes com texto preservado e sem marcador `reviewed`.

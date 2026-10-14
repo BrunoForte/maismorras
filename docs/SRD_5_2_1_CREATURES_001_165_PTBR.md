@@ -24,17 +24,8 @@ A interface do compêndio lê `pt-BR.rules.actions.{i}.name/description` por `tr
 
 ## Pendências de auditoria da fonte importada
 
-O lote 001–165 continha 150 alvos de ação. Até esta etapa, 31 foram conferidos e restaurados/traduzidos e oito foram removidos após cotejo oficial; **111 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
+O lote 001–165 continha 150 alvos de ação. Até esta etapa, 40 foram conferidos e restaurados/traduzidos e oito foram removidos após cotejo oficial; **102 alvos continuam pendentes**. Os alvos abaixo permanecem sem `.source=reviewed`; a tradução de fragmento não é considerada completa nem mecanicamente validada.
 
-- `other:Barbed Devil.rules.actions.0`
-- `other:Barbed Devil.rules.actions.1`
-- `other:Bat.rules.actions.0`
-- `other:Bearded Devil.rules.actions.0`
-- `other:Bearded Devil.rules.actions.1`
-- `other:Behir.rules.actions.0`
-- `other:Blue Dragon Wyrmling.rules.actions.0`
-- `other:Blue Dragon Wyrmling.rules.actions.1`
-- `other:Bone Devil.rules.actions.0`
 - `other:Bone Devil.rules.actions.1`
 - `other:Brass Dragon Wyrmling.rules.actions.0`
 - `other:Bronze Dragon Wyrmling.rules.actions.0`
@@ -138,11 +129,11 @@ O lote 001–165 continha 150 alvos de ação. Até esta etapa, 31 foram conferi
 - `other:Guardian Naga.rules.actions.0`
 - `other:Hawk.rules.actions.0`
 
-O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Dez ações `Rend` de dragões adultos, sete de dragões ancestrais e dez ações do grupo alfabético A–B foram restauradas/corrigidas e cotejadas com o SRD 5.2.1 e com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks). Os quatro bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
+O manifesto [por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra o estado global dos 187 alvos. Dez ações `Rend` de dragões adultos, sete de dragões ancestrais e dezenove ações dos grupos alfabéticos A–C foram restauradas/corrigidas e cotejadas com o SRD 5.2.1 e com os blocos oficiais [Creature Stat Blocks](https://www.dndbeyond.com/sources/dnd/br-2024/creature-stat-blocks). Os quatro bônus de ataque corrigidos e suas referências estão registrados na documentação de integridade.
 
 ## Atualização de integridade da fonte
 
-Os 8 campos anteriormente truncados de Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`), Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 31 foram conferidas e restauradas/traduzidas, e oito foram removidas após cotejo oficial; os outros 111 seguem pendentes e inalterados.
+Os 8 campos anteriormente truncados de Barbed Devil, Bearded Devil, Bone Devil e Chain Devil (`rules.senses`), Blink Dog, Dretch, Giant Elk e Giant Owl (`rules.languages`) foram restaurados e cotejados com o SRD 5.2.1 oficial; consulte [`SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md`](SRD_5_2_1_CREATURE_SOURCE_RESTORATION.md). Da lista inicial de 150 ações, 40 foram conferidas e restauradas/traduzidas, e oito foram removidas após cotejo oficial; as outras 102 seguem pendentes e inalteradas.
 
 `Basilisk.rules.actions.1` foi removida: o bloco oficial (p. 262; Creature Stat Blocks, linhas 732–736) contém Bite e Petrifying Gaze em Bonus Actions, não Beard. A remoção não certifica as demais ações do registro.
 

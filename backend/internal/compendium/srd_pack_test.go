@@ -199,8 +199,8 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 	}
 
 	// Removing only the description fields added by this batch and restoring the
-	// prior package revision must reproduce the main-base snapshot. Existing
-	// reviewed names and their provenance are part of the base and stay intact.
+	// prior package revision must reproduce the pinned source snapshot. Existing
+	// reviewed names, prior audited creature actions, and their provenance stay intact.
 	for _, entry := range targets {
 		translations, _ := entry["translations"].(map[string]any)
 		delete(translations, "pt-BR.rules.description")
@@ -213,7 +213,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "3727ca371386ea95355637b335a7242c1d8f0831a54369550ed51c05667b58f4" {
+	if got := hex.EncodeToString(digest[:]); got != "2be1ed8a6aa4b52f16e32f77f25f0663408a7fcc031083eb1c2924ac59fb5be6" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -328,8 +328,9 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		}
 	}
 
-	// This digest covers every source name, summary, rules object, ID-like field,
-	// and all non-translation pack metadata from the base revision.
+	// This digest pins every source name, summary, rules object, ID-like field,
+	// and non-translation pack metadata, including the creature actions explicitly
+	// restored by the source-audit batches.
 	var source map[string]any
 	if err := json.Unmarshal(srdPackJSON, &source); err != nil {
 		t.Fatal(err)
@@ -341,7 +342,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "b0b97eae0b27c28c6189a11a02a19eb834c5d46e35dc1b022943d9509c047a33" {
+	if got := hex.EncodeToString(digest[:]); got != "4b5c06c26f84e49c745c40efa806a5d72737cceab2f41c4dff42fb1afab5bda4" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -498,7 +499,7 @@ func TestSRDCreaturePendingActionTargetsAreNotMarkedReviewed(t *testing.T) {
 func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 	type action struct {
 		Name        string `json:"name"`
-		ToHit       int    `json:"toHit"`
+		ToHit       *int   `json:"toHit"`
 		Range       string `json:"range"`
 		Damage      string `json:"damage"`
 		Description string `json:"description"`
@@ -509,6 +510,7 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 	want := []struct {
 		creature, name, damage, description, localizedName, localizedDamage, localizedDescription, localizedRange string
 		index, toHit                                                                                              int
+		expectNoToHit                                                                                             bool
 	}{
 		{
 			creature: "Allosaurus", index: 0, name: "Bite", toHit: 6, damage: "15 (2d10 + 4)",
@@ -561,6 +563,15 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 		{creature: "Balor", index: 1, name: "Lightning Blade", toHit: 14, damage: "21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 21 (3d8 + 8) Force damage plus 22 (4d10) Lightning damage, and the target can’t take Reactions until the start of the balor’s next turn.", localizedName: "Lâmina Elétrica", localizedDamage: "21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 21 (3d8 + 8) de dano de energia mais 22 (4d10) de dano elétrico, e o alvo não pode realizar Reações até o início do próximo turno do balor.", localizedRange: "alcance 10 ft"},
 		{creature: "Bandit", index: 0, name: "Scimitar", toHit: 3, damage: "4 (1d6 + 1) Slashing damage", description: "Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Slashing damage.", localizedName: "Cimitarra", localizedDamage: "4 (1d6 + 1) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +3, alcance 5 ft. Acerto: 4 (1d6 + 1) de dano cortante."},
 		{creature: "Bandit Captain", index: 0, name: "Scimitar", toHit: 5, damage: "6 (1d6 + 3) Slashing damage", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 6 (1d6 + 3) Slashing damage.", localizedName: "Cimitarra", localizedDamage: "6 (1d6 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 6 (1d6 + 3) de dano cortante."},
+		{creature: "Barbed Devil", index: 0, name: "Claws", toHit: 6, damage: "10 (2d6 + 3) Piercing damage", description: "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the target is a Large or smaller creature, it has the Grappled condition (escape DC 13) from both claws.", localizedName: "Garras", localizedDamage: "10 (2d6 + 3) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Grande ou menor, fica Agarrado pelas duas garras (CD para escapar 13).", localizedRange: "alcance 5 ft"},
+		{creature: "Barbed Devil", index: 1, name: "Tail", toHit: 6, damage: "14 (2d10 + 3) Slashing damage", description: "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (2d10 + 3) Slashing damage.", localizedName: "Cauda", localizedDamage: "14 (2d10 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (2d10 + 3) de dano cortante.", localizedRange: "alcance 10 ft"},
+		{creature: "Bat", index: 0, name: "Bite", toHit: 4, damage: "1 Piercing damage", description: "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing damage.", localizedName: "Mordida", localizedDamage: "1 de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 de dano perfurante.", localizedRange: "alcance 5 ft"},
+		{creature: "Bearded Devil", index: 0, name: "Beard", toHit: 5, damage: "7 (1d8 + 3) Piercing damage", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Piercing damage, and the target has the Poisoned condition until the start of the devil’s next turn. Until this poison ends, the target can’t regain Hit Points.", localizedName: "Barba", localizedDamage: "7 (1d8 + 3) de dano perfurante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8 + 3) de dano perfurante, e o alvo fica Envenenado até o início do próximo turno do diabo. Enquanto esse veneno durar, o alvo não pode recuperar Pontos de Vida.", localizedRange: "alcance 5 ft"},
+		{creature: "Bearded Devil", index: 1, name: "Infernal Glaive", toHit: 5, damage: "8 (1d10 + 3) Slashing damage", description: "Melee Attack Roll: +5, reach 10 ft. Hit: 8 (1d10 + 3) Slashing damage. If the target is a creature and doesn’t already have an infernal wound, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target receives an infernal wound. While wounded, the target loses 5 (1d10) Hit Points at the start of each of its turns. The wound closes after 1 minute, after a spell restores Hit Points to the target, or after the target or a creature within 5 feet of it takes an action to stanch the wound, doing so by succeeding on a DC 12 Wisdom (Medicine) check.", localizedName: "Glaive Infernal", localizedDamage: "8 (1d10 + 3) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 10 ft. Acerto: 8 (1d10 + 3) de dano cortante. Se o alvo for uma criatura e ainda não tiver uma ferida infernal, sofre o seguinte efeito. Teste de Resistência de Constituição: CD 12. Falha: o alvo recebe uma ferida infernal. Enquanto estiver ferido, perde 5 (1d10) Pontos de Vida no início de cada um de seus turnos. A ferida se fecha após 1 minuto, depois que uma magia restaura Pontos de Vida do alvo ou quando o alvo ou uma criatura a até 5 ft dele usa uma ação para estancar a ferida, sendo bem-sucedida em um teste de Sabedoria (Medicina) CD 12.", localizedRange: "alcance 10 ft"},
+		{creature: "Behir", index: 0, name: "Bite", toHit: 10, damage: "19 (2d12 + 6) Piercing damage plus 11 (2d10) Lightning damage", description: "Melee Attack Roll: +10, reach 10 ft. Hit: 19 (2d12 + 6) Piercing damage plus 11 (2d10) Lightning damage.", localizedName: "Mordida", localizedDamage: "19 (2d12 + 6) de dano perfurante mais 11 (2d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +10, alcance 10 ft. Acerto: 19 (2d12 + 6) de dano perfurante mais 11 (2d10) de dano elétrico.", localizedRange: "alcance 10 ft"},
+		{creature: "Blue Dragon Wyrmling", index: 0, name: "Rend", toHit: 5, damage: "8 (1d10 + 3) Slashing damage plus 3 (1d6) Lightning damage", description: "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10 + 3) Slashing damage plus 3 (1d6) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "8 (1d10 + 3) de dano cortante mais 3 (1d6) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (1d10 + 3) de dano cortante mais 3 (1d6) de dano elétrico.", localizedRange: "alcance 5 ft"},
+		{creature: "Blue Dragon Wyrmling", index: 1, name: "Lightning Breath", damage: "21 (6d6) Lightning damage", description: "Recharge 5–6. Dexterity Saving Throw: DC 12, each creature in a 30-foot-long, 5-foot-wide Line. Failure: 21 (6d6) Lightning damage. Success: Half damage.", localizedName: "Sopro Elétrico", localizedDamage: "21 (6d6) de dano elétrico", localizedDescription: "Recarga 5–6. Teste de Resistência de Destreza: CD 12, cada criatura em uma linha de 30 ft de comprimento e 5 ft de largura. Falha: 21 (6d6) de dano elétrico. Sucesso: metade do dano.", localizedRange: "linha de 30 ft de comprimento e 5 ft de largura", expectNoToHit: true},
+		{creature: "Bone Devil", index: 0, name: "Claw", toHit: 8, damage: "13 (2d8 + 4) Slashing damage", description: "Melee Attack Roll: +8, reach 10 ft. Hit: 13 (2d8 + 4) Slashing damage.", localizedName: "Garra", localizedDamage: "13 (2d8 + 4) de dano cortante", localizedDescription: "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 13 (2d8 + 4) de dano cortante.", localizedRange: "alcance 10 ft"},
 	}
 	var pack srdPack
 	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
@@ -595,8 +606,11 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				sourceRange = "reach 15 ft"
 			} else if test.localizedRange == "alcance 30 ft" {
 				sourceRange = "reach 30 ft"
+			} else if test.localizedRange == "linha de 30 ft de comprimento e 5 ft de largura" {
+				sourceRange = "30-foot-long, 5-foot-wide Line"
 			}
-			if got.Name != test.name || got.ToHit != test.toHit || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
+			toHitMatches := (test.expectNoToHit && got.ToHit == nil) || (!test.expectNoToHit && got.ToHit != nil && *got.ToHit == test.toHit)
+			if got.Name != test.name || !toHitMatches || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
 				t.Errorf("source action = %+v; want name %q, +%d, %s, damage %q and complete SRD description", got, test.name, test.toHit, sourceRange, test.damage)
 			}
 			prefix := fmt.Sprintf("pt-BR.rules.actions.%d", test.index)
@@ -702,8 +716,8 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		}
 		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
 	}
-	if len(pending) != 146 || verifiedRemoved != 10 || verifiedRestored != 31 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 146, 10 and 31", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 137 || verifiedRemoved != 10 || verifiedRestored != 40 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 137, 10 and 40", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -796,7 +810,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "3e6f9a898ad2a64111c8007271314b7f87ea99f594c0bc90929af1554bc7cf69" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "fc12d6d28a7f0510055f41fc1a01a277c87d742705f896b9ccee5bad3dafb165" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1123,7 +1137,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "028a69060f30e50c5b3b6109fbb1022caf7540dec5d91243757ec8ec70a8f5dc"
+	const wantSourceDigest = "09e2ac1f85e3a8897b16f13c69660a4fcdc0761b76a4cf0bad96d83255fd6a8a"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

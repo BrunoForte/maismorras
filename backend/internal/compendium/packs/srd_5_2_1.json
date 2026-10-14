@@ -9798,13 +9798,13 @@
         "pt-BR.rules.languages": "Infernal; telepatia 120 ft.",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Garras",
-        "pt-BR.rules.actions.0.damage": "10 (2d6",
+        "pt-BR.rules.actions.0.damage": "10 (2d6 + 3) de dano perfurante",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 10 (2d6 + 3) de dano perfurante. Se o alvo for uma criatura Grande ou menor, fica Agarrado pelas duas garras (CD para escapar 13).",
         "pt-BR.rules.actions.1.name": "Cauda",
-        "pt-BR.rules.actions.1.damage": "14 (2d10",
+        "pt-BR.rules.actions.1.damage": "14 (2d10 + 3) de dano cortante",
         "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (2d10",
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +6, alcance 10 ft. Acerto: 14 (2d10 + 3) de dano cortante.",
         "pt-BR.rules.actions.2.name": "Arremessar Chama",
         "pt-BR.rules.actions.2.name.source": "reviewed",
         "pt-BR.rules.actions.2.damage": "17 (5d6) dano de fogo. If o alvo is a flammable object",
@@ -9812,7 +9812,15 @@
         "pt-BR.rules.actions.2.range": "alcance 150 ft",
         "pt-BR.rules.actions.2.range.source": "reviewed",
         "pt-BR.rules.actions.2.description": "Jogada de Ataque à Distância: +5, alcance 150 ft. Acerto: 17 (5d6) dano de fogo. Se o alvo for um objeto inflamável",
-        "pt-BR.rules.actions.2.description.source": "reviewed"
+        "pt-BR.rules.actions.2.description.source": "reviewed",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -9842,16 +9850,16 @@
             "kind": "action",
             "toHit": 6,
             "range": "reach 5 ft",
-            "damage": "10 (2d6",
-            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6"
+            "damage": "10 (2d6 + 3) Piercing damage",
+            "description": "Melee Attack Roll: +6, reach 5 ft. Hit: 10 (2d6 + 3) Piercing damage. If the target is a Large or smaller creature, it has the Grappled condition (escape DC 13) from both claws."
           },
           {
             "name": "Tail",
             "kind": "action",
             "toHit": 6,
             "range": "reach 10 ft",
-            "damage": "14 (2d10",
-            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (2d10"
+            "damage": "14 (2d10 + 3) Slashing damage",
+            "description": "Melee Attack Roll: +6, reach 10 ft. Hit: 14 (2d10 + 3) Slashing damage."
           },
           {
             "name": "Hurl Flame",
@@ -9942,9 +9950,9 @@
         "pt-BR.rules.languages": "Nenhum",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "1 perfurante",
+        "pt-BR.rules.actions.0.damage": "1 de dano perfurante",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 perfurante",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 1 de dano perfurante.",
         "pt-BR.rules.actions.1.name": "Dilacerar",
         "pt-BR.rules.actions.1.name.source": "reviewed",
         "pt-BR.rules.actions.1.damage": "5 (1d6 + 2)",
@@ -9960,7 +9968,11 @@
         "pt-BR.rules.actions.2.range": "alcance 5 ft",
         "pt-BR.rules.actions.2.range.source": "reviewed",
         "pt-BR.rules.actions.2.description": "Jogada de Ataque Corpo a Corpo: +4, alcance 5 ft. Acerto: 4 (1d4 + 2)",
-        "pt-BR.rules.actions.2.description.source": "reviewed"
+        "pt-BR.rules.actions.2.description.source": "reviewed",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -9990,8 +10002,8 @@
             "kind": "action",
             "toHit": 4,
             "range": "reach 5 ft",
-            "damage": "1 Piercing",
-            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing"
+            "damage": "1 Piercing damage",
+            "description": "Melee Attack Roll: +4, reach 5 ft. Hit: 1 Piercing damage."
           },
           {
             "name": "Rend",
@@ -10060,13 +10072,21 @@
         "pt-BR.rules.languages": "Infernal; telepatia 120 ft.",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Barba",
-        "pt-BR.rules.actions.0.damage": "7 (1d8",
+        "pt-BR.rules.actions.0.damage": "7 (1d8 + 3) de dano perfurante",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 7 (1d8 + 3) de dano perfurante, e o alvo fica Envenenado até o início do próximo turno do diabo. Enquanto esse veneno durar, o alvo não pode recuperar Pontos de Vida.",
         "pt-BR.rules.actions.1.name": "Glaive Infernal",
-        "pt-BR.rules.actions.1.damage": "8 (1d10 + 3) dano cortante. If o alvo is a crea-",
+        "pt-BR.rules.actions.1.damage": "8 (1d10 + 3) de dano cortante",
         "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 10 ft. Acerto: 8 (1d10 + 3) dano cortante. Se o alvo for uma criat-"
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 10 ft. Acerto: 8 (1d10 + 3) de dano cortante. Se o alvo for uma criatura e ainda não tiver uma ferida infernal, sofre o seguinte efeito. Teste de Resistência de Constituição: CD 12. Falha: o alvo recebe uma ferida infernal. Enquanto estiver ferido, perde 5 (1d10) Pontos de Vida no início de cada um de seus turnos. A ferida se fecha após 1 minuto, depois que uma magia restaura Pontos de Vida do alvo ou quando o alvo ou uma criatura a até 5 ft dele usa uma ação para estancar a ferida, sendo bem-sucedida em um teste de Sabedoria (Medicina) CD 12.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -10096,16 +10116,16 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "7 (1d8",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8"
+            "damage": "7 (1d8 + 3) Piercing damage",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8 + 3) Piercing damage, and the target has the Poisoned condition until the start of the devil’s next turn. Until this poison ends, the target can’t regain Hit Points."
           },
           {
             "name": "Infernal Glaive",
             "kind": "action",
             "toHit": 5,
             "range": "reach 10 ft",
-            "damage": "8 (1d10 + 3) Slashing damage. If the target is a crea-",
-            "description": "Melee Attack Roll: +5, reach 10 ft. Hit: 8 (1d10 + 3) Slashing damage. If the target is a crea-"
+            "damage": "8 (1d10 + 3) Slashing damage",
+            "description": "Melee Attack Roll: +5, reach 10 ft. Hit: 8 (1d10 + 3) Slashing damage. If the target is a creature and doesn’t already have an infernal wound, it is subjected to the following effect. Constitution Saving Throw: DC 12. Failure: The target receives an infernal wound. While wounded, the target loses 5 (1d10) Hit Points at the start of each of its turns. The wound closes after 1 minute, after a spell restores Hit Points to the target, or after the target or a creature within 5 feet of it takes an action to stanch the wound, doing so by succeeding on a DC 12 Wisdom (Medicine) check."
           }
         ]
       }
@@ -10128,9 +10148,13 @@
         "pt-BR.rules.languages": "Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Mordida",
-        "pt-BR.rules.actions.0.damage": "19 (2d12",
+        "pt-BR.rules.actions.0.damage": "19 (2d12 + 6) de dano perfurante mais 11 (2d10) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +10, alcance 10 ft. Acerto: 19 (2d12"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +10, alcance 10 ft. Acerto: 19 (2d12 + 6) de dano perfurante mais 11 (2d10) de dano elétrico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -10160,8 +10184,8 @@
             "kind": "action",
             "toHit": 10,
             "range": "reach 10 ft",
-            "damage": "19 (2d12",
-            "description": "Melee Attack Roll: +10, reach 10 ft. Hit: 19 (2d12"
+            "damage": "19 (2d12 + 6) Piercing damage plus 11 (2d10) Lightning damage",
+            "description": "Melee Attack Roll: +10, reach 10 ft. Hit: 19 (2d12 + 6) Piercing damage plus 11 (2d10) Lightning damage."
           }
         ]
       }
@@ -10688,13 +10712,21 @@
         "pt-BR.rules.languages": "Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "8 (1d10",
+        "pt-BR.rules.actions.0.damage": "8 (1d10 + 3) de dano cortante mais 3 (1d6) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 5 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (1d10",
-        "pt-BR.rules.actions.1.name": "Dilacerar",
-        "pt-BR.rules.actions.1.damage": "12 (2d6",
-        "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +9, alcance 10 ft. Acerto: 12 (2d6"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +5, alcance 5 ft. Acerto: 8 (1d10 + 3) de dano cortante mais 3 (1d6) de dano elétrico.",
+        "pt-BR.rules.actions.1.name": "Sopro Elétrico",
+        "pt-BR.rules.actions.1.damage": "21 (6d6) de dano elétrico",
+        "pt-BR.rules.actions.1.range": "linha de 30 ft de comprimento e 5 ft de largura",
+        "pt-BR.rules.actions.1.description": "Recarga 5–6. Teste de Resistência de Destreza: CD 12, cada criatura em uma linha de 30 ft de comprimento e 5 ft de largura. Falha: 21 (6d6) de dano elétrico. Sucesso: metade do dano.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed",
+        "pt-BR.rules.actions.1.name.source": "reviewed",
+        "pt-BR.rules.actions.1.range.source": "reviewed",
+        "pt-BR.rules.actions.1.damage.source": "reviewed",
+        "pt-BR.rules.actions.1.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -10724,16 +10756,15 @@
             "kind": "action",
             "toHit": 5,
             "range": "reach 5 ft",
-            "damage": "8 (1d10",
-            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10"
+            "damage": "8 (1d10 + 3) Slashing damage plus 3 (1d6) Lightning damage",
+            "description": "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10 + 3) Slashing damage plus 3 (1d6) Lightning damage."
           },
           {
-            "name": "Rend",
+            "name": "Lightning Breath",
             "kind": "action",
-            "toHit": 9,
-            "range": "reach 10 ft",
-            "damage": "12 (2d6",
-            "description": "Melee Attack Roll: +9, reach 10 ft. Hit: 12 (2d6"
+            "range": "30-foot-long, 5-foot-wide Line",
+            "damage": "21 (6d6) Lightning damage",
+            "description": "Recharge 5–6. Dexterity Saving Throw: DC 12, each creature in a 30-foot-long, 5-foot-wide Line. Failure: 21 (6d6) Lightning damage. Success: Half damage."
           }
         ]
       }
@@ -10848,13 +10879,17 @@
         "pt-BR.rules.languages": "Infernal; telepatia 120 ft.",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Garra",
-        "pt-BR.rules.actions.0.damage": "13 (2d8",
+        "pt-BR.rules.actions.0.damage": "13 (2d8 + 4) de dano cortante",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 13 (2d8",
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 13 (2d8 + 4) de dano cortante.",
         "pt-BR.rules.actions.1.name": "Ferroada Infernal",
         "pt-BR.rules.actions.1.damage": "15 (2d10 + 4) dano perfurante mais 18 (4d8) veneno",
         "pt-BR.rules.actions.1.range": "alcance 10 ft",
-        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 15 (2d10 + 4) dano perfurante mais 18 (4d8) veneno"
+        "pt-BR.rules.actions.1.description": "Jogada de Ataque Corpo a Corpo: +8, alcance 10 ft. Acerto: 15 (2d10 + 4) dano perfurante mais 18 (4d8) veneno",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -10884,8 +10919,8 @@
             "kind": "action",
             "toHit": 8,
             "range": "reach 10 ft",
-            "damage": "13 (2d8",
-            "description": "Melee Attack Roll: +8, reach 10 ft. Hit: 13 (2d8"
+            "damage": "13 (2d8 + 4) Slashing damage",
+            "description": "Melee Attack Roll: +8, reach 10 ft. Hit: 13 (2d8 + 4) Slashing damage."
           },
           {
             "name": "Infernal Sting",

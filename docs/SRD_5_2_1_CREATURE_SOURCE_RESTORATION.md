@@ -35,7 +35,7 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 31 ações foram conferidas e restauradas/corrigidas e traduzidas (quatro verificações iniciais, 17 ações de dragões e dez ações do lote alfabético A–B); dez ações foram removidas por não constarem no bloco oficial; restam 146 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 40 ações foram conferidas e restauradas/corrigidas e traduzidas (quatro verificações iniciais, 17 ações de dragões e 19 ações dos lotes alfabéticos A–C); dez ações foram removidas por não constarem no bloco oficial; restam 137 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
 As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
@@ -73,7 +73,16 @@ As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 | `other:Bandit.rules.actions.0` | Scimitar; +3, alcance 5 ft.; 4 (1d6 + 1) cortante | SRD p. 261, linhas 23363–23365; Creature Stat Blocks, linhas 681–684 | Ação restaurada e tradução cotejada; bônus de ataque corrigido de +5 para +3 |
 | `other:Bandit Captain.rules.actions.0` | Scimitar; +5, alcance 5 ft.; 6 (1d6 + 3) cortante | SRD p. 261, linhas 23381–23384; Creature Stat Blocks, linhas 716–720 | Texto integral cotejado e restaurado |
 
-As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 31 registros restaurados/corrigidos listados acima. Quatro bônus de ataque foram corrigidos porque os blocos oficiais confirmam valores diferentes do pacote; a revisão destes ataques não certifica estatísticas gerais das criaturas.
+| `other:Barbed Devil.rules.actions.0` | Claws; +6, alcance 5 ft.; 10 (2d6 + 3) perfurante; agarrão de alvo Grande ou menor, CD 13, pelas duas garras | SRD p. 262, linhas 23417–23423; Creature Stat Blocks, linhas 695–698 | Texto integral restaurado e cotejado |
+| `other:Barbed Devil.rules.actions.1` | Tail; +6, alcance 10 ft.; 14 (2d10 + 3) cortante | SRD p. 262, linhas 23417–23425; Creature Stat Blocks, linhas 695–700 | Texto integral restaurado e cotejado |
+| `other:Bat.rules.actions.0` | Bite; +4, alcance 5 ft.; 1 perfurante | SRD p. 345; Creature Stat Blocks, linhas 10928–10930 | Texto integral restaurado e cotejado |
+| `other:Bearded Devil.rules.actions.0` | Beard; +5, alcance 5 ft.; 7 (1d8 + 3) perfurante; alvo Envenenado, sem recuperar PV enquanto o veneno durar | SRD p. 262, linhas 23471–23477; Creature Stat Blocks, linhas 773–776 | Texto integral restaurado e cotejado |
+| `other:Bearded Devil.rules.actions.1` | Infernal Glaive; +5, alcance 10 ft.; 8 (1d10 + 3) cortante; ferida infernal, teste CD 12, perda de 5 (1d10) PV por turno e condições de encerramento | SRD p. 262, linhas 23471–23486; Creature Stat Blocks, linhas 773–778 | Texto integral restaurado e cotejado |
+| `other:Behir.rules.actions.0` | Bite; +10, alcance 10 ft.; 19 (2d12 + 6) perfurante + 11 (2d10) elétrico | SRD p. 263, linhas 23501–23505; Creature Stat Blocks, linhas 810–815 | Texto integral restaurado e cotejado |
+| `other:Blue Dragon Wyrmling.rules.actions.0` | Rend; +5, alcance 5 ft.; 8 (1d10 + 3) cortante + 3 (1d6) elétrico | SRD p. 266, linhas 23773–23776; Creature Stat Blocks, linhas 1169–1175 | Texto integral restaurado e cotejado |
+| `other:Blue Dragon Wyrmling.rules.actions.1` | Lightning Breath (Recarga 5–6); resistência de Destreza CD 12, linha de 30 ft × 5 ft, 21 (6d6) elétrico; removeu-se bônus de ataque indevido | SRD p. 266, linhas 23773–23779; Creature Stat Blocks, linhas 1169–1175 | A ação duplicada Rend foi corrigida para a ação oficial e cotejada |
+| `other:Bone Devil.rules.actions.0` | Claw; +8, alcance 10 ft.; 13 (2d8 + 4) cortante | SRD p. 267, linhas 23908–23912; Creature Stat Blocks, linhas 1367–1370 | Texto integral restaurado e cotejado |
+As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 40 registros restaurados/corrigidos listados acima. Quatro bônus de ataque foram corrigidos porque os blocos oficiais confirmam valores diferentes do pacote; a revisão destes ataques não certifica estatísticas gerais das criaturas.
 Outras sete ações foram verificadas como indevidas e removidas:
 
 | Chave | Evidência no SRD 5.2.1 | Estado |
@@ -94,7 +103,7 @@ As remoções confirmadas foram:
 | `other:Venomous Snake.rules.actions.2` | A única ação é Bite (+4, alcance 5 ft., 4 (1d4 + 2) perfurante + 3 (1d6) veneno). Não existe Hooves. | Creature Stat Blocks, Venomous Snake, linhas 13986–13987; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 | `other:Vulture.rules.actions.1` | A única ação é Beak (+2, alcance 5 ft., 2 (1d4) perfurante). Não existe Hooves. | Creature Stat Blocks, Vulture, linhas 14022–14024; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 146 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 137 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
 
 ## Apresentação e catálogo compartilhado
 
@@ -102,6 +111,6 @@ O compêndio usa `translatedCompendiumText` para os campos aninhados de regras. 
 
 ## Pendências
 
-- Cotejar individualmente os 146 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 137 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.
