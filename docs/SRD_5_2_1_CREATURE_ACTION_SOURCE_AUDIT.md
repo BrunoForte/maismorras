@@ -6,26 +6,26 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 
 | Chave original | Campos-alvo | Estado nesta revisão | Evidência / nota |
 |---|---|---|---|
-| `other:Adult Black Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Blue Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Brass Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Bronze Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Copper Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Gold Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Green Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Red Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult Silver Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Adult White Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Adult Black Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 264; Creature Stat Blocks, linhas 980–985. +11, 10 ft.; 13 (2d6 + 6) cortante + 4 (1d8) ácido; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Blue Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 266; Creature Stat Blocks, linhas 1251–1256. +12, 10 ft.; 16 (2d8 + 7) cortante + 5 (1d10) elétrico; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Brass Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 268; Creature Stat Blocks, linhas 1488–1493. +11, 10 ft.; 17 (2d10 + 6) cortante + 4 (1d8) fogo; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Bronze Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 270; Creature Stat Blocks, linhas 1691–1696. +12, 10 ft.; 16 (2d8 + 7) cortante + 5 (1d10) elétrico; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Copper Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 276; Creature Stat Blocks, linhas 2566–2571. +11, 10 ft.; 17 (2d10 + 6) cortante + 4 (1d8) ácido; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Gold Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 291; Creature Stat Blocks, linhas 4291–4296. +14, 10 ft.; 17 (2d8 + 8) cortante + 4 (1d8) fogo; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Green Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 294; Creature Stat Blocks, linhas 4573–4578. +11, 10 ft.; 15 (2d8 + 6) cortante + 7 (2d6) veneno; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Red Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 318; Creature Stat Blocks, linhas 7677–7682. +14, 10 ft.; 13 (1d10 + 8) cortante + 5 (2d4) fogo; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult Silver Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 324; Creature Stat Blocks, linhas 8413–8418. +13, 10 ft.; 17 (2d8 + 8) cortante + 4 (1d8) frio; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Adult White Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 340; Creature Stat Blocks, linhas 10253–10258. +11, 10 ft.; 13 (2d6 + 6) cortante + 4 (1d8) frio; nome, alcance, ataque, dano e texto integral cotejados. |
 | `other:Allosaurus.rules.actions.0` | name/range/damage/description | verificado — restaurado | Mordida; SRD p. 344, linhas 30663–30665. Nome, ataque +6, alcance 5 ft., dano 15 (2d10 + 4) perfurante e texto integral cotejados. |
 | `other:Allosaurus.rules.actions.1` | name/range/damage/description | verificado — restaurado | Garras; SRD p. 344, linhas 30666–30671. Nome, ataque +6, alcance 5 ft., dano 8 (1d8 + 4) cortante, condição Caído e ataque subsequente de Mordida cotejados. |
 | `other:Allosaurus.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 344, linhas 30663–30671: o bloco do Allosaurus contém Bite e Claws; não contém Tail. |
-| `other:Ancient Black Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient Blue Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient Brass Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient Bronze Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient Copper Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient Green Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Ancient White Dragon.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+| `other:Ancient Black Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 265; Creature Stat Blocks, bloco Ancient Dragon correspondente. +15, 15 ft.; 17 (2d8 + 8) cortante + 9 (2d8) ácido; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient Blue Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 267; Creature Stat Blocks, bloco Ancient Dragon correspondente. +16, 15 ft.; 18 (2d8 + 9) cortante + 11 (2d10) elétrico; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient Brass Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 269; Creature Stat Blocks, bloco Ancient Dragon correspondente. +14, 15 ft.; 19 (2d10 + 8) cortante + 7 (2d6) fogo; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient Bronze Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 271; Creature Stat Blocks, bloco Ancient Dragon correspondente. +16, 15 ft.; 18 (2d8 + 9) cortante + 9 (2d8) elétrico; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient Copper Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 277; Creature Stat Blocks, bloco Ancient Dragon correspondente. +15, 15 ft.; 19 (2d10 + 8) cortante + 9 (2d8) ácido; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient Green Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 294; Creature Stat Blocks, bloco Ancient Dragon correspondente. +15, 15 ft.; 17 (2d8 + 8) cortante + 10 (3d6) veneno; nome, alcance, ataque, dano e texto integral cotejados. |
+| `other:Ancient White Dragon.rules.actions.0` | name/range/damage/description | verificado — restaurado | Dilacerar; SRD p. 341; Creature Stat Blocks, bloco Ancient Dragon correspondente. +14, 15 ft.; 17 (2d8 + 8) cortante + 7 (2d6) frio; nome, alcance, ataque, dano e texto integral cotejados. |
 | `other:Animated Armor.rules.actions.2` | name/range/damage/description | verificado — removido | SRD p. 259, linhas 23138–23141: as ações são Multiattack e Slam; não existe Smother. |
 | `other:Animated Flying Sword.rules.actions.1` | name/range/damage/description | verificado — removido | SRD p. 259, linhas 23155–23157: a ação de ataque é Slash; não existe Smother. |
 | `other:Animated Rug of Smothering.rules.actions.0` | description/damage | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
@@ -192,4 +192,6 @@ Estados: `verificado — removido` significa que o bloco não pertence à criatu
 | `other:Werewolf.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Wight.rules.actions.0` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
 | `other:Wyvern.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
-| `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |Total: 187 alvos originais; 10 verificados e removidos, 4 verificados e restaurados/corrigidos, 173 pendentes com texto preservado e sem marcador `reviewed`.
+| `other:Xorn.rules.actions.1` | damage/description | pendente — texto preservado, sem reviewed | Sem cotejo individual suficiente nesta revisão. |
+
+Total: 187 alvos originais; 10 verificados e removidos, 21 verificados e restaurados/corrigidos, 156 pendentes com texto preservado e sem marcador `reviewed`.

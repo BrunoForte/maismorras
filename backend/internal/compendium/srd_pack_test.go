@@ -213,7 +213,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "635c1116a238a78b5ca561cca8bc9a26b65438e80dea13ac0f505ba5cf54668a" {
+	if got := hex.EncodeToString(digest[:]); got != "42b6f945613cf69ce2ba23e644c72d93617e88e2a621b366c51f8c8ee7e80d6d" {
 		t.Fatalf("content outside target translations changed: digest=%s", got)
 	}
 }
@@ -341,7 +341,7 @@ func TestSRDCreatureCatalogIsLocalizedAndMechanicsRemainUnchanged(t *testing.T) 
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "607c91ce3c6c641a8eb0ca4fd2f485c8235e25230088043bed6bd81e4c597a17" {
+	if got := hex.EncodeToString(digest[:]); got != "6c92e0b84dae3082656b35a529e5e8b0303fa28e0ceff6001a3b5c3ea5c963d5" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -534,6 +534,23 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 			localizedName: "Espada Curta", localizedDamage: "7 (1d6 + 4) de dano perfurante mais 17 (5d6) de dano de veneno",
 			localizedDescription: "Jogada de Ataque Corpo a Corpo: +7, alcance 5 ft. Acerto: 7 (1d6 + 4) de dano perfurante mais 17 (5d6) de dano de veneno, e o alvo fica Envenenado até o início do próximo turno do assassino.", localizedRange: "alcance 5 ft.",
 		},
+		{creature: "Adult Black Dragon", index: 0, name: "Rend", toHit: 11, damage: "13 (2d6 + 6) Slashing damage plus 4 (1d8) Acid damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6 + 6) Slashing damage plus 4 (1d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano ácido.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Blue Dragon", index: 0, name: "Rend", toHit: 12, damage: "16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage", description: "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Brass Dragon", index: 0, name: "Rend", toHit: 11, damage: "17 (2d10 + 6) Slashing damage plus 4 (1d8) Fire damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10 + 6) Slashing damage plus 4 (1d8) Fire damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano de fogo.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Bronze Dragon", index: 0, name: "Rend", toHit: 12, damage: "16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage", description: "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Copper Dragon", index: 0, name: "Rend", toHit: 11, damage: "17 (2d10 + 6) Slashing damage plus 4 (1d8) Acid damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10 + 6) Slashing damage plus 4 (1d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano ácido.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Gold Dragon", index: 0, name: "Rend", toHit: 14, damage: "17 (2d8 + 8) Slashing damage plus 4 (1d8) Fire damage", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 17 (2d8 + 8) Slashing damage plus 4 (1d8) Fire damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de fogo.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Green Dragon", index: 0, name: "Rend", toHit: 11, damage: "15 (2d8 + 6) Slashing damage plus 7 (2d6) Poison damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 15 (2d8 + 6) Slashing damage plus 7 (2d6) Poison damage.", localizedName: "Dilacerar", localizedDamage: "15 (2d8 + 6) de dano cortante mais 7 (2d6) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 15 (2d8 + 6) de dano cortante mais 7 (2d6) de dano de veneno.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Red Dragon", index: 0, name: "Rend", toHit: 14, damage: "13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage", description: "Melee Attack Roll: +14, reach 10 ft. Hit: 13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage.", localizedName: "Dilacerar", localizedDamage: "13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult Silver Dragon", index: 0, name: "Rend", toHit: 13, damage: "17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage", description: "Melee Attack Roll: +13, reach 10 ft. Hit: 17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +13, alcance 10 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio.", localizedRange: "alcance 10 ft"},
+		{creature: "Adult White Dragon", index: 0, name: "Rend", toHit: 11, damage: "13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage", description: "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage.", localizedName: "Dilacerar", localizedDamage: "13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio.", localizedRange: "alcance 10 ft"},
+		{creature: "Ancient Black Dragon", index: 0, name: "Rend", toHit: 15, damage: "17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient Blue Dragon", index: 0, name: "Rend", toHit: 16, damage: "18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage", description: "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient Brass Dragon", index: 0, name: "Rend", toHit: 14, damage: "19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage", description: "Melee Attack Roll: +14, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage.", localizedName: "Dilacerar", localizedDamage: "19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient Bronze Dragon", index: 0, name: "Rend", toHit: 16, damage: "18 (2d8 + 9) Slashing damage plus 9 (2d8) Lightning damage", description: "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8 + 9) Slashing damage plus 9 (2d8) Lightning damage.", localizedName: "Dilacerar", localizedDamage: "18 (2d8 + 9) de dano cortante mais 9 (2d8) de dano elétrico", localizedDescription: "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8 + 9) de dano cortante mais 9 (2d8) de dano elétrico.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient Copper Dragon", index: 0, name: "Rend", toHit: 15, damage: "19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage.", localizedName: "Dilacerar", localizedDamage: "19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient Green Dragon", index: 0, name: "Rend", toHit: 15, damage: "17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage", description: "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno", localizedDescription: "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno.", localizedRange: "alcance 15 ft"},
+		{creature: "Ancient White Dragon", index: 0, name: "Rend", toHit: 14, damage: "17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage", description: "Melee Attack Roll: +14, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage.", localizedName: "Dilacerar", localizedDamage: "17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio", localizedDescription: "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio.", localizedRange: "alcance 15 ft"},
 	}
 	var pack srdPack
 	if err := json.Unmarshal(srdPackJSON, &pack); err != nil {
@@ -561,8 +578,14 @@ func TestSRDCreatureRestoredActionsMatchOfficialSRD521(t *testing.T) {
 				t.Fatalf("missing action %s[%d]", test.creature, test.index)
 			}
 			got := creatureRules.Actions[test.index]
-			if got.Name != test.name || got.ToHit != test.toHit || got.Range != "reach 5 ft" || got.Damage != test.damage || got.Description != test.description {
-				t.Errorf("source action = %+v; want name %q, +%d, reach 5 ft, damage %q and complete SRD description", got, test.name, test.toHit, test.damage)
+			sourceRange := "reach 5 ft"
+			if test.localizedRange == "alcance 10 ft" {
+				sourceRange = "reach 10 ft"
+			} else if test.localizedRange == "alcance 15 ft" {
+				sourceRange = "reach 15 ft"
+			}
+			if got.Name != test.name || got.ToHit != test.toHit || got.Range != sourceRange || got.Damage != test.damage || got.Description != test.description {
+				t.Errorf("source action = %+v; want name %q, +%d, %s, damage %q and complete SRD description", got, test.name, test.toHit, sourceRange, test.damage)
 			}
 			prefix := fmt.Sprintf("pt-BR.rules.actions.%d", test.index)
 			localizedRange := test.localizedRange
@@ -667,8 +690,8 @@ func pendingCreatureActionTargets(t *testing.T) map[string]bool {
 		}
 		pending[fmt.Sprintf("%s|%s", row[1], row[2])] = true
 	}
-	if len(pending) != 173 || verifiedRemoved != 10 || verifiedRestored != 4 {
-		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 173, 10 and 4", len(pending), verifiedRemoved, verifiedRestored)
+	if len(pending) != 156 || verifiedRemoved != 10 || verifiedRestored != 21 {
+		t.Fatalf("action audit states = %d pending, %d verified/removed, %d verified/restored; want 156, 10 and 21", len(pending), verifiedRemoved, verifiedRestored)
 	}
 	return pending
 }
@@ -761,7 +784,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "c17cccf21da60b42720d764792dcdf4a663bbbcd56d0655d1e705ac894a589d7" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "cdb0bec5accda8dd89936698ab90d4e7841b150ef8876c65249c78c306a1e923" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1088,7 +1111,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "3663486b3fe5187aa1c632f13a0249af25c22b092e161c56bb954544bf54bb8b"
+	const wantSourceDigest = "dfe59d0a47d094f6826ac0fe2090f262069f926e431095972d23072d878889eb"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

@@ -35,9 +35,9 @@ Traduções PT-BR incluem a Percepção Passiva e as restrições completas de c
 
 ## Ações truncadas e discrepâncias
 
-Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Nesta revisão, completei/restaurei ou corrigi quatro ações inequívocas conforme o SRD 5.2.1 e removi sete ações indevidas; três ações divergentes haviam sido removidas na etapa anterior. Restam 173 alvos pendentes, sem os marcadores `reviewed`. A restauração dos quatro textos não certifica outras estatísticas das criaturas.
+Os manifestos dos dois lotes identificaram 150 + 37 = 187 objetos de ação para auditoria. O [manifesto por campo](SRD_5_2_1_CREATURE_ACTION_SOURCE_AUDIT.md) registra cada chave e seu estado. Até esta etapa, 21 ações foram conferidas e restauradas/traduzidas (quatro verificações anteriores e 17 ações de dragões neste lote); dez ações foram removidas por não constarem no bloco oficial; restam 156 alvos pendentes, sem os marcadores `reviewed`. A restauração textual não certifica outras estatísticas das criaturas.
 
-As ações restauradas ou corrigidas integralmente nesta revisão foram:
+As ações restauradas ou corrigidas integralmente nas etapas concluídas foram:
 
 | Chave | Texto restaurado e tradução revisada | Referência | Estado |
 |---|---|---|---|
@@ -45,8 +45,25 @@ As ações restauradas ou corrigidas integralmente nesta revisão foram:
 | `other:Allosaurus.rules.actions.1` | Claws; ataque +6, alcance 5 ft., 8 (1d8 + 4) cortante; inclui condição Caído e ataque subsequente de Bite | SRD p. 344, linhas 30666–30671 | Fonte e tradução cotejadas |
 | `other:Awakened Shrub.rules.actions.0` | Rake; ataque +1, alcance 5 ft., 1 cortante | SRD p. 260, linha 23252 | Fonte e tradução cotejadas |
 | `other:Assassin.rules.actions.0` | Shortsword; +7, alcance 5 ft., 7 (1d6 + 4) perfurante + 17 (5d6) veneno, condição Envenenado | SRD p. 260, linhas 23227–23231 | Ação corrigida e tradução cotejada |
+| `other:Adult Black Dragon.rules.actions.0` | Rend; +11, 10 ft.; 13 (2d6 + 6) cortante + 4 (1d8) ácido | SRD p. 264; Creature Stat Blocks, linhas 980–985 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Blue Dragon.rules.actions.0` | Rend; +12, 10 ft.; 16 (2d8 + 7) cortante + 5 (1d10) elétrico | SRD p. 266; Creature Stat Blocks, linhas 1251–1256 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Brass Dragon.rules.actions.0` | Rend; +11, 10 ft.; 17 (2d10 + 6) cortante + 4 (1d8) fogo | SRD p. 268; Creature Stat Blocks, linhas 1488–1493 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Bronze Dragon.rules.actions.0` | Rend; +12, 10 ft.; 16 (2d8 + 7) cortante + 5 (1d10) elétrico | SRD p. 270; Creature Stat Blocks, linhas 1691–1696 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Copper Dragon.rules.actions.0` | Rend; +11, 10 ft.; 17 (2d10 + 6) cortante + 4 (1d8) ácido | SRD p. 276; Creature Stat Blocks, linhas 2566–2571 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Gold Dragon.rules.actions.0` | Rend; +14, 10 ft.; 17 (2d8 + 8) cortante + 4 (1d8) fogo | SRD p. 291; Creature Stat Blocks, linhas 4291–4296 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Green Dragon.rules.actions.0` | Rend; +11, 10 ft.; 15 (2d8 + 6) cortante + 7 (2d6) veneno | SRD p. 294; Creature Stat Blocks, linhas 4573–4578 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Red Dragon.rules.actions.0` | Rend; +14, 10 ft.; 13 (1d10 + 8) cortante + 5 (2d4) fogo | SRD p. 318; Creature Stat Blocks, linhas 7677–7682 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult Silver Dragon.rules.actions.0` | Rend; +13, 10 ft.; 17 (2d8 + 8) cortante + 4 (1d8) frio | SRD p. 324; Creature Stat Blocks, linhas 8413–8418 | Restaurada e traduzida integralmente após cotejo |
+| `other:Adult White Dragon.rules.actions.0` | Rend; +11, 10 ft.; 13 (2d6 + 6) cortante + 4 (1d8) frio | SRD p. 340; Creature Stat Blocks, linhas 10253–10258 | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Black Dragon.rules.actions.0` | Rend; +15, 15 ft.; 17 (2d8 + 8) cortante + 9 (2d8) ácido | SRD p. 265; Creature Stat Blocks, bloco Ancient Black Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Blue Dragon.rules.actions.0` | Rend; +16, 15 ft.; 18 (2d8 + 9) cortante + 11 (2d10) elétrico | SRD p. 267; Creature Stat Blocks, bloco Ancient Blue Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Brass Dragon.rules.actions.0` | Rend; +14, 15 ft.; 19 (2d10 + 8) cortante + 7 (2d6) fogo | SRD p. 269; Creature Stat Blocks, bloco Ancient Brass Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Bronze Dragon.rules.actions.0` | Rend; +16, 15 ft.; 18 (2d8 + 9) cortante + 9 (2d8) elétrico | SRD p. 271; Creature Stat Blocks, bloco Ancient Bronze Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Copper Dragon.rules.actions.0` | Rend; +15, 15 ft.; 19 (2d10 + 8) cortante + 9 (2d8) ácido | SRD p. 277; Creature Stat Blocks, bloco Ancient Copper Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient Green Dragon.rules.actions.0` | Rend; +15, 15 ft.; 17 (2d8 + 8) cortante + 10 (3d6) veneno | SRD p. 294; Creature Stat Blocks, bloco Ancient Green Dragon | Restaurada e traduzida integralmente após cotejo |
+| `other:Ancient White Dragon.rules.actions.0` | Rend; +14, 15 ft.; 17 (2d8 + 8) cortante + 7 (2d6) frio | SRD p. 341; Creature Stat Blocks, bloco Ancient White Dragon | Restaurada e traduzida integralmente após cotejo |
 
-As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nesses quatro registros.
+As ações foram cotejadas diretamente com o texto do PDF oficial, não reconstruídas a partir dos fragmentos do pacote. Os campos `name`, `damage`, `range` e `description` têm proveniência `reviewed` somente nos 21 registros restaurados/corrigidos listados acima.
 Outras sete ações foram verificadas como indevidas e removidas:
 
 | Chave | Evidência no SRD 5.2.1 | Estado |
@@ -67,7 +84,7 @@ As remoções confirmadas foram:
 | `other:Venomous Snake.rules.actions.2` | A única ação é Bite (+4, alcance 5 ft., 4 (1d4 + 2) perfurante + 3 (1d6) veneno). Não existe Hooves. | Creature Stat Blocks, Venomous Snake, linhas 13986–13987; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 | `other:Vulture.rules.actions.1` | A única ação é Beak (+2, alcance 5 ft., 2 (1d4) perfurante). Não existe Hooves. | Creature Stat Blocks, Vulture, linhas 14022–14024; SRD 5.2.1, p. 363 | Verificado; bloco divergente removido |
 
-As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 173 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
+As linhas oficiais também confirmam alcance, ataque, dano e texto integral da ação válida correspondente. Isso valida a associação e a restauração textual desses alvos, não as demais estatísticas das criaturas. Não se restaurou texto inglês nem tradução para as três ações inexistentes; os campos traduzidos associados foram removidos. Os outros 156 alvos permanecem com texto e mecânica inalterados, mas sem marcador `reviewed`, pendentes de verificação individual do nome, texto completo, alcance e dano.
 
 ## Apresentação e catálogo compartilhado
 
@@ -75,6 +92,6 @@ O compêndio usa `translatedCompendiumText` para os campos aninhados de regras. 
 
 ## Pendências
 
-- Cotejar individualmente os 173 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
+- Cotejar individualmente os 156 objetos de ação ainda pendentes no manifesto com seus blocos oficiais; até isso ocorrer, suas fontes e traduções permanecem preservadas e não são consideradas completas nem mecanicamente validadas.
 - Não considerar `reviewed` validação mecânica abrangente.
 - Não foi realizada sincronização nem integração com banco; sua política foi verificada no código e nos testes unitários existentes.

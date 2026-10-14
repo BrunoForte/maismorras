@@ -7032,9 +7032,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "13 (2d6",
+        "pt-BR.rules.actions.0.damage": "13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano ácido",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano ácido.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7064,8 +7068,8 @@
             "kind": "action",
             "toHit": 11,
             "range": "reach 10 ft",
-            "damage": "13 (2d6",
-            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6"
+            "damage": "13 (2d6 + 6) Slashing damage plus 4 (1d8) Acid damage",
+            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6 + 6) Slashing damage plus 4 (1d8) Acid damage."
           }
         ]
       }
@@ -7088,9 +7092,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "16 (2d8",
+        "pt-BR.rules.actions.0.damage": "16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7120,8 +7128,8 @@
             "kind": "action",
             "toHit": 12,
             "range": "reach 10 ft",
-            "damage": "16 (2d8",
-            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8"
+            "damage": "16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage",
+            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage."
           }
         ]
       }
@@ -7144,9 +7152,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d10",
+        "pt-BR.rules.actions.0.damage": "17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano de fogo",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano de fogo.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7176,8 +7188,8 @@
             "kind": "action",
             "toHit": 11,
             "range": "reach 10 ft",
-            "damage": "17 (2d10",
-            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10"
+            "damage": "17 (2d10 + 6) Slashing damage plus 4 (1d8) Fire damage",
+            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10 + 6) Slashing damage plus 4 (1d8) Fire damage."
           }
         ]
       }
@@ -7200,9 +7212,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "16 (2d8",
+        "pt-BR.rules.actions.0.damage": "16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +12, alcance 10 ft. Acerto: 16 (2d8 + 7) de dano cortante mais 5 (1d10) de dano elétrico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7232,8 +7248,8 @@
             "kind": "action",
             "toHit": 12,
             "range": "reach 10 ft",
-            "damage": "16 (2d8",
-            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8"
+            "damage": "16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage",
+            "description": "Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage."
           }
         ]
       }
@@ -7256,9 +7272,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d10",
+        "pt-BR.rules.actions.0.damage": "17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano ácido",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 17 (2d10 + 6) de dano cortante mais 4 (1d8) de dano ácido.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7288,8 +7308,8 @@
             "kind": "action",
             "toHit": 11,
             "range": "reach 10 ft",
-            "damage": "17 (2d10",
-            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10"
+            "damage": "17 (2d10 + 6) Slashing damage plus 4 (1d8) Acid damage",
+            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 17 (2d10 + 6) Slashing damage plus 4 (1d8) Acid damage."
           }
         ]
       }
@@ -7312,9 +7332,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d8",
+        "pt-BR.rules.actions.0.damage": "17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de fogo",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 17 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de fogo.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7344,8 +7368,8 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 10 ft",
-            "damage": "17 (2d8",
-            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 17 (2d8"
+            "damage": "17 (2d8 + 8) Slashing damage plus 4 (1d8) Fire damage",
+            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 17 (2d8 + 8) Slashing damage plus 4 (1d8) Fire damage."
           }
         ]
       }
@@ -7368,9 +7392,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "15 (2d8",
+        "pt-BR.rules.actions.0.damage": "15 (2d8 + 6) de dano cortante mais 7 (2d6) de dano de veneno",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 15 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 15 (2d8 + 6) de dano cortante mais 7 (2d6) de dano de veneno.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7400,8 +7428,8 @@
             "kind": "action",
             "toHit": 11,
             "range": "reach 10 ft",
-            "damage": "15 (2d8",
-            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 15 (2d8"
+            "damage": "15 (2d8 + 6) Slashing damage plus 7 (2d6) Poison damage",
+            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 15 (2d8 + 6) Slashing damage plus 7 (2d6) Poison damage."
           }
         ]
       }
@@ -7424,9 +7452,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "13 (1d10",
+        "pt-BR.rules.actions.0.damage": "13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 13 (1d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 10 ft. Acerto: 13 (1d10 + 8) de dano cortante mais 5 (2d4) de dano de fogo.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7456,8 +7488,8 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 10 ft",
-            "damage": "13 (1d10",
-            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 13 (1d10"
+            "damage": "13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage",
+            "description": "Melee Attack Roll: +14, reach 10 ft. Hit: 13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage."
           }
         ]
       }
@@ -7480,9 +7512,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d8",
+        "pt-BR.rules.actions.0.damage": "17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +13, alcance 10 ft. Acerto: 17 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +13, alcance 10 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 4 (1d8) de dano de frio.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7512,8 +7548,8 @@
             "kind": "action",
             "toHit": 13,
             "range": "reach 10 ft",
-            "damage": "17 (2d8",
-            "description": "Melee Attack Roll: +13, reach 10 ft. Hit: 17 (2d8"
+            "damage": "17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage",
+            "description": "Melee Attack Roll: +13, reach 10 ft. Hit: 17 (2d8 + 8) Slashing damage plus 4 (1d8) Cold damage."
           }
         ]
       }
@@ -7536,9 +7572,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "13 (2d6",
+        "pt-BR.rules.actions.0.damage": "13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio",
         "pt-BR.rules.actions.0.range": "alcance 10 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +11, alcance 10 ft. Acerto: 13 (2d6 + 6) de dano cortante mais 4 (1d8) de dano de frio.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7568,8 +7608,8 @@
             "kind": "action",
             "toHit": 11,
             "range": "reach 10 ft",
-            "damage": "13 (2d6",
-            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6"
+            "damage": "13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage",
+            "description": "Melee Attack Roll: +11, reach 10 ft. Hit: 13 (2d6 + 6) Slashing damage plus 4 (1d8) Cold damage."
           }
         ]
       }
@@ -7805,9 +7845,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d8",
+        "pt-BR.rules.actions.0.damage": "17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 9 (2d8) de dano ácido.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7837,8 +7881,8 @@
             "kind": "action",
             "toHit": 15,
             "range": "reach 15 ft",
-            "damage": "17 (2d8",
-            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8"
+            "damage": "17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage",
+            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 9 (2d8) Acid damage."
           }
         ]
       }
@@ -7861,9 +7905,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "18 (2d8",
+        "pt-BR.rules.actions.0.damage": "18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8 + 9) de dano cortante mais 11 (2d10) de dano elétrico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7893,8 +7941,8 @@
             "kind": "action",
             "toHit": 16,
             "range": "reach 15 ft",
-            "damage": "18 (2d8",
-            "description": "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8"
+            "damage": "18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage",
+            "description": "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8 + 9) Slashing damage plus 11 (2d10) Lightning damage."
           }
         ]
       }
@@ -7917,9 +7965,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "19 (2d10",
+        "pt-BR.rules.actions.0.damage": "19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 19 (2d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 7 (2d6) de dano de fogo.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -7949,8 +8001,8 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 15 ft",
-            "damage": "19 (2d10",
-            "description": "Melee Attack Roll: +14, reach 15 ft. Hit: 19 (2d10"
+            "damage": "19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage",
+            "description": "Melee Attack Roll: +14, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 7 (2d6) Fire damage."
           }
         ]
       }
@@ -7973,9 +8025,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "18 (2d8",
+        "pt-BR.rules.actions.0.damage": "18 (2d8 + 9) de dano cortante mais 9 (2d8) de dano elétrico",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +16, alcance 15 ft. Acerto: 18 (2d8 + 9) de dano cortante mais 9 (2d8) de dano elétrico.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8005,8 +8061,8 @@
             "kind": "action",
             "toHit": 16,
             "range": "reach 15 ft",
-            "damage": "18 (2d8",
-            "description": "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8"
+            "damage": "18 (2d8 + 9) Slashing damage plus 9 (2d8) Lightning damage",
+            "description": "Melee Attack Roll: +16, reach 15 ft. Hit: 18 (2d8 + 9) Slashing damage plus 9 (2d8) Lightning damage."
           }
         ]
       }
@@ -8029,9 +8085,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "19 (2d10",
+        "pt-BR.rules.actions.0.damage": "19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 19 (2d10"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 19 (2d10 + 8) de dano cortante mais 9 (2d8) de dano ácido.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8061,8 +8121,8 @@
             "kind": "action",
             "toHit": 15,
             "range": "reach 15 ft",
-            "damage": "19 (2d10",
-            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 19 (2d10"
+            "damage": "19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage",
+            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 19 (2d10 + 8) Slashing damage plus 9 (2d8) Acid damage."
           }
         ]
       }
@@ -8128,9 +8188,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d8",
+        "pt-BR.rules.actions.0.damage": "17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +15, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 10 (3d6) de dano de veneno.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8160,8 +8224,8 @@
             "kind": "action",
             "toHit": 15,
             "range": "reach 15 ft",
-            "damage": "17 (2d8",
-            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8"
+            "damage": "17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage",
+            "description": "Melee Attack Roll: +15, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage."
           }
         ]
       }
@@ -8270,9 +8334,13 @@
         "pt-BR.rules.languages": "Comum, Dracônico",
         "pt-BR.rules.languages.source": "reviewed",
         "pt-BR.rules.actions.0.name": "Dilacerar",
-        "pt-BR.rules.actions.0.damage": "17 (2d8",
+        "pt-BR.rules.actions.0.damage": "17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio",
         "pt-BR.rules.actions.0.range": "alcance 15 ft",
-        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 17 (2d8"
+        "pt-BR.rules.actions.0.description": "Jogada de Ataque Corpo a Corpo: +14, alcance 15 ft. Acerto: 17 (2d8 + 8) de dano cortante mais 7 (2d6) de dano de frio.",
+        "pt-BR.rules.actions.0.name.source": "reviewed",
+        "pt-BR.rules.actions.0.range.source": "reviewed",
+        "pt-BR.rules.actions.0.damage.source": "reviewed",
+        "pt-BR.rules.actions.0.description.source": "reviewed"
       },
       "rules": {
         "catalog": "monster",
@@ -8302,8 +8370,8 @@
             "kind": "action",
             "toHit": 14,
             "range": "reach 15 ft",
-            "damage": "17 (2d8",
-            "description": "Melee Attack Roll: +14, reach 15 ft. Hit: 17 (2d8"
+            "damage": "17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage",
+            "description": "Melee Attack Roll: +14, reach 15 ft. Hit: 17 (2d8 + 8) Slashing damage plus 7 (2d6) Cold damage."
           }
         ]
       }
