@@ -158,15 +158,17 @@ describe('character combat actions', () => {
 	it.each(['normal', 'advantage', 'disadvantage'] as const)(
 		'passes the selected D&D d20 mode to the authoritative character roll (%s)',
 		async (mode) => {
-			const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>(async () => ({
-				eventId: 41,
-				dados: mode === 'normal' ? [12] : [5, 18],
-				dadoEscolhido: mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12,
-				modo: mode,
-				modificador: 4,
-				total: (mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12) + 4,
-				label: 'Atletismo'
-			}));
+			const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>(
+				async () => ({
+					eventId: 41,
+					dados: mode === 'normal' ? [12] : [5, 18],
+					dadoEscolhido: mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12,
+					modo: mode,
+					modificador: 4,
+					total: (mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12) + 4,
+					label: 'Atletismo'
+				})
+			);
 			const test = setup({ rollMyCharacter });
 
 			await test.controller.rollAuthorized('skill', 'Atletismo', 'Teste de Atletismo', mode);
