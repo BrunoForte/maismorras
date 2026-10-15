@@ -42,7 +42,11 @@
 			</select>
 		</label>
 		{#if hasAttackDisadvantage() && rollMode === 'advantage'}
-			<small>{$appLocale === 'en' ? 'Advantage and disadvantage cancel; one d20 is rolled.' : 'Vantagem e desvantagem se cancelam; um d20 será rolado.'}</small>
+			<small
+				>{$appLocale === 'en'
+					? 'Advantage and disadvantage cancel; one d20 is rolled.'
+					: 'Vantagem e desvantagem se cancelam; um d20 será rolado.'}</small
+			>
 		{/if}
 		{#if isNewCharacter}
 			<span>

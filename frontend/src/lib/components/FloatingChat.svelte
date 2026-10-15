@@ -399,7 +399,7 @@
 							{#if revealedRollIds.has(message.id)}<div class="roll">
 									<div>
 										<small>{message.detalhesRolagem.expressao}</small
-							>{#if rollFaces(message).length}<em
+										>{#if rollFaces(message).length}<em
 												>{message.detalhesRolagem.mode === 'advantage'
 													? $appLocale === 'en'
 														? 'Advantage'
@@ -410,10 +410,12 @@
 															: 'Desvantagem'
 														: $appLocale === 'en'
 															? 'Normal'
-										: 'Normal'} · [{rollFaces(message).join(', ')}]{message.detalhesRolagem.dadoEscolhido !== undefined && message.detalhesRolagem.mode !== 'normal' ? ` · ${$appLocale === 'en' ? 'kept' : 'escolhido'} ${message.detalhesRolagem.dadoEscolhido}` : ''} · {message
-													.detalhesRolagem.modificador >= 0
-													? '+'
-													: ''}{message.detalhesRolagem.modificador}</em
+															: 'Normal'} · [{rollFaces(message).join(', ')}]{message
+													.detalhesRolagem.dadoEscolhido !== undefined &&
+												message.detalhesRolagem.mode !== 'normal'
+													? ` · ${$appLocale === 'en' ? 'kept' : 'escolhido'} ${message.detalhesRolagem.dadoEscolhido}`
+													: ''} · {message.detalhesRolagem.modificador >= 0 ? '+' : ''}{message
+													.detalhesRolagem.modificador}</em
 											>{/if}
 									</div>
 									<b>{message.detalhesRolagem.total}</b>

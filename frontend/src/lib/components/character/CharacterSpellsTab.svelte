@@ -31,7 +31,12 @@
 		presentation: SpellPresentation;
 		actions: SpellTabActions;
 	} = $props();
-	async function updateAvailableSlots(event: Event, level: number, maximum: number, current: number) {
+	async function updateAvailableSlots(
+		event: Event,
+		level: number,
+		maximum: number,
+		current: number
+	) {
 		const input = event.currentTarget as HTMLInputElement;
 		const next = input.valueAsNumber;
 		if (!input.validity.valid || !Number.isSafeInteger(next) || next < 0 || next > maximum) {

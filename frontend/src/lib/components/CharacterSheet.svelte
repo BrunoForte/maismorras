@@ -995,7 +995,10 @@
 			);
 			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
 			sheet.spellSlots = updated.sheet.spellSlots;
-			lifecycle.state.message = $appLocale === 'en' ? 'Available spell slots updated.' : 'Espaços de magia disponíveis atualizados.';
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Available spell slots updated.'
+					: 'Espaços de magia disponíveis atualizados.';
 			return true;
 		} catch (error) {
 			lifecycle.state.message =
@@ -1555,7 +1558,7 @@
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
 							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
-			setAvailableSpellSlots: updateAvailableSpellSlots,
+							setAvailableSpellSlots: updateAvailableSpellSlots,
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,
