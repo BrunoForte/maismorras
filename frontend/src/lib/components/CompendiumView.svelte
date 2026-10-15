@@ -4,7 +4,7 @@
 	import {
 		createCompendiumEntry,
 		deleteCompendiumEntry,
-		getCompendium,
+		getWorkspaceCompendium,
 		importCompendiumEntries,
 		translateCompendiumEntry,
 		updateCompendiumEntry,
@@ -160,7 +160,7 @@
 		loading = true;
 		message = '';
 		try {
-			const data = await getCompendium(session, campaignId);
+			const data = await getWorkspaceCompendium(session, campaignId, $appLocale);
 			sources = data.sources;
 			entries = data.entries;
 			canTranslateSharedSrd = data.canTranslateSharedSrd === true;

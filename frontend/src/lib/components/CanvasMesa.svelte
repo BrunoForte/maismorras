@@ -70,7 +70,7 @@
 		type Spell
 	} from '$lib/services/characterApi';
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
-	import { getCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
+	import { getWorkspaceCompendium, type CompendiumEntry } from '$lib/services/compendiumApi';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import {
 		deriveWeaponEffects,
@@ -154,12 +154,15 @@
 		realtimeLifecycle.syncContext();
 	});
 	$effect(() => {
-		const currentContext = `${session.user.id}:${campaignId}`;
+		void session.user.id;
+		void session.access_token;
+		void $appLocale;
+		const currentContext = `${session.user.id}:${session.access_token}:${campaignId}:${$appLocale}`;
 		if (characterCompendiumContext === currentContext) return;
 		characterCompendiumContext = currentContext;
 		characterCompendiumEntries = [];
 		let cancelled = false;
-		void getCompendium(session, campaignId)
+		void getWorkspaceCompendium(session, campaignId, $appLocale)
 			.then((result) => {
 				if (!cancelled) characterCompendiumEntries = result.entries ?? [];
 			})
