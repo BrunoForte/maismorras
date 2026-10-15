@@ -2,6 +2,8 @@
 
 Base auditada: `a43a7a8312143d86727402d8fdd87dc6eebce6f7`. Fonte primária: [SRD 5.2.1 oficial (PDF)](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf), licença CC-BY-4.0. As páginas abaixo são os números impressos no documento.
 
+As correções de ações, sentidos, idiomas e deslocamento do pacote avançam a revisão incorporada de `cartridge-import-6` para `cartridge-import-7`. Quando a revisão muda, a sincronização atualiza somente esses quatro campos de criaturas que já existem no catálogo compartilhado; os demais campos mecânicos são preservados. A integração correspondente está em `TestSharedSRDCatalogAndOwnerTranslationIntegration` e requer o Postgres descartável do CI.
+
 Este registro separa restauração textual de validação mecânica. `reviewed` indica que o texto PT-BR foi cotejado com a fonte oficial; não certifica de forma geral as estatísticas nem o funcionamento de uma criatura.
 
 ## Campos de sentidos e idiomas restaurados

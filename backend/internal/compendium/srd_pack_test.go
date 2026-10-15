@@ -37,6 +37,16 @@ func TestSRDPackHasCompleteSpellIndex(t *testing.T) {
 	}
 }
 
+func TestSRDPackRevisionTracksCreatureAudit(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatalf("loadSRDPack() error = %v", err)
+	}
+	if pack.Revision != "cartridge-import-7" {
+		t.Fatalf("SRD package revision = %q, want creature-audit revision cartridge-import-7", pack.Revision)
+	}
+}
+
 func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {

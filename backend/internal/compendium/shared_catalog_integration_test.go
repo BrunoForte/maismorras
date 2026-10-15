@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -301,6 +302,81 @@ func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	}
 	if got := decodeTranslations(findEntryByName(creatureEntriesA, "other", "Hippogriff").Translations)["pt-BR.summary"]; got != approvedHippogriffSummary {
 		t.Fatalf("unmarked campaign override hid reviewed Hippogriff summary: got %q, want %q", got, approvedHippogriffSummary)
+	}
+
+	// A package revision must refresh only the audited creature fields in an
+	// already-populated canonical catalog, preserving its other mechanics.
+	adultBlackDragon := findEntryByName(entriesA, "other", "Adult Black Dragon")
+	if adultBlackDragon.ID == "" {
+		t.Fatal("Adult Black Dragon is missing from the shared creature catalog")
+	}
+	var adultBlackDragonPackEntry srdEntry
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType == "other" && entry.Name == "Adult Black Dragon" {
+			adultBlackDragonPackEntry = entry
+			break
+		}
+	}
+	if adultBlackDragonPackEntry.Name == "" {
+		t.Fatal("Adult Black Dragon is missing from the embedded creature pack")
+	}
+	var originalDragonRules json.RawMessage
+	var originalDragonCatalogRevision string
+	if err = pool.QueryRow(ctx, `select rules from srd_catalog_entries where id=$1`, adultBlackDragon.ID).Scan(&originalDragonRules); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSourceID).Scan(&originalDragonCatalogRevision); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_entries set rules=$1 where id=$2`, originalDragonRules, adultBlackDragon.ID)
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_sources set revision=$1 where id=$2`, originalDragonCatalogRevision, sharedSourceID)
+	}()
+	var staleDragonRules map[string]any
+	if err = json.Unmarshal(originalDragonRules, &staleDragonRules); err != nil {
+		t.Fatal(err)
+	}
+	staleDragonRules["actions"] = []map[string]any{{"name": "Stale action"}}
+	staleDragonRules["senses"] = "Stale senses"
+	staleDragonRules["languages"] = "Stale languages"
+	staleDragonRules["speed"] = "Stale speed"
+	staleDragonRules["releaseTestMarker"] = "preserve"
+	staleRulesJSON, err := json.Marshal(staleDragonRules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set rules=$1 where id=$2`, staleRulesJSON, adultBlackDragon.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-6' where id=$1`, sharedSourceID); err != nil {
+		t.Fatal(err)
+	}
+	_, refreshedCreatureEntries, err := repo.List(ctx, campaignA, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshedDragon := findEntryByName(refreshedCreatureEntries, "other", "Adult Black Dragon")
+	var refreshedDragonRules, expectedDragonRules map[string]any
+	if err = json.Unmarshal(refreshedDragon.Rules, &refreshedDragonRules); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(adultBlackDragonPackEntry.Rules, &expectedDragonRules); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"actions", "senses", "languages", "speed"} {
+		if !reflect.DeepEqual(refreshedDragonRules[field], expectedDragonRules[field]) {
+			t.Errorf("creature %s did not refresh from revision %s: got=%v want=%v", field, pack.Revision, refreshedDragonRules[field], expectedDragonRules[field])
+		}
+	}
+	if refreshedDragonRules["hpMax"] != staleDragonRules["hpMax"] || refreshedDragonRules["creatureType"] != staleDragonRules["creatureType"] || refreshedDragonRules["releaseTestMarker"] != "preserve" {
+		t.Fatalf("creature refresh changed fields outside the audited scope: got=%v", refreshedDragonRules)
+	}
+	var refreshedRevision string
+	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSourceID).Scan(&refreshedRevision); err != nil {
+		t.Fatal(err)
+	}
+	if refreshedRevision != pack.Revision {
+		t.Fatalf("catalog revision = %q, want %q", refreshedRevision, pack.Revision)
 	}
 
 	// Exercise the description-only catalog revision against a row that still
