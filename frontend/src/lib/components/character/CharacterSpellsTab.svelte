@@ -13,6 +13,7 @@
 		newSpellLevel,
 		expandedSpell,
 		isGM,
+		canAdjustSlots,
 		canCastSpells,
 		castingSpell,
 		spellbook,
@@ -23,12 +24,29 @@
 		newSpellLevel: number;
 		expandedSpell: number | null;
 		isGM: boolean;
+		canAdjustSlots: boolean;
 		canCastSpells: boolean;
 		castingSpell: number | null;
 		spellbook: SpellbookProjection;
 		presentation: SpellPresentation;
 		actions: SpellTabActions;
 	} = $props();
+	async function updateAvailableSlots(event: Event, level: number, maximum: number, current: number) {
+		const input = event.currentTarget as HTMLInputElement;
+		const next = input.valueAsNumber;
+		if (!input.validity.valid || !Number.isSafeInteger(next) || next < 0 || next > maximum) {
+			input.setCustomValidity(
+				$appLocale === 'en'
+					? `Enter a whole number from 0 to ${maximum}.`
+					: `Informe um número inteiro entre 0 e ${maximum}.`
+			);
+			input.reportValidity();
+			input.value = String(current);
+			return;
+		}
+		input.setCustomValidity('');
+		if (!(await actions.setAvailableSpellSlots(level, next))) input.value = String(current);
+	}
 </script>
 
 <section>
@@ -70,10 +88,27 @@
 					<h4>{presentation.circleLabel(circle)}</h4>
 					<small>
 						{#if circle > 0}
-							<strong>{spellbook.slotForCircle(circle)?.current ?? 0}</strong> / {spellbook.slotForCircle(
-								circle
-							)?.max ?? 0}
-							{$appLocale === 'en' ? 'slots' : 'espaços'}
+							{@const slot = spellbook.slotForCircle(circle)}
+							<strong>{slot?.current ?? 0}</strong> / {slot?.max ?? 0}
+							{$appLocale === 'en' ? 'available / maximum' : 'disponíveis / máximo'}
+							{#if isGM && slot}
+								<label class="available-slot-control">
+									{$appLocale === 'en' ? 'Available slots' : 'Espaços disponíveis'}
+									<input
+										type="number"
+										min="0"
+										max={slot?.max ?? 0}
+										step="1"
+										value={slot?.current ?? 0}
+										disabled={!canAdjustSlots}
+										aria-label={$appLocale === 'en'
+											? `Available level ${circle} spell slots (maximum ${slot?.max ?? 0})`
+											: `Espaços de magia disponíveis de nível ${circle} (máximo ${slot?.max ?? 0})`}
+										onchange={(event) =>
+											void updateAvailableSlots(event, circle, slot?.max ?? 0, slot?.current ?? 0)}
+									/>
+								</label>
+							{/if}
 						{:else}{$appLocale === 'en' ? 'Always available' : 'Sempre disponíveis'}{/if}
 					</small>
 				</div>
@@ -428,6 +463,16 @@
 		gap: 0.25rem;
 		color: #a99c91;
 		font-size: 0.68rem;
+	}
+	.available-slot-control {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.available-slot-control input {
+		width: 4.25rem;
+		min-width: 0;
+		padding: 0.25rem 0.35rem;
 	}
 	.spell-circle p {
 		margin: 0;

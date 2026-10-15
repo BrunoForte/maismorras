@@ -81,9 +81,9 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	repo := NewRepository(pool)
 	handler := NewHandler(repo)
 	sheet := Sheet{
-		Name: "Versioned character", Level: 5, Species: "Goliath", Speed: 10.5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
+		Name: "Versioned character", Class: "wizard", Level: 5, Species: "Goliath", Speed: 10.5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
 		ProficiencyBonus: 99, ArmorClass: 99, PassivePerception: 99, SkillProficiencies: []string{"Percepção"},
-		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", SpellSlots: []SpellSlot{}, Resources: []Resource{},
+		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", Spells: []Spell{{Name: "Teste de slot", Level: 1, DiceFormula: "1d4"}}, SpellSlots: []SpellSlot{}, Resources: []Resource{},
 	}
 	input, err := json.Marshal(sheet)
 	if err != nil {
@@ -188,6 +188,60 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	}
 	if persistedSystemID != string(systems.Dnd2024) || persistedSystemVersion != string(systems.Dnd2024V1) {
 		t.Fatalf("sheet payload changed campaign reference to %s@%s", persistedSystemID, persistedSystemVersion)
+	}
+
+	adjustSlot := func(userID string, current int) error {
+		t.Helper()
+		body, marshalErr := json.Marshal(map[string]int{"level": 2, "current": current})
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		req := httptest.NewRequest("PATCH", "/", bytes.NewReader(body))
+		req.SetPathValue("campaignID", campaignID)
+		req.SetPathValue("characterID", saved.ID)
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{UserID: userID}))
+		return handler.SetAvailableSpellSlotsForGM(httptest.NewRecorder(), req)
+	}
+	if err := adjustSlot(gmID, 1); err != nil {
+		t.Fatalf("GM slot adjustment failed: %v", err)
+	}
+	adjusted, err := repo.GetForGM(ctx, campaignID, saved.ID, gmID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adjusted.Sheet.SpellSlots[1] != (SpellSlot{Level: 2, Current: 1, Max: 3}) {
+		t.Fatalf("adjustment did not persist remaining/max independently: %+v", adjusted.Sheet.SpellSlots)
+	}
+	if err := adjustSlot(playerID, 0); err == nil {
+		t.Fatal("player could adjust another character's slots")
+	} else {
+		var apiErr *apperror.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden {
+			t.Fatalf("player slot adjustment error = %v, want forbidden", err)
+		}
+	}
+	if err := adjustSlot(gmID, 4); err == nil {
+		t.Fatal("GM could exceed progression maximum")
+	} else {
+		var apiErr *apperror.Error
+		if !errors.As(err, &apiErr) || apiErr.Status != http.StatusBadRequest {
+			t.Fatalf("out-of-range slot adjustment error = %v, want bad request", err)
+		}
+	}
+	unchanged, err := repo.GetForGM(ctx, campaignID, saved.ID, gmID)
+	if err != nil || unchanged.Sheet.SpellSlots[1].Current != 1 || unchanged.Sheet.SpellSlots[1].Max != 3 {
+		t.Fatalf("rejected slot edits changed persisted state: %+v, %v", unchanged.Sheet.SpellSlots, err)
+	}
+	cast, err := repo.CastSpell(ctx, campaignID, playerID, SpellCastInput{SpellIndex: 0, SlotLevel: 2})
+	if err != nil || cast.Sheet.SpellSlots[1].Current != 0 || cast.Sheet.SpellSlots[1].Max != 3 {
+		t.Fatalf("normal cast did not consume the adjusted remaining slot: %+v, %v", cast.Sheet.SpellSlots, err)
+	}
+	if err := adjustSlot(gmID, 2); err != nil {
+		t.Fatalf("GM recovery adjustment failed: %v", err)
+	}
+	recovered, err := repo.GetForGM(ctx, campaignID, saved.ID, gmID)
+	if err != nil || recovered.Sheet.SpellSlots[1].Current != 2 || recovered.Sheet.SpellSlots[1].Max != 3 {
+		t.Fatalf("GM could not restore available slots: %+v, %v", recovered.Sheet.SpellSlots, err)
 	}
 
 	roll, err := repo.RollSheet(ctx, campaignID, playerID, "skill", "Percepção", "normal")

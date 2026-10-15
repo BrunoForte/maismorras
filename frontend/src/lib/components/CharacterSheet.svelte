@@ -12,6 +12,7 @@
 		restCharacter,
 		rollMyCharacter,
 		setCharacterInitiativeAdvantage,
+		setAvailableSpellSlotsForGM,
 		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
@@ -974,6 +975,34 @@
 	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
+	async function updateAvailableSpellSlots(level: number, current: number): Promise<boolean> {
+		if (!isGM) return false;
+		const targetCharacterId = characterId ?? lifecycle.state.resolvedCharacterId;
+		if (!targetCharacterId) {
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Save the character before adjusting spell slots.'
+					: 'Salve a ficha antes de ajustar os espaços de magia.';
+			return false;
+		}
+		try {
+			const updated = await setAvailableSpellSlotsForGM(
+				session,
+				campaignId,
+				targetCharacterId,
+				level,
+				current
+			);
+			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
+			sheet.spellSlots = updated.sheet.spellSlots;
+			lifecycle.state.message = $appLocale === 'en' ? 'Available spell slots updated.' : 'Espaços de magia disponíveis atualizados.';
+			return true;
+		} catch (error) {
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível ajustar os espaços de magia.';
+			return false;
+		}
+	}
 	const spellsForCircle = (circle: number) =>
 		groupCharacterSpellsByCircle(projectedCharacterSpells(), circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
@@ -1500,6 +1529,7 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canAdjustSlots={isGM && Boolean(characterId ?? lifecycle.state.resolvedCharacterId)}
 						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
@@ -1525,6 +1555,7 @@
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
 							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
+			setAvailableSpellSlots: updateAvailableSpellSlots,
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,
