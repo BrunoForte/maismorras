@@ -36,6 +36,7 @@ export function campaignEventToMessage(event: StoredEvent): Mensagem | null {
 				text?: string;
 				channel?: 'chat' | 'combat';
 				modo?: 'normal' | 'advantage' | 'disadvantage';
+				dadoEscolhido?: number;
 				label?: string;
 		  })
 		| undefined;

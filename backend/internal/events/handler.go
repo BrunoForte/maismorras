@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
+	"vtt-backend/internal/systems"
 )
 
 type Event struct {
@@ -68,6 +69,8 @@ type DiceResult struct {
 	Expression   string `json:"expressao"`
 	Dice         []int  `json:"dados"`
 	OriginalDice []int  `json:"dadosOriginais,omitempty"`
+	Mode         string `json:"modo,omitempty"`
+	Kept         int    `json:"dadoEscolhido,omitempty"`
 	Modifier     int    `json:"modificador"`
 	Total        int    `json:"total"`
 	Channel      string `json:"channel,omitempty"`
@@ -188,8 +191,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 		var err error
 		if payload.WeaponDamage {
 			result, err = rollWeaponDamageExpression(expression, payload.Critical)
+		} else if payload.Mode != "" {
+			var systemID, systemVersion string
+			if err := h.pool.QueryRow(r.Context(), `select system_id,system_version from campaigns where id=$1`, campaignID).Scan(&systemID, &systemVersion); err != nil {
+				return apperror.Internal(err)
+			}
+			rules, ok := systems.ResolveDnd2024CharacterRules(systems.Ref{ID: systems.ID(systemID), Version: systems.Version(systemVersion)})
+			if !ok {
+				return apperror.BadRequest("UNSUPPORTED_SYSTEM", "O sistema desta campanha não oferece esse modo de rolagem.")
+			}
+			result, err = rollWithMode(expression, payload.Mode, rules, secureDiceRoll)
 		} else {
-			result, err = rollWithMode(expression, payload.Mode)
+			result, err = roll(expression)
 		}
 		if err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Use uma expressão como 1d20+5.")
@@ -251,7 +264,7 @@ func rollWeaponDamageExpression(expression string, critical bool) (DiceResult, e
 			return DiceResult{}, err
 		}
 	}
-	return rollWithMode(expression, "")
+	return roll(expression)
 }
 
 func doubleDiceExpression(expression string) (string, error) {
@@ -334,31 +347,57 @@ func roll(expression string) (DiceResult, error) {
 	return result, nil
 }
 
-// rollWithMode keeps advantage/disadvantage server-authoritative. The browser
-// cannot choose a favourable die: both faces are generated here and the kept
-// result is stored as the campaign event.
-func rollWithMode(expression, mode string) (DiceResult, error) {
-	first, err := roll(expression)
-	if err != nil || mode == "" {
-		return first, err
+// rollWithMode delegates d20 semantics to the selected campaign's registered
+// rules. Only its roller callback creates faces, so clients cannot submit outcomes.
+func rollWithMode(expression, mode string, rules systems.Dnd2024CharacterRules, roller systems.DiceRoller) (DiceResult, error) {
+	if rules == nil || (mode != "normal" && mode != "advantage" && mode != "disadvantage") {
+		return DiceResult{}, fmt.Errorf("unsupported d20 mode")
 	}
 	groups, _, parseErr := parseDiceExpression(expression)
 	if parseErr != nil || len(groups) != 1 || groups[0].count != 1 || groups[0].sides != 20 {
 		return DiceResult{}, fmt.Errorf("mode requires 1d20")
 	}
-	second, err := roll(expression)
+	_, modifier, _ := parseDiceExpression(expression)
+	result, err := rules.RollD20(systems.D20Mode(mode), modifier, roller)
 	if err != nil {
 		return DiceResult{}, err
 	}
-	firstFace, secondFace := first.Dice[0], second.Dice[0]
-	keepFirst := (mode == "advantage" && firstFace >= secondFace) || (mode == "disadvantage" && firstFace <= secondFace)
-	kept := first
-	if !keepFirst {
-		kept = second
+	localizedMode := map[string]string{"advantage": "vantagem", "disadvantage": "desvantagem"}[mode]
+	displayExpression := expression
+	if mode != "normal" {
+		displayExpression = fmt.Sprintf("%s (%s: %s)", expression, localizedMode, joinInts(result.Rolls))
 	}
-	kept.Expression = fmt.Sprintf("%s (%s: %d/%d)", expression, map[string]string{"advantage": "vantagem", "disadvantage": "desvantagem"}[mode], firstFace, secondFace)
-	kept.OriginalDice = []int{firstFace, secondFace}
+	kept := DiceResult{
+		Expression: displayExpression,
+		Dice:       []int{result.Kept},
+		OriginalDice: func() []int {
+			if len(result.Rolls) < 2 {
+				return nil
+			}
+			return append([]int(nil), result.Rolls...)
+		}(),
+		Mode:     mode,
+		Kept:     result.Kept,
+		Modifier: modifier,
+		Total:    result.Total,
+	}
 	return kept, nil
+}
+
+func secureDiceRoll(sides int) (int, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(sides)))
+	if err != nil {
+		return 0, err
+	}
+	return int(n.Int64()) + 1, nil
+}
+
+func joinInts(values []int) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = strconv.Itoa(value)
+	}
+	return strings.Join(parts, "/")
 }
 func write(w http.ResponseWriter, status int, v any) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

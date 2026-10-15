@@ -100,11 +100,11 @@
 		weaponProficiencyStatus as resolveWeaponProficiency,
 		weaponSupportsGreatWeaponFighting,
 		updateInventoryItemRules,
-		resolveWeaponAttackMode,
 		type WeaponAttackProfile,
 		type WeaponEffect,
 		type WeaponFeat
 	} from '$lib/utils/weaponRules';
+	import { resolveDnd2024RollMode } from '$lib/utils/character/dnd2024RollRules';
 	import {
 		getActiveSpeciesTraits,
 		getSpeciesHPBonus,
@@ -230,10 +230,7 @@
 			['Cego', 'Envenenado', 'Impedido'].includes(condition)
 		);
 	const selectedAttackMode = () =>
-		resolveWeaponAttackMode(weaponAttackMode, lifecycle.state.activeConditions);
-	$effect(() => {
-		if (hasAttackDisadvantage() && weaponAttackMode === 'advantage') weaponAttackMode = 'normal';
-	});
+		resolveDnd2024RollMode(weaponAttackMode, lifecycle.state.activeConditions);
 	$effect(() => {
 		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
 	});
@@ -939,7 +936,8 @@
 		combatActions.rollAuthorized(
 			'skill',
 			name,
-			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`
+			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`,
+			resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
 		);
 	function toggleVisibleRoll(key: string) {
 		const current = sheet.visibleRolls ?? [];
@@ -1374,7 +1372,13 @@
 						onScoreChange={updateScore}
 						{saveBonus}
 						onToggleSavingThrow={toggleSavingThrow}
-						onRollSave={(key, label) => combatActions.rollAuthorized('save', key, label)}
+						onRollSave={(key, label) =>
+							combatActions.rollAuthorized(
+								'save',
+								key,
+								label,
+								resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
+							)}
 						{hasAttackDisadvantage}
 						passivePerception={passivePerception()}
 						derivedFeatures={derivedFeatures()}

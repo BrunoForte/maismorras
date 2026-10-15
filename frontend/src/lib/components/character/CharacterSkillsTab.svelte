@@ -34,13 +34,16 @@
 		<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
 		<label class="roll-mode">
 			<select bind:value={rollMode} aria-label="Modo de rolagem">
-				<option value="advantage" disabled={hasAttackDisadvantage()}>
+				<option value="advantage">
 					{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}
 				</option>
 				<option value="normal">Normal</option>
 				<option value="disadvantage">{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option>
 			</select>
 		</label>
+		{#if hasAttackDisadvantage() && rollMode === 'advantage'}
+			<small>{$appLocale === 'en' ? 'Advantage and disadvantage cancel; one d20 is rolled.' : 'Vantagem e desvantagem se cancelam; um d20 será rolado.'}</small>
+		{/if}
 		{#if isNewCharacter}
 			<span>
 				{$appLocale === 'en'

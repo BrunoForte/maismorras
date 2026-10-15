@@ -25,6 +25,9 @@
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
 	import { appLocale } from '$lib/stores/locale';
+	function rollFaces(message: Mensagem) {
+		return message.detalhesRolagem?.dadosOriginais ?? message.detalhesRolagem?.dados ?? [];
+	}
 	import { resizablePanel } from '$lib/utils/resizablePanel';
 	import {
 		campaignChatPanelKey,
@@ -396,7 +399,7 @@
 							{#if revealedRollIds.has(message.id)}<div class="roll">
 									<div>
 										<small>{message.detalhesRolagem.expressao}</small
-										>{#if message.detalhesRolagem.dados.length}<em
+							>{#if rollFaces(message).length}<em
 												>{message.detalhesRolagem.mode === 'advantage'
 													? $appLocale === 'en'
 														? 'Advantage'
@@ -407,7 +410,7 @@
 															: 'Desvantagem'
 														: $appLocale === 'en'
 															? 'Normal'
-															: 'Normal'} · [{message.detalhesRolagem.dados.join(', ')}] · {message
+										: 'Normal'} · [{rollFaces(message).join(', ')}]{message.detalhesRolagem.dadoEscolhido !== undefined && message.detalhesRolagem.mode !== 'normal' ? ` · ${$appLocale === 'en' ? 'kept' : 'escolhido'} ${message.detalhesRolagem.dadoEscolhido}` : ''} · {message
 													.detalhesRolagem.modificador >= 0
 													? '+'
 													: ''}{message.detalhesRolagem.modificador}</em

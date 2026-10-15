@@ -60,7 +60,7 @@
 				aria-label={$appLocale === 'en' ? 'Weapon attack mode' : 'Modo de ataque das armas'}
 			>
 				<option value="normal">{$appLocale === 'en' ? 'Normal' : 'Normal'}</option>
-				<option value="advantage" disabled={attackDisadvantage}
+				<option value="advantage"
 					>{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}</option
 				>
 				<option value="disadvantage">{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option>
@@ -69,8 +69,8 @@
 	</div>
 	{#if attackDisadvantage}<small class="forced-disadvantage"
 			>{$appLocale === 'en'
-				? 'An active condition forces disadvantage.'
-				: 'Uma condição ativa impõe desvantagem.'}</small
+				? rollMode === 'advantage' ? 'Advantage and disadvantage cancel; one d20 is rolled.' : 'An active condition imposes disadvantage.'
+				: rollMode === 'advantage' ? 'Vantagem e desvantagem se cancelam; será rolado um d20.' : 'Uma condição ativa impõe desvantagem.'}</small
 		>{/if}
 	{#if items.length}
 		<div class="weapon-combat-list">

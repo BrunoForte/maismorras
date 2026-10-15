@@ -261,6 +261,7 @@ export const deleteCharacterForGM = (session: Session, campaignId: string, chara
 export type SheetRoll = {
 	eventId: number;
 	dados: number[];
+	dadoEscolhido: number;
 	modo: 'normal' | 'advantage' | 'disadvantage';
 	modificador: number;
 	total: number;

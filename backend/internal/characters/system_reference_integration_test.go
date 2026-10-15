@@ -194,6 +194,30 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err != nil || roll.Modifier != 4 || len(roll.Dice) != 1 {
 		t.Fatalf("sheet roll = %+v, %v; want persisted D&D modifier 4 and one server die", roll, err)
 	}
+	for _, mode := range []string{"advantage", "disadvantage"} {
+		rolled, rollErr := repo.RollSheet(ctx, campaignID, playerID, "skill", "Percepção", mode)
+		if rollErr != nil || len(rolled.Dice) != 2 {
+			t.Fatalf("sheet %s roll = %+v, %v; want two server-rolled d20s", mode, rolled, rollErr)
+		}
+		wantKept := rolled.Dice[0]
+		if (mode == "advantage" && rolled.Dice[1] > wantKept) || (mode == "disadvantage" && rolled.Dice[1] < wantKept) {
+			wantKept = rolled.Dice[1]
+		}
+		if rolled.Kept != wantKept || rolled.Total != wantKept+rolled.Modifier {
+			t.Fatalf("sheet %s roll kept/total = %+v, want %d + %d", mode, rolled, wantKept, rolled.Modifier)
+		}
+		var payload struct {
+			Dice []int  `json:"dados"`
+			Kept int    `json:"dadoEscolhido"`
+			Mode string `json:"modo"`
+		}
+		if err := pool.QueryRow(ctx, `select payload from game_events where id=$1`, rolled.EventID).Scan(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Mode != mode || payload.Kept != wantKept || len(payload.Dice) != 2 {
+			t.Fatalf("persisted %s roll payload = %+v", mode, payload)
+		}
+	}
 	shortRest, err := repo.RestCharacter(ctx, campaignID, playerID, saved.ID, "short")
 	if err != nil || shortRest.Sheet.ProficiencyBonus != 3 {
 		t.Fatalf("short rest = %+v, %v", shortRest, err)

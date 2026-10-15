@@ -78,9 +78,9 @@
 		weaponAttackBonusTotal,
 		weaponDamageBonusTotal,
 		weaponProficiencyStatus,
-		resolveWeaponAttackMode,
 		type WeaponAttackProfile
 	} from '$lib/utils/weaponRules';
+	import { resolveDnd2024RollMode } from '$lib/utils/character/dnd2024RollRules';
 	import { weaponAbility, equipmentCategory } from '$lib/utils/characterEquipment';
 	import { deriveCharacterFeatures } from '$lib/utils/character/characterProgressionRules';
 	import { localizedSpellField } from '$lib/utils/character/characterSpellRules';
@@ -215,7 +215,7 @@
 		publishRefresh: () => sceneSocket?.publishRefresh(),
 		setMessage: (message) => (persistenceError = message),
 		combat: {
-			getAttackMode: () => resolveWeaponAttackMode('normal', personagemSelecionado?.status ?? []),
+			getAttackMode: () => resolveDnd2024RollMode('normal', personagemSelecionado?.status ?? []),
 			isWeapon: (item: InventoryItem) => equipmentCategory(item) === 'weapon',
 			getWeaponRollDetails: (item: InventoryItem, profile?: WeaponAttackProfile) => {
 				const sheet = mapSheet();

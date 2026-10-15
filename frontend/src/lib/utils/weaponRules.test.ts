@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { AbilityScores, InventoryItem } from '$lib/services/characterApi';
 import {
 	deriveWeaponEffects,
-	resolveWeaponAttackMode,
 	addWeaponProfile,
 	parseWeaponEffect,
 	removeWeaponProfile,
@@ -34,14 +33,6 @@ const scores: AbilityScores = {
 };
 
 describe('weapon domain rules', () => {
-	it('preserves the selected weapon attack mode except when conditions force disadvantage', () => {
-		expect(resolveWeaponAttackMode('normal', [])).toBe('normal');
-		expect(resolveWeaponAttackMode('advantage', [])).toBe('advantage');
-		expect(resolveWeaponAttackMode('disadvantage', [])).toBe('disadvantage');
-		expect(resolveWeaponAttackMode('advantage', ['Cego'])).toBe('disadvantage');
-		expect(resolveWeaponAttackMode('normal', ['Impedido'])).toBe('disadvantage');
-	});
-
 	it('respects explicit proficiency overrides and class/subclass proficiency grants', () => {
 		const item = weapon({ category: 'martial' });
 		expect(weaponProficiencyStatus(item, ['martial'], [], {})).toBe(true);
