@@ -46,6 +46,7 @@
 	import { appLocale } from '$lib/stores/locale';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+	import { kilogramsToPounds } from '$lib/utils/dnd2024MetricUnits';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
@@ -1039,7 +1040,7 @@
 			}
 		}
 		const rules: Record<string, unknown> = { category: draft.category, custom: true };
-		rules.weight = Math.max(0, Number(draft.weight) || 0);
+		rules.weight = Math.max(0, kilogramsToPounds(Number(draft.weight) || 0));
 		if (draft.category === 'weapon') {
 			if (draft.damage.trim()) rules.damage = draft.damage.trim();
 			rules.bonus = Math.round(draft.bonus);
