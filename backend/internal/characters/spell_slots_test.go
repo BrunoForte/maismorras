@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -52,5 +53,34 @@ func TestDnd2024SpellSlotsIgnoreClientCountsPreserveServerUsesAndAddNoFeatSlots(
 	}
 	if got := dnd2024SpellSlots("warlock", 5, nil); len(got) != 0 {
 		t.Fatalf("changed existing pact-magic slot model unexpectedly: %#v", got)
+	}
+}
+
+func TestNarratorSpellSlotAdjustmentChangesOnlyAvailableCountAndKeepsCastSpending(t *testing.T) {
+	sheet := Sheet{Class: "wizard", Level: 5, SpellSlots: dnd2024SpellSlots("wizard", 5, nil)}
+	if err := setAvailableSpellSlots(&sheet, 2, 1); err != nil {
+		t.Fatal(err)
+	}
+	if len(sheet.SpellSlots) != 3 || sheet.SpellSlots[1] != (SpellSlot{Level: 2, Current: 1, Max: 3}) || sheet.SpellSlots[0].Max != 4 {
+		t.Fatalf("slot adjustment changed progression maxima or another level: %+v", sheet.SpellSlots)
+	}
+	if !consumeCharacterSpellSlot(&sheet, 2) || sheet.SpellSlots[1].Current != 0 || sheet.SpellSlots[1].Max != 3 {
+		t.Fatalf("normal spell spending did not consume the adjusted available count: %+v", sheet.SpellSlots)
+	}
+	if err := setAvailableSpellSlots(&sheet, 2, 2); err != nil || sheet.SpellSlots[1].Current != 2 || sheet.SpellSlots[1].Max != 3 {
+		t.Fatalf("narrator could not increase the available count within maximum: %+v, %v", sheet.SpellSlots, err)
+	}
+}
+
+func TestNarratorSpellSlotAdjustmentRejectsOutOfRangeAndUnknownLevels(t *testing.T) {
+	sheet := Sheet{Class: "wizard", Level: 3, SpellSlots: dnd2024SpellSlots("wizard", 3, nil)}
+	original := append([]SpellSlot(nil), sheet.SpellSlots...)
+	for _, test := range []struct{ level, current int }{{1, -1}, {1, 5}, {3, 1}} {
+		if err := setAvailableSpellSlots(&sheet, test.level, test.current); !errors.Is(err, ErrInvalidSpellSlot) {
+			t.Errorf("adjustment level=%d current=%d error=%v, want ErrInvalidSpellSlot", test.level, test.current, err)
+		}
+		if !reflect.DeepEqual(sheet.SpellSlots, original) {
+			t.Fatalf("invalid adjustment changed sheet slots: %+v", sheet.SpellSlots)
+		}
 	}
 }

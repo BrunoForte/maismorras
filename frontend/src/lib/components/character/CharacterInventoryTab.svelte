@@ -11,6 +11,11 @@
 	import { groupInventoryOptions } from '$lib/utils/inventoryRules';
 	import type { CustomInventoryItemDraft } from './inventoryTypes';
 	import { parseDnd2024CoinAmount } from '$lib/utils/character/dnd2024Money';
+	import {
+		formatDnd2024Distance,
+		formatDnd2024Weight,
+		poundsToKilograms
+	} from '$lib/utils/dnd2024MetricUnits';
 
 	let {
 		itemEntries,
@@ -87,12 +92,7 @@
 				entry.entryType === 'other' &&
 				entry.rules.catalog === 'magic-item'
 		);
-	const formatWeight = (weight: number | null) =>
-		weight === null
-			? '—'
-			: new Intl.NumberFormat($appLocale === 'en' ? 'en-US' : 'pt-BR', {
-					maximumFractionDigits: 2
-				}).format(weight);
+	const formatWeight = (weight: number | null) => formatDnd2024Weight(weight, $appLocale);
 	const moneyFields: { key: keyof Dnd2024Money; labelPt: string; labelEn: string }[] = [
 		{ key: 'cp', labelPt: 'PC · Cobre', labelEn: 'CP · Copper' },
 		{ key: 'sp', labelPt: 'PP · Prata', labelEn: 'SP · Silver' },
@@ -155,7 +155,7 @@
 				: 'Peso carregado / capacidade máxima'}</strong
 		>
 		<span data-testid="carrying-weight"
-			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} lb</span
+			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} kg</span
 		>
 		<div class="weight-limit-row">
 			<strong
@@ -163,7 +163,7 @@
 					? 'Push / drag / lift limit'
 					: 'Limite para empurrar / arrastar / levantar'}</strong
 			>
-			<span data-testid="push-drag-lift-limit">{formatWeight(pushDragLiftLb)} lb</span>
+			<span data-testid="push-drag-lift-limit">{formatWeight(pushDragLiftLb)} kg</span>
 		</div>
 		{#if powerfulBuildApplied}
 			<small class="capacity-adjustment" data-testid="powerful-build-capacity-note">
@@ -172,11 +172,16 @@
 					: 'Porte Poderoso altera apenas a capacidade de carga; o limite para empurrar, arrastar e levantar usa seu tamanho atual.'}
 			</small>
 		{/if}
+		<small class="unit-conversion-note" data-testid="metric-rounding-note">
+			{$appLocale === 'en'
+				? 'Metric values are rounded to 0.01 for display; calculations keep their existing internal values.'
+				: 'Valores métricos arredondados a 0,01 apenas na exibição; os cálculos mantêm os valores internos existentes.'}
+		</small>
 		{#if pushDragLiftLb !== null && capacityLb !== null}
 			<small class="movement-limit-note" data-testid="hauling-speed-limit">
 				{$appLocale === 'en'
-					? 'When pushing, dragging, or lifting more than your carrying capacity, your Speed can be no more than 5 feet.'
-					: 'Ao empurrar, arrastar ou levantar mais que sua capacidade de carga, seu deslocamento não pode exceder 5 pés.'}
+					? `When pushing, dragging, or lifting more than your carrying capacity, your Speed can be no more than ${formatDnd2024Distance(5, $appLocale)} m.`
+					: `Ao empurrar, arrastar ou levantar mais que sua capacidade de carga, seu deslocamento não pode exceder ${formatDnd2024Distance(5, $appLocale)} m.`}
 			</small>
 		{/if}
 		{#if loadIncomplete}
@@ -288,11 +293,11 @@
 			<option value="consumable">{$appLocale === 'en' ? 'Consumable' : 'Consumível'}</option>
 		</select>
 		<label
-			>{$appLocale === 'en' ? 'Weight (lb)' : 'Peso (lb)'}<input
+			>{$appLocale === 'en' ? 'Weight (kg)' : 'Peso (kg)'}<input
 				type="number"
 				min="0"
-				max="9999"
-				step="0.1"
+				max={poundsToKilograms(9999)}
+				step="0.01"
 				bind:value={customItem.weight}
 			/></label
 		>
@@ -376,7 +381,7 @@
 						onchange={(event) => onChangeQuantity(index, Number(event.currentTarget.value))}
 					/>
 					<small class="inventory-weight"
-						>{itemWeight(item) > 0 ? `${itemWeight(item)} lb` : '—'}</small
+						>{itemWeight(item) > 0 ? `${formatWeight(itemWeight(item))} kg` : '—'}</small
 					>
 					<button
 						type="button"

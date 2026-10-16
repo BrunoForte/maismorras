@@ -141,8 +141,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 								const character = await fixture!.createCharacter(fixture!.playerUserId, {
 									name: 'Categorias do inspector E2E'
 								});
-								await fixture!.createCharacterToken(character.id);
-								await openMap(page, fixture!.campaignId, fixture!.sceneId);
+								const tokenId = await fixture!.createCharacterToken(character.id);
+								await openMap(page, fixture!.campaignId, fixture!.sceneId, tokenId);
 								await selectTokenAtDefaultPosition(page);
 							}
 						));
@@ -499,7 +499,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await assertAboveAudioFooter(page, sheet);
 						await expect(actors.locator('.drawer-toggle')).toBeVisible();
 						await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-						await expect(sheet).toBeVisible();
+						await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
 						await page.getByRole('button', { name: 'Mesa', exact: true }).click();
 						await expect(page.locator('canvas').first()).toBeVisible();
 						await expect(sheet).toBeVisible();
@@ -911,6 +911,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				fixture = await createLocalAuthenticatedFixture(browser);
 				const character = await fixture.createCharacter(fixture.playerUserId, {
 					name: 'Painel jogador E2E',
+					class: 'Mago',
+					spellcastingOverride: true,
 					hitPointsCurrent: 12,
 					hitPointsMax: 12,
 					spells: [
@@ -946,23 +948,35 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const before = (await beforeResponse.json()) as {
 					sheet: { spellSlots: Array<{ level: number; current: number }> };
 				};
-				await cantrip.getByRole('button', { name: 'Lançar truque' }).click();
-				await expect
-					.poll(async () => {
-						const response = await fixture!.playerApi.get(
-							`/api/v1/campaigns/${fixture!.campaignId}/character`
-						);
-						const value = (await response.json()) as typeof before;
-						return value.sheet.spellSlots.find((slot) => slot.level === 1)?.current;
-					})
-					.toBe(before.sheet.spellSlots.find((slot) => slot.level === 1)?.current);
-				await expect(player.locator('.presentation-text')).toContainText('Luz da ficha E2E');
-				await expect(player.locator('.presentation-text')).toContainText('Uma luz clara aparece.');
-				await expect(
-					fixture!.gm.locator('.floating-chat [data-event-id]').filter({
-						hasText: 'Luz da ficha E2E'
-					})
-				).toBeVisible();
+				await test.step('submit the cantrip from the floating sheet', async () => {
+					await cantrip.getByRole('button', { name: 'Lançar truque' }).click();
+				});
+				await test.step('confirm the spell slot remains unchanged', async () => {
+					await expect
+						.poll(async () => {
+							const response = await fixture!.playerApi.get(
+								`/api/v1/campaigns/${fixture!.campaignId}/character`
+							);
+							const value = (await response.json()) as typeof before;
+							return value.sheet.spellSlots.find((slot) => slot.level === 1)?.current;
+						})
+						.toBe(before.sheet.spellSlots.find((slot) => slot.level === 1)?.current);
+				});
+				await test.step('verify player-facing presentation and campaign chat', async () => {
+					await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+					await expect(player.locator('canvas').first()).toBeVisible();
+					await expect(player.locator('.presentation-text')).toContainText('Luz da ficha E2E');
+					await expect(player.locator('.presentation-text')).toContainText(
+						'Uma luz clara aparece.'
+					);
+					await expect(
+						fixture!.gm.locator('.floating-chat [data-event-id]').filter({
+							hasText: 'Luz da ficha E2E'
+						})
+					).toBeVisible();
+					await player.getByRole('button', { name: 'Fechar imagem para mim' }).click();
+					await expect(player.locator('.presentation-backdrop')).toHaveCount(0);
+				});
 			});
 			const expandedHeight = (await sheet.boundingBox())!.height;
 			await test.step('minimize the sheet and preserve state while swapping tabs', async () => {
@@ -1007,10 +1021,15 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const character = await fixture.createCharacter(fixture.playerUserId, {
 					name: `Ficha ${viewport.name} E2E`
 				});
+				// Headless Chromium exposes WebGL and auto-selects 3D; use 2D here while retaining the visible-overlay assertion.
+				await fixture.player.evaluate(() =>
+					localStorage.setItem('maismorras:dice-renderer-mode', '2d')
+				);
 				await fixture.createCharacterToken(character.id);
 				const player = fixture.player;
 				await player.setViewportSize({ width: viewport.width, height: viewport.height });
 				await openMap(player, fixture.campaignId, fixture.sceneId);
+				await player.getByLabel('Modo de renderização dos dados').selectOption('2d');
 				await player.getByRole('button', { name: 'Fichas', exact: true }).click();
 				await player.getByRole('button', { name: 'Abrir como painel' }).click();
 				const sheet = player.locator('.sheet-backdrop.floating .sheet');
@@ -1245,8 +1264,16 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			});
 			const f = fixture!;
 			await Promise.all([
+				f.player.evaluate(() => localStorage.setItem('maismorras:dice-renderer-mode', '2d')),
+				f.gm.evaluate(() => localStorage.setItem('maismorras:dice-renderer-mode', '2d'))
+			]);
+			await Promise.all([
 				openMap(f.player, f.campaignId, f.sceneId),
 				openMap(f.gm, f.campaignId, f.sceneId)
+			]);
+			await Promise.all([
+				f.player.getByLabel('Modo de renderização dos dados').selectOption('2d'),
+				f.gm.getByLabel('Modo de renderização dos dados').selectOption('2d')
 			]);
 			await selectTokenAtDefaultPosition(f.player);
 			const inspector = f.player.locator('.token-inspector');
@@ -1301,35 +1328,42 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					`/api/v1/campaigns/${f.campaignId}/events`
 				);
 				const eventsBefore = (await eventsBeforeResponse.json()) as { events: unknown[] };
-				await cantrip.getByRole('button', { name: 'Lançar', exact: true }).click();
-				await expect
-					.poll(async () => {
-						const response = await f.playerApi.get(`/api/v1/campaigns/${f.campaignId}/events`);
-						return ((await response.json()) as { events: unknown[] }).events.length;
-					})
-					.toBeGreaterThan(eventsBefore.events.length);
-				const castEventsResponse = await f.playerApi.get(
-					`/api/v1/campaigns/${f.campaignId}/events`
-				);
-				const castEvents = (await castEventsResponse.json()) as {
-					events: Array<{ type: string; payload: { text?: string; spellCast?: boolean } }>;
-				};
-				const cantripEvent = castEvents.events.find(
-					(event) => event.type === 'chat.message' && event.payload.spellCast
-				);
-				expect(cantripEvent?.payload.text).toContain('Luz E2E');
-				expect(cantripEvent?.payload.text).toContain('nenhum espaço consumido');
-				const after = (await (await characterResponse()).json()) as {
-					sheet: { spellSlots: Array<{ level: number; current: number }> };
-				};
-				expect(after.sheet.spellSlots.find((slot) => slot.level === 1)?.current).toBe(slotCount);
-				await expect(
-					f.gm.locator('.floating-chat [data-event-id]').filter({ hasText: 'Luz E2E' })
-				).toBeVisible();
-				await expect(f.player.locator('.presentation-text')).toContainText('Luz E2E');
-				await expect(f.player.locator('.presentation-text')).toContainText('Uma luz aparece.');
-				await expect(f.gm.locator('.presentation-text')).toContainText('Uma luz aparece.');
-				await inspector.locator('.spell-groups').locator('summary').first().click();
+				await test.step('cast and verify the persisted campaign event', async () => {
+					await cantrip.getByRole('button', { name: 'Lançar', exact: true }).click();
+					await expect
+						.poll(async () => {
+							const response = await f.playerApi.get(`/api/v1/campaigns/${f.campaignId}/events`);
+							return ((await response.json()) as { events: unknown[] }).events.length;
+						})
+						.toBeGreaterThan(eventsBefore.events.length);
+					const castEventsResponse = await f.playerApi.get(
+						`/api/v1/campaigns/${f.campaignId}/events`
+					);
+					const castEvents = (await castEventsResponse.json()) as {
+						events: Array<{ type: string; payload: { text?: string; spellCast?: boolean } }>;
+					};
+					const cantripEvent = castEvents.events.find(
+						(event) => event.type === 'chat.message' && event.payload.spellCast
+					);
+					expect(cantripEvent?.payload.text).toContain('Luz E2E');
+					expect(cantripEvent?.payload.text).toContain('nenhum espaço consumido');
+				});
+				await test.step('verify slot state and presentation for player and narrator', async () => {
+					const after = (await (await characterResponse()).json()) as {
+						sheet: { spellSlots: Array<{ level: number; current: number }> };
+					};
+					expect(after.sheet.spellSlots.find((slot) => slot.level === 1)?.current).toBe(slotCount);
+					await expect(
+						f.gm.locator('.floating-chat [data-event-id]').filter({ hasText: 'Luz E2E' })
+					).toBeVisible();
+					await expect(f.player.locator('.presentation-text')).toContainText('Luz E2E');
+					await expect(f.player.locator('.presentation-text')).toContainText('Uma luz aparece.');
+					await expect(f.gm.locator('.presentation-text')).toContainText('Luz E2E');
+					await expect(f.gm.locator('.presentation-text')).toContainText('Uma luz aparece.');
+					await f.player.getByRole('button', { name: 'Fechar imagem para mim' }).click();
+					await expect(f.player.locator('.presentation-backdrop')).toHaveCount(0);
+					await inspector.locator('.spell-groups').locator('summary').first().click();
+				});
 			});
 			await test.step('cast owned leveled spell and verify its slot was consumed', async () => {
 				const before = (await (await characterResponse()).json()) as {
@@ -1339,12 +1373,14 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					before.sheet.spellSlots.find((slot) => slot.level === 1)?.current ?? 0;
 				expect(currentBefore).toBeGreaterThan(0);
 				await inspector.locator('.spell-groups').locator('summary').first().click();
-				await inspector
+				const firstCircle = inspector
 					.locator('.spell-groups details')
-					.filter({ hasText: '1º círculo' })
-					.locator('summary')
-					.click();
-				await inspector.getByRole('button', { name: 'Lançar' }).click();
+					.filter({ hasText: '1º círculo' });
+				await firstCircle.locator('summary').click();
+				const castButton = firstCircle.getByRole('button', { name: 'Lançar', exact: true });
+				await expect(castButton).toBeVisible();
+				await expect(castButton).toBeEnabled();
+				await castButton.click();
 				await expect
 					.poll(async () => {
 						const value = (await (await characterResponse()).json()) as {
@@ -1384,6 +1420,138 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			});
 		} finally {
 			await fixture?.close();
+		}
+	});
+
+	for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+		test(`weapon damage d${sides} saves and reopens for base and alternate attacks`, async ({
+			browser
+		}) => {
+			const state = await openDamageBuilderFixture(browser);
+			const {
+				fixture,
+				weapon,
+				baseBuilder,
+				profile,
+				chooseDie,
+				saveAndAssertSuccess,
+				readSavedDamage,
+				reopenSavedSheet
+			} = state;
+			try {
+				await chooseDie(baseBuilder, sides);
+				await expect(weapon.locator('.weapon-combat-summary').first()).toContainText(`1d${sides}`);
+				await expect(baseBuilder.getByRole('alert')).toHaveCount(0);
+				await saveAndAssertSuccess();
+				await expect.poll(async () => (await readSavedDamage()).damage).toBe(`1d${sides}`);
+				await reopenSavedSheet();
+				await expect(weapon.locator('.weapon-combat-summary').first()).toContainText(`1d${sides}`);
+
+				await profile.getByText('Golpe alternativo', { exact: true }).click();
+				const profileBuilder = profile.locator('fieldset.profile-damage-builder');
+				await chooseDie(profileBuilder, sides);
+				await expect(profile.locator('.profile-damage-summary')).toContainText(`1d${sides}`);
+				await expect(profileBuilder.getByRole('alert')).toHaveCount(0);
+				await saveAndAssertSuccess();
+				await expect
+					.poll(async () => (await readSavedDamage()).attackProfiles[0].damage)
+					.toBe(`1d${sides}`);
+				await reopenSavedSheet();
+				await profile.getByText('Golpe alternativo', { exact: true }).click();
+				await expect(profile.locator('.profile-damage-summary')).toContainText(`1d${sides}`);
+			} finally {
+				await fixture.close();
+			}
+		});
+	}
+
+	test('weapon damage builder stays responsive and rolls saved formulas for base and alternate attacks', async ({
+		browser
+	}) => {
+		const state = await openDamageBuilderFixture(browser);
+		const {
+			fixture,
+			page,
+			weapon,
+			baseBuilder,
+			profile,
+			chooseDie,
+			saveAndAssertSuccess,
+			readSavedDamage,
+			reopenSavedSheet
+		} = state;
+		try {
+			await baseBuilder.locator('button.secondary-button').click();
+			const components = baseBuilder.locator('.damage-component');
+			await expect(components).toHaveCount(2);
+			await chooseDie(baseBuilder, 100);
+			await chooseDie(components.nth(1), 8);
+			await expect(weapon.locator('.weapon-combat-summary').first()).toContainText('1d100+1d8');
+			const desktopRects = await components.evaluateAll((nodes) =>
+				nodes.map((node) => {
+					const rect = node.getBoundingClientRect();
+					return { x: rect.x, y: rect.y, right: rect.right };
+				})
+			);
+			expect(desktopRects[1].x).toBeGreaterThan(desktopRects[0].x);
+			await page.setViewportSize({ width: 390, height: 844 });
+			const narrowLayout = await components.evaluateAll((nodes) =>
+				nodes.map((node) => {
+					const rect = node.getBoundingClientRect();
+					return { x: rect.x, y: rect.y, right: rect.right };
+				})
+			);
+			expect(narrowLayout.every((rect) => rect.right <= 390)).toBeTruthy();
+			expect(narrowLayout[1].y).toBeGreaterThan(narrowLayout[0].y);
+			const baseCount = baseBuilder.locator('input[type="number"]').first();
+			await baseCount.fill('0');
+			await expect(baseBuilder.getByRole('alert')).toBeVisible();
+			await baseCount.fill('1');
+			await expect(baseBuilder.getByRole('alert')).toHaveCount(0);
+			await saveAndAssertSuccess();
+			await expect.poll(async () => (await readSavedDamage()).damage).toBe('1d100+1d8');
+
+			await profile.getByText('Golpe alternativo', { exact: true }).click();
+			const profileBuilder = profile.locator('fieldset.profile-damage-builder');
+			await chooseDie(profileBuilder, 100);
+			await expect(profile.locator('.profile-damage-summary')).toContainText('1d100');
+			await saveAndAssertSuccess();
+			await expect
+				.poll(async () => (await readSavedDamage()).attackProfiles[0].damage)
+				.toBe('1d100');
+			await reopenSavedSheet();
+			await profile.getByText('Golpe alternativo', { exact: true }).click();
+			await expect(profile.locator('.profile-damage-summary')).toContainText('1d100');
+
+			const reopenedWeapon = weapon;
+			await expect(reopenedWeapon.locator('.weapon-combat-summary').first()).toContainText(
+				'1d100+1d8'
+			);
+			const reopenedProfile = profile;
+			await expect(reopenedProfile.locator('.profile-damage-summary')).toContainText('1d100');
+			const readRolls = async () => {
+				const response = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/events`
+				);
+				expect(response.ok()).toBeTruthy();
+				return (
+					(await response.json()) as {
+						events: Array<{ type: string; payload: { expressao?: string } }>;
+					}
+				).events.filter((event) => event.type === 'dice.roll');
+			};
+			const initialRollCount = (await readRolls()).length;
+			await reopenedWeapon.getByRole('button', { name: 'Dano', exact: true }).first().click();
+			await expect.poll(async () => (await readRolls()).length).toBeGreaterThan(initialRollCount);
+			let rolls = await readRolls();
+			expect(rolls.at(-1)?.payload.expressao).toContain('1d100+1d8');
+			const profileRollCount = rolls.length;
+			await reopenedProfile.getByRole('button', { name: 'Dano', exact: true }).click();
+			await expect.poll(async () => (await readRolls()).length).toBeGreaterThan(profileRollCount);
+			rolls = await readRolls();
+			expect(rolls.at(-1)?.payload.expressao).toContain('1d100');
+		} finally {
+			await fixture.close();
 		}
 	});
 
@@ -1515,6 +1683,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					unauthorizedSpellRequests.push('POST');
 			});
 			await test.step('select player token and confirm both cantrip and leveled casting are disabled', async () => {
+				await f.gm.waitForLoadState('networkidle');
 				await selectTokenAtDefaultPosition(f.gm);
 				const inspector = f.gm.locator('.token-inspector');
 				await inspector.locator('.spell-groups').locator('summary').first().click();
@@ -2064,6 +2233,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			const prepared = await prepareSavedPlayerSheet(browser, testInfo);
 			fixture = prepared.fixture;
 			const { player, sheet } = prepared;
+			await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+			await expect(player.locator('canvas').first()).toBeVisible();
 			await test.step('resize floating sheet from its lower corner', () => {
 				let phase = 'measure initial sheet bounds';
 				return diagnoseOnFailure(
@@ -2079,8 +2250,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 							phase = 'collapse chat to give the sheet independent resize room';
 							await chat.getByRole('button', { name: 'Chat da mesa' }).click();
 						}
+						await expect(chat).toHaveClass(/closed/);
 						phase = 'move panel left to create safe resize room';
-						await dragPanel(player, sheet.locator('header'), -500, 0);
+						await dragPanel(player, sheet.locator('header h2'), -500, 0);
 						const before = (await sheet.boundingBox())!;
 						const startX = before.x + before.width - 4;
 						const startY = before.y + before.height - 4;
@@ -2181,15 +2353,17 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					async () => {
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						await sheet.getByRole('button', { name: 'Fixar ficha' }).click();
-						await expect(player.locator('.sheet-backdrop.docked .sheet')).toBeVisible();
-						await expect(sheet.locator('.sheet-mode-status')).toHaveText('Acoplada');
-						await assertAboveAudioFooter(player, sheet);
+						const dockedSheet = player.locator('.sheet-backdrop.docked .sheet');
+						await expect(dockedSheet).toBeVisible();
+						await expect(dockedSheet.locator('.sheet-mode-status')).toHaveText('Acoplada');
+						await assertAboveAudioFooter(player, dockedSheet);
 						phase = 'restore floating mode';
-						await sheet.getByRole('button', { name: 'Flutuar ficha' }).click();
+						await dockedSheet.getByRole('button', { name: 'Flutuar ficha' }).click();
 						await expect(player.locator('.sheet-backdrop.floating .sheet')).toBeVisible();
 						phase = 'close sheet explicitly';
 						await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
-						await expect(player.locator('.sheet-backdrop .sheet')).toHaveCount(0);
+						await expect(player.locator('.sheet-backdrop.floating .sheet')).toHaveCount(0);
+						await expect(player.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
 					},
 					() => phase
 				);
@@ -2264,6 +2438,13 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				});
 				const page = role === 'gm' ? fixture!.gm : fixture!.player;
 				const receivingParticipant = role === 'player' && quantity === 1 ? fixture!.gm : null;
+				// Keep the visual result assertion deterministic under headless Chromium's automatic WebGL detection.
+				await page.evaluate(() => localStorage.setItem('maismorras:dice-renderer-mode', '2d'));
+				if (receivingParticipant) {
+					await receivingParticipant.evaluate(() =>
+						localStorage.setItem('maismorras:dice-renderer-mode', '2d')
+					);
+				}
 				const formula = `${quantity}d${sides}`;
 				let authoritativeResult: { expressao: string; dados: number[]; total: number } | null =
 					null;
@@ -2271,6 +2452,9 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await test.step('submit the quick roll and verify the authoritative server result', async () => {
 					if (receivingParticipant) {
 						await openMap(receivingParticipant, fixture!.campaignId, fixture!.sceneId);
+						await receivingParticipant
+							.getByLabel('Modo de renderização dos dados')
+							.selectOption('2d');
 						const receiverChat = receivingParticipant.locator('.floating-chat');
 						if (await receiverChat.evaluate((node) => node.classList.contains('closed'))) {
 							await receiverChat.locator('.chat-toggle').click();
@@ -2278,6 +2462,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await expect(receiverChat.locator('.chat-body')).toBeVisible();
 					}
 					await openMap(page, fixture!.campaignId, fixture!.sceneId);
+					await page.getByLabel('Modo de renderização dos dados').selectOption('2d');
 					await page.locator('.table-tools button[title="Dados"]').click();
 					await page.getByLabel('Quantidade de dados').fill(String(quantity));
 					const responsePromise = page.waitForResponse((response) => {
@@ -2458,13 +2643,138 @@ test('bounded diagnostic failure creates a sanitized artifact attachment', async
 	}
 });
 
-async function openMap(page: Page, campaignId: string, sceneId: string) {
+async function openMap(page: Page, campaignId: string, sceneId: string, expectedTokenId?: string) {
+	const sceneResponse = expectedTokenId
+		? page.waitForResponse(
+				(response) =>
+					new URL(response.url()).pathname === `/api/v1/scenes/${sceneId}` &&
+					response.request().method() === 'GET'
+			)
+		: null;
 	await page.goto(`/?campaign=${campaignId}&scene=${sceneId}`);
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20_000 });
 	await expect(page.locator('.floating-chat')).toBeVisible();
+	if (sceneResponse) {
+		const response = await sceneResponse;
+		expect(response.ok()).toBeTruthy();
+		const scene = (await response.json()) as { tokens: Array<{ id: string }> };
+		expect(scene.tokens.some((token) => token.id === expectedTokenId)).toBe(true);
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) => {
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+				})
+		);
+	}
 }
 
 type LocalAuthenticatedFixture = Awaited<ReturnType<typeof createLocalAuthenticatedFixture>>;
+
+async function openDamageBuilderFixture(browser: Browser) {
+	const fixture = await createLocalAuthenticatedFixture(browser);
+	try {
+		const character = await fixture.createCharacter(fixture.playerUserId, {
+			name: 'Construtor de dano E2E',
+			inventory: [
+				{
+					entryId: 'damage-builder-e2e',
+					name: 'Machado de teste',
+					quantity: 1,
+					equipped: true,
+					rules: {
+						category: 'weapon',
+						damage: '1d4',
+						attackAbility: 'strength',
+						attackType: 'melee',
+						proficient: true,
+						attackProfiles: [
+							{
+								id: 'alternate-damage-e2e',
+								name: 'Golpe alternativo',
+								description: '',
+								attackAbility: 'strength',
+								damage: '1d6',
+								attackBonus: 0,
+								damageBonus: 0,
+								greatWeaponFighting: false
+							}
+						]
+					}
+				}
+			]
+		});
+		const tokenId = await fixture.createCharacterToken(character.id);
+		await fixture.player.evaluate(() =>
+			localStorage.setItem('maismorras:dice-renderer-mode', '2d')
+		);
+		const page = fixture.player;
+		await openMap(page, fixture.campaignId, fixture.sceneId, tokenId);
+		await page.getByLabel('Modo de renderização dos dados').selectOption('2d');
+		await selectTokenAtDefaultPosition(page);
+		await page.getByRole('button', { name: 'Abrir ficha vinculada' }).click();
+		const sheet = page.locator('.sheet-backdrop.floating .sheet');
+		await expect(sheet).toBeVisible();
+		await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+		const weapon = sheet.locator('.weapon-combat-card').filter({ hasText: 'Machado de teste' });
+		await weapon.getByRole('button', { name: 'Machado de teste' }).click();
+		const baseBuilder = weapon.locator('fieldset.damage-builder').first();
+		const profile = weapon.locator('.weapon-profile');
+		const chooseDie = async (builder: Locator, sides: number) => {
+			const picker = builder.locator('.die-type-picker').first();
+			const summary = picker.locator('summary');
+			await summary.click();
+			const option = picker.locator('.die-type-options button').filter({
+				hasText: new RegExp(`^d${sides}$`)
+			});
+			await option.click();
+		};
+		const saveAndAssertSuccess = async () => {
+			await sheet.getByRole('button', { name: 'Salvar ficha' }).click();
+			await expect(sheet.locator('footer')).toContainText('Ficha salva.');
+		};
+		const readSavedDamage = async () => {
+			const response = await fixture.playerApi.get(
+				`/api/v1/campaigns/${fixture.campaignId}/character`
+			);
+			expect(response.ok()).toBeTruthy();
+			const result = (await response.json()) as {
+				sheet: {
+					inventory: Array<{
+						entryId: string;
+						rules: { damage: string; attackProfiles: Array<{ id: string; damage: string }> };
+					}>;
+				};
+			};
+			return result.sheet.inventory.find((item) => item.entryId === 'damage-builder-e2e')!.rules;
+		};
+		const reopenSavedSheet = async () => {
+			await sheet.getByRole('button', { name: 'Fechar ficha' }).click();
+			await expect(sheet).toHaveCount(0);
+			await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+			const embeddedSheet = page.locator('.sheet-backdrop.embedded .sheet');
+			await expect(embeddedSheet).toBeVisible();
+			await embeddedSheet.getByRole('button', { name: 'Abrir como painel' }).click();
+			await expect(sheet).toBeVisible();
+			await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+			await weapon.getByRole('button', { name: 'Machado de teste' }).click();
+		};
+		return {
+			fixture,
+			page,
+			sheet,
+			weapon,
+			baseBuilder,
+			profile,
+			chooseDie,
+			saveAndAssertSuccess,
+			readSavedDamage,
+			reopenSavedSheet
+		};
+	} catch (error) {
+		await fixture.close();
+		throw error;
+	}
+}
 
 async function prepareSavedPlayerSheet(browser: Browser, testInfo: TestInfo) {
 	const fixture = await createLocalAuthenticatedFixture(browser);

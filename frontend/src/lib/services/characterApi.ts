@@ -249,6 +249,18 @@ export const setCharacterInitiativeAdvantage = (
 		`/api/v1/campaigns/${campaignId}/characters/${characterId}/initiative-advantage`,
 		{ method: 'PATCH', body: JSON.stringify({ enabled }) }
 	);
+export const setAvailableSpellSlotsForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	level: number,
+	current: number
+) =>
+	request<Character>(
+		session,
+		`/api/v1/campaigns/${campaignId}/characters/${characterId}/spell-slots`,
+		{ method: 'PATCH', body: JSON.stringify({ level, current }) }
+	).then(normalizeCharacter);
 export const createCharacterForGM = (session: Session, campaignId: string, ownerId: string) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters`, {
 		method: 'POST',
@@ -261,6 +273,7 @@ export const deleteCharacterForGM = (session: Session, campaignId: string, chara
 export type SheetRoll = {
 	eventId: number;
 	dados: number[];
+	dadoEscolhido: number;
 	modo: 'normal' | 'advantage' | 'disadvantage';
 	modificador: number;
 	total: number;

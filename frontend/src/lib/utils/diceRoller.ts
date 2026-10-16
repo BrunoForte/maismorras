@@ -6,6 +6,7 @@ export type ResultadoRolagem = {
 	modificador: number;
 	total: number;
 	dadosOriginais?: number[];
+	dadoEscolhido?: number;
 	regraAplicada?: string;
 	label?: string;
 	channel?: 'chat' | 'combat';

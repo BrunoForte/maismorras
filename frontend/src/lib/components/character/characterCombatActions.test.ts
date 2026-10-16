@@ -155,6 +155,39 @@ const weapon: InventoryItem = {
 afterEach(() => vi.restoreAllMocks());
 
 describe('character combat actions', () => {
+	it.each(['normal', 'advantage', 'disadvantage'] as const)(
+		'passes the selected D&D d20 mode to the authoritative character roll (%s)',
+		async (mode) => {
+			const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>(
+				async () => ({
+					eventId: 41,
+					dados: mode === 'normal' ? [12] : [5, 18],
+					dadoEscolhido: mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12,
+					modo: mode,
+					modificador: 4,
+					total: (mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12) + 4,
+					label: 'Atletismo'
+				})
+			);
+			const test = setup({ rollMyCharacter });
+
+			await test.controller.rollAuthorized('skill', 'Atletismo', 'Teste de Atletismo', mode);
+
+			expect(rollMyCharacter.mock.calls[0][4]).toBe(mode);
+			expect(test.setDiceOverlay.mock.calls[0][0].dice).toEqual(mode === 'normal' ? [12] : [5, 18]);
+			if (mode !== 'normal') {
+				expect(test.appendChat.mock.calls[0][0].texto).toContain('d20 [5, 18]');
+				expect(test.appendChat.mock.calls[0][0].texto).toContain(
+					mode === 'advantage' ? 'escolhido 18' : 'escolhido 5'
+				);
+				expect(test.appendChat.mock.calls[0][0].detalhesRolagem).toMatchObject({
+					dadosOriginais: [5, 18],
+					dadoEscolhido: mode === 'advantage' ? 18 : 5
+				});
+			}
+		}
+	);
+
 	it('registra uma rolagem de arma e limpa o estado após sucesso', async () => {
 		const pending = deferred<{
 			id: string;

@@ -62,6 +62,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, tokenHandler *tokens.Hand
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/characters/{characterID}", overlayHandler.AuthenticateOrOverlay(characterHandler.GetForGM))
 	mux.Handle("PUT /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SaveForGM))
 	mux.Handle("PATCH /api/v1/campaigns/{campaignID}/characters/{characterID}/initiative-advantage", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SetInitiativeAdvantage))
+	mux.Handle("PATCH /api/v1/campaigns/{campaignID}/characters/{characterID}/spell-slots", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.SetAvailableSpellSlotsForGM))
 	mux.Handle("DELETE /api/v1/campaigns/{campaignID}/characters/{characterID}", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.DeleteForGM))
 	mux.Handle("POST /api/v1/campaigns/{campaignID}/characters", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, characterHandler.CreateForGM))
 	mux.Handle("GET /api/v1/campaigns/{campaignID}/compendium", auth.Authenticate(cfg.SupabaseURL, cfg.SupabaseJWTSecret, compendiumHandler.List))

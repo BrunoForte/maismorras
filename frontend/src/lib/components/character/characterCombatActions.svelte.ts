@@ -244,7 +244,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		kind: 'skill' | 'save' | 'spell',
 		key: string,
 		label: string,
-		mode = deps.getAttackMode()
+		mode: 'normal' | 'advantage' | 'disadvantage'
 	) {
 		const operation = captureOperation();
 		const context = deps.getContext();
@@ -261,22 +261,25 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			const modeLabel =
 				mode === 'advantage' ? 'Vantagem' : mode === 'disadvantage' ? 'Desvantagem' : 'Normal';
 			const rollCount = Math.max(1, result.dados.length);
+			const rolledFaces = result.dados;
 			deps.setDiceOverlay({
 				expression: `${character.name || 'Personagem'} · ${label} · ${modeLabel}`,
 				notation: `${rollCount}d20${result.modificador ? `${result.modificador >= 0 ? '+' : ''}${result.modificador}` : ''}`,
 				total: result.total,
-				dice: result.dados,
+				dice: rolledFaces,
 				nonce: String(result.eventId)
 			});
 			addChat({
 				id: String(result.eventId),
 				autor: character.name || localized(context.locale, 'Personagem', 'Character'),
-				texto: `${label} · ${modeLabel} · dados [${result.dados.join(', ')}] · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
+				texto: `${label} · ${modeLabel} · d20 [${rolledFaces.join(', ')}]${mode === 'normal' ? '' : ` · escolhido ${result.dadoEscolhido}`} · modificador ${modifierText(result.modificador)} · resultado ${result.total}`,
 				tipo: 'rolagem',
 				canal: 'combat',
 				detalhesRolagem: {
 					expressao: '1d20',
-					dados: result.dados,
+					dados: rolledFaces,
+					dadosOriginais: mode === 'normal' ? undefined : rolledFaces,
+					dadoEscolhido: result.dadoEscolhido,
 					modificador: result.modificador,
 					total: result.total,
 					mode: result.modo,
@@ -554,7 +557,9 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				const rolledFaces =
 					(result as typeof result & { dadosOriginais?: number[] }).dadosOriginais ?? result.dados;
 				const modeDescription =
-					mode === 'normal' ? '' : ` · ${modeLabel} · d20 [${rolledFaces.join(', ')}]`;
+					mode === 'normal'
+						? ''
+						: ` · ${modeLabel} · d20 [${rolledFaces.join(', ')}] · ${localized(context.locale, 'escolhido', 'kept')} ${result.dados[0]}`;
 				addChat({
 					id: String(event.id),
 					autor: event.author ?? '',

@@ -182,6 +182,34 @@ func (h *Handler) SetInitiativeAdvantage(w http.ResponseWriter, r *http.Request)
 	return write(w, http.StatusOK, map[string]bool{"enabled": input.Enabled})
 }
 
+func (h *Handler) SetAvailableSpellSlotsForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		Level   *int `json:"level"`
+		Current *int `json:"current"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&input); err != nil || input.Level == nil || input.Current == nil {
+		return apperror.BadRequest("INVALID_SPELL_SLOT", "Quantidade de espaços de magia inválida.")
+	}
+	item, err := h.repo.SetAvailableSpellSlotsForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, *input.Level, *input.Current)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode ajustar os espaços de magia.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada.")
+	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
+	if errors.Is(err, ErrInvalidSpellSlot) {
+		return apperror.BadRequest("INVALID_SPELL_SLOT", "O valor disponível deve estar entre zero e o máximo deste nível.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	return write(w, http.StatusOK, item)
+}
+
 func (h *Handler) DeleteForGM(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	if err := h.repo.DeleteForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID); errors.Is(err, ErrForbidden) {

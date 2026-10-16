@@ -12,6 +12,7 @@
 		restCharacter,
 		rollMyCharacter,
 		setCharacterInitiativeAdvantage,
+		setAvailableSpellSlotsForGM,
 		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
@@ -46,6 +47,7 @@
 	import { appLocale } from '$lib/stores/locale';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+	import { kilogramsToPounds } from '$lib/utils/dnd2024MetricUnits';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
@@ -100,11 +102,11 @@
 		weaponProficiencyStatus as resolveWeaponProficiency,
 		weaponSupportsGreatWeaponFighting,
 		updateInventoryItemRules,
-		resolveWeaponAttackMode,
 		type WeaponAttackProfile,
 		type WeaponEffect,
 		type WeaponFeat
 	} from '$lib/utils/weaponRules';
+	import { resolveDnd2024RollMode } from '$lib/utils/character/dnd2024RollRules';
 	import {
 		getActiveSpeciesTraits,
 		getSpeciesHPBonus,
@@ -128,6 +130,7 @@
 	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import {
+		normalizeDamageComponents,
 		parseDamageExpression,
 		serializeDamageComponents,
 		validateDamageBonus,
@@ -229,10 +232,7 @@
 			['Cego', 'Envenenado', 'Impedido'].includes(condition)
 		);
 	const selectedAttackMode = () =>
-		resolveWeaponAttackMode(weaponAttackMode, lifecycle.state.activeConditions);
-	$effect(() => {
-		if (hasAttackDisadvantage() && weaponAttackMode === 'advantage') weaponAttackMode = 'normal';
-	});
+		resolveDnd2024RollMode(weaponAttackMode, lifecycle.state.activeConditions);
 	$effect(() => {
 		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
 	});
@@ -650,14 +650,15 @@
 		profile?: WeaponAttackProfile
 	) {
 		const key = damageDraftKey(item, profile);
-		damageDrafts[key] = components;
+		const normalizedComponents = normalizeDamageComponents(components);
+		damageDrafts[key] = normalizedComponents;
 		invalidWeaponKey = weaponKey(item);
 		invalidDamageProfileId = profile?.id ?? null;
 		invalidWeaponField = 'damage';
-		const issue = validateDamageComponents(components);
+		const issue = validateDamageComponents(normalizedComponents);
 		invalidDamageIndex = issue?.index ?? 0;
 		if (issue) return;
-		const damage = components.map(({ count, sides }) => `${count}d${sides}`).join('+');
+		const damage = serializeDamageComponents(normalizedComponents);
 		if (profile) updateWeaponProfile(item, profile.id, { damage, damageNeedsRepair: false });
 		else updateWeaponRules(item, { damage, damageNeedsRepair: false }, true);
 		invalidWeaponKey = null;
@@ -937,7 +938,8 @@
 		combatActions.rollAuthorized(
 			'skill',
 			name,
-			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`
+			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`,
+			resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
 		);
 	function toggleVisibleRoll(key: string) {
 		const current = sheet.visibleRolls ?? [];
@@ -973,6 +975,37 @@
 	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
+	async function updateAvailableSpellSlots(level: number, current: number): Promise<boolean> {
+		if (!isGM) return false;
+		const targetCharacterId = characterId ?? lifecycle.state.resolvedCharacterId;
+		if (!targetCharacterId) {
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Save the character before adjusting spell slots.'
+					: 'Salve a ficha antes de ajustar os espaços de magia.';
+			return false;
+		}
+		try {
+			const updated = await setAvailableSpellSlotsForGM(
+				session,
+				campaignId,
+				targetCharacterId,
+				level,
+				current
+			);
+			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
+			sheet.spellSlots = updated.sheet.spellSlots;
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Available spell slots updated.'
+					: 'Espaços de magia disponíveis atualizados.';
+			return true;
+		} catch (error) {
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível ajustar os espaços de magia.';
+			return false;
+		}
+	}
 	const spellsForCircle = (circle: number) =>
 		groupCharacterSpellsByCircle(projectedCharacterSpells(), circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
@@ -1039,7 +1072,7 @@
 			}
 		}
 		const rules: Record<string, unknown> = { category: draft.category, custom: true };
-		rules.weight = Math.max(0, Number(draft.weight) || 0);
+		rules.weight = Math.max(0, kilogramsToPounds(Number(draft.weight) || 0));
 		if (draft.category === 'weapon') {
 			if (draft.damage.trim()) rules.damage = draft.damage.trim();
 			rules.bonus = Math.round(draft.bonus);
@@ -1372,7 +1405,13 @@
 						onScoreChange={updateScore}
 						{saveBonus}
 						onToggleSavingThrow={toggleSavingThrow}
-						onRollSave={(key, label) => combatActions.rollAuthorized('save', key, label)}
+						onRollSave={(key, label) =>
+							combatActions.rollAuthorized(
+								'save',
+								key,
+								label,
+								resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
+							)}
 						{hasAttackDisadvantage}
 						passivePerception={passivePerception()}
 						derivedFeatures={derivedFeatures()}
@@ -1493,6 +1532,7 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canAdjustSlots={isGM && Boolean(characterId ?? lifecycle.state.resolvedCharacterId)}
 						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
@@ -1518,6 +1558,7 @@
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
 							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
+							setAvailableSpellSlots: updateAvailableSpellSlots,
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,

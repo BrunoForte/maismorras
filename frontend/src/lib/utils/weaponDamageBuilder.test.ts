@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+	DAMAGE_DIE_TYPES,
+	normalizeDamageComponents,
+	type DamageComponent,
 	parseDamageExpression,
 	parseLegacyDamage,
 	addDamageComponent,
@@ -10,6 +13,30 @@ import {
 } from './weaponDamageBuilder';
 
 describe('weapon damage builder', () => {
+	it('accepts every die offered by the visual selector and serializes it as the selected formula', () => {
+		for (const sides of DAMAGE_DIE_TYPES) {
+			const components = [{ count: 1, sides }];
+			expect(validateDamageComponents(components)).toBeNull();
+			expect(serializeDamageComponents(components)).toBe(`1d${sides}`);
+			expect(parseDamageExpression(serializeDamageComponents(components))).toEqual(components);
+		}
+	});
+
+	it('normalizes numeric text values from form controls before validation and serialization', () => {
+		const formValues = [{ count: '1', sides: '8' }] as unknown as DamageComponent[];
+		const normalized = normalizeDamageComponents(formValues);
+
+		expect(normalized).toEqual([{ count: 1, sides: 8 }]);
+		expect(validateDamageComponents(formValues)).toBeNull();
+		expect(serializeDamageComponents(normalized)).toBe('1d8');
+		expect(normalizeDamageComponents([{ count: '', sides: '' }])).toEqual([
+			{ count: '', sides: '' }
+		]);
+		expect(
+			validateDamageComponents([{ count: 1, sides: 'invalid' } as unknown as DamageComponent])
+		).not.toBeNull();
+	});
+
 	it('round-trips additive damage groups', () => {
 		const components = parseDamageExpression('2d6+3d8+4d10');
 		expect(components).toEqual([

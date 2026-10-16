@@ -18,11 +18,12 @@ import (
 )
 
 var (
-	ErrForbidden   = errors.New("forbidden")
-	ErrNotFound    = errors.New("character not found")
-	ErrNoHitDice   = errors.New("no hit dice available")
-	ErrInvalidRest = errors.New("invalid rest")
-	sceneIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	ErrForbidden        = errors.New("forbidden")
+	ErrNotFound         = errors.New("character not found")
+	ErrNoHitDice        = errors.New("no hit dice available")
+	ErrInvalidRest      = errors.New("invalid rest")
+	ErrInvalidSpellSlot = errors.New("invalid spell slot quantity")
+	sceneIDPattern      = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 )
 
 // Sheet deliberately stores the D&D 2024 MVP without rules text from the books.
@@ -175,6 +176,7 @@ type Repository struct{ pool *pgxpool.Pool }
 type SheetRollResult struct {
 	EventID  int64  `json:"eventId"`
 	Dice     []int  `json:"dados"`
+	Kept     int    `json:"dadoEscolhido"`
 	Mode     string `json:"modo"`
 	Modifier int    `json:"modificador"`
 	Total    int    `json:"total"`
@@ -301,8 +303,9 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 		return result, rollErr
 	}
 	result.Dice = d20.Rolls
+	result.Kept = d20.Kept
 	result.Total = d20.Total
-	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
+	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "dadoEscolhido": result.Kept, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · escolhido %d · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Kept, result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
 	err = r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
 	return result, err
 }
@@ -314,6 +317,27 @@ func contains(items []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// setAvailableSpellSlots changes only the remaining count for a level. Maximum
+// counts are always recalculated from the stored class and level.
+func setAvailableSpellSlots(sheet *Sheet, level, current int) error {
+	if current < 0 {
+		return ErrInvalidSpellSlot
+	}
+	slots := dnd2024SpellSlots(sheet.Class, sheet.Level, sheet.SpellSlots)
+	for index := range slots {
+		if slots[index].Level != level {
+			continue
+		}
+		if current > slots[index].Max {
+			return ErrInvalidSpellSlot
+		}
+		slots[index].Current = current
+		sheet.SpellSlots = slots
+		return nil
+	}
+	return ErrInvalidSpellSlot
 }
 func joinDice(dice []int) string {
 	values := make([]string, len(dice))
@@ -971,6 +995,53 @@ func (r *Repository) SetInitiativeAdvantage(ctx context.Context, campaignID, cha
 	}
 	_, err = r.pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{initiativeAdvantage}',to_jsonb($1::boolean),true) where id=$2 and campaign_id=$3 and owner_id is not distinct from $4::uuid and kind='character'`, enabled, characterID, campaignID, ownerID)
 	return err
+}
+
+// SetAvailableSpellSlotsForGM gives the narrator direct control over remaining
+// slots while keeping progression-derived maximums server-owned.
+func (r *Repository) SetAvailableSpellSlotsForGM(ctx context.Context, campaignID, characterID, userID string, level, current int) (Character, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Character{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var role string
+	if err := tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role); err != nil || role != "gm" {
+		return Character{}, ErrForbidden
+	}
+
+	var item Character
+	var raw []byte
+	if err := tx.QueryRow(ctx, `select id::text,campaign_id::text,coalesce(owner_id::text,''),sheet from actors where id=$1 and campaign_id=$2 and kind='character' for update`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw); errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	} else if err != nil {
+		return Character{}, err
+	}
+
+	if _, err := dnd2024RulesForCampaign(ctx, campaignID, tx); err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	if err := setAvailableSpellSlots(&item.Sheet, level, current); err != nil {
+		return Character{}, err
+	}
+	raw, err = json.Marshal(item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	if err := tx.QueryRow(ctx, `update actors set sheet=$1::jsonb where id=$2 and campaign_id=$3 and kind='character' returning sheet`, raw, characterID, campaignID).Scan(&raw); err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Character{}, err
+	}
+	return item, nil
 }
 func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, userID string) error {
 	if err := r.requireGM(ctx, campaignID, userID); err != nil {

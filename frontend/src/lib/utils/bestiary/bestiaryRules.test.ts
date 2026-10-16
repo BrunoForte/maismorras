@@ -94,4 +94,30 @@ describe('bestiaryRules', () => {
 		expect(hasAITranslation(creature, 'pt-BR')).toBe(true);
 		expect(hasAITranslation(creature, 'en')).toBe(false);
 	});
+
+	it('presents restored creature metadata in Portuguese and falls back to source text', () => {
+		const creature = {
+			...entry('Barbed Devil', 5),
+			translations: {
+				'pt-BR.rules.senses':
+					'Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 18'
+			}
+		};
+		expect(
+			localizedMonsterField(
+				creature,
+				'rules.senses',
+				'Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 18',
+				'pt-BR'
+			)
+		).toBe('Visão no Escuro 120 ft. (não é impedida por Escuridão mágica); Percepção Passiva 18');
+		expect(
+			localizedMonsterField(
+				creature,
+				'rules.senses',
+				'Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 18',
+				'en'
+			)
+		).toBe('Darkvision 120 ft. (unimpeded by magical Darkness); Passive Perception 18');
+	});
 });

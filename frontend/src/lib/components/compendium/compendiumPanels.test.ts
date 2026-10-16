@@ -444,6 +444,36 @@ describe('compendium panels', () => {
 		expect(html).toContain('Oficial');
 	});
 
+	it('renders only one page of compendium entries at a time', () => {
+		const entries = Array.from({ length: 75 }, (_, index) => ({
+			...monster,
+			id: `entry-${index}`,
+			name: `Entry ${index}`,
+			translations: {}
+		}));
+		const html = render(CompendiumCatalogPanel, {
+			props: {
+				section: 'entries',
+				entries,
+				sources: [],
+				filters: { query: '', entryType: 'other', sourceId: 'all', sortMode: 'name' },
+				selectedEntryId: null,
+				loading: false,
+				displayName: (entry) => entry.name,
+				typeName: (type) => type,
+				sourceKindLabel: () => 'SRD',
+				isMonster: () => false,
+				hasMonsterSheet: () => false,
+				onselect: vi.fn()
+			}
+		}).body;
+
+		expect(html).toContain('1–50');
+		expect(html).toContain('75');
+		expect(html).toContain('Entry 0');
+		expect(html).not.toContain('Entry 74');
+	});
+
 	it('shows monster management and token actions to the GM, but not to a player', () => {
 		const view = {
 			entry: monster,

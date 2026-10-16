@@ -116,7 +116,7 @@ func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string,
 			if len(entry.Translations) == 0 {
 				entry.Translations = json.RawMessage(`{}`)
 			}
-			batch.Queue(`insert into srd_catalog_entries(source_id,entry_type,name,summary,rules,translations,is_published) values($1,$2,$3,$4,$5,$6,true) on conflict(source_id,entry_type,name) do update set summary=excluded.summary,rules=case when srd_catalog_entries.rules='{}'::jsonb or (excluded.rules->>'catalog'='monster' and not (srd_catalog_entries.rules ? 'hpMax')) then excluded.rules when excluded.rules->>'catalog'='magic-item' and srd_catalog_entries.rules->'description' is null and excluded.rules->'description' is not null then jsonb_set(srd_catalog_entries.rules,'{description}',excluded.rules->'description',true) else srd_catalog_entries.rules end,updated_at=now()`, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations)
+			batch.Queue(`insert into srd_catalog_entries(source_id,entry_type,name,summary,rules,translations,is_published) values($1,$2,$3,$4,$5,$6,true) on conflict(source_id,entry_type,name) do update set summary=excluded.summary,rules=case when srd_catalog_entries.rules='{}'::jsonb or (excluded.rules->>'catalog'='monster' and not (srd_catalog_entries.rules ? 'hpMax')) then excluded.rules when excluded.rules->>'catalog'='monster' and srd_catalog_entries.rules->>'catalog'='monster' then srd_catalog_entries.rules || jsonb_build_object('actions',excluded.rules->'actions','senses',excluded.rules->'senses','languages',excluded.rules->'languages','speed',excluded.rules->'speed') when excluded.rules->>'catalog'='magic-item' and srd_catalog_entries.rules->'description' is null and excluded.rules->'description' is not null then jsonb_set(srd_catalog_entries.rules,'{description}',excluded.rules->'description',true) else srd_catalog_entries.rules end,updated_at=now()`, sourceID, entry.EntryType, entry.Name, entry.Summary, entry.Rules, entry.Translations)
 		}
 		br := r.pool.SendBatch(ctx, batch)
 		for range entries {
@@ -173,18 +173,35 @@ func (r *Repository) ensureSharedCatalog(ctx context.Context, campaignID string,
 
 func (r *Repository) auditCampaignTranslationOverrides(ctx context.Context, campaignID, sourceID string, entries []srdEntry) ([]string, error) {
 	var unresolved []string
+	approvedByEntry := make(map[srdEntryKey]map[string]string, len(entries))
 	for _, entry := range entries {
 		approved := decodeTranslations(entry.Translations)
-		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
-			continue
+		if strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
+			approvedByEntry[srdEntryKey{entryType: entry.EntryType, name: entry.Name}] = approved
 		}
+	}
+	if len(approvedByEntry) == 0 {
+		return unresolved, nil
+	}
+
+	rows, err := r.pool.Query(ctx, `select e.entry_type,e.name,o.translations
+		from campaign_srd_entry_overrides o
+		join srd_catalog_entries e on e.id=o.catalog_entry_id
+		where o.campaign_id=$1 and e.source_id=$2
+		order by e.entry_type,e.name`, campaignID, sourceID)
+	if err != nil {
+		return unresolved, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var entryType, name string
 		var raw json.RawMessage
-		err := r.pool.QueryRow(ctx, `select o.translations from campaign_srd_entry_overrides o join srd_catalog_entries e on e.id=o.catalog_entry_id where o.campaign_id=$1 and e.source_id=$2 and e.entry_type=$3 and e.name=$4`, campaignID, sourceID, entry.EntryType, entry.Name).Scan(&raw)
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
+		if err := rows.Scan(&entryType, &name, &raw); err != nil {
 			return unresolved, err
+		}
+		approved := approvedByEntry[srdEntryKey{entryType: entryType, name: name}]
+		if approved == nil {
+			continue
 		}
 		override := decodeTranslations(raw)
 		for key := range approved {
@@ -193,11 +210,11 @@ func (r *Repository) auditCampaignTranslationOverrides(ctx context.Context, camp
 			}
 			source := strings.ToLower(strings.TrimSpace(override[key+".source"]))
 			if source != "ai" && source != "" && !translationSourceIsProtected(override, key) {
-				unresolved = append(unresolved, entry.EntryType+":"+entry.Name+" "+key)
+				unresolved = append(unresolved, entryType+":"+name+" "+key)
 			}
 		}
 	}
-	return unresolved, nil
+	return unresolved, rows.Err()
 }
 func (r *Repository) List(ctx context.Context, campaignID, userID string) ([]Source, []Entry, error) {
 	role, err := r.role(ctx, campaignID, userID)
@@ -310,25 +327,62 @@ type TranslationSyncReport struct {
 	Unresolved []string
 }
 
+type srdEntryKey struct {
+	entryType string
+	name      string
+}
+
 func (r *Repository) syncReviewedTranslations(ctx context.Context, sourceID string, entries []srdEntry) (TranslationSyncReport, error) {
 	report := TranslationSyncReport{}
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return report, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	var entryTypes, names []string
+	approvedByEntry := make(map[srdEntryKey]srdEntry, len(entries))
 	for _, entry := range entries {
 		approved := decodeTranslations(entry.Translations)
 		if !strings.EqualFold(strings.TrimSpace(approved["pt-BR.source"]), "reviewed") {
 			continue
 		}
-		var raw json.RawMessage
-		err = tx.QueryRow(ctx, `select translations from srd_catalog_entries where source_id=$1 and entry_type=$2 and name=$3 for update`, sourceID, entry.EntryType, entry.Name).Scan(&raw)
-		if errors.Is(err, pgx.ErrNoRows) {
+		key := srdEntryKey{entryType: entry.EntryType, name: entry.Name}
+		if _, exists := approvedByEntry[key]; exists {
 			continue
 		}
-		if err != nil {
+		approvedByEntry[key] = entry
+		entryTypes = append(entryTypes, entry.EntryType)
+		names = append(names, entry.Name)
+	}
+	if len(approvedByEntry) == 0 {
+		return report, nil
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return report, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	rows, err := tx.Query(ctx, `select e.id::text,e.entry_type,e.name,e.translations
+		from srd_catalog_entries e
+		join unnest($2::text[],$3::text[]) as approved(entry_type,name)
+		  on approved.entry_type=e.entry_type and approved.name=e.name
+		where e.source_id=$1
+		order by e.entry_type,e.name
+		for update of e`, sourceID, entryTypes, names)
+	if err != nil {
+		return report, err
+	}
+	type translationUpdate struct {
+		id           string
+		translations json.RawMessage
+	}
+	updates := make([]translationUpdate, 0)
+	for rows.Next() {
+		var id, entryType, name string
+		var raw json.RawMessage
+		if err := rows.Scan(&id, &entryType, &name, &raw); err != nil {
+			rows.Close()
 			return report, err
+		}
+		entry, exists := approvedByEntry[srdEntryKey{entryType: entryType, name: name}]
+		if !exists {
+			continue
 		}
 		current := decodeTranslations(raw)
 		changed, updated, unresolved := applyReviewedTranslation(current, entry)
@@ -337,11 +391,31 @@ func (r *Repository) syncReviewedTranslations(ctx context.Context, sourceID stri
 		if changed {
 			encoded, marshalErr := json.Marshal(current)
 			if marshalErr != nil {
+				rows.Close()
 				return report, marshalErr
 			}
-			if _, err = tx.Exec(ctx, `update srd_catalog_entries set translations=$1,updated_at=now() where source_id=$2 and entry_type=$3 and name=$4`, encoded, sourceID, entry.EntryType, entry.Name); err != nil {
+			updates = append(updates, translationUpdate{id: id, translations: encoded})
+		}
+	}
+	rowsErr := rows.Err()
+	rows.Close()
+	if rowsErr != nil {
+		return report, rowsErr
+	}
+	if len(updates) > 0 {
+		batch := &pgx.Batch{}
+		for _, update := range updates {
+			batch.Queue(`update srd_catalog_entries set translations=$1,updated_at=now() where id=$2`, update.translations, update.id)
+		}
+		results := tx.SendBatch(ctx, batch)
+		for range updates {
+			if _, err := results.Exec(); err != nil {
+				_ = results.Close()
 				return report, err
 			}
+		}
+		if err := results.Close(); err != nil {
+			return report, err
 		}
 	}
 	if err = tx.Commit(ctx); err != nil {

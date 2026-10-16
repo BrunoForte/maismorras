@@ -105,11 +105,13 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html).toContain('aria-label="PC · Cobre"');
 		expect(html).toContain('value="5"');
 		expect(html).toContain('Peso carregado / capacidade máxima');
-		expect(html).toContain('151 / 150 lb');
+		expect(html).toContain('68,49 / 68,04 kg');
 		expect(html).toContain('Limite para empurrar / arrastar / levantar');
-		expect(html).toContain('300 lb</span>');
+		expect(html).toContain('136,08 kg</span>');
+		expect(html).toContain('arredondados a 0,01');
 		expect(html).toContain('Porte Poderoso altera apenas a capacidade de carga');
-		expect(html).toContain('deslocamento não pode exceder 5 pés');
+		expect(html).toContain('deslocamento não pode exceder 1,52 m');
+		expect(html).toContain('Peso (kg)');
 		expect(html).toContain('O total pode estar incompleto');
 		expect(html).toContain('Acima da capacidade de carga');
 		expect(html).toContain('Forma Grande ativa');
@@ -127,7 +129,7 @@ describe('CharacterInventoryTab compendium picker', () => {
 						name: 'Bolsa de Carga',
 						quantity: 1,
 						equipped: false,
-						rules: { playerDescription: 'Nota pessoal da mesa.' }
+						rules: { weight: 1, playerDescription: 'Nota pessoal da mesa.' }
 					},
 					index: 0
 				}
@@ -153,6 +155,7 @@ describe('CharacterInventoryTab compendium picker', () => {
 		};
 		const localizedHtml = render(CharacterInventoryTab, { props }).body;
 		expect(localizedHtml).toContain('Esta bolsa comporta até 227 kg e 1,8 m³.');
+		expect(localizedHtml).toContain('0,45 kg');
 		expect(localizedHtml).not.toContain('data-testid="powerful-build-capacity-note"');
 		expect(localizedHtml).toContain('data-testid="hauling-speed-limit"');
 		const fallbackEntries = entries.map((entry) =>

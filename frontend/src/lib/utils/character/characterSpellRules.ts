@@ -71,6 +71,7 @@ export type SpellTabActions = {
 	setNewSpellLevel: (value: number) => void;
 	setExpandedSpell: (value: number | null) => void;
 	chooseSlot: (index: number, value: number) => void;
+	setAvailableSpellSlots: (level: number, current: number) => Promise<boolean>;
 	add: () => void;
 	remove: (index: number) => void;
 	change: (index: number, changes: Partial<Spell>) => void;
