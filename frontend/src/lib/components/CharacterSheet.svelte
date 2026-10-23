@@ -11,8 +11,10 @@
 		getMyCharacter,
 		restCharacter,
 		rollMyCharacter,
+		rollCharacterForGM,
 		setCharacterInitiativeAdvantage,
 		setAvailableSpellSlotsForGM,
+		setSpellGrantUseConfigForGM,
 		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
@@ -48,6 +50,10 @@
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
 	import { kilogramsToPounds } from '$lib/utils/dnd2024MetricUnits';
+	import {
+		preferredCompendiumFeatEntries,
+		resolveCompendiumFeatEntry
+	} from '$lib/utils/compendium/compendiumRules';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
@@ -578,6 +584,7 @@
 		isRevisionCurrent: (operation) => lifecycle.isRevisionCurrent(operation),
 		finishExternalSaving: (operation) => lifecycle.finishExternalSaving(operation),
 		rollMyCharacter,
+		rollCharacterForGM,
 		rollDice,
 		rollTokenInitiative,
 		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
@@ -606,8 +613,12 @@
 			lifecycle.cleanup();
 		};
 	});
-	const optionsFor = (entryType: string) =>
-		compendiumEntries.filter((entry) => entry.entryType === entryType);
+	const optionsFor = (entryType: string) => {
+		const options = compendiumEntries.filter((entry) => entry.entryType === entryType);
+		return entryType === 'feat'
+			? preferredCompendiumFeatEntries(options, compendiumSources)
+			: options;
+	};
 	const optionLabel = (entry: CompendiumEntry) =>
 		$appLocale === 'pt-BR' &&
 		entry.translations?.['pt-BR']?.trim() &&
@@ -711,11 +722,7 @@
 			description: feature.description
 		}));
 		const feats: WeaponFeat[] = featList().flatMap((feat) => {
-			const entry = optionsFor('feat').find(
-				(candidate) =>
-					candidate.name.toLowerCase() === feat.toLowerCase() ||
-					optionLabel(candidate).toLowerCase() === feat.toLowerCase()
-			);
+			const entry = resolveCompendiumFeatEntry(feat, optionsFor('feat'), optionLabel);
 			return entry ? [{ id: entry.id, name: optionLabel(entry), rules: entry.rules ?? {} }] : [];
 		});
 		return deriveWeaponEffects(item, features, feats, sheet.inventory);
@@ -797,13 +804,18 @@
 		);
 	const shouldShowSpellcasting = () => {
 		return (
+			sheet.spells.length > 0 ||
 			spellcastingEnabled(
 				sheet.class,
 				sheet.level,
 				compendiumClass()?.rules.spellcasting,
 				sheet.spellcastingOverride
 			) ||
-			hasActiveFeatGrantedSpells(sheet.featSpellGrants ?? [], sheet.campaignFeatSpellGrants ?? [])
+			hasActiveFeatGrantedSpells(
+				sheet.featSpellGrants ?? [],
+				sheet.campaignFeatSpellGrants ?? [],
+				sheet.speciesSpellGrants ?? []
+			)
 		);
 	};
 	const compendiumSubclassOptions = () =>
@@ -965,7 +977,9 @@
 			optionsFor('spell'),
 			optionLabel,
 			sheet.campaignFeatSpellGrants ?? [],
-			optionsFor('feat')
+			optionsFor('feat'),
+			sheet.speciesSpellGrants ?? [],
+			sheet.speciesSpellcastingAbility ?? ''
 		);
 	const availableSpellCircles = () =>
 		projectAvailableSpellCircles(
@@ -1003,6 +1017,40 @@
 		} catch (error) {
 			lifecycle.state.message =
 				error instanceof Error ? error.message : 'Não foi possível ajustar os espaços de magia.';
+			return false;
+		}
+	}
+	async function updateSpellGrantUseConfig(
+		grantId: string,
+		entryId: string,
+		maxUses: number,
+		currentUses: number,
+		restoreOn: 'none' | 'short' | 'long'
+	): Promise<boolean> {
+		if (!isGM) return false;
+		const targetCharacterId = characterId ?? lifecycle.state.resolvedCharacterId;
+		if (!targetCharacterId) return false;
+		try {
+			const updated = await setSpellGrantUseConfigForGM(
+				session,
+				campaignId,
+				targetCharacterId,
+				grantId,
+				entryId,
+				maxUses,
+				currentUses,
+				restoreOn
+			);
+			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
+			sheet.featSpellGrants = updated.sheet.featSpellGrants ?? [];
+			sheet.campaignFeatSpellGrants = updated.sheet.campaignFeatSpellGrants ?? [];
+			sheet.speciesSpellGrants = updated.sheet.speciesSpellGrants ?? [];
+			lifecycle.state.message =
+				$appLocale === 'en' ? 'Free spell uses updated.' : 'Usos gratuitos da magia atualizados.';
+			return true;
+		} catch (error) {
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível configurar os usos da magia.';
 			return false;
 		}
 	}
@@ -1415,9 +1463,12 @@
 						{hasAttackDisadvantage}
 						passivePerception={passivePerception()}
 						derivedFeatures={derivedFeatures()}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
 						expertiseChoices={expertiseChoices()}
 						{skills}
 						onExpertiseChoice={setExpertiseChoice}
+						onPresentFeature={(title, description) =>
+							void combatActions.presentContent(title, description, 'Habilidade')}
 					/>
 				{/if}
 				{#if activeTab === 'combat'}
@@ -1433,7 +1484,7 @@
 						attackDisadvantage={hasAttackDisadvantage()}
 						spells={grantedSpells()}
 						actions={{
-							rest: (kind) => void combatActions.rest(kind),
+							rest: (kind, hitDiceCount) => void combatActions.rest(kind, hitDiceCount),
 							syncTokenSoon,
 							spendResource: (index) => combatActions.spendResource(index),
 							setResourceMax: (index, value) => combatActions.setResourceMax(index, value),
@@ -1532,6 +1583,7 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
 						canAdjustSlots={isGM && Boolean(characterId ?? lifecycle.state.resolvedCharacterId)}
 						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
@@ -1544,6 +1596,8 @@
 							compatibleSlots: combatActions.compatibleSlots,
 							selectedSlot: combatActions.selectedSlot
 						}}
+						speciesSpellcastingAbility={sheet.speciesSpellcastingAbility ?? ''}
+						hasSpeciesSpellGrants={(sheet.speciesSpellGrants ?? []).some((grant) => grant.active)}
 						presentation={{
 							optionLabel,
 							circleLabel,
@@ -1559,6 +1613,10 @@
 							setExpandedSpell: (value) => (expandedSpell = value),
 							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
 							setAvailableSpellSlots: updateAvailableSpellSlots,
+							setSpellGrantUseConfig: updateSpellGrantUseConfig,
+							setSpeciesSpellcastingAbility: (ability) => {
+								sheet.speciesSpellcastingAbility = ability as Sheet['speciesSpellcastingAbility'];
+							},
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,
@@ -1571,6 +1629,7 @@
 				{#if activeTab === 'details'}
 					<CharacterDetailsTab
 						{sheet}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
 						feats={featList()}
 						featEntries={optionsFor('feat')}
 						spellEntries={optionsFor('spell')}
@@ -1595,6 +1654,8 @@
 						onSpellcastingOverride={(enabled) => (sheet.spellcastingOverride = enabled)}
 						onFeaturesChange={(features) => (sheet.features = features)}
 						onEquipmentChange={(equipment) => (sheet.equipment = equipment)}
+						onPresentFeat={(title, description) =>
+							void combatActions.presentContent(title, description, 'Talento')}
 					/>
 				{/if}
 			</div>

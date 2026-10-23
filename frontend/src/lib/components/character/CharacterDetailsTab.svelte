@@ -5,13 +5,17 @@
 		Dnd2024FeatSpellGrant
 	} from '$lib/services/characterApi';
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
-	import { appLocale } from '$lib/stores/locale';
-	import { translatedFeatDetails } from '$lib/utils/compendium/compendiumRules';
+	import { appLocale, distanceText } from '$lib/stores/locale';
+	import {
+		resolveCompendiumFeatEntry,
+		translatedFeatDetails
+	} from '$lib/utils/compendium/compendiumRules';
 	import CharacterFeatSpellGrants from './CharacterFeatSpellGrants.svelte';
 	import CharacterCampaignFeatSpellGrants from './CharacterCampaignFeatSpellGrants.svelte';
 
 	let {
 		sheet,
+		canDisplayCharacter,
 		feats,
 		featEntries,
 		spellEntries,
@@ -23,9 +27,11 @@
 		onCampaignFeatSpellGrantsChange,
 		onSpellcastingOverride,
 		onFeaturesChange,
-		onEquipmentChange
+		onEquipmentChange,
+		onPresentFeat
 	}: {
 		sheet: CharacterSheet;
+		canDisplayCharacter: boolean;
 		feats: string[];
 		featEntries: CompendiumEntry[];
 		spellEntries: CompendiumEntry[];
@@ -38,16 +44,13 @@
 		onSpellcastingOverride: (enabled: boolean) => void;
 		onFeaturesChange: (features: string) => void;
 		onEquipmentChange: (equipment: string) => void;
+		onPresentFeat: (title: string, description: string) => void;
 	} = $props();
 
 	let newFeat = $state('');
 	let selectedFeat = $state('');
 	const featDescription = (feat: string) => {
-		const entry = featEntries.find(
-			(item) =>
-				optionLabel(item).toLowerCase() === feat.toLowerCase() ||
-				item.name.toLowerCase() === feat.toLowerCase()
-		);
+		const entry = resolveCompendiumFeatEntry(feat, featEntries, optionLabel);
 		if (!entry) {
 			if (/great weapon fighting|luta com armas grandes/i.test(feat))
 				return $appLocale === 'en'
@@ -134,11 +137,20 @@
 			>
 			<p>
 				{selectedFeat
-					? featDescription(selectedFeat)
+					? distanceText(featDescription(selectedFeat), $appLocale)
 					: $appLocale === 'en'
 						? 'The feat description appears here without taking over the entire sheet.'
 						: 'A descrição do talento aparece aqui sem ocupar a ficha inteira.'}
 			</p>
+			{#if selectedFeat && canDisplayCharacter}
+				<button
+					class="present-feat"
+					type="button"
+					onclick={() => onPresentFeat(selectedFeat, featDescription(selectedFeat))}
+				>
+					{$appLocale === 'en' ? 'Show to table' : 'Destacar na tela'}
+				</button>
+			{/if}
 		</aside>
 	</div>
 	<CharacterFeatSpellGrants
@@ -251,12 +263,18 @@
 		flex: 1;
 	}
 	.feat-add button,
-	.feat-list button {
+	.feat-list button,
+	.present-feat {
 		border: 1px solid #5b493b;
 		border-radius: 6px;
 		color: #dfceb7;
 		background: #241d1e;
 		font-size: 0.72rem;
+		cursor: pointer;
+	}
+	.present-feat {
+		justify-self: start;
+		padding: 0.4rem 0.6rem;
 		cursor: pointer;
 	}
 	.feat-add button {

@@ -6,12 +6,282 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func TestSharedSRDFeatRevisionEightIntegration(t *testing.T) {
+	databaseURL := os.Getenv("REALTIME_TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("REALTIME_TEST_DATABASE_URL is not configured")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	ids := []string{compendiumTestUUID(t), compendiumTestUUID(t)}
+	campaignID, ownerID := ids[0], ids[1]
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if _, err = tx.Exec(ctx, `set local session_replication_role=replica`); err != nil {
+		t.Skipf("database role cannot create isolated profile: %v", err)
+	}
+	if _, err = tx.Exec(ctx, `insert into profiles(id,display_name) values($1,'SRD feat revision test')`, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(ctx, `insert into campaigns(id,name,owner_id,system_id) values($1,'SRD feat revision test',$2,'dnd2024')`, campaignID, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'gm')`, campaignID, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `delete from campaigns where id=$1`, campaignID)
+		_, _ = pool.Exec(context.Background(), `delete from profiles where id=$1`, ownerID)
+	}()
+
+	repo := NewRepository(pool, ownerID)
+	sources, initialEntries, err := repo.List(ctx, campaignID, ownerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sharedSource := findSourceBySlug(sources, "dnd-srd")
+	if sharedSource.ID == "" {
+		t.Fatal("campaign did not receive the shared SRD source")
+	}
+
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	packEntries := uniqueEntries(pack.Entries)
+	packByName := make(map[string]srdEntry, len(packEntries))
+	for _, entry := range packEntries {
+		if entry.EntryType == "feat" {
+			packByName[entry.Name] = entry
+		}
+	}
+
+	type catalogRowSnapshot struct {
+		name         string
+		exists       bool
+		id           string
+		summary      string
+		rules        json.RawMessage
+		translations json.RawMessage
+		published    bool
+		updatedAt    time.Time
+	}
+	snapshotCatalogRow := func(name string) (catalogRowSnapshot, error) {
+		snapshot := catalogRowSnapshot{name: name}
+		err := pool.QueryRow(ctx, `select id::text,summary,rules,translations,is_published,updated_at from srd_catalog_entries where source_id=$1 and entry_type='feat' and name=$2`, sharedSource.ID, name).Scan(&snapshot.id, &snapshot.summary, &snapshot.rules, &snapshot.translations, &snapshot.published, &snapshot.updatedAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return snapshot, nil
+		}
+		if err != nil {
+			return snapshot, err
+		}
+		snapshot.exists = true
+		return snapshot, nil
+	}
+	restoreCatalogRow := func(snapshot catalogRowSnapshot) {
+		if snapshot.exists {
+			_, _ = pool.Exec(context.Background(), `update srd_catalog_entries set summary=$1,rules=$2,translations=$3,is_published=$4,updated_at=$5 where id=$6`, snapshot.summary, snapshot.rules, snapshot.translations, snapshot.published, snapshot.updatedAt, snapshot.id)
+			return
+		}
+		_, _ = pool.Exec(context.Background(), `delete from srd_catalog_entries where source_id=$1 and entry_type='feat' and name=$2`, sharedSource.ID, snapshot.name)
+	}
+
+	namesToRestore := []string{
+		"Grappler",
+		"Fighting Style: Two-Weapon Fighting",
+		"Alert",
+		"Archery",
+		"Defense",
+		"Great Weapon Fighting",
+		"Two-Weapon Fighting",
+	}
+	var savedRows []catalogRowSnapshot
+	for _, name := range namesToRestore {
+		snapshot, snapshotErr := snapshotCatalogRow(name)
+		if snapshotErr != nil {
+			t.Fatal(snapshotErr)
+		}
+		savedRows = append(savedRows, snapshot)
+	}
+	var originalRevision string
+	var originalSourceUpdatedAt time.Time
+	if err = pool.QueryRow(ctx, `select revision,updated_at from srd_catalog_sources where id=$1`, sharedSource.ID).Scan(&originalRevision, &originalSourceUpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		for _, snapshot := range savedRows {
+			restoreCatalogRow(snapshot)
+		}
+		_, _ = pool.Exec(context.Background(), `update srd_catalog_sources set revision=$1,updated_at=$2 where id=$3`, originalRevision, originalSourceUpdatedAt, sharedSource.ID)
+	}()
+
+	// Recreate the relevant persisted state from cartridge-import-7: Grappler
+	// is still only an index stub, its four legacy short-name rows exist, and the
+	// translated TWF description is stale AI text. Existing rows are restored
+	// above so this integration case is repeatable on the disposable database.
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set summary='Entrada do System Reference Document 5.2.1.',rules='{}'::jsonb,translations='{"pt-BR":"Grappler"}'::jsonb where source_id=$1 and entry_type='feat' and name='Grappler'`, sharedSource.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set translations=jsonb_set(jsonb_set(translations,'{pt-BR.rules.description}',to_jsonb('Texto antigo da descrição'::text),true),'{pt-BR.rules.description.source}','"ai"'::jsonb,true) where source_id=$1 and entry_type='feat' and name='Fighting Style: Two-Weapon Fighting'`, sharedSource.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Archery", "Defense", "Great Weapon Fighting", "Two-Weapon Fighting"} {
+		if _, err = pool.Exec(ctx, `insert into srd_catalog_entries(source_id,entry_type,name,summary,rules,translations,is_published) values($1,'feat',$2,'Entrada do System Reference Document 5.2.1.','{}'::jsonb,jsonb_build_object('pt-BR',$2::text),true) on conflict(source_id,entry_type,name) do update set summary=excluded.summary,rules=excluded.rules,translations=excluded.translations,is_published=true`, sharedSource.ID, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A campaign's explicit manual translation must survive the canonical
+	// reviewed text refresh, while the shared canonical row receives revision 8.
+	twoWeapon := findEntryByName(initialEntries, "feat", "Fighting Style: Two-Weapon Fighting")
+	if twoWeapon.ID == "" {
+		t.Fatal("complete Two-Weapon Fighting record is missing before revision simulation")
+	}
+	manualCampaignText := json.RawMessage(`{"pt-BR.rules.description":"Texto manual desta campanha","pt-BR.rules.description.source":"manual"}`)
+	if _, err = pool.Exec(ctx, `insert into campaign_srd_entry_overrides(campaign_id,catalog_entry_id,translations,updated_by) values($1,$2,$3,$4) on conflict(campaign_id,catalog_entry_id) do update set translations=excluded.translations,updated_by=excluded.updated_by`, campaignID, twoWeapon.ID, manualCampaignText, ownerID); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(context.Background(), `delete from campaign_srd_entry_overrides where campaign_id=$1 and catalog_entry_id=$2`, campaignID, twoWeapon.ID)
+	}()
+	if _, err = pool.Exec(ctx, `update srd_catalog_entries set rules=jsonb_set(rules,'{integrationSentinel}','"preserve-me"'::jsonb,true) where source_id=$1 and entry_type='feat' and name='Alert'`, sharedSource.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-7' where id=$1`, sharedSource.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, upgradedEntries, err := repo.List(ctx, campaignID, ownerID)
+	if err != nil {
+		t.Fatalf("initialize catalog after cartridge-import-8 revision: %v", err)
+	}
+	var upgradedRevision string
+	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSource.ID).Scan(&upgradedRevision); err != nil {
+		t.Fatal(err)
+	}
+	if upgradedRevision != pack.Revision || upgradedRevision != "cartridge-import-8" {
+		t.Fatalf("persisted catalog revision = %q, want %q", upgradedRevision, pack.Revision)
+	}
+
+	grappler := findEntryByName(upgradedEntries, "feat", "Grappler")
+	var grapplerRules map[string]any
+	if grappler.ID == "" || json.Unmarshal(grappler.Rules, &grapplerRules) != nil {
+		t.Fatalf("Grappler was not upgraded to a complete record: %+v", grappler)
+	}
+	benefits, hasBenefits := grapplerRules["benefits"].([]any)
+	grapplerTranslations := decodeTranslations(grappler.Translations)
+	if grapplerRules["id"] != "grappler" || grapplerRules["category"] != "General" || !hasBenefits || len(benefits) != 4 || grapplerTranslations["pt-BR"] != "Agarrador (Grappler)" || strings.TrimSpace(grapplerTranslations["pt-BR.rules.description"]) == "" || strings.TrimSpace(grapplerTranslations["pt-BR.rules.benefits.3"]) == "" {
+		t.Fatalf("Grappler source rules or PT-BR localization are incomplete: rules=%v translations=%v", grapplerRules, grapplerTranslations)
+	}
+
+	shortNames := map[string]string{
+		"Archery":               "Fighting Style: Archery",
+		"Defense":               "Fighting Style: Defense",
+		"Great Weapon Fighting": "Fighting Style: Great Weapon Fighting",
+		"Two-Weapon Fighting":   "Fighting Style: Two-Weapon Fighting",
+	}
+	for shortName, fullName := range shortNames {
+		shortCount, fullCount := 0, 0
+		var shortID string
+		for _, entry := range upgradedEntries {
+			if entry.SourceID != sharedSource.ID || entry.EntryType != "feat" {
+				continue
+			}
+			if entry.Name == shortName {
+				shortCount++
+				shortID = entry.ID
+			}
+			if entry.Name == fullName {
+				fullCount++
+			}
+		}
+		if shortCount != 1 || fullCount != 1 || shortID == "" {
+			t.Fatalf("revision duplicated or discarded legacy feat %q / canonical record %q: short=%d full=%d", shortName, fullName, shortCount, fullCount)
+		}
+		var persistedShortID string
+		if err = pool.QueryRow(ctx, `select id::text from srd_catalog_entries where source_id=$1 and entry_type='feat' and name=$2`, sharedSource.ID, shortName).Scan(&persistedShortID); err != nil || persistedShortID != shortID {
+			t.Fatalf("legacy short feat %q was not retained: id=%q err=%v", shortName, persistedShortID, err)
+		}
+	}
+
+	var canonicalTWFTranslations json.RawMessage
+	var canonicalTWFRules, expectedTWFRules map[string]any
+	if err = pool.QueryRow(ctx, `select translations,rules from srd_catalog_entries where id=$1`, twoWeapon.ID).Scan(&canonicalTWFTranslations, &twoWeapon.Rules); err != nil {
+		t.Fatal(err)
+	}
+	canonicalTranslations := decodeTranslations(canonicalTWFTranslations)
+	wantDescription := decodeTranslations(packByName["Fighting Style: Two-Weapon Fighting"].Translations)["pt-BR.rules.description"]
+	if canonicalTranslations["pt-BR.rules.description"] != wantDescription || canonicalTranslations["pt-BR.rules.description.source"] != "reviewed" {
+		t.Fatalf("canonical Two-Weapon Fighting translation = %v, want reviewed revision-8 text %q", canonicalTranslations, wantDescription)
+	}
+	projectedTWF := findEntryByName(upgradedEntries, "feat", "Fighting Style: Two-Weapon Fighting")
+	if decodeTranslations(projectedTWF.Translations)["pt-BR.rules.description"] != "Texto manual desta campanha" || decodeTranslations(projectedTWF.Translations)["pt-BR.rules.description.source"] != "manual" {
+		t.Fatalf("campaign's protected manual translation was overwritten: %v", decodeTranslations(projectedTWF.Translations))
+	}
+	if json.Unmarshal(twoWeapon.Rules, &canonicalTWFRules) != nil || json.Unmarshal(savedRows[1].rules, &expectedTWFRules) != nil || !reflect.DeepEqual(canonicalTWFRules, expectedTWFRules) {
+		t.Fatalf("Two-Weapon Fighting mechanical rules changed during textual revision: got=%v want=%v", canonicalTWFRules, expectedTWFRules)
+	}
+	alert := findEntryByName(upgradedEntries, "feat", "Alert")
+	var alertRules map[string]any
+	if alert.ID == "" || json.Unmarshal(alert.Rules, &alertRules) != nil || alertRules["integrationSentinel"] != "preserve-me" {
+		t.Fatalf("revision changed unrelated existing feat rules: %v", alertRules)
+	}
+
+	var catalogRowsBefore int
+	var sourceUpdatedBefore, grapplerUpdatedBefore, twfUpdatedBefore time.Time
+	if err = pool.QueryRow(ctx, `select count(*) from srd_catalog_entries where source_id=$1 and entry_type='feat'`, sharedSource.ID).Scan(&catalogRowsBefore); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_sources where id=$1`, sharedSource.ID).Scan(&sourceUpdatedBefore); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_entries where id=$1`, grappler.ID).Scan(&grapplerUpdatedBefore); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_entries where id=$1`, twoWeapon.ID).Scan(&twfUpdatedBefore); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = repo.List(ctx, campaignID, ownerID); err != nil {
+		t.Fatalf("repeat catalog initialization: %v", err)
+	}
+	var catalogRowsAfter int
+	var sourceUpdatedAfter, grapplerUpdatedAfter, twfUpdatedAfter time.Time
+	if err = pool.QueryRow(ctx, `select count(*) from srd_catalog_entries where source_id=$1 and entry_type='feat'`, sharedSource.ID).Scan(&catalogRowsAfter); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_sources where id=$1`, sharedSource.ID).Scan(&sourceUpdatedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_entries where id=$1`, grappler.ID).Scan(&grapplerUpdatedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `select updated_at from srd_catalog_entries where id=$1`, twoWeapon.ID).Scan(&twfUpdatedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if catalogRowsAfter != catalogRowsBefore || !sourceUpdatedAfter.Equal(sourceUpdatedBefore) || !grapplerUpdatedAfter.Equal(grapplerUpdatedBefore) || !twfUpdatedAfter.Equal(twfUpdatedBefore) {
+		t.Fatalf("repeated revision-8 initialization was not idempotent: rows %d->%d source %v->%v Grappler %v->%v TWF %v->%v", catalogRowsBefore, catalogRowsAfter, sourceUpdatedBefore, sourceUpdatedAfter, grapplerUpdatedBefore, grapplerUpdatedAfter, twfUpdatedBefore, twfUpdatedAfter)
+	}
+}
 
 func TestSharedSRDCatalogAndOwnerTranslationIntegration(t *testing.T) {
 	databaseURL := os.Getenv("REALTIME_TEST_DATABASE_URL")

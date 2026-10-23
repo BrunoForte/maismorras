@@ -174,8 +174,8 @@
 		{/if}
 		<small class="unit-conversion-note" data-testid="metric-rounding-note">
 			{$appLocale === 'en'
-				? 'Metric values are rounded to 0.01 for display; calculations keep their existing internal values.'
-				: 'Valores métricos arredondados a 0,01 apenas na exibição; os cálculos mantêm os valores internos existentes.'}
+				? 'Weights are rounded to 0.01 kg for display only; distance is rounded to the nearest 1.5 m. Calculations keep their exact internal values.'
+				: 'Pesos são arredondados a 0,01 kg apenas na exibição; distâncias são arredondadas ao múltiplo mais próximo de 1,5 m. Os cálculos mantêm os valores internos exatos.'}
 		</small>
 		{#if pushDragLiftLb !== null && capacityLb !== null}
 			<small class="movement-limit-note" data-testid="hauling-speed-limit">

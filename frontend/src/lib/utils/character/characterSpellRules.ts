@@ -2,6 +2,7 @@ import type { CompendiumEntry } from '$lib/services/compendiumApi';
 import type {
 	CampaignFeatSpellGrant,
 	Dnd2024FeatSpellGrant,
+	SpeciesSpellGrant,
 	Spell,
 	SpellSlot
 } from '$lib/services/characterApi';
@@ -26,6 +27,9 @@ export type SpellFeatGrantProjection = {
 	canUseExistingSlots: boolean;
 	recovery: string;
 	campaignConfigured: boolean;
+	sourceKind: 'feat' | 'species';
+	freeCastsMax: number;
+	defaultFreeCasts: number;
 };
 export type SpellCircleEntry = {
 	spell: Spell;
@@ -37,11 +41,13 @@ export type SpellCircleEntry = {
 
 export function hasActiveFeatGrantedSpells(
 	curatedGrants: readonly Dnd2024FeatSpellGrant[] = [],
-	campaignGrants: readonly CampaignFeatSpellGrant[] = []
+	campaignGrants: readonly CampaignFeatSpellGrant[] = [],
+	speciesGrants: readonly SpeciesSpellGrant[] = []
 ): boolean {
 	return (
 		curatedGrants.some((grant) => grant.active !== false) ||
-		campaignGrants.some((grant) => grant.active !== false)
+		campaignGrants.some((grant) => grant.active !== false) ||
+		speciesGrants.some((grant) => grant.active)
 	);
 }
 export type SpellSourceText = { origin: Exclude<SpellOrigin, 'class'>; text: string };
@@ -72,6 +78,14 @@ export type SpellTabActions = {
 	setExpandedSpell: (value: number | null) => void;
 	chooseSlot: (index: number, value: number) => void;
 	setAvailableSpellSlots: (level: number, current: number) => Promise<boolean>;
+	setSpellGrantUseConfig: (
+		grantId: string,
+		entryId: string,
+		max: number,
+		current: number,
+		recovery: 'none' | 'short' | 'long'
+	) => Promise<boolean>;
+	setSpeciesSpellcastingAbility: (ability: string) => void;
 	add: () => void;
 	remove: (index: number) => void;
 	change: (index: number, changes: Partial<Spell>) => void;
@@ -147,7 +161,9 @@ export function projectCharacterSpells(
 	entries: readonly CompendiumEntry[],
 	label: (entry: CompendiumEntry) => string = (entry) => entry.name,
 	campaignGrants: readonly CampaignFeatSpellGrant[] = [],
-	featEntries: readonly CompendiumEntry[] = []
+	featEntries: readonly CompendiumEntry[] = [],
+	speciesGrants: readonly SpeciesSpellGrant[] = [],
+	speciesSpellcastingAbility = ''
 ): SpellCircleEntry[] {
 	const result: SpellCircleEntry[] = spells.map((spell, index) => ({
 		spell,
@@ -178,8 +194,11 @@ export function projectCharacterSpells(
 					freeCastsRemaining: firstLevel ? grant.freeCastsRemaining : 0,
 					freeUses: firstLevel ? featRule.freeCasts : 0,
 					canUseExistingSlots: featRule.canUseExistingSlots,
-					recovery: firstLevel ? featRule.recovery : 'none',
-					campaignConfigured: false
+					recovery: firstLevel ? (grant.freeCastsRecovery ?? featRule.recovery) : 'none',
+					campaignConfigured: false,
+					sourceKind: 'feat',
+					freeCastsMax: firstLevel ? (grant.freeCastsMaxOverride ?? featRule.freeCasts) : 0,
+					defaultFreeCasts: firstLevel ? featRule.freeCasts : 0
 				},
 				virtualIndex--
 			);
@@ -208,12 +227,43 @@ export function projectCharacterSpells(
 						grant.freeCastsRemaining?.[configuredSpell.spellEntryId] ?? configuredSpell.freeUses,
 					freeUses: configuredSpell.freeUses,
 					canUseExistingSlots: configuredSpell.canUseExistingSlots,
-					recovery: configuredSpell.recovery,
-					campaignConfigured: true
+					recovery:
+						grant.freeCastsRecoveries?.[configuredSpell.spellEntryId] ?? configuredSpell.recovery,
+					campaignConfigured: true,
+					sourceKind: 'feat',
+					freeCastsMax:
+						configuredSpell.freeUses > 0
+							? (grant.freeCastsMaxOverrides?.[configuredSpell.spellEntryId] ??
+								configuredSpell.freeUses)
+							: 0,
+					defaultFreeCasts: configuredSpell.freeUses
 				},
 				virtualIndex--
 			);
 		}
+	}
+	for (const grant of speciesGrants.filter((item) => item.active)) {
+		addGrantedSpell(
+			result,
+			entries,
+			label,
+			{
+				id: grant.id,
+				featId: grant.featureId,
+				featName: `${grant.speciesId} · ${grant.lineageId}`,
+				spellEntryId: grant.spellEntryId,
+				ability: grant.spellcastingAbility ?? speciesSpellcastingAbility,
+				freeCastsRemaining: grant.freeCastsRemaining,
+				freeUses: grant.defaultFreeCasts,
+				canUseExistingSlots: grant.canUseExistingSlots,
+				recovery: grant.freeCastsRecovery ?? 'long',
+				campaignConfigured: false,
+				sourceKind: 'species',
+				freeCastsMax: grant.freeCastsMax,
+				defaultFreeCasts: grant.defaultFreeCasts
+			},
+			virtualIndex--
+		);
 	}
 	return result;
 }
@@ -241,7 +291,7 @@ function addGrantedSpell(
 	);
 	if (existing) {
 		existing.featGrants = [...(existing.featGrants ?? []), grant];
-		existing.origins = [...new Set([...(existing.origins ?? []), 'feat' as const])];
+		existing.origins = [...new Set([...(existing.origins ?? []), grant.sourceKind])];
 		return;
 	}
 	result.push({
@@ -251,12 +301,12 @@ function addGrantedSpell(
 			level,
 			notes: '',
 			description: String(compendium.rules.description ?? compendium.summary ?? ''),
-			origin: 'feat'
+			origin: grant.sourceKind
 		},
 		index: virtualIndex,
-		key: `feat:${grant.id}:${grant.spellEntryId}`,
+		key: `${grant.sourceKind}:${grant.id}:${grant.spellEntryId}`,
 		featGrants: [grant],
-		origins: ['feat']
+		origins: [grant.sourceKind]
 	});
 }
 

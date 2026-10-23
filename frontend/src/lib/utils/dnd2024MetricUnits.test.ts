@@ -15,10 +15,10 @@ describe('D&D 2024 metric display conversions', () => {
 		expect(poundsToKilograms(7.5)).toBe(3.401942775);
 	});
 
-	it('converts the five-foot rule limit exactly and rounds only its display', () => {
+	it('keeps the exact five-foot conversion internally and rounds its metric display to 1.5 m steps', () => {
 		expect(feetToMeters(5)).toBe(1.524);
-		expect(formatDnd2024Distance(5, 'pt-BR')).toBe('1,52');
-		expect(formatDnd2024Distance(5, 'en')).toBe('1.52');
+		expect(formatDnd2024Distance(5, 'pt-BR')).toBe('1,5');
+		expect(formatDnd2024Distance(5, 'en')).toBe('1.5');
 	});
 
 	it('formats displayed weights to two fractional digits by locale', () => {

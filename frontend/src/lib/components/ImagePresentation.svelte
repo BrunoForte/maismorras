@@ -13,7 +13,7 @@
 		type SceneSocket
 	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
-	import { appLocale } from '$lib/stores/locale';
+	import { appLocale, distanceText } from '$lib/stores/locale';
 	let {
 		sceneId,
 		campaignId,
@@ -190,7 +190,7 @@
 					class="presentation-text"
 				>
 					<h2>{item.title}</h2>
-					<p>{item.description}</p>
+					<p>{distanceText(item.description, $appLocale)}</p>
 				</div>{/if}
 			{#if url && item.title}<figcaption>{item.title}</figcaption>{/if}
 		</figure>

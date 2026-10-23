@@ -30,19 +30,28 @@
 	const detail = $derived(entry.rules ?? {});
 	const locale = $derived($appLocale);
 	const displayRule = (field: string, value: unknown) =>
-		translatedCompendiumText(entry, `rules.${field}`, value, locale);
+		distanceText(translatedCompendiumText(entry, `rules.${field}`, value, locale), locale);
 	const displaySpellClasses = (value: unknown) =>
 		Array.isArray(value)
 			? value.map((className) => spellClassLabel(className, locale)).join(', ')
 			: '';
 	const displayAction = (index: number, field: string, value: unknown) =>
-		translatedCompendiumText(entry, `rules.actions.${index}.${field}`, value, locale);
+		distanceText(
+			translatedCompendiumText(entry, `rules.actions.${index}.${field}`, value, locale),
+			locale
+		);
 	const displayFeature = (index: number, field: string, value: unknown) =>
-		translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale);
+		distanceText(
+			translatedCompendiumText(entry, `rules.features.${index}.${field}`, value, locale),
+			locale
+		);
 	const displayBenefit = (index: number, value: unknown) =>
-		translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale);
+		distanceText(translatedCompendiumText(entry, `rules.benefits.${index}`, value, locale), locale);
 	const displaySpeciesTrait = (index: number, field: string, value: unknown) =>
-		translatedCompendiumText(entry, `rules.traits.${index}.${field}`, value, locale);
+		distanceText(
+			translatedCompendiumText(entry, `rules.traits.${index}.${field}`, value, locale),
+			locale
+		);
 	const displayChoice = (value: unknown) => {
 		const labels: Record<string, string> = {
 			str: 'Força',
@@ -203,7 +212,9 @@
 				>{/if}
 			{#if detail.range}<b>{distanceText(displayRule('range', detail.range), $appLocale)}</b>{/if}
 		</div>
-		{#if spellDescription}<p class="spell-description">{spellDescription}</p>{/if}
+		{#if spellDescription}<p class="spell-description">
+				{distanceText(spellDescription, locale)}
+			</p>{/if}
 		{@const spellMechanics = presentSpellMechanics(detail, locale)}
 		{#if spellMechanics.reviewed}
 			<div

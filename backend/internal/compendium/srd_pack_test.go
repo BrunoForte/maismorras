@@ -37,13 +37,13 @@ func TestSRDPackHasCompleteSpellIndex(t *testing.T) {
 	}
 }
 
-func TestSRDPackRevisionTracksCreatureAudit(t *testing.T) {
+func TestSRDPackRevisionTracksFeatContentCorrections(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {
 		t.Fatalf("loadSRDPack() error = %v", err)
 	}
-	if pack.Revision != "cartridge-import-7" {
-		t.Fatalf("SRD package revision = %q, want creature-audit revision cartridge-import-7", pack.Revision)
+	if pack.Revision != "cartridge-import-8" {
+		t.Fatalf("SRD package revision = %q, want feat-content revision cartridge-import-8", pack.Revision)
 	}
 }
 
@@ -62,6 +62,114 @@ func TestSRDPackIncludesPlayerFacingCatalog(t *testing.T) {
 	} {
 		if !got[key] {
 			t.Errorf("missing SRD entry %q", key)
+		}
+	}
+}
+
+func TestSRDShortFightingStyleNamesUseCompleteFeatRecords(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := map[string]string{
+		"Archery":               "Fighting Style: Archery",
+		"Defense":               "Fighting Style: Defense",
+		"Great Weapon Fighting": "Fighting Style: Great Weapon Fighting",
+		"Two-Weapon Fighting":   "Fighting Style: Two-Weapon Fighting",
+	}
+	canonicalDescriptions := map[string]string{
+		"Fighting Style: Archery":               "You gain a +2 bonus to attack rolls you make with Ranged weapons.",
+		"Fighting Style: Defense":               "While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class.",
+		"Fighting Style: Great Weapon Fighting": "When you roll damage for an attack with a Melee weapon that you're holding with two hands, you can treat any 1 or 2 on a damage die as a 3. The weapon must have the Two-Handed or Versatile property to gain this benefit.",
+		"Fighting Style: Two-Weapon Fighting":   "When you make an extra attack as a result of using a weapon that has the Light property, you can add your ability modifier to the damage of that attack.",
+	}
+	byName := map[string]srdEntry{}
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType == "feat" {
+			byName[entry.Name] = entry
+		}
+	}
+	for shortName, fullName := range aliases {
+		if _, exists := byName[shortName]; exists {
+			t.Errorf("short name %q still has a duplicate index entry", shortName)
+		}
+		entry, exists := byName[fullName]
+		if !exists {
+			t.Errorf("complete record %q is missing", fullName)
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", fullName, err)
+		}
+		translations := decodeTranslations(entry.Translations)
+		if rules["description"] != canonicalDescriptions[fullName] || strings.TrimSpace(translations["pt-BR.rules.description"]) == "" {
+			t.Errorf("complete feat %q source description changed or localized description is missing", fullName)
+		}
+	}
+}
+
+func TestSRDGrapplerHasCompleteOfficialContentAndTwoWeaponTextCorrection(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byName := map[string]srdEntry{}
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType == "feat" {
+			byName[entry.Name] = entry
+		}
+	}
+	grappler, exists := byName["Grappler"]
+	if !exists {
+		t.Fatal("Grappler full feat record is missing")
+	}
+	var rules map[string]any
+	if err := json.Unmarshal(grappler.Rules, &rules); err != nil {
+		t.Fatalf("decode Grappler rules: %v", err)
+	}
+	benefits, ok := rules["benefits"].([]any)
+	if rules["id"] != "grappler" || rules["category"] != "General" || rules["prerequisite"] != "Level 4+, Strength or Dexterity 13+" || !ok || len(benefits) != 4 || strings.TrimSpace(fmt.Sprint(rules["description"])) == "" {
+		t.Fatalf("Grappler record is incomplete: %#v", rules)
+	}
+	translations := decodeTranslations(grappler.Translations)
+	if translations["pt-BR"] != "Agarrador (Grappler)" || strings.TrimSpace(translations["pt-BR.rules.description"]) == "" || translations["pt-BR.source"] != "reviewed" {
+		t.Fatalf("Grappler PT-BR editorial localization is incomplete: %#v", translations)
+	}
+
+	twoWeapon := byName["Fighting Style: Two-Weapon Fighting"]
+	var twoWeaponRules map[string]any
+	if err := json.Unmarshal(twoWeapon.Rules, &twoWeaponRules); err != nil {
+		t.Fatalf("decode Two-Weapon Fighting rules: %v", err)
+	}
+	if twoWeaponRules["id"] != "fighting-style-two-weapon-fighting" || twoWeaponRules["description"] != "When you make an extra attack as a result of using a weapon that has the Light property, you can add your ability modifier to the damage of that attack." {
+		t.Fatalf("canonical Two-Weapon Fighting rules changed: %#v", twoWeaponRules)
+	}
+	if twoWeaponRules["category"] != "Fighting Style" || twoWeaponRules["prerequisite"] != "Warrior Group" || twoWeaponRules["repeatable"] != false || fmt.Sprint(twoWeaponRules["benefits"]) != "[Add ability modifier to damage of Light weapon bonus attacks]" {
+		t.Fatalf("Two-Weapon Fighting mechanical fields changed: %#v", twoWeaponRules)
+	}
+	twoWeaponTranslations := decodeTranslations(twoWeapon.Translations)
+	wantText := "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque, caso ainda não o esteja adicionando."
+	if twoWeaponTranslations["pt-BR.rules.description"] != wantText {
+		t.Fatalf("Two-Weapon Fighting localized description = %q, want %q", twoWeaponTranslations["pt-BR.rules.description"], wantText)
+	}
+	wantUnaffectedTranslations := map[string]string{
+		"pt-BR":                          "Estilo de Luta: Combate com Duas Armas",
+		"pt-BR.source":                   "reviewed",
+		"pt-BR.summary":                  "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque.",
+		"pt-BR.summary.source":           "reviewed",
+		"pt-BR.rules.name":               "Estilo de Luta: Combate com Duas Armas",
+		"pt-BR.rules.name.source":        "reviewed",
+		"pt-BR.rules.description.source": "reviewed",
+		"pt-BR.rules.benefits.0":         "Adicione seu modificador de habilidade ao dano de ataques bônus com armas Leves.",
+		"pt-BR.rules.benefits.0.source":  "reviewed",
+	}
+	if len(twoWeaponTranslations) != len(wantUnaffectedTranslations)+1 {
+		t.Fatalf("Two-Weapon Fighting translation fields changed unexpectedly: %#v", twoWeaponTranslations)
+	}
+	for key, want := range wantUnaffectedTranslations {
+		if twoWeaponTranslations[key] != want {
+			t.Errorf("Two-Weapon Fighting translation %s = %q, want unchanged value %q", key, twoWeaponTranslations[key], want)
 		}
 	}
 }
@@ -223,7 +331,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "a395a89154bca54cab3f991d780077ad0ff4366eef49058bade89781ff291f69" {
+	if got := hex.EncodeToString(digest[:]); got != "d9ca84ba1888f1303fd5c2a939bbdf4af0cd2628bbab0ef5feba86c097f067f0" {
 		t.Fatalf("SRD package source snapshot changed: digest=%s", got)
 	}
 }
@@ -356,7 +464,7 @@ func TestSRDCreatureCatalogIsLocalizedAndNonTargetMechanicsRemainUnchanged(t *te
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "b018372cfff4ede539f2a4066a8d8743b6a9178af6e9173ceef961f659563f95" {
+	if got := hex.EncodeToString(digest[:]); got != "c0bfeffaa1ad20c0eb2f2002a9c9173c4613b866cf4142e89c7c4612fbc03f5c" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -999,7 +1107,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "490381208a9c245cf2c596749ab9290769b78e8aaeecdd978266fe953ad53f29" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "33d83ec105194191729491ec032f08c67f111b3316c53e774a22d2bdba31c852" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1178,7 +1286,7 @@ func TestSRDClassFeatFeatureCoreTranslationCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]int{"class": 12, "subclass": 19, "feat": 47, "feature": 18}
+	want := map[string]int{"class": 12, "subclass": 19, "feat": 48, "feature": 18}
 	got := map[string]int{}
 	wantTitles := map[string]string{
 		"Ability Score Improvement":    "Aumento no Valor de Habilidade",
@@ -1278,7 +1386,7 @@ func TestSRDClassFeatFeatureCoreTranslationCoverage(t *testing.T) {
 			t.Errorf("%s count = %d, want %d", entryType, got[entryType], count)
 		}
 	}
-	if classFeatures != 62 || subclassFeatures != 86 || featBenefits != 120 {
+	if classFeatures != 62 || subclassFeatures != 86 || featBenefits != 124 {
 		t.Errorf("nested localized content counts: class features=%d subclass features=%d feat benefits=%d", classFeatures, subclassFeatures, featBenefits)
 	}
 }
@@ -1326,7 +1434,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "36a6e77d4f0a97dd6e5027a483921ee0c37b1fb95369a4baa6cfc52981ff447f"
+	const wantSourceDigest = "6faa96c8cbe6c3b5e2a5d7e614465ddcb243cc2b60b24aa9f9eb32a64c4159f9"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

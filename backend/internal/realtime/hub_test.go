@@ -161,25 +161,74 @@ func TestPostgresListenURLRequiresPersistentSessionConnection(t *testing.T) {
 	}
 }
 
-func TestLocalSupabaseTestURLIsRestrictedToLoopbackPort(t *testing.T) {
-	for _, value := range []string{
-		"postgresql://postgres:postgres@127.0.0.1:54322/postgres",
-		"postgres://postgres:postgres@localhost:54322/postgres",
-		"postgres://postgres:postgres@[::1]:54322/postgres",
-	} {
-		if !isLocalSupabaseTestURL(value) {
-			t.Errorf("expected local Supabase test URL to be accepted: %s", value)
+func TestLocalSupabaseTestURLUsesConfiguredLoopbackPort(t *testing.T) {
+	t.Run("defaults to current local port", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "")
+		for _, value := range []string{
+			"postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+			"postgres://postgres:postgres@localhost:54322/postgres",
+			"postgres://postgres:postgres@[::1]:54322/postgres",
+		} {
+			if !isLocalSupabaseTestURL(value) {
+				t.Errorf("expected default local Supabase URL to be accepted: %s", value)
+			}
 		}
-	}
-	for _, value := range []string{
-		"postgres://postgres:postgres@db.example.com:54322/postgres",
-		"postgres://postgres:postgres@127.0.0.1:5432/postgres",
-		"https://127.0.0.1:54322/postgres",
-	} {
-		if isLocalSupabaseTestURL(value) {
-			t.Errorf("expected non-local or unsupported test URL to be rejected: %s", value)
+	})
+
+	t.Run("accepts explicitly configured local port", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "58622")
+		if !isLocalSupabaseTestURL("postgresql://postgres:postgres@127.0.0.1:58622/postgres") {
+			t.Fatal("expected configured loopback port to be accepted")
 		}
-	}
+	})
+
+	t.Run("rejects remote host at configured port", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "58622")
+		if isLocalSupabaseTestURL("postgres://postgres:postgres@db.example.com:58622/postgres") {
+			t.Fatal("remote host must never be authorized by local port configuration")
+		}
+	})
+
+	t.Run("rejects a port different from configured port", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "58622")
+		if isLocalSupabaseTestURL("postgres://postgres:postgres@127.0.0.1:58623/postgres") {
+			t.Fatal("unexpected loopback port must be rejected")
+		}
+	})
+
+	t.Run("rejects invalid configured port", func(t *testing.T) {
+		for _, configuredPort := range []string{"invalid", "0", "65536", "-1"} {
+			t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", configuredPort)
+			if isLocalSupabaseTestURL("postgres://postgres:postgres@127.0.0.1:58622/postgres") {
+				t.Errorf("invalid configured port %q must be rejected", configuredPort)
+			}
+		}
+	})
+
+	t.Run("rejects transaction poolers", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "58622")
+		for _, value := range []string{
+			"postgres://postgres:postgres@127.0.0.1:58622/postgres?pool_mode=transaction",
+			"postgres://postgres:postgres@127.0.0.1:58622/postgres?pooling=transaction",
+		} {
+			if isLocalSupabaseTestURL(value) {
+				t.Errorf("transaction pooler URL must be rejected: %s", value)
+			}
+		}
+	})
+
+	t.Run("rejects unsupported schemes and non-loopback hosts", func(t *testing.T) {
+		t.Setenv("REALTIME_TEST_LOCAL_SUPABASE_PORT", "58622")
+		for _, value := range []string{
+			"postgres://db.example.com:58622/postgres",
+			"postgres://127.0.0.2:58622/postgres",
+			"https://127.0.0.1:58622/postgres",
+		} {
+			if isLocalSupabaseTestURL(value) {
+				t.Errorf("expected unsupported URL to be rejected: %s", value)
+			}
+		}
+	})
 }
 
 func TestOversizedRealtimeEventFallsBackToRefresh(t *testing.T) {

@@ -921,6 +921,13 @@ test.describe('local authenticated map and character sheet E2E', () => {
 							level: 0,
 							description: 'Uma luz clara aparece.',
 							notes: 'Uma luz clara aparece.'
+						},
+						{
+							name: 'Mísseis da ficha E2E',
+							level: 1,
+							description: 'Três dardos luminosos atingem os alvos.',
+							notes: 'Três dardos luminosos atingem os alvos.',
+							diceFormula: '3d4+3'
 						}
 					],
 					spellSlots: [{ level: 1, current: 1, max: 1 }]
@@ -940,6 +947,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			await test.step('cast own cantrip from the character sheet without spending a slot', async () => {
 				await sheet.getByRole('button', { name: 'Magias', exact: true }).click();
 				const cantrip = sheet.locator('.spell-card').filter({ hasText: 'Luz da ficha E2E' });
+				await expect(cantrip.getByRole('button', { name: 'Lançar truque' })).toBeVisible();
 				await cantrip.locator('.spell-toggle').click();
 				await expect(cantrip.getByRole('button', { name: 'Lançar truque' })).toBeVisible();
 				const beforeResponse = await fixture!.playerApi.get(
@@ -963,8 +971,6 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						.toBe(before.sheet.spellSlots.find((slot) => slot.level === 1)?.current);
 				});
 				await test.step('verify player-facing presentation and campaign chat', async () => {
-					await player.getByRole('button', { name: 'Mesa', exact: true }).click();
-					await expect(player.locator('canvas').first()).toBeVisible();
 					await expect(player.locator('.presentation-text')).toContainText('Luz da ficha E2E');
 					await expect(player.locator('.presentation-text')).toContainText(
 						'Uma luz clara aparece.'
@@ -976,7 +982,122 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					).toBeVisible();
 					await player.getByRole('button', { name: 'Fechar imagem para mim' }).click();
 					await expect(player.locator('.presentation-backdrop')).toHaveCount(0);
+					await player.getByRole('button', { name: 'Mesa', exact: true }).click();
+					await expect(player.locator('canvas').first()).toBeVisible();
 				});
+			});
+			await test.step('cast a known leveled spell from the sheet with its selected slot', async () => {
+				const spellCard = sheet.locator('.spell-card').filter({ hasText: 'Mísseis da ficha E2E' });
+				const castButton = spellCard.getByRole('button', { name: 'Lançar', exact: true });
+				await expect(castButton).toBeVisible();
+				await expect(castButton).toBeEnabled();
+				const slotSelector = spellCard.getByRole('combobox', { name: 'Espaço de magia' });
+				await expect(slotSelector).toHaveValue('1');
+				const beforeCastResponse = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/character`
+				);
+				const beforeCast = (await beforeCastResponse.json()) as {
+					sheet: { spellSlots: Array<{ level: number; current: number }> };
+				};
+				const availableBeforeCast =
+					beforeCast.sheet.spellSlots.find((slot) => slot.level === 1)?.current ?? 0;
+				expect(availableBeforeCast).toBeGreaterThan(0);
+				const castResponsePromise = player.waitForResponse((response) => {
+					const url = new URL(response.url());
+					return (
+						url.pathname === `/api/v1/campaigns/${fixture!.campaignId}/character/cast-spell` &&
+						response.request().method() === 'POST'
+					);
+				});
+				await castButton.click();
+				const castResponse = await castResponsePromise;
+				expect(castResponse.status()).toBe(201);
+				const castRequest = castResponse.request().postDataJSON() as {
+					spellIndex: number;
+					slotLevel: number;
+				};
+				expect(castRequest).toMatchObject({ spellIndex: 1, slotLevel: 1 });
+				const castResult = (await castResponse.json()) as {
+					baseLevel: number;
+					slotLevel: number;
+					sheet: { spellSlots: Array<{ level: number; current: number }> };
+				};
+				expect(castResult).toMatchObject({ baseLevel: 1, slotLevel: 1 });
+				expect(castResult.sheet.spellSlots.find((slot) => slot.level === 1)?.current).toBe(
+					availableBeforeCast - 1
+				);
+				await expect
+					.poll(async () => {
+						const response = await fixture!.playerApi.get(
+							`/api/v1/campaigns/${fixture!.campaignId}/character`
+						);
+						const result = (await response.json()) as {
+							sheet: { spellSlots: Array<{ level: number; current: number }> };
+						};
+						return result.sheet.spellSlots.find((slot) => slot.level === 1)?.current;
+					})
+					.toBe(availableBeforeCast - 1);
+				await expect(
+					fixture!.gm.locator('.floating-chat [data-event-id]').filter({
+						hasText: 'Mísseis da ficha E2E'
+					})
+				).toBeVisible();
+				await expect(fixture!.player.locator('.presentation-text')).toContainText(
+					'Mísseis da ficha E2E'
+				);
+				await expect(fixture!.player.locator('.presentation-text')).toContainText(
+					'Três dardos luminosos atingem os alvos.'
+				);
+				await expect(fixture!.gm.locator('.presentation-text')).toContainText(
+					'Três dardos luminosos atingem os alvos.'
+				);
+				const remainingSlots = availableBeforeCast - 1;
+				if (remainingSlots > 0) {
+					const secondCast = await fixture!.playerApi.post(
+						`/api/v1/campaigns/${fixture!.campaignId}/character/cast-spell`,
+						{ data: { spellIndex: 1, slotLevel: 1, presentationSceneId: fixture!.sceneId } }
+					);
+					expect(secondCast.status()).toBe(201);
+					const secondResult = (await secondCast.json()) as {
+						sheet: { spellSlots: Array<{ level: number; current: number }> };
+					};
+					expect(secondResult.sheet.spellSlots.find((slot) => slot.level === 1)?.current).toBe(
+						remainingSlots - 1
+					);
+				}
+				const beforeRejectedCastEventsResponse = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/events`
+				);
+				expect(beforeRejectedCastEventsResponse.status()).toBe(200);
+				const beforeRejectedCastEvents = (await beforeRejectedCastEventsResponse.json()) as {
+					events: Array<{ id: number }>;
+				};
+				const beforeRejectedCastPresentationResponse = await fixture!.playerApi.get(
+					`/api/v1/scenes/${fixture!.sceneId}/presentation`
+				);
+				expect(beforeRejectedCastPresentationResponse.status()).toBe(200);
+				const beforeRejectedCastPresentation = await beforeRejectedCastPresentationResponse.json();
+				const rejectedCast = await fixture!.playerApi.post(
+					`/api/v1/campaigns/${fixture!.campaignId}/character/cast-spell`,
+					{ data: { spellIndex: 1, slotLevel: 1, presentationSceneId: fixture!.sceneId } }
+				);
+				expect(rejectedCast.status()).toBe(400);
+				const afterRejectedCastEventsResponse = await fixture!.playerApi.get(
+					`/api/v1/campaigns/${fixture!.campaignId}/events`
+				);
+				const afterRejectedCastEvents = (await afterRejectedCastEventsResponse.json()) as {
+					events: Array<{ id: number }>;
+				};
+				expect(afterRejectedCastEvents.events.map((event) => event.id)).toEqual(
+					beforeRejectedCastEvents.events.map((event) => event.id)
+				);
+				const afterRejectedCastPresentationResponse = await fixture!.playerApi.get(
+					`/api/v1/scenes/${fixture!.sceneId}/presentation`
+				);
+				const afterRejectedCastPresentation = await afterRejectedCastPresentationResponse.json();
+				expect(afterRejectedCastPresentation).toEqual(beforeRejectedCastPresentation);
+				await player.getByRole('button', { name: 'Fechar imagem para mim' }).click();
+				await expect(player.locator('.presentation-backdrop')).toHaveCount(0);
 			});
 			const expandedHeight = (await sheet.boundingBox())!.height;
 			await test.step('minimize the sheet and preserve state while swapping tabs', async () => {
@@ -1391,6 +1512,8 @@ test.describe('local authenticated map and character sheet E2E', () => {
 					.toBe(currentBefore - 1);
 			});
 			await test.step('display spell as a persisted campaign chat message', async () => {
+				await f.player.getByRole('button', { name: 'Fechar imagem para mim' }).click();
+				await expect(f.player.locator('.presentation-backdrop')).toHaveCount(0);
 				const beforeDisplay = (await (await characterResponse()).json()) as {
 					sheet: { spellSlots: Array<{ level: number; current: number }> };
 				};
@@ -1417,6 +1540,129 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				).toBeUndefined();
 				const afterDisplay = (await (await characterResponse()).json()) as typeof beforeDisplay;
 				expect(afterDisplay.sheet.spellSlots).toEqual(beforeDisplay.sheet.spellSlots);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('class features and feats publish through the shared chat and scene presentation', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const f = fixture;
+			await f.createCharacter(f.playerUserId, {
+				name: 'Ficha de destaque E2E',
+				class: 'Clérigo',
+				level: 2,
+				feats: 'Agarrador (Grappler)'
+			});
+			const foreignCharacter = await f.createCharacter(f.gmUserId, {
+				name: 'Ficha alheia E2E',
+				class: 'Clérigo',
+				level: 2,
+				feats: 'Agarrador (Grappler)'
+			});
+			const receiver = await f.addPlayer();
+			await Promise.all([
+				openMap(f.player, f.campaignId, f.sceneId),
+				openMap(f.gm, f.campaignId, f.sceneId),
+				openMap(receiver.page, f.campaignId, f.sceneId)
+			]);
+
+			await test.step('player presents a class feature and feat from their own sheet to both peers', async () => {
+				const foreignCharacterResponse = await f.playerApi.get(
+					`/api/v1/campaigns/${f.campaignId}/characters/${foreignCharacter.id}`
+				);
+				expect(foreignCharacterResponse.status()).toBe(403);
+
+				await f.player.getByRole('button', { name: 'Fichas', exact: true }).click();
+				const sheet = f.player.locator('.sheets-view .sheet');
+				await expect(sheet.locator('header h2')).toHaveText('Ficha de destaque E2E');
+				const feature = sheet
+					.locator('.progression .feature-toggle')
+					.filter({ hasText: 'Canalizar Divindade' });
+				await expect(feature).toHaveCount(1);
+				await feature.click();
+				await expect(feature).toHaveAttribute('aria-expanded', 'true');
+				const featureDescriptionElement = sheet.locator('.feature-description');
+				const featureDescription = (await featureDescriptionElement.count())
+					? (await featureDescriptionElement.first().textContent())?.trim() ||
+						'Descrição não cadastrada.'
+					: 'Descrição não cadastrada.';
+				const presentFeature = sheet.getByRole('button', { name: 'Destacar na tela' });
+				await expect(presentFeature).toBeVisible();
+				await presentFeature.click();
+				for (const page of [f.gm, receiver.page]) {
+					const message = page
+						.locator('.floating-chat [data-event-id]')
+						.filter({ hasText: 'Canalizar Divindade' });
+					await expect(message).toBeVisible();
+					await expect(message).toContainText(featureDescription);
+				}
+
+				await sheet.getByRole('button', { name: 'Detalhes', exact: true }).click();
+				await sheet.getByRole('button', { name: 'Agarrador (Grappler)', exact: true }).click();
+				const featDescription = (
+					await sheet.locator('.feat-manager aside p').textContent()
+				)?.trim();
+				expect(featDescription).toContain('Você recebe os benefícios a seguir.');
+				await sheet.getByRole('button', { name: 'Destacar na tela' }).click();
+				for (const page of [f.gm, receiver.page]) {
+					const message = page
+						.locator('.floating-chat [data-event-id]')
+						.filter({ hasText: 'Agarrador (Grappler)' });
+					await expect(message).toBeVisible();
+					await expect(message).toContainText(featDescription!);
+				}
+			});
+
+			await test.step('narrator selects the player sheet and presents both entries centrally', async () => {
+				await f.gm.getByRole('button', { name: 'Fichas', exact: true }).click();
+				const sheet = f.gm.locator('.sheets-view .sheet');
+				await expect(sheet.locator('header h2')).toHaveText('Ficha de destaque E2E');
+				const feature = sheet
+					.locator('.progression .feature-toggle')
+					.filter({ hasText: 'Canalizar Divindade' });
+				await feature.click();
+				const featureDescriptionElement = sheet.locator('.feature-description');
+				const featureDescription = (await featureDescriptionElement.count())
+					? (await featureDescriptionElement.first().textContent())?.trim() ||
+						'Descrição não cadastrada.'
+					: 'Descrição não cadastrada.';
+				await sheet.getByRole('button', { name: 'Destacar na tela' }).click();
+				await expect(f.player.locator('.presentation-text')).toContainText('Canalizar Divindade');
+				await expect(f.player.locator('.presentation-text')).toContainText(featureDescription);
+				await expect(receiver.page.locator('.presentation-text')).toContainText(
+					'Canalizar Divindade'
+				);
+				await expect(
+					receiver.page
+						.locator('.floating-chat [data-event-id]')
+						.filter({ hasText: 'Canalizar Divindade' })
+						.last()
+				).toBeVisible();
+
+				await sheet.getByRole('button', { name: 'Detalhes', exact: true }).click();
+				await sheet.getByRole('button', { name: 'Agarrador (Grappler)', exact: true }).click();
+				const featDescription = (
+					await sheet.locator('.feat-manager aside p').textContent()
+				)?.trim();
+				expect(featDescription).toContain('Você recebe os benefícios a seguir.');
+				await sheet.getByRole('button', { name: 'Destacar na tela' }).click();
+				await expect(f.player.locator('.presentation-text')).toContainText('Agarrador (Grappler)');
+				await expect(f.player.locator('.presentation-text')).toContainText(featDescription!);
+				await expect(receiver.page.locator('.presentation-text')).toContainText(
+					'Agarrador (Grappler)'
+				);
+				await expect(
+					receiver.page
+						.locator('.floating-chat [data-event-id]')
+						.filter({ hasText: 'Agarrador (Grappler)' })
+						.last()
+				).toBeVisible();
 			});
 		} finally {
 			await fixture?.close();
@@ -1924,6 +2170,24 @@ test.describe('local authenticated map and character sheet E2E', () => {
 						await expect(f.gm.getByText(/Regra de magias do talento salva/)).toBeVisible({
 							timeout: menuWaitBudget(testInfo)
 						});
+						phase = 'close saved campaign spell rule editor';
+						await rule.getByRole('button', { name: 'Fechar' }).click({
+							timeout: menuWaitBudget(testInfo)
+						});
+						await expect(rule).toBeHidden({ timeout: menuWaitBudget(testInfo) });
+						phase = 'reopen campaign spell rule editor and verify persisted selections';
+						await f.gm
+							.getByRole('button', { name: 'Configurar magias concedidas' })
+							.click({ timeout: menuWaitBudget(testInfo) });
+						await expect(rule).toBeVisible({ timeout: menuWaitBudget(testInfo) });
+						await expect(
+							rule.getByLabel('Usar esta regra explícita no lugar do mapeamento padrão')
+						).toBeChecked();
+						await expect(rule.getByLabel('Magia do compêndio')).toHaveValue(spell!.id);
+						await expect(rule.getByLabel('Conjurações gratuitas')).toHaveValue('1');
+						await expect(rule.getByLabel('Recuperar usos em')).toHaveValue('long');
+						await expect(rule.getByLabel('Pode usar espaços existentes')).not.toBeChecked();
+						await expect(rule.getByLabel('INTELLIGENCE')).toBeChecked();
 					},
 					() => phase
 				));
@@ -2579,6 +2843,104 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				await gm.getByRole('button', { name: 'Criar ficha' }).click();
 				await expect(sheet.locator('header h2')).toHaveText('Novo personagem');
 				await expect(gm.locator('.sheet-backdrop.embedded .sheet')).toHaveCount(1);
+			});
+		} finally {
+			await fixture?.close();
+		}
+	});
+
+	test('short rest forwards zero and multiple Hit Dice and synchronizes sheet and token HP', async ({
+		browser
+	}) => {
+		let fixture: Awaited<ReturnType<typeof createLocalAuthenticatedFixture>> | undefined;
+		try {
+			fixture = await createLocalAuthenticatedFixture(browser);
+			const character = await fixture.createCharacter(fixture.playerUserId, {
+				name: 'Descanso curto E2E',
+				class: 'fighter',
+				level: 3,
+				hitDice: '1d8',
+				hitDiceSpent: 0,
+				hitPointsCurrent: 5,
+				hitPointsMax: 20
+			});
+			const tokenId = await fixture.createCharacterToken(character.id);
+			const page = fixture.player;
+			await page.goto(`/sheet?campaign=${fixture.campaignId}&character=${character.id}`);
+			const sheet = page.locator('.sheet');
+			await expect(sheet).toBeVisible({ timeout: 20_000 });
+			await sheet.getByRole('button', { name: 'Combate', exact: true }).click();
+			const countSelector = sheet.getByTestId('short-rest-hit-dice-count');
+			const currentHP = sheet
+				.locator('.combat label')
+				.filter({ hasText: 'PV atuais' })
+				.locator('input');
+
+			await test.step('selecting zero sends an explicit zero and spends or rolls no Hit Dice', async () => {
+				await countSelector.selectOption('0');
+				const responsePromise = page.waitForResponse((response) => {
+					const url = new URL(response.url());
+					return (
+						response.request().method() === 'POST' &&
+						url.pathname ===
+							`/api/v1/campaigns/${fixture!.campaignId}/characters/${character.id}/rest`
+					);
+				});
+				await sheet.getByRole('button', { name: 'Descanso curto', exact: true }).click();
+				const response = await responsePromise;
+				expect(response.status()).toBe(200);
+				expect(response.request().postDataJSON()).toEqual({ kind: 'short', hitDiceCount: 0 });
+				const result = (await response.json()) as {
+					dados?: number[];
+					sheet: { hitPointsCurrent: number; hitDiceSpent: number };
+				};
+				expect(result.dados ?? []).toEqual([]);
+				expect(result.sheet.hitDiceSpent).toBe(0);
+				expect(result.sheet.hitPointsCurrent).toBe(5);
+				await expect(currentHP).toHaveValue('5');
+				await expect(sheet.locator('.short-rest-hit-dice small')).toContainText(
+					'3 disponíveis de 3'
+				);
+			});
+
+			let healedHP = 0;
+			await test.step('selecting two sends two and visibly updates sheet and token HP', async () => {
+				await countSelector.selectOption('2');
+				const responsePromise = page.waitForResponse((response) => {
+					const url = new URL(response.url());
+					return (
+						response.request().method() === 'POST' &&
+						url.pathname ===
+							`/api/v1/campaigns/${fixture!.campaignId}/characters/${character.id}/rest`
+					);
+				});
+				await sheet.getByRole('button', { name: 'Descanso curto', exact: true }).click();
+				const response = await responsePromise;
+				expect(response.status()).toBe(200);
+				expect(response.request().postDataJSON()).toEqual({ kind: 'short', hitDiceCount: 2 });
+				const result = (await response.json()) as {
+					dados?: number[];
+					sheet: { hitPointsCurrent: number; hitDiceSpent: number };
+				};
+				expect(result.dados).toHaveLength(2);
+				expect(result.sheet.hitDiceSpent).toBe(2);
+				healedHP = result.sheet.hitPointsCurrent;
+				expect(healedHP).toBeGreaterThan(5);
+				await expect(currentHP).toHaveValue(String(healedHP));
+				await expect(sheet.locator('.short-rest-hit-dice small')).toContainText(
+					'1 disponíveis de 3'
+				);
+
+				const tokenResponse = await fixture!.playerApi.get(
+					`/api/v1/scenes/${fixture!.sceneId}/tokens/${tokenId}`
+				);
+				expect(tokenResponse.status()).toBe(200);
+				expect(((await tokenResponse.json()) as { hpCurrent: number }).hpCurrent).toBe(healedHP);
+
+				await openMap(page, fixture!.campaignId, fixture!.sceneId, tokenId);
+				await selectTokenAtDefaultPosition(page);
+				const summary = page.getByRole('region', { name: /Ficha resumida do personagem/i });
+				await expect(summary.getByLabel(/PV atuais/)).toHaveValue(String(healedHP));
 			});
 		} finally {
 			await fixture?.close();

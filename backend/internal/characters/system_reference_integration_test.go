@@ -35,11 +35,11 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	campaignID, gmID, playerID := characterTestUUID(t), characterTestUUID(t), characterTestUUID(t)
+	campaignID, otherCampaignID, gmID, playerID := characterTestUUID(t), characterTestUUID(t), characterTestUUID(t), characterTestUUID(t)
 	cleanup := func() {
-		_, _ = pool.Exec(context.Background(), `delete from actors where campaign_id=$1`, campaignID)
-		_, _ = pool.Exec(context.Background(), `delete from campaign_members where campaign_id=$1`, campaignID)
-		_, _ = pool.Exec(context.Background(), `delete from campaigns where id=$1`, campaignID)
+		_, _ = pool.Exec(context.Background(), `delete from actors where campaign_id in ($1,$2)`, campaignID, otherCampaignID)
+		_, _ = pool.Exec(context.Background(), `delete from campaign_members where campaign_id in ($1,$2)`, campaignID, otherCampaignID)
+		_, _ = pool.Exec(context.Background(), `delete from campaigns where id in ($1,$2)`, campaignID, otherCampaignID)
 		_, _ = pool.Exec(context.Background(), `delete from profiles where id in ($1,$2)`, gmID, playerID)
 	}
 	defer cleanup()
@@ -60,11 +60,24 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if _, err := tx.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'gm'),($1,$3,'player')`, campaignID, gmID, playerID); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := tx.Exec(ctx, `insert into campaigns(id,name,owner_id,system_id,system_version) values($1,'Other campaign test',$2,'dnd2024','1.0.0')`, otherCampaignID, gmID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `insert into campaign_members(campaign_id,user_id,role) values($1,$2,'gm')`, otherCampaignID, gmID); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := tx.Exec(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','Versioned sheet test','{}')`, campaignID, playerID); err != nil {
 		t.Fatal(err)
 	}
 	var actorID string
 	if err := tx.QueryRow(ctx, `select id::text from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, playerID).Scan(&actorID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','GM-owned test actor','{}')`, campaignID, gmID); err != nil {
+		t.Fatal(err)
+	}
+	var otherActorID string
+	if err := tx.QueryRow(ctx, `select id::text from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, gmID).Scan(&otherActorID); err != nil {
 		t.Fatal(err)
 	}
 	var sceneID string
@@ -83,7 +96,10 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	sheet := Sheet{
 		Name: "Versioned character", Class: "wizard", Level: 5, Species: "Goliath", Speed: 10.5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
 		ProficiencyBonus: 99, ArmorClass: 99, PassivePerception: 99, SkillProficiencies: []string{"Percepção"},
-		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", Spells: []Spell{{Name: "Teste de slot", Level: 1, DiceFormula: "1d4"}}, SpellSlots: []SpellSlot{}, Resources: []Resource{},
+		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", Spells: []Spell{
+			{Name: "Teste de slot", Level: 1, DiceFormula: "1d4", Description: "Descrição autoritativa do teste."},
+			{Name: "Truque de teste", Level: 0, Description: "Texto do truque."},
+		}, SpellSlots: []SpellSlot{}, Resources: []Resource{},
 	}
 	input, err := json.Marshal(sheet)
 	if err != nil {
@@ -232,9 +248,39 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err != nil || unchanged.Sheet.SpellSlots[1].Current != 1 || unchanged.Sheet.SpellSlots[1].Max != 3 {
 		t.Fatalf("rejected slot edits changed persisted state: %+v, %v", unchanged.Sheet.SpellSlots, err)
 	}
-	cast, err := repo.CastSpell(ctx, campaignID, playerID, SpellCastInput{SpellIndex: 0, SlotLevel: 2})
+	cast, err := repo.CastSpell(ctx, campaignID, playerID, SpellCastInput{SpellIndex: 0, SlotLevel: 2, PresentationSceneID: sceneID})
 	if err != nil || cast.Sheet.SpellSlots[1].Current != 0 || cast.Sheet.SpellSlots[1].Max != 3 {
 		t.Fatalf("normal cast did not consume the adjusted remaining slot: %+v, %v", cast.Sheet.SpellSlots, err)
+	}
+	if !cast.PresentationUpdated {
+		t.Fatal("successful leveled spell cast did not update the scene presentation")
+	}
+	var presentationTitle, presentationDescription string
+	if err := pool.QueryRow(ctx, `select title,description from scene_presentations where scene_id=$1`, sceneID).Scan(&presentationTitle, &presentationDescription); err != nil {
+		t.Fatal(err)
+	}
+	if presentationTitle != "Teste de slot" || presentationDescription != "Descrição autoritativa do teste." {
+		t.Fatalf("successful cast presentation = %q / %q", presentationTitle, presentationDescription)
+	}
+	var spellEventCountBeforeRejected int
+	if err := pool.QueryRow(ctx, `select count(*) from game_events where campaign_id=$1 and payload->>'spellCast'='true'`, campaignID).Scan(&spellEventCountBeforeRejected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.CastSpell(ctx, campaignID, playerID, SpellCastInput{SpellIndex: 0, SlotLevel: 2, PresentationSceneID: sceneID}); err == nil {
+		t.Fatal("spell cast without an available slot unexpectedly succeeded")
+	}
+	var spellEventCountAfterRejected int
+	if err := pool.QueryRow(ctx, `select count(*) from game_events where campaign_id=$1 and payload->>'spellCast'='true'`, campaignID).Scan(&spellEventCountAfterRejected); err != nil {
+		t.Fatal(err)
+	}
+	if spellEventCountAfterRejected != spellEventCountBeforeRejected {
+		t.Fatal("rejected spell cast created an event")
+	}
+	if err := pool.QueryRow(ctx, `select title,description from scene_presentations where scene_id=$1`, sceneID).Scan(&presentationTitle, &presentationDescription); err != nil {
+		t.Fatal(err)
+	}
+	if presentationTitle != "Teste de slot" || presentationDescription != "Descrição autoritativa do teste." {
+		t.Fatal("rejected spell cast changed the scene presentation")
 	}
 	if err := adjustSlot(gmID, 2); err != nil {
 		t.Fatalf("GM recovery adjustment failed: %v", err)
@@ -242,6 +288,62 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	recovered, err := repo.GetForGM(ctx, campaignID, saved.ID, gmID)
 	if err != nil || recovered.Sheet.SpellSlots[1].Current != 2 || recovered.Sheet.SpellSlots[1].Max != 3 {
 		t.Fatalf("GM could not restore available slots: %+v, %v", recovered.Sheet.SpellSlots, err)
+	}
+	cantrip, err := repo.CastSpell(ctx, campaignID, playerID, SpellCastInput{SpellIndex: 1, SlotLevel: 0, PresentationSceneID: sceneID})
+	if err != nil || cantrip.BaseLevel != 0 || cantrip.SlotLevel != 0 {
+		t.Fatalf("cantrip cast failed: result=%+v error=%v", cantrip, err)
+	}
+	if cantrip.Sheet.SpellSlots[1].Current != 2 || cantrip.Sheet.SpellSlots[1].Max != 3 || !cantrip.PresentationUpdated {
+		t.Fatalf("cantrip consumed a slot or did not present: %+v", cantrip)
+	}
+
+	rollAsSelectedCharacter := func(userID, requestedCampaignID, requestedCharacterID string) (*httptest.ResponseRecorder, error) {
+		t.Helper()
+		request := httptest.NewRequest("POST", "/", bytes.NewBufferString(`{"kind":"skill","key":"Percepção","mode":"normal"}`))
+		request.SetPathValue("campaignID", requestedCampaignID)
+		request.SetPathValue("characterID", requestedCharacterID)
+		request = request.WithContext(auth.WithPrincipal(request.Context(), auth.Principal{UserID: userID}))
+		response := httptest.NewRecorder()
+		return response, handler.RollForGM(response, request)
+	}
+	selectedRollResponse, err := rollAsSelectedCharacter(gmID, campaignID, actorID)
+	if err != nil || selectedRollResponse.Code != http.StatusCreated {
+		t.Fatalf("GM selected-character roll status=%d body=%s", selectedRollResponse.Code, selectedRollResponse.Body.String())
+	}
+	var selectedRoll SheetRollResult
+	if err := json.Unmarshal(selectedRollResponse.Body.Bytes(), &selectedRoll); err != nil {
+		t.Fatal(err)
+	}
+	if selectedRoll.Modifier != 4 || len(selectedRoll.Dice) != 1 {
+		t.Fatalf("GM selected-character roll=%+v; want player's stored sheet modifier and one d20", selectedRoll)
+	}
+	var rollEventActorID string
+	if err := pool.QueryRow(ctx, `select actor_id::text from game_events where id=$1`, selectedRoll.EventID).Scan(&rollEventActorID); err != nil {
+		t.Fatal(err)
+	}
+	if rollEventActorID != gmID {
+		t.Fatalf("selected-character roll event actor does not identify the rolling GM")
+	}
+	var eventCountBeforeUnauthorized int
+	if err := pool.QueryRow(ctx, `select count(*) from game_events where campaign_id=$1 and event_type='dice.roll'`, campaignID).Scan(&eventCountBeforeUnauthorized); err != nil {
+		t.Fatal(err)
+	}
+	unauthorizedRollResponse, unauthorizedRollErr := rollAsSelectedCharacter(playerID, campaignID, otherActorID)
+	var unauthorizedAPIError *apperror.Error
+	if !errors.As(unauthorizedRollErr, &unauthorizedAPIError) || unauthorizedAPIError.Status != http.StatusForbidden {
+		t.Fatalf("player selected-character roll error=%v response=%s, want forbidden", unauthorizedRollErr, unauthorizedRollResponse.Body.String())
+	}
+	wrongCampaignRollResponse, wrongCampaignRollErr := rollAsSelectedCharacter(gmID, otherCampaignID, actorID)
+	var wrongCampaignAPIError *apperror.Error
+	if !errors.As(wrongCampaignRollErr, &wrongCampaignAPIError) || wrongCampaignAPIError.Status != http.StatusNotFound {
+		t.Fatalf("narrator selected-character roll in another campaign error=%v response=%s, want not found", wrongCampaignRollErr, wrongCampaignRollResponse.Body.String())
+	}
+	var eventCountAfterUnauthorized int
+	if err := pool.QueryRow(ctx, `select count(*) from game_events where campaign_id=$1 and event_type='dice.roll'`, campaignID).Scan(&eventCountAfterUnauthorized); err != nil {
+		t.Fatal(err)
+	}
+	if eventCountAfterUnauthorized != eventCountBeforeUnauthorized {
+		t.Fatalf("unauthorized player roll persisted an event: before=%d after=%d", eventCountBeforeUnauthorized, eventCountAfterUnauthorized)
 	}
 
 	roll, err := repo.RollSheet(ctx, campaignID, playerID, "skill", "Percepção", "normal")

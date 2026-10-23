@@ -140,7 +140,8 @@ func reconcileCampaignFeatSpellGrants(ctx context.Context, queryer campaignRefer
 		}
 		seenIDs[id] = true
 		grant := CampaignFeatSpellGrant{ID: id, FeatEntryID: input.FeatEntryID, Active: true,
-			SpellcastingAbilities: make(map[string]string), FreeCastsRemaining: make(map[string]int)}
+			SpellcastingAbilities: make(map[string]string), FreeCastsRemaining: make(map[string]int),
+			FreeCastsMaxOverrides: make(map[string]int), FreeCastsRecoveries: make(map[string]string)}
 		old, hasOld := previousByID[id]
 		for _, spell := range data.Rule.Spells {
 			options := spell.AbilityOptions
@@ -156,10 +157,32 @@ func reconcileCampaignFeatSpellGrants(ctx context.Context, queryer campaignRefer
 			if ability != "" {
 				grant.SpellcastingAbilities[spell.SpellEntryID] = ability
 			}
-			remaining := spell.FreeUses
+			maximum := spell.FreeUses
+			recovery := spell.Recovery
+			if hasOld {
+				if override, exists := old.FreeCastsMaxOverrides[spell.SpellEntryID]; exists {
+					maximum = override
+				}
+				if configured, exists := old.FreeCastsRecoveries[spell.SpellEntryID]; exists {
+					recovery = configured
+				}
+			}
+			if maximum < 0 || maximum > 100 || (recovery != "none" && recovery != "short" && recovery != "long") {
+				return nil, ErrInvalidSpellGrantState
+			}
+			if maximum != spell.FreeUses {
+				grant.FreeCastsMaxOverrides[spell.SpellEntryID] = maximum
+			}
+			if recovery != spell.Recovery {
+				grant.FreeCastsRecoveries[spell.SpellEntryID] = recovery
+			}
+			remaining := maximum
 			if hasOld {
 				if current, ok := old.FreeCastsRemaining[spell.SpellEntryID]; ok {
-					remaining = clampFreeUses(current, spell.FreeUses)
+					if current < 0 || current > maximum {
+						return nil, ErrInvalidSpellGrantState
+					}
+					remaining = current
 				}
 			}
 			grant.FreeCastsRemaining[spell.SpellEntryID] = remaining
@@ -207,11 +230,23 @@ func recoverCampaignFeatSpellGrantUses(ctx context.Context, queryer campaignRefe
 			return nil, err
 		}
 		for _, spell := range data.Rule.Spells {
-			if spell.Recovery == kind {
+			recovery := spell.Recovery
+			if configured, ok := grant.FreeCastsRecoveries[spell.SpellEntryID]; ok {
+				recovery = configured
+			}
+			maximum := spell.FreeUses
+			if configured, ok := grant.FreeCastsMaxOverrides[spell.SpellEntryID]; ok {
+				maximum = configured
+			}
+			current, hasCurrent := grant.FreeCastsRemaining[spell.SpellEntryID]
+			if maximum < 0 || maximum > 100 || (hasCurrent && (current < 0 || current > maximum)) || (recovery != "none" && recovery != "short" && recovery != "long") {
+				return nil, ErrInvalidSpellGrantState
+			}
+			if recovery == kind || (kind == "long" && recovery == "short") {
 				if grant.FreeCastsRemaining == nil {
 					grant.FreeCastsRemaining = make(map[string]int)
 				}
-				grant.FreeCastsRemaining[spell.SpellEntryID] = spell.FreeUses
+				grant.FreeCastsRemaining[spell.SpellEntryID] = maximum
 			}
 		}
 	}
@@ -348,14 +383,27 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 			}
 		}
 		grant := FeatSpellGrant{
-			ID: input.ID, FeatID: input.FeatID, SpellList: spellList,
+			ID: fmt.Sprintf("dnd2024:feat:%s:%s", rule.ID, spellList), FeatID: input.FeatID, SpellList: spellList,
 			Ability: input.Ability, CantripEntryIDs: append([]string{}, input.CantripEntryIDs...),
 			FirstLevelSpellEntryID: input.FirstLevelSpellEntryID, Active: true,
 			FreeCastsRemaining: rule.FreeCasts,
 		}
 		if old, ok := previousByID[input.ID]; ok && old.FeatID == input.FeatID && !usedPrevious[old.ID] {
 			grant.ID = old.ID
-			grant.FreeCastsRemaining = clampFreeUses(old.FreeCastsRemaining, rule.FreeCasts)
+			if old.FirstLevelSpellEntryID == grant.FirstLevelSpellEntryID && old.SpellList == grant.SpellList {
+				grant.FreeCastsMaxOverride = copyInt(old.FreeCastsMaxOverride)
+				grant.FreeCastsRecovery = old.FreeCastsRecovery
+				maximum, _, configErr := validateSavedSpellUseConfig(rule.FreeCasts, rule.Recovery, grant.FreeCastsMaxOverride, grant.FreeCastsRecovery)
+				if configErr != nil || old.FreeCastsRemaining < 0 || old.FreeCastsRemaining > maximum {
+					return nil, ErrInvalidSpellGrantState
+				}
+				grant.FreeCastsRemaining = old.FreeCastsRemaining
+			} else {
+				// A changed spell selection is a different grant association. Keep the
+				// spent state from the same feat slot to prevent free refreshes, but do
+				// not carry a narrator's per-spell maximum/recovery to another spell.
+				grant.FreeCastsRemaining = min(old.FreeCastsRemaining, rule.FreeCasts)
+			}
 			usedPrevious[old.ID] = true
 		} else {
 			// Re-identifying an existing mapping does not restore its charge.
@@ -364,7 +412,17 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 					continue
 				}
 				grant.ID = old.ID
-				grant.FreeCastsRemaining = clampFreeUses(old.FreeCastsRemaining, rule.FreeCasts)
+				if old.FirstLevelSpellEntryID == grant.FirstLevelSpellEntryID && old.SpellList == grant.SpellList {
+					grant.FreeCastsMaxOverride = copyInt(old.FreeCastsMaxOverride)
+					grant.FreeCastsRecovery = old.FreeCastsRecovery
+					maximum, _, configErr := validateSavedSpellUseConfig(rule.FreeCasts, rule.Recovery, grant.FreeCastsMaxOverride, grant.FreeCastsRecovery)
+					if configErr != nil || old.FreeCastsRemaining < 0 || old.FreeCastsRemaining > maximum {
+						return nil, ErrInvalidSpellGrantState
+					}
+					grant.FreeCastsRemaining = old.FreeCastsRemaining
+				} else {
+					grant.FreeCastsRemaining = min(old.FreeCastsRemaining, rule.FreeCasts)
+				}
 				usedPrevious[old.ID] = true
 				break
 			}
@@ -381,9 +439,6 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 			continue
 		}
 		old.Active = false
-		if rule, ok := dnd2024FeatSpellRules[old.FeatID]; ok {
-			old.FreeCastsRemaining = clampFreeUses(old.FreeCastsRemaining, rule.FreeCasts)
-		}
 		active = append(active, old)
 	}
 	if len(active) > 40 {

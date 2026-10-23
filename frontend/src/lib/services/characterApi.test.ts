@@ -3,8 +3,10 @@ import {
 	castMySpell,
 	createEmptySheet,
 	getMyCharacter,
+	rollCharacterForGM,
 	saveMyCharacter,
-	setCharacterInitiativeAdvantage
+	setCharacterInitiativeAdvantage,
+	restCharacter
 } from './characterApi';
 
 const session = { access_token: 'test-token' } as never;
@@ -216,5 +218,61 @@ describe('createEmptySheet', () => {
 		expect(init.method).toBe('PATCH');
 		expect(JSON.parse(String(init.body))).toEqual({ enabled: true });
 		expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token');
+	});
+
+	it('uses the actor-scoped roll route for a narrator-selected character', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					eventId: 9,
+					dados: [15],
+					dadoEscolhido: 15,
+					modo: 'normal',
+					modificador: 3,
+					total: 18,
+					label: 'Percepção'
+				}),
+				{ status: 201 }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await rollCharacterForGM(session, 'campaign-1', 'actor-7', 'skill', 'Percepção', 'normal');
+
+		const [url, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+		expect(String(url)).toContain('/campaigns/campaign-1/characters/actor-7/roll');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(String(init.body))).toEqual({
+			kind: 'skill',
+			key: 'Percepção',
+			mode: 'normal'
+		});
+	});
+});
+
+describe('restCharacter', () => {
+	it('sends only the requested Hit Dice count and preserves omission for older callers', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ kind: 'short', sheet: createEmptySheet(), dados: [] }), {
+					status: 200
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ kind: 'short', sheet: createEmptySheet() }), { status: 200 })
+			);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await restCharacter(session, 'campaign-1', 'short', 'character-1', 0);
+		await restCharacter(session, 'campaign-1', 'short', 'character-1');
+
+		const firstRequest = fetchMock.mock.calls[0][1] as RequestInit;
+		const secondRequest = fetchMock.mock.calls[1][1] as RequestInit;
+		expect(JSON.parse(String(firstRequest.body))).toEqual({ kind: 'short', hitDiceCount: 0 });
+		expect(JSON.parse(String(secondRequest.body))).toEqual({ kind: 'short' });
+		expect(fetchMock.mock.calls[0][0]).toContain(
+			'/api/v1/campaigns/campaign-1/characters/character-1/rest'
+		);
 	});
 });

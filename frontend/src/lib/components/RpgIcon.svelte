@@ -4,6 +4,7 @@
 </script>
 
 <svg
+	data-icon={name}
 	width={size}
 	height={size}
 	viewBox="0 0 32 32"
@@ -438,6 +439,8 @@
 				stroke="none"
 			/></g
 		>
+	{:else if name === 'chevron-up'}<path d="m7 19 9-9 9 9" />
+	{:else if name === 'chevron-down'}<path d="m7 13 9 9 9-9" />
 	{:else}<g {stroke} stroke-width="1.35" stroke-linejoin="round"
 			><circle cx="16" cy="16" r="12" fill="#765536" /><path
 				d="M16 9v9M16 23h.1"

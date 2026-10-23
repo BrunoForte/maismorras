@@ -11,6 +11,8 @@ import {
 	hasPendingCompendiumTranslation,
 	isCompendiumTranslationPending,
 	normalizeCompendiumSearch,
+	preferredCompendiumFeatEntries,
+	resolveCompendiumFeatEntry,
 	translatedCompendiumName,
 	translatedCompendiumText,
 	translatedFeatDetails
@@ -128,6 +130,65 @@ describe('compendium rules', () => {
 		expect(translatedFeatDetails({ ...feat, translations: {} }, 'pt-BR')).toBe(
 			'You are always ready.\n\nAdd proficiency to Initiative.'
 		);
+	});
+
+	it('resolves legacy short fighting-style feat names to complete SRD entries without duplicates', () => {
+		const aliases = [
+			['Archery', 'Fighting Style: Archery', 'Estilo de Luta: Arquearia'],
+			['Defense', 'Fighting Style: Defense', 'Estilo de Luta: Defesa'],
+			[
+				'Great Weapon Fighting',
+				'Fighting Style: Great Weapon Fighting',
+				'Estilo de Luta: Combate com Armas Grandes'
+			],
+			[
+				'Two-Weapon Fighting',
+				'Fighting Style: Two-Weapon Fighting',
+				'Estilo de Luta: Combate com Duas Armas'
+			]
+		] as const;
+		const entries = aliases.flatMap(([shortName, fullName, localizedName]) => {
+			const legacy: CompendiumEntry = {
+				...entry(`legacy-${shortName}`, shortName, 'feat'),
+				summary: 'Entrada do System Reference Document 5.2.1.',
+				rules: {},
+				translations: { 'pt-BR': shortName }
+			};
+			const complete: CompendiumEntry = {
+				...entry(`full-${shortName}`, fullName, 'feat'),
+				rules: { description: `Descrição oficial de ${shortName}.` },
+				translations: {
+					'pt-BR': localizedName,
+					'pt-BR.rules.description': `Descrição localizada de ${shortName}.`
+				}
+			};
+			return [legacy, complete];
+		});
+		const preferred = preferredCompendiumFeatEntries(entries, sources);
+		const catalogVisible = filterAndSortCompendiumEntries(
+			entries,
+			sources,
+			{ query: '', entryType: 'feat', sourceId: 'all', sortMode: 'name' },
+			(item) => item.name
+		);
+		const searchedByShortName = filterAndSortCompendiumEntries(
+			entries,
+			sources,
+			{ query: 'Archery', entryType: 'feat', sourceId: 'all', sortMode: 'name' },
+			(item) => item.name
+		);
+
+		expect(preferred).toHaveLength(aliases.length);
+		expect(catalogVisible).toHaveLength(aliases.length);
+		expect(searchedByShortName.map((item) => item.name)).toEqual(['Fighting Style: Archery']);
+		for (const [shortName, fullName, localizedName] of aliases) {
+			const resolved = resolveCompendiumFeatEntry(shortName, preferred);
+			expect(resolved?.name).toBe(fullName);
+			expect(translatedCompendiumName(resolved!, 'pt-BR')).toBe(localizedName);
+			expect(translatedFeatDetails(resolved!, 'pt-BR')).toBe(
+				`Descrição localizada de ${shortName}.`
+			);
+		}
 	});
 
 	it('shows translation capability only for the platform owner on shared SRD and GMs on private sources', () => {
