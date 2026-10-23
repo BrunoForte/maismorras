@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -67,6 +68,18 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err := tx.QueryRow(ctx, `select id::text from actors where campaign_id=$1 and owner_id=$2 and kind='character'`, campaignID, playerID).Scan(&actorID); err != nil {
 		t.Fatal(err)
 	}
+	forwardFields := []byte(`{
+		"speciesId":"compat-drow",
+		"speciesLineageId":"compat-lineage",
+		"speciesSpellcastingAbility":"charisma",
+		"speciesSpellGrants":[{"id":"species-grant-1","featureId":"drow-magic","speciesId":"compat-drow","lineageId":"compat-lineage","spellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","freeCastsMax":1,"defaultFreeCasts":1,"canUseExistingSlots":false,"active":true,"futureMetadata":{"source":"synthetic"}}],
+		"featSpellGrants":[{"id":"legacy-feat-grant-1","featId":"magic-initiate","spellList":"wizard","ability":"intelligence","cantripEntryIds":["cantrip-a","cantrip-b"],"firstLevelSpellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","active":true,"futureMetadata":{"source":"synthetic"}}],
+		"campaignFeatSpellGrants":[{"id":"campaign-feat:synthetic-entry:1","featEntryId":"synthetic-entry","spellcastingAbilities":{"spell-a":"wisdom"},"freeCastsRemaining":{"spell-a":1},"freeCastsMaxOverrides":{"spell-a":2},"freeCastsRecoveries":{"spell-a":"short"},"active":true,"futureMetadata":{"source":"synthetic"}}],
+		"abilityScores":{"strength":10,"dexterity":14,"constitution":12,"intelligence":10,"wisdom":12,"charisma":10,"futureMetadata":{"keep":true}}
+	}`)
+	if _, err := tx.Exec(ctx, `update actors set sheet=$1::jsonb where id=$2`, forwardFields, actorID); err != nil {
+		t.Fatal(err)
+	}
 	var sceneID string
 	if err := tx.QueryRow(ctx, `insert into scenes(campaign_id,name) values($1,'Fractional speed test') returning id::text`, campaignID).Scan(&sceneID); err != nil {
 		t.Fatal(err)
@@ -95,6 +108,8 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	}
 	clientPayload["systemId"] = "melted-lands"
 	clientPayload["systemVersion"] = "999.0.0"
+	clientPayload["speciesId"] = "attacker-species"
+	clientPayload["clientOnlyField"] = map[string]any{"admin": true}
 	input, err = json.Marshal(clientPayload)
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +131,11 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if saved.Sheet.ProficiencyBonus != 3 || saved.Sheet.ArmorClass != 12 || saved.Sheet.PassivePerception != 14 {
 		t.Fatalf("derived fields did not use persisted D&D reference: proficiency=%d AC=%d passive=%d", saved.Sheet.ProficiencyBonus, saved.Sheet.ArmorClass, saved.Sheet.PassivePerception)
 	}
+	assertCompatibilityFields := func(stage string) {
+		t.Helper()
+		assertStoredForwardSheetFields(t, ctx, pool, actorID, stage)
+	}
+	assertCompatibilityFields("SaveMine")
 	assertPlayerSpeed := func(species, lineage string, speed float64, wantSquares int) {
 		t.Helper()
 		current := saved.Sheet
@@ -134,6 +154,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 		if res.Code != http.StatusOK {
 			t.Fatalf("player SaveMine for %s returned %d: %s", species, res.Code, res.Body.String())
 		}
+		assertCompatibilityFields("SaveMine speed update")
 		var response Character
 		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
 			t.Fatal(err)
@@ -182,6 +203,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if response.Code != 200 {
 		t.Fatalf("GM SaveForGM status = %d, body=%s", response.Code, response.Body.String())
 	}
+	assertCompatibilityFields("SaveForGM")
 	var persistedSystemID, persistedSystemVersion string
 	if err := pool.QueryRow(ctx, `select system_id,system_version from campaigns where id=$1`, campaignID).Scan(&persistedSystemID, &persistedSystemVersion); err != nil {
 		t.Fatal(err)
@@ -205,6 +227,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err := adjustSlot(gmID, 1); err != nil {
 		t.Fatalf("GM slot adjustment failed: %v", err)
 	}
+	assertCompatibilityFields("SetAvailableSpellSlotsForGM")
 	adjusted, err := repo.GetForGM(ctx, campaignID, saved.ID, gmID)
 	if err != nil {
 		t.Fatal(err)
@@ -236,6 +259,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err != nil || cast.Sheet.SpellSlots[1].Current != 0 || cast.Sheet.SpellSlots[1].Max != 3 {
 		t.Fatalf("normal cast did not consume the adjusted remaining slot: %+v, %v", cast.Sheet.SpellSlots, err)
 	}
+	assertCompatibilityFields("CastSpell")
 	if err := adjustSlot(gmID, 2); err != nil {
 		t.Fatalf("GM recovery adjustment failed: %v", err)
 	}
@@ -276,10 +300,12 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err != nil || shortRest.Sheet.ProficiencyBonus != 3 {
 		t.Fatalf("short rest = %+v, %v", shortRest, err)
 	}
+	assertCompatibilityFields("RestCharacter short")
 	longRest, err := repo.RestCharacter(ctx, campaignID, playerID, saved.ID, "long")
 	if err != nil || longRest.Sheet.HitPointsCurrent != longRest.Sheet.HitPointsMax {
 		t.Fatalf("long rest = %+v, %v", longRest, err)
 	}
+	assertCompatibilityFields("RestCharacter long")
 
 	if _, err := pool.Exec(ctx, `update campaigns set system_version='9.9.9' where id=$1`, campaignID); err != nil {
 		t.Fatal(err)
@@ -294,6 +320,48 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 		if !errors.As(err, &appError) || appError.Code != "UNSUPPORTED_CAMPAIGN_SYSTEM" || appError.Status != 409 {
 			t.Fatalf("unknown persisted reference response = %v, want explicit 409", err)
 		}
+	}
+}
+
+func assertStoredForwardSheetFields(t *testing.T, ctx context.Context, pool *pgxpool.Pool, actorID, stage string) {
+	t.Helper()
+	var raw []byte
+	if err := pool.QueryRow(ctx, `select sheet from actors where id=$1`, actorID).Scan(&raw); err != nil {
+		t.Fatalf("%s: read compatibility sheet: %v", stage, err)
+	}
+	var stored map[string]any
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatalf("%s: decode compatibility sheet: %v", stage, err)
+	}
+	for key, want := range map[string]any{
+		"speciesId":                  "compat-drow",
+		"speciesLineageId":           "compat-lineage",
+		"speciesSpellcastingAbility": "charisma",
+	} {
+		if stored[key] != want {
+			t.Fatalf("%s: %s = %v, want %v", stage, key, stored[key], want)
+		}
+	}
+	if _, exists := stored["clientOnlyField"]; exists {
+		t.Fatalf("%s: client-only unknown field was persisted", stage)
+	}
+	species := stored["speciesSpellGrants"].([]any)[0].(map[string]any)
+	if species["freeCastsMaxOverride"] != float64(2) || species["freeCastsRecovery"] != "long" || species["futureMetadata"].(map[string]any)["source"] != "synthetic" {
+		t.Fatalf("%s: species grant fields changed: %#v", stage, species)
+	}
+	feat := stored["featSpellGrants"].([]any)[0].(map[string]any)
+	if feat["id"] != "legacy-feat-grant-1" || feat["freeCastsMaxOverride"] != float64(2) || feat["freeCastsRecovery"] != "long" || feat["futureMetadata"].(map[string]any)["source"] != "synthetic" {
+		t.Fatalf("%s: feat grant fields changed: %#v", stage, feat)
+	}
+	campaignGrant := stored["campaignFeatSpellGrants"].([]any)[0].(map[string]any)
+	maxOverrides := campaignGrant["freeCastsMaxOverrides"].(map[string]any)
+	recoveries := campaignGrant["freeCastsRecoveries"].(map[string]any)
+	if maxOverrides["spell-a"] != float64(2) || recoveries["spell-a"] != "short" || campaignGrant["futureMetadata"].(map[string]any)["source"] != "synthetic" {
+		t.Fatalf("%s: campaign feat grant fields changed: %#v", stage, campaignGrant)
+	}
+	abilityScores := stored["abilityScores"].(map[string]any)
+	if !reflect.DeepEqual(abilityScores["futureMetadata"], map[string]any{"keep": true}) {
+		t.Fatalf("%s: nested forward field changed: %#v", stage, abilityScores)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"vtt-backend/internal/sheetcompat"
 	"vtt-backend/internal/systems"
 )
 
@@ -102,7 +103,7 @@ func (r *Repository) RestCharacter(ctx context.Context, campaignID, userID, char
 
 	sheet = applyRestRecovery(sheet, kind, result.Total, rules)
 	result.Sheet = sheet
-	raw, err = json.Marshal(sheet)
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, sheet)
 	if err != nil {
 		return RestResult{}, err
 	}
