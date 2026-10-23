@@ -138,7 +138,10 @@ func TestClientCannotMarkActiveHistoricalGrantInactiveToBypassValidation(t *test
 			FreeCastsRemaining: map[string]int{"spell": 0}, Active: true,
 		}},
 	}
-	request := previous
+	request := Sheet{
+		FeatSpellGrants:         append([]FeatSpellGrant(nil), previous.FeatSpellGrants...),
+		CampaignFeatSpellGrants: append([]CampaignFeatSpellGrant(nil), previous.CampaignFeatSpellGrants...),
+	}
 	request.FeatSpellGrants[0].Active = false
 	request.CampaignFeatSpellGrants[0].Active = false
 	if _, err := reconcileFeatSpellGrants(context.Background(), queryer, "campaign", request, previous); err == nil {
