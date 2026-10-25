@@ -83,7 +83,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	}
 	forwardFields := []byte(`{
 		"futureBackendMetadata":{"source":"synthetic"},
-		"speciesSpellGrants":[{"id":"species-grant-1","featureId":"drow-magic","speciesId":"compat-drow","lineageId":"compat-lineage","spellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","freeCastsMax":1,"defaultFreeCasts":1,"canUseExistingSlots":false,"active":true,"futureMetadata":{"source":"synthetic"}}],
+		"speciesSpellGrants":[{"id":"species-grant-1","featureId":"drow-magic","speciesId":"compat-drow","lineageId":"compat-lineage","spellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","freeCastsMax":2,"defaultFreeCasts":1,"canUseExistingSlots":false,"active":true,"futureMetadata":{"source":"synthetic"}}],
 		"featSpellGrants":[{"id":"legacy-feat-grant-1","featId":"magic-initiate","spellList":"wizard","ability":"intelligence","cantripEntryIds":["cantrip-a","cantrip-b"],"firstLevelSpellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","active":true,"futureMetadata":{"source":"synthetic"}}],
 		"campaignFeatSpellGrants":[{"id":"campaign-feat:synthetic-entry:1","featEntryId":"synthetic-entry","spellcastingAbilities":{"spell-a":"wisdom"},"freeCastsRemaining":{"spell-a":1},"freeCastsMaxOverrides":{"spell-a":2},"freeCastsRecoveries":{"spell-a":"short"},"active":true,"futureMetadata":{"source":"synthetic"}}],
 		"abilityScores":{"strength":10,"dexterity":14,"constitution":12,"intelligence":10,"wisdom":12,"charisma":10,"futureMetadata":{"keep":true}}
