@@ -124,6 +124,17 @@ func reconcileCampaignFeatSpellGrants(ctx context.Context, queryer campaignRefer
 	seenIDs := make(map[string]bool)
 	active := make([]CampaignFeatSpellGrant, 0, len(requested))
 	for _, input := range requested {
+		// Historical inactive grants are returned with character sheets. Keep a
+		// matching stored record inactive without requiring its old compendium
+		// entry to remain published. Explicit activation is revalidated below.
+		if old, exists := previousByID[input.ID]; exists && old.FeatEntryID == input.FeatEntryID && !old.Active && !input.Active {
+			if seenIDs[input.ID] {
+				return nil, fmt.Errorf("duplicate campaign feat spell grant")
+			}
+			seenIDs[input.ID] = true
+			active = append(active, old)
+			continue
+		}
 		data, err := loadCampaignFeatSpellRule(ctx, queryer, campaignID, input.FeatEntryID)
 		if err != nil {
 			return nil, err
@@ -331,6 +342,18 @@ func reconcileFeatSpellGrants(ctx context.Context, queryer campaignReferenceQuer
 	active := make([]FeatSpellGrant, 0, len(requested))
 	requestedByFeat := map[string]int{}
 	for _, input := range requested {
+		// A prior response can contain inactive grants retained as usage history.
+		// Keep a matching stored record inactive on unrelated sheet saves. An
+		// explicit activation follows the normal validation path below.
+		if old, exists := previousByID[input.ID]; exists && old.FeatID == input.FeatID && !old.Active && !input.Active {
+			if seenIDs[input.ID] {
+				return nil, fmt.Errorf("duplicate feat spell grant id")
+			}
+			seenIDs[input.ID] = true
+			usedPrevious[input.ID] = true
+			active = append(active, old)
+			continue
+		}
 		rule, ok := dnd2024FeatSpellRules[input.FeatID]
 		if !ok || input.FeatID != rule.ID {
 			return nil, fmt.Errorf("unsupported D&D 2024 feat spell grant")

@@ -89,7 +89,14 @@ jobs:
         working-directory: backend
         env:
           REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
-        run: go test ./internal/characters -run '^TestSheetOperationsUsePersistedCampaignReferenceIntegration$' -count=1
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/character-sheet-integration.log"
+          go test -v ./internal/characters -run '^TestSheetOperationsUsePersistedCampaignReferenceIntegration$' -count=1 | tee "$output_file"
+          if grep -Fq -- '--- SKIP: TestSheetOperationsUsePersistedCampaignReferenceIntegration' "$output_file"; then
+            echo '::error::TestSheetOperationsUsePersistedCampaignReferenceIntegration was skipped.'
+            exit 1
+          fi
       - name: Test realtime fanout between independent API instances
         working-directory: backend
         env:

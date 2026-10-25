@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/compendium"
+	"vtt-backend/internal/sheetcompat"
 	"vtt-backend/internal/systems"
 )
 
@@ -657,7 +658,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		}
 		expression, dice, modifier, total = rollSpellEffect(rules, spell.Level, slotLevel)
 	}
-	raw, err = json.Marshal(sheet)
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, sheet)
 	if err != nil {
 		return SpellCastResult{}, err
 	}
@@ -965,9 +966,32 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err != nil {
 		return Character{}, err
 	}
+	submitted := sheet
+	prepare := func(previous Sheet, previousRaw []byte) (Sheet, []byte, error) {
+		next := submitted
+		next.FeatSpellGrants, err = reconcileFeatSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate feat spell grants: %w", err)
+		}
+		next.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate campaign feat spell grants: %w", err)
+		}
+		next = normalizeDerivedFields(next, rules)
+		next.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate species spell grants: %w", err)
+		}
+		next.SpellSlots = dnd2024SpellSlots(next.Class, next.Level, previous.SpellSlots)
+		next = normalizeDerivedFields(next, rules)
+		encoded, encodeErr := sheetcompat.MarshalPreservingUnknown(previousRaw, next)
+		return next, encoded, encodeErr
+	}
+
 	var previous Sheet
 	var previousRaw []byte
-	previousErr := tx.QueryRow(ctx, `select sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&previousRaw)
+	var characterID string
+	previousErr := tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &previousRaw)
 	if previousErr != nil && !errors.Is(previousErr, pgx.ErrNoRows) {
 		return Character{}, previousErr
 	}
@@ -976,34 +1000,37 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 			return Character{}, err
 		}
 	}
-	sheet.FeatSpellGrants, err = reconcileFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
-	if err != nil {
-		return Character{}, fmt.Errorf("validate feat spell grants: %w", err)
-	}
-	sheet.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
-	if err != nil {
-		return Character{}, fmt.Errorf("validate campaign feat spell grants: %w", err)
-	}
-	sheet = normalizeDerivedFields(sheet, rules)
-	sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, sheet, previous)
-	if err != nil {
-		return Character{}, fmt.Errorf("validate species spell grants: %w", err)
-	}
-	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
-	sheet = normalizeDerivedFields(sheet, rules)
-	raw, err := json.Marshal(sheet)
+	sheet, raw, err := prepare(previous, previousRaw)
 	if err != nil {
 		return Character{}, err
 	}
 	var item Character
-	err = tx.QueryRow(ctx, `
-		insert into actors(campaign_id,owner_id,kind,name,sheet)
-		values($1,$2,'character',$3,$4)
-		on conflict (campaign_id,owner_id) where kind='character'
-		do update set name=excluded.name,sheet=jsonb_set(excluded.sheet,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true)
-		returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, userID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
-	if err != nil {
-		return Character{}, fmt.Errorf("save character: %w", err)
+	if previousErr == nil {
+		err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id=$5 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		if err != nil {
+			return Character{}, fmt.Errorf("save character: %w", err)
+		}
+	} else {
+		err = tx.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character',$3,$4) on conflict (campaign_id,owner_id) where kind='character' do nothing returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, userID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another request created the character after our initial read. Lock
+			// and re-read it, then merge against that latest stored document rather
+			// than letting an upsert overwrite fields from the concurrent writer.
+			if err = tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &previousRaw); err != nil {
+				return Character{}, fmt.Errorf("character changed while saving: %w", err)
+			}
+			if err := json.Unmarshal(previousRaw, &previous); err != nil {
+				return Character{}, err
+			}
+			sheet, raw, err = prepare(previous, previousRaw)
+			if err != nil {
+				return Character{}, err
+			}
+			err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id=$5 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		}
+		if err != nil {
+			return Character{}, fmt.Errorf("save character: %w", err)
+		}
 	}
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
@@ -1095,7 +1122,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	}
 	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
 	sheet = normalizeDerivedFields(sheet, rules)
-	raw, err := json.Marshal(sheet)
+	raw, err := sheetcompat.MarshalPreservingUnknown(previousRaw, sheet)
 	if err != nil {
 		return Character{}, err
 	}
@@ -1190,7 +1217,7 @@ func (r *Repository) SetAvailableSpellSlotsForGM(ctx context.Context, campaignID
 	if err := setAvailableSpellSlots(&item.Sheet, level, current); err != nil {
 		return Character{}, err
 	}
-	raw, err = json.Marshal(item.Sheet)
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, item.Sheet)
 	if err != nil {
 		return Character{}, err
 	}

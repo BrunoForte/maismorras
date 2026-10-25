@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"vtt-backend/internal/sheetcompat"
 	"vtt-backend/internal/systems"
 )
 
@@ -135,7 +136,7 @@ func (r *Repository) RestCharacterWithHitDiceCount(ctx context.Context, campaign
 	sheet = applyRestRecovery(sheet, kind, result.Total, rules)
 	result.HPRecovered = sheet.HitPointsCurrent - previousHP
 	result.Sheet = sheet
-	raw, err = json.Marshal(sheet)
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, sheet)
 	if err != nil {
 		return RestResult{}, err
 	}
