@@ -98,6 +98,60 @@ func TestFeatGrantCannotRefreshUsesByChangingIDOrDeletingMapping(t *testing.T) {
 	}
 }
 
+func TestInactiveHistoricalGrantsCanBeResubmittedWithoutRevalidation(t *testing.T) {
+	queryer := featSpellTestQueryer{}
+	previous := Sheet{
+		FeatSpellGrants: []FeatSpellGrant{{
+			ID: "legacy-feat-grant", FeatID: "magic-initiate", FreeCastsRemaining: 0, Active: false,
+		}},
+		CampaignFeatSpellGrants: []CampaignFeatSpellGrant{{
+			ID: "campaign-feat:removed-entry:1", FeatEntryID: "removed-entry",
+			FreeCastsRemaining: map[string]int{"spell": 0}, Active: false,
+		}},
+	}
+
+	featGrants, err := reconcileFeatSpellGrants(context.Background(), queryer, "campaign", previous, previous)
+	if err != nil {
+		t.Fatalf("resubmitting an inactive built-in grant should preserve its history: %v", err)
+	}
+	if len(featGrants) != 1 || featGrants[0].ID != previous.FeatSpellGrants[0].ID || featGrants[0].Active || featGrants[0].FreeCastsRemaining != 0 {
+		t.Fatalf("inactive built-in grant history changed: %#v", featGrants)
+	}
+
+	campaignGrants, err := reconcileCampaignFeatSpellGrants(context.Background(), queryer, "campaign", previous, previous)
+	if err != nil {
+		t.Fatalf("resubmitting an inactive campaign grant should preserve its history: %v", err)
+	}
+	if len(campaignGrants) != 1 || campaignGrants[0].ID != previous.CampaignFeatSpellGrants[0].ID || campaignGrants[0].Active || campaignGrants[0].FreeCastsRemaining["spell"] != 0 {
+		t.Fatalf("inactive campaign grant history changed: %#v", campaignGrants)
+	}
+}
+
+func TestClientCannotMarkActiveHistoricalGrantInactiveToBypassValidation(t *testing.T) {
+	queryer := featSpellTestQueryer{}
+	previous := Sheet{
+		FeatSpellGrants: []FeatSpellGrant{{
+			ID: "active-feat-grant", FeatID: "magic-initiate", FreeCastsRemaining: 0, Active: true,
+		}},
+		CampaignFeatSpellGrants: []CampaignFeatSpellGrant{{
+			ID: "campaign-feat:unavailable-entry:1", FeatEntryID: "unavailable-entry",
+			FreeCastsRemaining: map[string]int{"spell": 0}, Active: true,
+		}},
+	}
+	request := Sheet{
+		FeatSpellGrants:         append([]FeatSpellGrant(nil), previous.FeatSpellGrants...),
+		CampaignFeatSpellGrants: append([]CampaignFeatSpellGrant(nil), previous.CampaignFeatSpellGrants...),
+	}
+	request.FeatSpellGrants[0].Active = false
+	request.CampaignFeatSpellGrants[0].Active = false
+	if _, err := reconcileFeatSpellGrants(context.Background(), queryer, "campaign", request, previous); err == nil {
+		t.Fatal("client-supplied inactive flag bypassed validation for an active stored grant")
+	}
+	if _, err := reconcileCampaignFeatSpellGrants(context.Background(), queryer, "campaign", request, previous); err == nil {
+		t.Fatal("client-supplied inactive flag bypassed validation for an active stored campaign grant")
+	}
+}
+
 func TestFeatSpellGrantRejectsUncuratedOrIneligibleChoices(t *testing.T) {
 	queryer := featSpellTestQueryer{
 		"wrong-level": {ID: "wrong-level", Name: "Shield", Rules: map[string]any{"level": float64(2), "classes": []any{"wizard"}}},
