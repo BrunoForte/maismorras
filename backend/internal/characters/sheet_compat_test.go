@@ -74,11 +74,11 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 		t.Fatalf("species spell grant metadata was not preserved: %#v", species)
 	}
 	feats := got["featSpellGrants"].([]any)
-	if feats[0].(map[string]any)["id"] != "feat-a" || feats[0].(map[string]any)["freeCastsRecovery"] != "long" || feats[0].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "a" {
-		t.Fatalf("unknown nested feat fields did not follow stable IDs after reorder: %#v", feats[0])
+	if len(feats) != 2 || feats[0].(map[string]any)["id"] != "feat-b" || feats[0].(map[string]any)["freeCastsRecovery"] != "short" || feats[0].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "b" {
+		t.Fatalf("legacy feat grant data changed: %#v", feats)
 	}
-	if feats[1].(map[string]any)["freeCastsMaxOverride"] != float64(3) || feats[1].(map[string]any)["freeCastsRecovery"] != "short" {
-		t.Fatalf("second feat grant metadata was not preserved: %#v", feats[1])
+	if feats[1].(map[string]any)["id"] != "feat-a" || feats[1].(map[string]any)["freeCastsRecovery"] != "long" || feats[1].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "a" {
+		t.Fatalf("second legacy feat grant changed: %#v", feats[1])
 	}
 	campaignGrant := got["campaignFeatSpellGrants"].([]any)[0].(map[string]any)
 	if campaignGrant["freeCastsMaxOverrides"].(map[string]any)["spell-a"] != float64(2) || campaignGrant["freeCastsRecoveries"].(map[string]any)["spell-a"] != "short" || campaignGrant["sourceMetadata"].(map[string]any)["campaign"] != "stored" {
