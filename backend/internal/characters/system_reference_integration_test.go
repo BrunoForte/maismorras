@@ -82,9 +82,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	forwardFields := []byte(`{
-		"speciesId":"compat-drow",
-		"speciesLineageId":"compat-lineage",
-		"speciesSpellcastingAbility":"charisma",
+		"futureBackendMetadata":{"source":"synthetic"},
 		"speciesSpellGrants":[{"id":"species-grant-1","featureId":"drow-magic","speciesId":"compat-drow","lineageId":"compat-lineage","spellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","freeCastsMax":1,"defaultFreeCasts":1,"canUseExistingSlots":false,"active":true,"futureMetadata":{"source":"synthetic"}}],
 		"featSpellGrants":[{"id":"legacy-feat-grant-1","featId":"magic-initiate","spellList":"wizard","ability":"intelligence","cantripEntryIds":["cantrip-a","cantrip-b"],"firstLevelSpellEntryId":"spell-a","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long","active":true,"futureMetadata":{"source":"synthetic"}}],
 		"campaignFeatSpellGrants":[{"id":"campaign-feat:synthetic-entry:1","featEntryId":"synthetic-entry","spellcastingAbilities":{"spell-a":"wisdom"},"freeCastsRemaining":{"spell-a":1},"freeCastsMaxOverrides":{"spell-a":2},"freeCastsRecoveries":{"spell-a":"short"},"active":true,"futureMetadata":{"source":"synthetic"}}],
@@ -125,6 +123,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	clientPayload["systemId"] = "melted-lands"
 	clientPayload["systemVersion"] = "999.0.0"
 	clientPayload["speciesId"] = "attacker-species"
+	clientPayload["futureBackendMetadata"] = map[string]any{"source": "client"}
 	clientPayload["clientOnlyField"] = map[string]any{"admin": true}
 	input, err = json.Marshal(clientPayload)
 	if err != nil {
@@ -435,27 +434,24 @@ func assertStoredForwardSheetFields(t *testing.T, ctx context.Context, pool *pgx
 	if err := json.Unmarshal(raw, &stored); err != nil {
 		t.Fatalf("%s: decode compatibility sheet: %v", stage, err)
 	}
-	for key, want := range map[string]any{
-		"speciesId":                  "compat-drow",
-		"speciesLineageId":           "compat-lineage",
-		"speciesSpellcastingAbility": "charisma",
-	} {
-		if stored[key] != want {
-			t.Fatalf("%s: %s = %v, want %v", stage, key, stored[key], want)
-		}
+	if !reflect.DeepEqual(stored["futureBackendMetadata"], map[string]any{"source": "synthetic"}) {
+		t.Fatalf("%s: unknown forward-compatible metadata changed: %#v", stage, stored["futureBackendMetadata"])
 	}
 	if _, exists := stored["clientOnlyField"]; exists {
 		t.Fatalf("%s: client-only unknown field was persisted", stage)
 	}
-	species := stored["speciesSpellGrants"].([]any)[0].(map[string]any)
+	if stored["speciesId"] == "attacker-species" {
+		t.Fatalf("%s: client-supplied species identity was persisted", stage)
+	}
+	species := findStoredGrant(t, stage, stored["speciesSpellGrants"], "species-grant-1")
 	if species["freeCastsMaxOverride"] != float64(2) || species["freeCastsRecovery"] != "long" || species["futureMetadata"].(map[string]any)["source"] != "synthetic" {
 		t.Fatalf("%s: species grant fields changed: %#v", stage, species)
 	}
-	feat := stored["featSpellGrants"].([]any)[0].(map[string]any)
+	feat := findStoredGrant(t, stage, stored["featSpellGrants"], "legacy-feat-grant-1")
 	if feat["id"] != "legacy-feat-grant-1" || feat["freeCastsMaxOverride"] != float64(2) || feat["freeCastsRecovery"] != "long" || feat["futureMetadata"].(map[string]any)["source"] != "synthetic" {
 		t.Fatalf("%s: feat grant fields changed: %#v", stage, feat)
 	}
-	campaignGrant := stored["campaignFeatSpellGrants"].([]any)[0].(map[string]any)
+	campaignGrant := findStoredGrant(t, stage, stored["campaignFeatSpellGrants"], "campaign-feat:synthetic-entry:1")
 	maxOverrides := campaignGrant["freeCastsMaxOverrides"].(map[string]any)
 	recoveries := campaignGrant["freeCastsRecoveries"].(map[string]any)
 	if maxOverrides["spell-a"] != float64(2) || recoveries["spell-a"] != "short" || campaignGrant["futureMetadata"].(map[string]any)["source"] != "synthetic" {
@@ -465,6 +461,22 @@ func assertStoredForwardSheetFields(t *testing.T, ctx context.Context, pool *pgx
 	if !reflect.DeepEqual(abilityScores["futureMetadata"], map[string]any{"keep": true}) {
 		t.Fatalf("%s: nested forward field changed: %#v", stage, abilityScores)
 	}
+}
+
+func findStoredGrant(t *testing.T, stage string, raw any, id string) map[string]any {
+	t.Helper()
+	items, ok := raw.([]any)
+	if !ok {
+		t.Fatalf("%s: grants have unexpected shape: %#v", stage, raw)
+	}
+	for _, item := range items {
+		grant, ok := item.(map[string]any)
+		if ok && grant["id"] == id {
+			return grant
+		}
+	}
+	t.Fatalf("%s: grant %q was not preserved: %#v", stage, id, items)
+	return nil
 }
 
 func characterTestUUID(t *testing.T) string {

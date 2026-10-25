@@ -7,6 +7,15 @@ import (
 	"vtt-backend/internal/sheetcompat"
 )
 
+// legacyCompatibilitySheet models the typed JSON schema used before the PR31
+// fields existed. It deliberately omits those fields so the test exercises the
+// same old-reader/newer-JSONB compatibility path as a rollback would.
+type legacyCompatibilitySheet struct {
+	Name          string        `json:"name"`
+	AbilityScores AbilityScores `json:"abilityScores"`
+	Resistances   []string      `json:"resistances,omitempty"`
+}
+
 func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 	stored := []byte(`{
 		"name":"Antes",
@@ -32,7 +41,7 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 		"abilityScores":{"strength":10,"dexterity":12,"constitution":14,"intelligence":10,"wisdom":10,"charisma":16}
 	}`)
 
-	var sheet Sheet
+	var sheet legacyCompatibilitySheet
 	if err := json.Unmarshal(request, &sheet); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +93,7 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 func TestMarshalSheetPreservingUnknownFieldsRejectsClientUnknownValues(t *testing.T) {
 	stored := []byte(`{"name":"Stored","speciesId":"canonical-species","featSpellGrants":[{"id":"feat-1","featId":"magic-initiate","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long"}]}`)
 	request := []byte(`{"name":"Edited","speciesId":"attacker-species","clientOnlyField":{"admin":true},"featSpellGrants":[{"id":"feat-1","featId":"magic-initiate","freeCastsRemaining":0,"freeCastsMaxOverride":999,"freeCastsRecovery":"short","clientOnlyNested":{"admin":true}}]}`)
-	var sheet Sheet
+	var sheet legacyCompatibilitySheet
 	if err := json.Unmarshal(request, &sheet); err != nil {
 		t.Fatal(err)
 	}
