@@ -98,6 +98,14 @@ export type CharacterCombatActionDependencies = {
 		key: string,
 		mode: SheetRoll['modo']
 	) => Promise<SheetRoll>;
+	rollCharacterForGM: (
+		session: Session,
+		campaignId: string,
+		characterId: string,
+		kind: 'skill' | 'save' | 'spell',
+		key: string,
+		mode: SheetRoll['modo']
+	) => Promise<SheetRoll>;
 	rollDice: (
 		session: Session,
 		campaignId: string,
@@ -123,7 +131,8 @@ export type CharacterCombatActionDependencies = {
 		session: Session,
 		campaignId: string,
 		kind: CharacterRest['kind'],
-		characterId?: string | null
+		characterId?: string | null,
+		hitDiceCount?: number
 	) => Promise<CharacterRest>;
 	castMySpell: (
 		session: Session,
@@ -249,13 +258,17 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		const operation = captureOperation();
 		const context = deps.getContext();
 		try {
-			const result = await deps.rollMyCharacter(
-				context.session,
-				context.campaignId,
-				kind,
-				key,
-				mode
-			);
+			const result =
+				context.isGM && context.characterId
+					? await deps.rollCharacterForGM(
+							context.session,
+							context.campaignId,
+							context.characterId,
+							kind,
+							key,
+							mode
+						)
+					: await deps.rollMyCharacter(context.session, context.campaignId, kind, key, mode);
 			if (!isCurrent(operation)) return;
 			const character = deps.getSheet();
 			const modeLabel =
@@ -429,7 +442,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		deps.syncTokenSoon();
 	}
 
-	async function rest(kind: CharacterRest['kind']) {
+	async function rest(kind: CharacterRest['kind'], hitDiceCount?: number) {
 		if (deps.getSaving()) return;
 		const operation = captureOperation();
 		const context = deps.getContext();
@@ -440,7 +453,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				context.session,
 				context.campaignId,
 				kind,
-				context.characterId
+				context.characterId,
+				kind === 'short' ? hitDiceCount : undefined
 			);
 			if (!isCurrent(operation)) return;
 			let sheet = deps.getSheet();
@@ -457,19 +471,27 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				sheet.proficiencyBonus = result.sheet.proficiencyBonus;
 				sheet.passivePerception = result.sheet.passivePerception;
 			}
-			if (kind === 'short') {
+			const rolledDice = result.dados ?? [];
+			if (kind === 'short' && rolledDice.length > 0) {
+				const constitutionNote = result.modificador
+					? ` ${result.modificador > 0 ? '+' : ''}${result.modificador} Constituição/dado`
+					: '';
 				deps.setDiceOverlay({
-					expression: result.label ?? `${sheet.name || 'Personagem'} · Dado de vida`,
-					notation: `${sheet.hitDice}${result.modificador ? `${result.modificador > 0 ? '+' : ''}${result.modificador}` : ''}`,
+					expression: result.label ?? `${sheet.name || 'Personagem'} · Dados de vida`,
+					notation: `${rolledDice.length}${sheet.hitDice.slice(1)}${constitutionNote}`,
 					total: result.total ?? 0,
-					dice: result.dados ?? []
+					dice: rolledDice
 				});
+				deps.publishChatUpdated();
+			} else if (kind === 'short') {
 				deps.publishChatUpdated();
 			}
 			deps.setMessage(
 				kind === 'long'
 					? 'Descanso longo aplicado: PV, recursos e espaços restaurados.'
-					: 'Descanso curto aplicado: dado de vida e recursos recuperados.'
+					: rolledDice.length > 0
+						? `Descanso curto aplicado: ${rolledDice.length} dado(s) gasto(s), ${result.hpRecovered ?? 0} PV recuperados e recursos atualizados.`
+						: 'Descanso curto aplicado sem gastar Dados de Vida; recursos recuperados.'
 			);
 			deps.getContext().onTokenCreated();
 		} catch (error) {
@@ -843,26 +865,25 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		}
 	}
 
-	async function presentSpell(spell: Spell) {
+	async function presentContent(title: string, description: string, contentKind: string) {
 		const operation = captureOperation();
 		const context = deps.getContext();
 		if (!deps.getCanDisplaySelectedCharacter()) return;
-		const details = deps.getSpellPresentation(spell);
 		try {
 			const message = await deps.saveSpellDisplay(
 				context.session,
 				context.campaignId,
 				deps.getSheet().name,
-				details.title,
-				details.description || spell.notes
+				title,
+				description
 			);
 			if (!isCurrent(operation)) return;
 			addChat(message);
 			if (context.isGM && context.sceneId) {
 				const presentation = {
 					assetPath: '',
-					title: details.title,
-					description: details.description || spell.notes,
+					title,
+					description,
 					visible: true,
 					visibleUserIds: [],
 					audienceRestricted: false,
@@ -871,16 +892,27 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				await deps.savePresentation(context.session, context.sceneId, presentation);
 				if (!isCurrent(operation)) return;
 				deps.publishPresentationUpdated({ presentation });
-				deps.setMessage('Magia publicada no chat e destacada para a mesa.');
+				deps.setMessage(`${contentKind} publicada no chat e destacada para a mesa.`);
 			} else {
-				deps.setMessage('Magia publicada no chat da mesa.');
+				deps.setMessage(`${contentKind} publicada no chat da mesa.`);
 			}
 		} catch (error) {
 			if (isCurrent(operation))
 				deps.setMessage(
-					error instanceof Error ? error.message : 'Não foi possível publicar a magia no chat.'
+					error instanceof Error
+						? error.message
+						: `Não foi possível publicar ${contentKind.toLowerCase()} no chat.`
 				);
 		}
+	}
+
+	async function presentSpell(spell: Spell) {
+		const details = deps.getSpellPresentation(spell);
+		const fallback =
+			deps.getContext().locale === 'en'
+				? 'Description unavailable in the compendium.'
+				: 'Descrição não cadastrada no compêndio.';
+		await presentContent(details.title, details.description || spell.notes || fallback, 'Magia');
 	}
 
 	function compatibleSlots(spell: Spell) {
@@ -914,23 +946,14 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		state.castingSpell = index;
 		try {
 			const slotLevel = spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index);
-			const result =
-				spell.level === 0 && context.sceneId
-					? await deps.castMySpell(
-							context.session,
-							context.campaignId,
-							index,
-							slotLevel,
-							featGrant,
-							context.sceneId
-						)
-					: await deps.castMySpell(
-							context.session,
-							context.campaignId,
-							index,
-							slotLevel,
-							featGrant
-						);
+			const result = await deps.castMySpell(
+				context.session,
+				context.campaignId,
+				index,
+				slotLevel,
+				featGrant,
+				context.sceneId || undefined
+			);
 			if (!isCurrent(operation)) return;
 			deps.setSheet(result.sheet);
 			const sheet = deps.getSheet();
@@ -1001,6 +1024,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		rollCustomAttack,
 		rollCustomDamage,
 		rollSpellDamage,
+		presentContent,
 		presentSpell,
 		compatibleSlots,
 		selectedSlot,

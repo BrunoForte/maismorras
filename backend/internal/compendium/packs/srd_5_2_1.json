@@ -1,6 +1,6 @@
 {
   "version": "5.2.1",
-  "revision": "cartridge-import-7",
+  "revision": "cartridge-import-8",
   "attribution": "D&D System Reference Document 5.2.1 © Wizards of the Coast LLC, CC-BY-4.0. Structured cartridge: NatOneApp/sdr-5.2.1.",
   "entries": [
     {
@@ -3167,7 +3167,7 @@
         "pt-BR.summary.source": "reviewed",
         "pt-BR.rules.name": "Estilo de Luta: Combate com Duas Armas",
         "pt-BR.rules.name.source": "reviewed",
-        "pt-BR.rules.description": "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque.",
+        "pt-BR.rules.description": "Quando fizer um ataque adicional por usar uma arma com a propriedade Leve, você pode adicionar seu modificador de habilidade ao dano desse ataque, caso ainda não o esteja adicionando.",
         "pt-BR.rules.description.source": "reviewed",
         "pt-BR.rules.benefits.0": "Adicione seu modificador de habilidade ao dano de ataques bônus com armas Leves.",
         "pt-BR.rules.benefits.0.source": "reviewed"
@@ -3182,6 +3182,44 @@
         "description": "When you make an extra attack as a result of using a weapon that has the Light property, you can add your ability modifier to the damage of that attack.",
         "benefits": [
           "Add ability modifier to damage of Light weapon bonus attacks"
+        ]
+      }
+    },
+    {
+      "entryType": "feat",
+      "name": "Grappler",
+      "summary": "You gain the following benefits.",
+      "translations": {
+        "pt-BR": "Agarrador (Grappler)",
+        "pt-BR.source": "reviewed",
+        "pt-BR.summary": "Você recebe os benefícios a seguir.",
+        "pt-BR.summary.source": "reviewed",
+        "pt-BR.rules.name": "Agarrador (Grappler)",
+        "pt-BR.rules.name.source": "reviewed",
+        "pt-BR.rules.description": "Você recebe os benefícios a seguir.",
+        "pt-BR.rules.description.source": "reviewed",
+        "pt-BR.rules.benefits.0": "Aumento no Valor de Habilidade: Aumente sua Força ou Destreza em 1, até o máximo de 20.",
+        "pt-BR.rules.benefits.0.source": "reviewed",
+        "pt-BR.rules.benefits.1": "Golpe e Agarre: Quando acertar uma criatura com um Golpe Desarmado como parte da ação Ataque no seu turno, você pode aplicar tanto o dano quanto a opção Agarrar. Só pode usar esse benefício uma vez por turno.",
+        "pt-BR.rules.benefits.1.source": "reviewed",
+        "pt-BR.rules.benefits.2": "Vantagem no Ataque: Você tem Vantagem nas jogadas de ataque contra uma criatura Agarrada por você.",
+        "pt-BR.rules.benefits.2.source": "reviewed",
+        "pt-BR.rules.benefits.3": "Lutador Ágil: Mover uma criatura Agarrada do seu tamanho ou menor não custa movimento adicional.",
+        "pt-BR.rules.benefits.3.source": "reviewed"
+      },
+      "rules": {
+        "source": "D&D SRD 5.2.1",
+        "id": "grappler",
+        "name": "Grappler",
+        "category": "General",
+        "prerequisite": "Level 4+, Strength or Dexterity 13+",
+        "repeatable": false,
+        "description": "You gain the following benefits.",
+        "benefits": [
+          "Ability Score Increase: Increase your Strength or Dexterity score by 1, to a maximum of 20.",
+          "Punch and Grab: When you hit a creature with an Unarmed Strike as part of the Attack action on your turn, you can use both the Damage and the Grapple option. You can use this benefit only once per turn.",
+          "Attack Advantage: You have Advantage on attack rolls against a creature Grappled by you.",
+          "Fast Wrestler: You don't have to spend extra movement to move a creature Grappled by you if the creature is your size or smaller."
         ]
       }
     },

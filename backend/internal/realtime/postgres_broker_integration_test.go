@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func TestPostgresBrokerPublishesAcrossConnections(t *testing.T) {
 		t.Skip("REALTIME_TEST_DATABASE_URL is not configured")
 	}
 	if !ListenCompatibleDatabaseURL(databaseURL) && !isLocalSupabaseTestURL(databaseURL) {
-		t.Fatal("REALTIME_TEST_DATABASE_URL must use a direct/session connection on port 5432 or local Supabase's loopback port 54322")
+		t.Fatal("REALTIME_TEST_DATABASE_URL must use a direct/session connection on port 5432 or a loopback Supabase URL matching REALTIME_TEST_LOCAL_SUPABASE_PORT")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -85,16 +86,35 @@ func TestPostgresBrokerPublishesAcrossConnections(t *testing.T) {
 	}
 }
 
+// isLocalSupabaseTestURL permits only loopback PostgreSQL URLs on the configured
+// local Supabase port. For an isolated stack on another port, set both
+// REALTIME_TEST_DATABASE_URL to that stack's PostgreSQL URL and
+// REALTIME_TEST_LOCAL_SUPABASE_PORT to the same port before running the tests.
+// The default remains Supabase CLI's standard port, and this test-only setting
+// never changes the production ListenCompatibleDatabaseURL policy.
 func isLocalSupabaseTestURL(raw string) bool {
 	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "postgres" && parsed.Scheme != "postgresql") || parsed.Port() != "54322" {
+	if err != nil || (parsed.Scheme != "postgres" && parsed.Scheme != "postgresql") {
 		return false
 	}
-	if strings.EqualFold(parsed.Hostname(), "localhost") {
-		return true
+	portText := strings.TrimSpace(os.Getenv("REALTIME_TEST_LOCAL_SUPABASE_PORT"))
+	if portText == "" {
+		portText = "54322"
 	}
-	ip := net.ParseIP(parsed.Hostname())
-	return ip != nil && ip.IsLoopback()
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 || parsed.Port() != strconv.Itoa(port) {
+		return false
+	}
+	query := parsed.Query()
+	if strings.EqualFold(query.Get("pool_mode"), "transaction") || strings.EqualFold(query.Get("pooling"), "transaction") {
+		return false
+	}
+	switch strings.ToLower(parsed.Hostname()) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	default:
+		return false
+	}
 }
 
 // TestPostgresBrokerFanoutAcrossIndependentInstances exercises the full
@@ -106,7 +126,7 @@ func TestPostgresBrokerFanoutAcrossIndependentInstances(t *testing.T) {
 		t.Skip("REALTIME_TEST_DATABASE_URL is not configured")
 	}
 	if !ListenCompatibleDatabaseURL(databaseURL) && !isLocalSupabaseTestURL(databaseURL) {
-		t.Fatal("REALTIME_TEST_DATABASE_URL must use a direct/session connection on port 5432 or local Supabase's loopback port 54322")
+		t.Fatal("REALTIME_TEST_DATABASE_URL must use a direct/session connection on port 5432 or a loopback Supabase URL matching REALTIME_TEST_LOCAL_SUPABASE_PORT")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

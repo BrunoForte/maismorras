@@ -108,9 +108,10 @@ describe('CharacterInventoryTab compendium picker', () => {
 		expect(html).toContain('68,49 / 68,04 kg');
 		expect(html).toContain('Limite para empurrar / arrastar / levantar');
 		expect(html).toContain('136,08 kg</span>');
-		expect(html).toContain('arredondados a 0,01');
+		expect(html).toContain('Pesos são arredondados a 0,01 kg');
+		expect(html).toContain('distâncias são arredondadas ao múltiplo mais próximo de 1,5 m');
 		expect(html).toContain('Porte Poderoso altera apenas a capacidade de carga');
-		expect(html).toContain('deslocamento não pode exceder 1,52 m');
+		expect(html).toContain('deslocamento não pode exceder 1,5 m');
 		expect(html).toContain('Peso (kg)');
 		expect(html).toContain('O total pode estar incompleto');
 		expect(html).toContain('Acima da capacidade de carga');

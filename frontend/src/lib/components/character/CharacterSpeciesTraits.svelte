@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AppLocale } from '$lib/utils/speciesRules';
+	import { distanceText } from '$lib/stores/locale';
 
 	let {
 		locale,
@@ -30,8 +31,8 @@
 		<div class="species-trait-list">
 			{#each traits as trait (trait.name)}
 				<details class="species-trait">
-					<summary>{trait.name}</summary>
-					<p>{trait.description}</p>
+					<summary>{distanceText(trait.name, locale)}</summary>
+					<p>{distanceText(trait.description, locale)}</p>
 				</details>
 			{/each}
 		</div>

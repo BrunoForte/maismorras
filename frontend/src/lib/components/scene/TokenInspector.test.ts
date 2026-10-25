@@ -255,8 +255,8 @@ describe('TokenInspector', () => {
 						name: 'Mordida',
 						kind: 'action',
 						toHit: 4,
-						range: '1,5 m',
-						damage: '2d4+2',
+						range: '2 m',
+						damage: '',
 						saveDC: 0,
 						description: 'Ataque corpo a corpo.'
 					}
@@ -276,6 +276,7 @@ describe('TokenInspector', () => {
 
 		expect(gmBody).toContain('Ações da criatura');
 		expect(gmBody).toContain('Mordida');
+		expect(gmBody).toContain('+4 · 1,5 m');
 		expect(gmBody.match(/Mordida/g)).toHaveLength(1);
 		expect(playerBody).not.toContain('Ações da criatura');
 	});

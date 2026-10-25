@@ -20,7 +20,7 @@ func TestCommittedGameEventNotifiesCampaignRealtimeIntegration(t *testing.T) {
 		t.Skip("REALTIME_TEST_DATABASE_URL is not configured")
 	}
 	if !ListenCompatibleDatabaseURL(databaseURL) && !isLocalSupabaseTestURL(databaseURL) {
-		t.Fatal("REALTIME_TEST_DATABASE_URL must use direct/session PostgreSQL or local Supabase")
+		t.Fatal("REALTIME_TEST_DATABASE_URL must use direct/session PostgreSQL or a loopback Supabase URL matching REALTIME_TEST_LOCAL_SUPABASE_PORT")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

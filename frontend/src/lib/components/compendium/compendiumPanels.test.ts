@@ -236,7 +236,7 @@ describe('compendium panels', () => {
 				'pt-BR.summary': 'Criatura Grande Gigante, Caótico e mau (ND 2).',
 				'pt-BR.rules.actions.0.name': 'Tacape',
 				'pt-BR.rules.actions.0.description':
-					'Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano contundente.'
+					'Jogada de Ataque Corpo a Corpo: +6, alcance 1,5 m Acerto: 13 (2d8 + 4) de dano contundente.'
 			},
 			rules: {
 				catalog: 'monster',
@@ -263,7 +263,7 @@ describe('compendium panels', () => {
 		}).body;
 		expect(localizedMonsterHtml).toContain('Tacape');
 		expect(localizedMonsterHtml).toContain(
-			'Jogada de Ataque Corpo a Corpo: +6, alcance 5 ft. Acerto: 13 (2d8 + 4) de dano contundente.'
+			'Jogada de Ataque Corpo a Corpo: +6, alcance 1,5 m Acerto: 13 (2d8 + 4) de dano contundente.'
 		);
 		expect(localizedMonsterHtml).not.toContain('Melee Attack Roll');
 	});

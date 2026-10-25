@@ -24,7 +24,7 @@
 		diceRendererMode,
 		setDiceRendererMode
 	} from '$lib/stores/diceOverlayStore';
-	import { appLocale } from '$lib/stores/locale';
+	import { appLocale, distanceText } from '$lib/stores/locale';
 	function rollFaces(message: Mensagem) {
 		return message.detalhesRolagem?.dadosOriginais ?? message.detalhesRolagem?.dados ?? [];
 	}
@@ -103,18 +103,18 @@
 		if (message.texto.startsWith('⚔️')) {
 			return {
 				icon: 'combat' as const,
-				text: message.texto.slice('⚔️'.length).replace(/^ /, '')
+				text: distanceText(message.texto.slice('⚔️'.length).replace(/^ /, ''), $appLocale)
 			};
 		}
 		if (message.texto.startsWith('✨')) {
 			return {
 				icon: 'spell' as const,
-				text: message.texto.slice('✨'.length).replace(/^ /, '')
+				text: distanceText(message.texto.slice('✨'.length).replace(/^ /, ''), $appLocale)
 			};
 		}
 		return {
 			icon: message.canal === 'combat' ? ('combat' as const) : null,
-			text: message.texto
+			text: distanceText(message.texto, $appLocale)
 		};
 	};
 

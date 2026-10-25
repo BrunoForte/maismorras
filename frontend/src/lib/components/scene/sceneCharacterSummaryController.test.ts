@@ -130,6 +130,7 @@ function setup(initial: Partial<SceneCharacterSummaryContext> = {}) {
 		isRevisionCurrent: () => true,
 		finishExternalSaving: vi.fn(),
 		rollMyCharacter: vi.fn(),
+		rollCharacterForGM: vi.fn(),
 		rollDice: vi.fn(async () => ({
 			id: 'roll-1',
 			payload: { expressao: '1d20', dados: [12], total: 12 }
@@ -251,7 +252,14 @@ describe('scene character summary controller', () => {
 		await test.controller.loadSelectedCharacter();
 		expect(test.getMine).toHaveBeenCalledOnce();
 		await test.controller.combatActions.castSpell(spell(1), 1);
-		expect(test.cast).toHaveBeenCalledWith(refreshedSession, 'campaign-a', 1, 1, undefined);
+		expect(test.cast).toHaveBeenCalledWith(
+			refreshedSession,
+			'campaign-a',
+			1,
+			1,
+			undefined,
+			'scene-a'
+		);
 	});
 
 	it('ignores a sheet response started with the old token after a session refresh', async () => {
@@ -321,7 +329,8 @@ describe('scene character summary controller', () => {
 			'campaign-a',
 			1,
 			1,
-			undefined
+			undefined,
+			'scene-a'
 		);
 		expect(test.controller.state.sheetsByActor['actor-a']?.spellSlots[0].current).toBe(0);
 		expect(test.chat).toHaveBeenCalledOnce();

@@ -64,7 +64,7 @@ func TestDnd2024MagicInitiateCuratedGrantUsesPublishedSpellChoicesAndServerUsage
 	if err != nil {
 		t.Fatalf("reconcile valid grant: %v", err)
 	}
-	if len(grants) != 1 || grants[0].FreeCastsRemaining != 1 || !grants[0].Active {
+	if len(grants) != 1 || grants[0].FreeCastsRemaining != 1 || !grants[0].Active || grants[0].ID != "dnd2024:feat:magic-initiate:wizard" {
 		t.Fatalf("server did not initialize the curated one-use long-rest grant: %#v", grants)
 	}
 	if got := dnd2024FeatSpellRules[grants[0].FeatID]; got.FreeCasts != 1 || got.Recovery != "long" || got.FreeCastSpellLevel != 1 {
@@ -195,15 +195,74 @@ func TestRepeatableMagicInitiateRequiresDifferentSpellLists(t *testing.T) {
 
 func TestLongRestRecoversMagicInitiateUseButShortRestDoesNot(t *testing.T) {
 	grants := []FeatSpellGrant{{FeatID: "magic-initiate", FreeCastsRemaining: 0, Active: true}}
-	short := recoverFeatSpellGrantUses(append([]FeatSpellGrant(nil), grants...), "short")
+	short, err := recoverFeatSpellGrantUses(append([]FeatSpellGrant(nil), grants...), "short")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if short[0].FreeCastsRemaining != 0 {
 		t.Fatalf("short rest recovered the free casting: %+v", short[0])
 	}
-	long := recoverFeatSpellGrantUses(append([]FeatSpellGrant(nil), grants...), "long")
+	long, err := recoverFeatSpellGrantUses(append([]FeatSpellGrant(nil), grants...), "long")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if long[0].FreeCastsRemaining != 1 {
 		t.Fatalf("long rest did not recover exactly one casting: %+v", long[0])
 	}
 }
+
+func TestFeatSpellUseConfigOverridesMaximumAndRecoveryWithoutClientAuthority(t *testing.T) {
+	queryer := featSpellTestQueryer{
+		"guidance": {ID: "guidance", Name: "Guidance", Level: 0, Classes: []string{"wizard"}, Rules: map[string]any{"level": float64(0), "classes": []any{"wizard"}}},
+		"light":    {ID: "light", Name: "Light", Level: 0, Classes: []string{"wizard"}, Rules: map[string]any{"level": float64(0), "classes": []any{"wizard"}}},
+		"shield":   {ID: "shield", Name: "Shield", Level: 1, Classes: []string{"wizard"}, Rules: map[string]any{"level": float64(1), "classes": []any{"wizard"}}},
+	}
+	sheet := validSheet()
+	sheet.Feats = "Magic Initiate"
+	input := magicInitiateGrant("client-selected")
+	input.CantripEntryIDs = []string{"guidance", "light"}
+	sheet.FeatSpellGrants = []FeatSpellGrant{input}
+	previous := Sheet{FeatSpellGrants: []FeatSpellGrant{{
+		ID: "grant", FeatID: "magic-initiate", SpellList: "wizard", FirstLevelSpellEntryID: "shield",
+		FreeCastsRemaining: 0, FreeCastsMaxOverride: ptrInt(3), FreeCastsRecovery: "short", Active: true,
+	}}}
+	grants, err := reconcileFeatSpellGrants(context.Background(), queryer, "campaign", sheet, previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grants) != 1 || grants[0].ID != "grant" || grants[0].FreeCastsRemaining != 0 || grants[0].FreeCastsMaxOverride == nil || *grants[0].FreeCastsMaxOverride != 3 || grants[0].FreeCastsRecovery != "short" {
+		t.Fatalf("stored narrator configuration/current use was not preserved: %+v", grants)
+	}
+	input.FreeCastsRemaining = 999
+	input.FreeCastsMaxOverride = ptrInt(999)
+	sheet.FeatSpellGrants = []FeatSpellGrant{input}
+	grants, err = reconcileFeatSpellGrants(context.Background(), queryer, "campaign", sheet, Sheet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if grants[0].FreeCastsRemaining != 1 || grants[0].FreeCastsMaxOverride != nil {
+		t.Fatalf("client changed server-owned usage/config: %+v", grants[0])
+	}
+}
+
+func TestConfiguredFeatSpellRecoveryShortAndLongIncludesShortRecovery(t *testing.T) {
+	grant := FeatSpellGrant{FeatID: "magic-initiate", FreeCastsRemaining: 0, FreeCastsMaxOverride: ptrInt(3), FreeCastsRecovery: "short", Active: true}
+	short, err := recoverFeatSpellGrantUses([]FeatSpellGrant{grant}, "short")
+	if err != nil || short[0].FreeCastsRemaining != 3 {
+		t.Fatalf("short rest should restore configured maximum: %+v, %v", short, err)
+	}
+	long, err := recoverFeatSpellGrantUses([]FeatSpellGrant{grant}, "long")
+	if err != nil || long[0].FreeCastsRemaining != 3 {
+		t.Fatalf("long rest should also restore short-recovery grants: %+v, %v", long, err)
+	}
+	never := FeatSpellGrant{FeatID: "magic-initiate", FreeCastsRemaining: 0, FreeCastsMaxOverride: ptrInt(3), FreeCastsRecovery: "none", Active: true}
+	unchanged, err := recoverFeatSpellGrantUses([]FeatSpellGrant{never}, "long")
+	if err != nil || unchanged[0].FreeCastsRemaining != 0 {
+		t.Fatalf("nonrecovering grant was restored: %+v, %v", unchanged, err)
+	}
+}
+
+func ptrInt(value int) *int { return &value }
 
 func TestFeatGrantedSpellChoiceRemainsBoundToItsReviewedLevelAndSpellList(t *testing.T) {
 	grant := magicInitiateGrant("server-grant")

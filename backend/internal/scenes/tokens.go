@@ -277,9 +277,49 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	if role != "gm" {
 		return Token{}, ErrForbidden
 	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Token{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// RestCharacter locks the actor before its scene token. Use the same order
+	// here, and take HP from the locked actor rather than a stale token snapshot.
+	var linkedActorID *string
+	if err = tx.QueryRow(ctx, `select actor_id::text from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&linkedActorID); errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, ErrTokenNotFound
+	} else if err != nil {
+		return Token{}, fmt.Errorf("load token actor: %w", err)
+	}
+	if linkedActorID != nil {
+		var actorKind string
+		var actorSheet []byte
+		if err = tx.QueryRow(ctx, `select kind::text,sheet from actors where id=$1 for update`, *linkedActorID).Scan(&actorKind, &actorSheet); err != nil {
+			return Token{}, fmt.Errorf("lock linked token actor: %w", err)
+		}
+		if actorKind == "character" {
+			var actorHP struct {
+				Current *int `json:"hitPointsCurrent"`
+				Maximum *int `json:"hitPointsMax"`
+			}
+			if err = json.Unmarshal(actorSheet, &actorHP); err != nil {
+				return Token{}, fmt.Errorf("read linked character HP: %w", err)
+			}
+			var tokenHPCurrent, tokenHPMax int
+			if err = tx.QueryRow(ctx, `select hp_current,hp_max from scene_tokens where id=$1 and scene_id=$2 for update`, tokenID, sceneID).Scan(&tokenHPCurrent, &tokenHPMax); err != nil {
+				return Token{}, fmt.Errorf("lock linked character token: %w", err)
+			}
+			t.HPCurrent, t.HPMax = tokenHPCurrent, tokenHPMax
+			if actorHP.Current != nil {
+				t.HPCurrent = *actorHP.Current
+			}
+			if actorHP.Maximum != nil {
+				t.HPMax = *actorHP.Maximum
+			}
+		}
+	}
 	var previousX, previousY, previousSize, gridSize int
 	var activeTokenID *string
-	if err = r.pool.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size,s.active_token_id::text from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize, &activeTokenID); errors.Is(err, pgx.ErrNoRows) {
+	if err = tx.QueryRow(ctx, `select st.position_x,st.position_y,st.size,s.grid_size,s.active_token_id::text from scene_tokens st join scenes s on s.id=st.scene_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&previousX, &previousY, &previousSize, &gridSize, &activeTokenID); errors.Is(err, pgx.ErrNoRows) {
 		return Token{}, fmt.Errorf("load current token position: %w", ErrTokenNotFound)
 	} else if err != nil {
 		return Token{}, fmt.Errorf("load current token position: %w", err)
@@ -295,17 +335,15 @@ func (r *Repository) UpdateToken(ctx context.Context, sceneID, tokenID, userID s
 	}
 	raw, _ := json.Marshal(t.Statuses)
 	visibility, _ := json.Marshal(t.Visibility)
-	err = r.pool.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,vision_range=$14,light_range=$15,movement_limit=$16,updated_at=now() where id=$17 and scene_id=$18 returning id::text,actor_id::text,owner_id::text,vision_range,light_range,movement_limit`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, t.MovementLimit, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange, &t.LightRange, &t.MovementLimit)
+	err = tx.QueryRow(ctx, `update scene_tokens set name=$1,image_url=$2,color=$3,position_x=$4,position_y=$5,size=$6,hp_current=$7,hp_max=$8,armor_class=$9,initiative=$10,statuses=$11,is_hidden=$12,visibility=$13,vision_range=$14,light_range=$15,movement_limit=$16,updated_at=now() where id=$17 and scene_id=$18 returning id::text,actor_id::text,owner_id::text,vision_range,light_range,movement_limit`, t.Name, t.ImageURL, t.Color, t.X, t.Y, t.Size, t.HPCurrent, t.HPMax, t.ArmorClass, t.Initiative, raw, t.Hidden, visibility, t.VisionRange, t.LightRange, t.MovementLimit, tokenID, sceneID).Scan(&t.ID, &t.ActorID, &t.OwnerID, &t.VisionRange, &t.LightRange, &t.MovementLimit)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Token{}, fmt.Errorf("update token: %w", ErrTokenNotFound)
 	}
 	if err != nil {
 		return Token{}, fmt.Errorf("update token: %w", err)
 	}
-	if t.ActorID != nil {
-		if _, err = r.pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{hitPointsCurrent}',to_jsonb($1::int),true) where id=$2 and kind='character'`, t.HPCurrent, *t.ActorID); err != nil {
-			return Token{}, fmt.Errorf("sync token HP to character: %w", err)
-		}
+	if err = tx.Commit(ctx); err != nil {
+		return Token{}, err
 	}
 	if err = r.revealTokenVision(ctx, sceneID, t); err != nil {
 		return Token{}, fmt.Errorf("reveal token vision: %w", err)
@@ -333,8 +371,22 @@ func (r *Repository) UpdateTokenHitPoints(ctx context.Context, sceneID, tokenID,
 	defer func() { _ = tx.Rollback(ctx) }()
 	var actorOwnerID, actorID *string
 	var actorKind string
+	if err = tx.QueryRow(ctx, `select actor_id::text from scene_tokens where id=$1 and scene_id=$2`, tokenID, sceneID).Scan(&actorID); errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, ErrTokenNotFound
+	} else if err != nil {
+		return Token{}, fmt.Errorf("load token actor for HP update: %w", err)
+	}
+	if actorID != nil {
+		var ownerID string
+		if err = tx.QueryRow(ctx, `select coalesce(owner_id::text,''),kind::text from actors where id=$1 for update`, *actorID).Scan(&ownerID, &actorKind); err != nil {
+			return Token{}, fmt.Errorf("lock actor for HP update: %w", err)
+		}
+		if ownerID != "" {
+			actorOwnerID = &ownerID
+		}
+	}
 	var current, maximum int
-	err = tx.QueryRow(ctx, `select a.owner_id::text,st.actor_id::text,coalesce(a.kind::text,''),st.hp_current,st.hp_max from scene_tokens st left join actors a on a.id=st.actor_id where st.id=$1 and st.scene_id=$2 for update of st`, tokenID, sceneID).Scan(&actorOwnerID, &actorID, &actorKind, &current, &maximum)
+	err = tx.QueryRow(ctx, `select st.actor_id::text,st.hp_current,st.hp_max from scene_tokens st where st.id=$1 and st.scene_id=$2 for update`, tokenID, sceneID).Scan(&actorID, &current, &maximum)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Token{}, ErrTokenNotFound
 	}

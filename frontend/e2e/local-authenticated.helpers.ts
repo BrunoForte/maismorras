@@ -7,6 +7,7 @@ import {
 	test,
 	type Browser,
 	type BrowserContext,
+	type BrowserContextOptions,
 	type Page,
 	type APIRequestContext,
 	type TestInfo
@@ -90,7 +91,9 @@ export type LocalAuthenticatedFixture = {
 export async function createLocalAuthenticatedFixture(
 	browser: Browser,
 	withAudio = false,
-	audioSamples = 800
+	audioSamples = 800,
+	contextOptions: BrowserContextOptions = {},
+	onAuthenticatedPage?: (page: Page) => void
 ): Promise<LocalAuthenticatedFixture> {
 	if (!supabaseUrl || !serviceRoleKey)
 		throw new Error('Local Supabase test configuration is unavailable.');
@@ -99,12 +102,16 @@ export async function createLocalAuthenticatedFixture(
 	const gmEmail = `gm-${suffix}@example.test`;
 	const playerEmail = `player-${suffix}@example.test`;
 	const playerDisplayName = `player-${suffix}`;
+	const unauthenticatedContextOptions: BrowserContextOptions = {
+		...contextOptions,
+		storageState: { cookies: [], origins: [] }
+	};
 	const admin = await playwrightRequest.newContext({
 		baseURL: supabaseUrl,
 		extraHTTPHeaders: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
 	});
-	const gmContext = await browser.newContext();
-	const playerContext = await browser.newContext();
+	const gmContext = await browser.newContext(unauthenticatedContextOptions);
+	const playerContext = await browser.newContext(unauthenticatedContextOptions);
 	let overlayContext: BrowserContext | undefined;
 	const additionalContexts: BrowserContext[] = [];
 	const additionalPlayers: string[] = [];
@@ -178,13 +185,14 @@ export async function createLocalAuthenticatedFixture(
 		const login = async (role: 'GM' | 'player', context: BrowserContext, email: string) =>
 			test.step(`login ${role}`, async () => {
 				const page = await context.newPage();
+				onAuthenticatedPage?.(page);
 				await page.goto('/');
 				await page.getByLabel('E-mail de teste').fill(email);
 				await page.getByLabel('Senha de teste').fill(password);
 				await page.getByRole('button', { name: 'Entrar no ambiente local' }).click();
-				await expect(page.getByText(/Central de campanhas|Campaign hub/i)).toBeVisible({
-					timeout: 20_000
-				});
+				await expect(
+					page.getByRole('heading', { name: /Escolha um portal\.|Choose a portal\./ })
+				).toBeVisible();
 				const token = await page.evaluate(() => {
 					for (let index = 0; index < localStorage.length; index += 1) {
 						const key = localStorage.key(index);
@@ -307,7 +315,7 @@ export async function createLocalAuthenticatedFixture(
 				const displayName = email.slice(0, email.indexOf('@'));
 				const userId = (await createUser(email, displayName)).id;
 				additionalPlayers.push(userId);
-				const context = await browser.newContext();
+				const context = await browser.newContext(unauthenticatedContextOptions);
 				additionalContexts.push(context);
 				const loginResult = await login('player', context, email);
 				const api = await playwrightRequest.newContext({

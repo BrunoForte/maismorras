@@ -7,6 +7,15 @@ import (
 	"vtt-backend/internal/sheetcompat"
 )
 
+// legacyCompatibilitySheet models the typed JSON schema used before the PR31
+// fields existed. It deliberately omits those fields so the test exercises the
+// same old-reader/newer-JSONB compatibility path as a rollback would.
+type legacyCompatibilitySheet struct {
+	Name          string        `json:"name"`
+	AbilityScores AbilityScores `json:"abilityScores"`
+	Resistances   []string      `json:"resistances,omitempty"`
+}
+
 func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 	stored := []byte(`{
 		"name":"Antes",
@@ -32,7 +41,7 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 		"abilityScores":{"strength":10,"dexterity":12,"constitution":14,"intelligence":10,"wisdom":10,"charisma":16}
 	}`)
 
-	var sheet Sheet
+	var sheet legacyCompatibilitySheet
 	if err := json.Unmarshal(request, &sheet); err != nil {
 		t.Fatal(err)
 	}
@@ -65,11 +74,11 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 		t.Fatalf("species spell grant metadata was not preserved: %#v", species)
 	}
 	feats := got["featSpellGrants"].([]any)
-	if feats[0].(map[string]any)["id"] != "feat-a" || feats[0].(map[string]any)["freeCastsRecovery"] != "long" || feats[0].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "a" {
-		t.Fatalf("unknown nested feat fields did not follow stable IDs after reorder: %#v", feats[0])
+	if len(feats) != 2 || feats[0].(map[string]any)["id"] != "feat-b" || feats[0].(map[string]any)["freeCastsRecovery"] != "short" || feats[0].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "b" {
+		t.Fatalf("legacy feat grant data changed: %#v", feats)
 	}
-	if feats[1].(map[string]any)["freeCastsMaxOverride"] != float64(3) || feats[1].(map[string]any)["freeCastsRecovery"] != "short" {
-		t.Fatalf("second feat grant metadata was not preserved: %#v", feats[1])
+	if feats[1].(map[string]any)["id"] != "feat-a" || feats[1].(map[string]any)["freeCastsRecovery"] != "long" || feats[1].(map[string]any)["sourceMetadata"].(map[string]any)["grant"] != "a" {
+		t.Fatalf("second legacy feat grant changed: %#v", feats[1])
 	}
 	campaignGrant := got["campaignFeatSpellGrants"].([]any)[0].(map[string]any)
 	if campaignGrant["freeCastsMaxOverrides"].(map[string]any)["spell-a"] != float64(2) || campaignGrant["freeCastsRecoveries"].(map[string]any)["spell-a"] != "short" || campaignGrant["sourceMetadata"].(map[string]any)["campaign"] != "stored" {
@@ -84,7 +93,7 @@ func TestMarshalSheetPreservingUnknownFieldsKeepsStoredPR31Data(t *testing.T) {
 func TestMarshalSheetPreservingUnknownFieldsRejectsClientUnknownValues(t *testing.T) {
 	stored := []byte(`{"name":"Stored","speciesId":"canonical-species","featSpellGrants":[{"id":"feat-1","featId":"magic-initiate","freeCastsRemaining":1,"freeCastsMaxOverride":2,"freeCastsRecovery":"long"}]}`)
 	request := []byte(`{"name":"Edited","speciesId":"attacker-species","clientOnlyField":{"admin":true},"featSpellGrants":[{"id":"feat-1","featId":"magic-initiate","freeCastsRemaining":0,"freeCastsMaxOverride":999,"freeCastsRecovery":"short","clientOnlyNested":{"admin":true}}]}`)
-	var sheet Sheet
+	var sheet legacyCompatibilitySheet
 	if err := json.Unmarshal(request, &sheet); err != nil {
 		t.Fatal(err)
 	}

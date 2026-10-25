@@ -11,7 +11,9 @@ test('weapon damage builder sends numeric dice, validates formulas, and round-tr
 		const section = page.locator(`[data-profile="${profile}"]`);
 		const emptyState = section.getByTestId('no-damage-dice');
 		await expect(emptyState).toBeVisible();
-		await expect(emptyState.getByRole('spinbutton')).toBeDisabled();
+		await expect(section.getByRole('spinbutton')).toHaveCount(0);
+		await expect(section.locator('.die-type-picker')).toHaveCount(0);
+		await expect(section.getByRole('button', { name: '+ dado' })).toBeVisible();
 		const emptyReport = JSON.parse(
 			(await section.getByTestId(`${profile}-report`).textContent()) ?? 'null'
 		);
@@ -63,5 +65,28 @@ test('weapon damage builder sends numeric dice, validates formulas, and round-tr
 	expect(JSON.parse((await page.getByTestId('saved').textContent()) ?? 'null')).toEqual({
 		base: '1d100',
 		alternate: '1d100'
+	});
+	for (const profile of ['base', 'alternate'] as const) {
+		const section = page.locator(`[data-profile="${profile}"]`);
+		await section.getByRole('button', { name: 'Remover componente de dano 1' }).click();
+		await expect(section.getByTestId('no-damage-dice')).toBeVisible();
+		await expect(section.getByRole('spinbutton')).toHaveCount(0);
+		await expect(section.locator('.die-type-picker')).toHaveCount(0);
+		await expect(section.getByRole('button', { name: '+ dado' })).toBeVisible();
+		await expect(section.getByTestId(`${profile}-formula`)).toHaveText('Fórmula: ');
+		expect(
+			JSON.parse((await section.getByTestId(`${profile}-report`).textContent()) ?? 'null')
+		).toEqual({
+			profile,
+			components: [],
+			formula: '',
+			validation: null
+		});
+		await page.getByTestId('save-reload').click();
+		await expect(section.getByTestId(`${profile}-formula`)).toHaveText('Fórmula: ');
+	}
+	expect(JSON.parse((await page.getByTestId('saved').textContent()) ?? 'null')).toEqual({
+		base: '',
+		alternate: ''
 	});
 });

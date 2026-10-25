@@ -6,6 +6,7 @@
 	import type { WeaponAttackProfile } from '$lib/utils/weaponRules';
 	import CharacterMapSummary from './CharacterMapSummary.svelte';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
+	import { distanceText } from '$lib/stores/locale';
 
 	export type TokenInspectorPermissions = {
 		canEditHitPoints: boolean;
@@ -193,10 +194,10 @@
 			<span>{isEnglish ? 'Creature actions' : 'Ações da criatura'}</span>
 			{#each npcActions as action (npcActionKey(action))}<button
 					onclick={() => onNpcAction(action)}
-					title={action.description || action.damage}
+					title={distanceText(action.description || action.damage, isEnglish ? 'en' : 'pt-BR')}
 					><strong>{action.name}</strong><small
 						>{action.toHit >= 0 ? `+${action.toHit}` : action.toHit} · {action.damage ||
-							action.range ||
+							distanceText(action.range || '', isEnglish ? 'en' : 'pt-BR') ||
 							(isEnglish ? 'Action' : 'Ação')}</small
 					></button
 				>{/each}

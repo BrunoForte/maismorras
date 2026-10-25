@@ -25,7 +25,8 @@ export function formatDnd2024Weight(pounds: number | null, locale: string): stri
 	return pounds === null ? '—' : formatMetric(poundsToKilograms(pounds), locale);
 }
 
-/** Display-only rounding to the nearest centimeter; the rule continues to use its exact feet value. */
+/** Display-only rounding to the nearest 1.5 m; the rule continues to use its exact feet value. */
 export function formatDnd2024Distance(feet: number, locale: string): string {
-	return formatMetric(feetToMeters(feet), locale);
+	const meters = feetToMeters(feet);
+	return formatMetric(Math.round(meters / 1.5) * 1.5, locale);
 }

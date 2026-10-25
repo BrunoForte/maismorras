@@ -56,6 +56,8 @@ export type Dnd2024FeatSpellGrant = {
 	cantripEntryIds: string[];
 	firstLevelSpellEntryId: string;
 	freeCastsRemaining: number;
+	freeCastsMaxOverride?: number;
+	freeCastsRecovery?: 'none' | 'short' | 'long';
 	active?: boolean;
 };
 export type CampaignFeatSpellGrant = {
@@ -63,7 +65,24 @@ export type CampaignFeatSpellGrant = {
 	featEntryId: string;
 	spellcastingAbilities: Record<string, 'intelligence' | 'wisdom' | 'charisma'>;
 	freeCastsRemaining: Record<string, number>;
+	freeCastsMaxOverrides?: Record<string, number>;
+	freeCastsRecoveries?: Record<string, 'none' | 'short' | 'long'>;
 	active?: boolean;
+};
+export type SpeciesSpellGrant = {
+	id: string;
+	featureId: string;
+	speciesId: string;
+	lineageId: string;
+	spellEntryId: string;
+	freeCastsRemaining: number;
+	freeCastsMaxOverride?: number;
+	freeCastsRecovery?: 'none' | 'short' | 'long';
+	freeCastsMax: number;
+	defaultFreeCasts: number;
+	canUseExistingSlots: boolean;
+	spellcastingAbility?: 'intelligence' | 'wisdom' | 'charisma';
+	active: boolean;
 };
 export type InventoryItem = {
 	entryId: string;
@@ -114,6 +133,8 @@ export type CharacterSheet = {
 	money?: Dnd2024Money;
 	featSpellGrants?: Dnd2024FeatSpellGrant[];
 	campaignFeatSpellGrants?: CampaignFeatSpellGrant[];
+	speciesSpellGrants?: SpeciesSpellGrant[];
+	speciesSpellcastingAbility?: 'intelligence' | 'wisdom' | 'charisma' | '';
 	visibleRolls?: string[];
 	resistances?: string[];
 	automaticTraits?: string[];
@@ -202,6 +223,7 @@ function normalizeCharacter(character: Character): Character {
 		money: normalizeDnd2024Money(character.sheet.money),
 		featSpellGrants: character.sheet.featSpellGrants ?? [],
 		campaignFeatSpellGrants: character.sheet.campaignFeatSpellGrants ?? [],
+		speciesSpellGrants: character.sheet.speciesSpellGrants ?? [],
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
 		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
@@ -279,6 +301,26 @@ export type SheetRoll = {
 	total: number;
 	label: string;
 };
+
+export const setSpellGrantUseConfigForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	grantId: string,
+	entryId: string,
+	maxUses: number,
+	currentUses: number,
+	restoreOn: 'none' | 'short' | 'long'
+) =>
+	request<Character>(
+		session,
+		`/api/v1/campaigns/${campaignId}/characters/${characterId}/spell-grants/${encodeURIComponent(grantId)}`,
+		{
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ entryId, maxUses, currentUses, restoreOn })
+		}
+	).then(normalizeCharacter);
 export const rollMyCharacter = (
 	session: Session,
 	campaignId: string,
@@ -290,6 +332,18 @@ export const rollMyCharacter = (
 		method: 'POST',
 		body: JSON.stringify({ kind, key, mode })
 	});
+export const rollCharacterForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	kind: 'skill' | 'save' | 'spell',
+	key: string,
+	mode: SheetRoll['modo']
+) =>
+	request<SheetRoll>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}/roll`, {
+		method: 'POST',
+		body: JSON.stringify({ kind, key, mode })
+	});
 export type CharacterRest = {
 	eventId?: number;
 	sheet: CharacterSheet;
@@ -297,20 +351,22 @@ export type CharacterRest = {
 	dados?: number[];
 	modificador?: number;
 	total?: number;
+	hpRecovered?: number;
 	label?: string;
 };
 export const restCharacter = (
 	session: Session,
 	campaignId: string,
 	kind: CharacterRest['kind'],
-	characterId?: string | null
+	characterId?: string | null,
+	hitDiceCount?: number
 ) => {
 	const path = characterId
 		? `/api/v1/campaigns/${campaignId}/characters/${characterId}/rest`
 		: `/api/v1/campaigns/${campaignId}/character/rest`;
 	return request<CharacterRest>(session, path, {
 		method: 'POST',
-		body: JSON.stringify({ kind })
+		body: JSON.stringify({ kind, ...(hitDiceCount === undefined ? {} : { hitDiceCount }) })
 	}).then((result) => ({
 		...result,
 		sheet: normalizeCharacter({
