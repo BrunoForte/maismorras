@@ -59,11 +59,15 @@
 			pendingSlotLevels = pendingSlotLevels.filter((pendingLevel) => pendingLevel !== level);
 		}
 	}
-	function castSpellAction(spell: Spell, index: number, grantId?: string) {
+	function castSpellAction(
+		spell: Spell,
+		index: number,
+		grant?: Pick<SpellFeatGrantProjection, 'id' | 'spellEntryId'>
+	) {
 		void actions.cast(
 			spell,
 			index,
-			grantId ? { grantId, entryId: spell.entryId ?? '', freeCast: false } : undefined
+			grant ? { grantId: grant.id, entryId: grant.spellEntryId, freeCast: false } : undefined
 		);
 	}
 	function grantConfigKey(grant: { id: string; spellEntryId: string }) {
@@ -75,6 +79,22 @@
 		if (grant.featId === 'fiendish-legacy')
 			return $appLocale === 'en' ? 'Abyssal Tiefling' : 'Tiefling Abissal';
 		return grant.featName;
+	}
+	function grantRecoveryLabel(recovery: string) {
+		if (recovery === 'short') return $appLocale === 'en' ? 'Short Rest' : 'Descanso curto';
+		if (recovery === 'long') return $appLocale === 'en' ? 'Long Rest' : 'Descanso longo';
+		return $appLocale === 'en' ? 'No recovery' : 'Sem recuperação';
+	}
+	function grantUseStatusLabel(grant: SpellFeatGrantProjection) {
+		const useLabel =
+			grant.freeCastsRemaining > 0
+				? $appLocale === 'en'
+					? `Free use ${grant.freeCastsRemaining}/${grant.freeCastsMax}`
+					: `Uso grátis ${grant.freeCastsRemaining}/${grant.freeCastsMax}`
+				: $appLocale === 'en'
+					? 'Free use spent'
+					: 'Uso grátis gasto';
+		return `${grantSourceName(grant)} · ${useLabel} · ${grantRecoveryLabel(grant.recovery)}`;
 	}
 	type GrantDraft = { maxUses: number; currentUses: number; restoreOn: 'none' | 'short' | 'long' };
 	function grantConfigDraft(grant: SpellFeatGrantProjection): GrantDraft {
@@ -231,12 +251,9 @@
 			</header>
 			{#if spellbook.spellsForCircle(circle).length}
 				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], origins = [] } (key ?? index)}
-					{@const atWillGrant = featGrants.find(
-						(grant) => grant.spellEntryId === spell.entryId && grant.freeUses === 0
-					)}
-					{@const spellGrant = featGrants.find(
-						(grant) => grant.spellEntryId === spell.entryId && grant.canUseExistingSlots
-					)}
+					{@const freeCastGrants = featGrants.filter((grant) => grant.freeUses > 0)}
+					{@const atWillGrant = featGrants.find((grant) => grant.freeUses === 0)}
+					{@const spellGrant = featGrants.find((grant) => grant.canUseExistingSlots)}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
@@ -244,10 +261,17 @@
 							aria-expanded={expandedSpell === index}
 							onclick={() => actions.setExpandedSpell(expandedSpell === index ? null : index)}
 						>
-							<strong
-								>{presentation.displayName(spell) ||
-									($appLocale === 'en' ? 'Unnamed spell' : 'Magia sem nome')}</strong
-							>
+							<div class="spell-heading">
+								<strong
+									>{presentation.displayName(spell) ||
+										($appLocale === 'en' ? 'Unnamed spell' : 'Magia sem nome')}</strong
+								>
+								{#each freeCastGrants as grant (grant.id)}
+									<small class="free-cast-status" class:spent={grant.freeCastsRemaining === 0}>
+										{grantUseStatusLabel(grant)}
+									</small>
+								{/each}
+							</div>
 							<span
 								>{presentation.circleLabel(spell.level)} · <RpgIcon
 									name={expandedSpell === index ? 'chevron-up' : 'chevron-down'}
@@ -438,7 +462,7 @@
 									</label>
 								{/if}
 								<div class="spell-actions">
-									{#each featGrants.filter((grant) => grant.spellEntryId === spell.entryId) as grant (grant.id)}
+									{#each featGrants as grant (grant.id)}
 										<small class="feat-casting-source">
 											{grantSourceName(grant)}{grant.spellList
 												? ` · ${grant.spellList}`
@@ -524,7 +548,7 @@
 												onclick={() =>
 													actions.cast(spell, index, {
 														grantId: grant.id,
-														entryId: spell.entryId ?? '',
+														entryId: grant.spellEntryId,
 														freeCast: true
 													})}
 												>{$appLocale === 'en'
@@ -566,7 +590,7 @@
 										type="button"
 										disabled={castingSpell === index}
 										aria-busy={castingSpell === index}
-										onclick={() => castSpellAction(spell, index, atWillGrant?.id)}
+										onclick={() => castSpellAction(spell, index, atWillGrant)}
 										>{castingSpell === index
 											? '…'
 											: $appLocale === 'en'
@@ -594,7 +618,7 @@
 											(spellGrant?.sourceKind === 'species' && !spellGrant.ability)}
 										aria-busy={castingSpell === index}
 										onclick={() =>
-											castSpellAction(spell, index, index < 0 ? spellGrant?.id : undefined)}
+											castSpellAction(spell, index, index < 0 ? spellGrant : undefined)}
 										>{castingSpell === index
 											? '…'
 											: $appLocale === 'en'
@@ -712,6 +736,27 @@
 		color: #b99a68;
 		font-size: 0.72rem;
 		white-space: nowrap;
+	}
+	.spell-heading {
+		display: grid;
+		min-width: 0;
+		gap: 0.3rem;
+	}
+	.spell-circle .free-cast-status {
+		width: fit-content;
+		border: 1px solid #42674e;
+		border-radius: 999px;
+		padding: 0.15rem 0.45rem;
+		color: #bce2c4;
+		background: #1b2a20;
+		font-size: 0.66rem;
+		font-weight: 600;
+		white-space: normal;
+	}
+	.spell-circle .free-cast-status.spent {
+		border-color: #66564a;
+		color: #d3b99f;
+		background: #29211e;
 	}
 	.spell-details {
 		display: grid;
