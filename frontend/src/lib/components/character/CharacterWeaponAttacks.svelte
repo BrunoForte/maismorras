@@ -426,7 +426,11 @@
 												>🎲 {$appLocale === 'en' ? 'Damage' : 'Dano'}</button
 											>
 											<button
-												class="danger-button"
+												class="profile-remove"
+												type="button"
+												aria-label={$appLocale === 'en'
+													? `Remove ${profile.name || 'alternate attack'}`
+													: `Remover ${profile.name || 'golpe alternativo'}`}
 												onclick={() => actions.removeWeaponAttackProfile(item, profile.id)}
 												>×</button
 											>
@@ -684,6 +688,28 @@
 		padding: 0.48rem 0.6rem;
 		color: #e8c786;
 		background: #2a211e;
+	}
+	.weapon-combat-actions .profile-remove {
+		flex: 0 0 2.3rem;
+		width: 2.3rem;
+		min-height: 2.3rem;
+		border: 1px solid #5b493b;
+		border-radius: 6px;
+		padding: 0;
+		color: #cda692;
+		background: #241d1e;
+		font: inherit;
+		font-size: 1rem;
+		cursor: pointer;
+	}
+	.weapon-combat-actions .profile-remove:hover {
+		border-color: #a06b5f;
+		color: #f0c1b4;
+		background: #382321;
+	}
+	.weapon-combat-actions .profile-remove:focus-visible {
+		outline: 2px solid #f0d29d;
+		outline-offset: 2px;
 	}
 	.weapon-combat-actions .roll-weapon {
 		color: #ffe1a4;

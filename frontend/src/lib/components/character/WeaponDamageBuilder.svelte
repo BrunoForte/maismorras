@@ -84,21 +84,35 @@
 			</label>
 			<button
 				type="button"
-				class="danger-button"
+				class="damage-remove"
 				aria-label={`${$appLocale === 'en' ? 'Remove damage component' : 'Remover componente de dano'} ${index + 1}`}
 				onclick={() => onchange(removeDamageComponent(components, index))}>×</button
 			>
+			{#if index === components.length - 1}
+				<button
+					id={`damage-add-${identifier}`}
+					type="button"
+					class="damage-add"
+					aria-label={$appLocale === 'en' ? 'Add damage die' : 'Adicionar dado de dano'}
+					disabled={components.reduce((total, part) => total + (Number(part.count) || 0), 0) >= 10}
+					onclick={() => onchange(addDamageComponent(components))}
+				>
+					+ {$appLocale === 'en' ? 'die' : 'dado'}
+				</button>
+			{/if}
 		</div>
 	{/each}
-	<button
-		id={`damage-add-${identifier}`}
-		type="button"
-		class="secondary-button"
-		disabled={components.reduce((total, part) => total + (Number(part.count) || 0), 0) >= 10}
-		onclick={() => onchange(addDamageComponent(components))}
-	>
-		+ {$appLocale === 'en' ? 'die' : 'dado'}
-	</button>
+	{#if components.length === 0}
+		<button
+			id={`damage-add-${identifier}`}
+			type="button"
+			class="damage-add"
+			aria-label={$appLocale === 'en' ? 'Add damage die' : 'Adicionar dado de dano'}
+			onclick={() => onchange(addDamageComponent(components))}
+		>
+			+ {$appLocale === 'en' ? 'die' : 'dado'}
+		</button>
+	{/if}
 </div>
 
 <style>
@@ -110,7 +124,7 @@
 	.damage-component {
 		min-width: 0;
 		display: grid;
-		grid-template-columns: minmax(5rem, 1fr) minmax(5rem, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
 		align-items: end;
 		gap: 0.5rem;
 	}
@@ -118,14 +132,84 @@
 		min-width: 0;
 		display: grid;
 		gap: 0.25rem;
+		color: #bcae9f;
+		font-size: 0.68rem;
+	}
+	.damage-component input,
+	.damage-component select {
+		width: 100%;
+		min-width: 0;
+		height: 2.3rem;
+		border: 1px solid #554841;
+		border-radius: 6px;
+		padding: 0.4rem 0.5rem;
+		color: #f5ede3;
+		background: #121012;
+		font: inherit;
+	}
+	.damage-component button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.3rem;
+		border: 1px solid #765d3d;
+		border-radius: 6px;
+		padding: 0.35rem 0.55rem;
+		font: inherit;
+		font-size: 0.75rem;
+		line-height: 1;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.damage-remove {
+		width: 2.3rem;
+		padding: 0;
+		color: #e3a09a;
+		background: #2a1c1e;
+	}
+	.damage-add {
+		color: #f0d29d;
+		background: #2b211c;
+	}
+	.damage-add:not(:disabled):hover {
+		border-color: #c89655;
+		background: #38281f;
+	}
+	.damage-remove:hover {
+		border-color: #a06b5f;
+		color: #f0c1b4;
+		background: #382321;
+	}
+	.damage-component button:focus-visible,
+	.damage-builder > .damage-add:focus-visible {
+		outline: 2px solid #f0d29d;
+		outline-offset: 2px;
+	}
+	.damage-add:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 	.damage-error {
 		color: #f0a29b;
 		font-size: 0.72rem;
 	}
-	@media (max-width: 520px) {
+	@media (max-width: 420px) {
 		.damage-component {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2.2rem auto;
+			gap: 0.35rem;
+		}
+		.damage-component label {
+			font-size: 0.62rem;
+		}
+		.damage-component button {
+			min-height: 2.2rem;
+			font-size: 0.7rem;
+		}
+		.damage-remove {
+			width: 2.2rem;
+		}
+		.damage-component .damage-add {
+			padding-inline: 0.4rem;
 		}
 	}
 </style>
