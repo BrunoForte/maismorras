@@ -137,6 +137,7 @@
 	}
 	.damage-component input,
 	.damage-component select {
+		box-sizing: border-box;
 		width: 100%;
 		min-width: 0;
 		height: 2.3rem;
@@ -210,6 +211,22 @@
 		}
 		.damage-component .damage-add {
 			padding-inline: 0.4rem;
+		}
+	}
+	@media (max-width: 350px) {
+		.damage-component {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2rem auto;
+			gap: 0.25rem;
+		}
+		.damage-component label {
+			font-size: 0.58rem;
+		}
+		.damage-remove {
+			width: 2rem;
+		}
+		.damage-component .damage-add {
+			padding-inline: 0.3rem;
+			font-size: 0.65rem;
 		}
 	}
 </style>
