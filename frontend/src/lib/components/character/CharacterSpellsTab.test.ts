@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import type { Spell } from '$lib/services/characterApi';
-import type { SpellFeatGrantProjection } from '$lib/utils/character/characterSpellRules';
+import type { Dnd2024FeatSpellGrant, Spell } from '$lib/services/characterApi';
+import type { CompendiumEntry } from '$lib/services/compendiumApi';
+import {
+	projectCharacterSpells,
+	type SpellCircleEntry,
+	type SpellFeatGrantProjection
+} from '$lib/utils/character/characterSpellRules';
 import CharacterSpellsTab from './CharacterSpellsTab.svelte';
 
 function renderSpellSlots(isGM: boolean, current = 1, maximum = 2, canAdjustSlots = isGM) {
@@ -100,16 +105,14 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 	function renderSpell(
 		expandedSpell: number | null,
 		canCastSpells = false,
-		spells: {
-			spell: Spell;
-			index: number;
-			key: string;
-			featGrants?: SpellFeatGrantProjection[];
-			origins?: ('class' | 'feat' | 'species')[];
-		}[] = [{ spell: { name: 'Luz', level: 0, notes: '' }, index: 0, key: 'luz' }],
+		spells: SpellCircleEntry[] = [
+			{ spell: { name: 'Luz', level: 0, notes: '' }, index: 0, key: 'luz' }
+		],
 		canDisplayCharacter = false,
 		isGM = false,
-		canAdjustSlots = isGM
+		canAdjustSlots = isGM,
+		slotCurrent = 1,
+		slotMaximum = 1
 	) {
 		return render(CharacterSpellsTab, {
 			props: {
@@ -129,7 +132,7 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 					addableCircles: () => [],
 					availableCircles: () => [...new Set(spells.map(({ spell }) => spell.level))],
 					slotForCircle: (level: number) =>
-						level === 1 ? { level: 1, current: 1, max: 1 } : undefined,
+						level === 1 ? { level: 1, current: slotCurrent, max: slotMaximum } : undefined,
 					spellsForCircle: (level: number) => spells.filter(({ spell }) => spell.level === level),
 					entriesForCircle: () => [],
 					compatibleSlots: (spell: Spell) =>
@@ -224,5 +227,76 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 		const player = renderSpell(-1, true, [speciesSpell]);
 		expect(player).not.toContain('Configurar usos de Alto Elfo');
 		expect(player).toContain('Espaço de magia');
+	});
+
+	it('shows Magic Initiate free uses separately from class spell slots', () => {
+		const grant: Dnd2024FeatSpellGrant = {
+			id: 'magic-initiate-grant',
+			featId: 'magic-initiate',
+			spellList: 'wizard',
+			ability: 'intelligence',
+			cantripEntryIds: ['', ''],
+			firstLevelSpellEntryId: 'compendium-granted-spell',
+			freeCastsRemaining: 1,
+			freeCastsRecovery: 'long'
+		};
+		const grantedEntry: CompendiumEntry = {
+			id: 'compendium-granted-spell',
+			sourceId: 'srd',
+			entryType: 'spell',
+			name: 'Escudo',
+			summary: '',
+			rules: { level: 1, classes: ['wizard'] },
+			translations: {},
+			isPublished: true
+		};
+		const classSpell: Spell = {
+			entryId: 'class-compendium-spell',
+			name: 'Escudo',
+			level: 1,
+			notes: ''
+		};
+		const projected = projectCharacterSpells(
+			[classSpell],
+			[grant],
+			[grantedEntry],
+			(entry) => entry.name
+		);
+
+		expect(projected).toHaveLength(1);
+		expect(projected[0]).toMatchObject({
+			spell: { entryId: 'class-compendium-spell', name: 'Escudo' },
+			featGrants: [{ id: 'magic-initiate-grant', spellEntryId: 'compendium-granted-spell' }]
+		});
+
+		const available = renderSpell(0, true, projected, false, false, false, 2, 3);
+		const spellCards =
+			available.match(/<article class="[^"]*\bspell-card\b[^"]*">[\s\S]*?<\/article>/g) ?? [];
+		expect(spellCards).toHaveLength(1);
+		expect(spellCards[0]).toContain('<strong>Escudo</strong>');
+		expect(spellCards[0]).toContain('Uso grátis 1/1');
+		expect(spellCards[0]).toContain('Descanso longo');
+		expect(spellCards[0]).toContain('Lançar grátis (1)');
+		expect(available).toContain('<strong>2</strong> / 3');
+		expect(spellCards[0]).toContain('aria-label="Espaço de magia"');
+		expect(spellCards[0]).toMatch(/>Lançar<\/button>/);
+
+		const spentProjection = projectCharacterSpells(
+			[classSpell],
+			[{ ...grant, freeCastsRemaining: 0 }],
+			[grantedEntry],
+			(entry) => entry.name
+		);
+		const spent = renderSpell(0, true, spentProjection, false, false, false, 2, 3);
+		const spentCard = spent.match(
+			/<article class="[^"]*\bspell-card\b[^"]*">[\s\S]*?<\/article>/g
+		)?.[0];
+		expect(spentCard).toContain('Uso grátis gasto');
+		expect(spentCard).toContain('Descanso longo');
+		expect(spentCard).not.toContain('Uso grátis 0/1');
+		expect(spentCard).not.toContain('Lançar grátis');
+		expect(spentCard).toContain('aria-label="Espaço de magia"');
+		expect(spentCard).toMatch(/>Lançar<\/button>/);
+		expect(spent).toContain('<strong>2</strong> / 3');
 	});
 });
