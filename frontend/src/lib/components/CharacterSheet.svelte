@@ -1494,6 +1494,11 @@
 							equipmentCategory,
 							weapons: {
 								weaponKey,
+								weaponMastery: (item) =>
+									item.rules.mastery ??
+									compendiumEntries.find(
+										(entry) => entry.id === item.entryId && entry.rules.catalog === 'weapons'
+									)?.rules.mastery,
 								weaponAbility,
 								abilityLabel,
 								abilityModifier: (key) => Math.floor((sheet.abilityScores[key] - 10) / 2),

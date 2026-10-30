@@ -14,6 +14,10 @@
 	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
 	import { appLocale, distanceText } from '$lib/stores/locale';
+	import {
+		createPresentationAutoDismiss,
+		createPresentationDismissalHandlers
+	} from '$lib/utils/presentationDismissal';
 	let {
 		sceneId,
 		campaignId,
@@ -34,18 +38,17 @@
 	let dismissedLocally = $state('');
 	let presentationGeneration = 0;
 	let socket: SceneSocket | null = null;
-	const shouldShowPresentation = $derived(
-		item.visible &&
-			((!isGM && Boolean(url || item.description)) ||
-				(isGM && !item.assetPath && Boolean(item.description)))
-	);
-	async function dismissPresentation() {
-		if (!isGM) {
-			dismissedLocally = `${item.assetPath}|${item.title}|${item.description}|${item.updatedAt}`;
-			item = { ...item, visible: false };
-			url = '';
-			return;
-		}
+	const shouldShowPresentation = $derived(item.visible && Boolean(url || item.description));
+	const presentationKey = (presentation: Presentation) =>
+		`${sceneId}|${presentation.assetPath}|${presentation.title}|${presentation.description}|${presentation.updatedAt}`;
+	function dismissPresentationLocally() {
+		const key = presentationKey(item);
+		autoDismiss.cancel();
+		dismissedLocally = key;
+		item = { ...item, visible: false };
+		url = '';
+	}
+	async function dismissPresentationShared() {
 		// Hide immediately so a transient API error cannot trap the narrator
 		// behind the presentation modal.
 		item = { ...item, visible: false };
@@ -67,9 +70,26 @@
 			// a concise error and a later refresh reconciles state with the server.
 		}
 	}
-	async function applyPresentation(next: Presentation) {
+	const dismissalHandlers = createPresentationDismissalHandlers(
+		() => isGM,
+		dismissPresentationLocally,
+		dismissPresentationShared
+	);
+	const autoDismiss = createPresentationAutoDismiss((key) => {
+		if (item.visible && presentationKey(item) === key) dismissalHandlers.automatic();
+	});
+	async function dismissPresentation() {
+		autoDismiss.cancel();
+		await dismissalHandlers.manual();
+	}
+	async function applyPresentation(next: Presentation, restartAutoDismiss = false) {
 		const generation = ++presentationGeneration;
 		item = next;
+		autoDismiss.schedule(
+			presentationKey(next),
+			next.visible && Boolean(next.assetPath || next.description),
+			restartAutoDismiss
+		);
 		window.dispatchEvent(
 			new CustomEvent('maismorras:presentation-state', {
 				detail: { sceneId, presentation: { ...next, visibleUserIds: [...next.visibleUserIds] } }
@@ -113,15 +133,18 @@
 			overlayVisible: next.overlayVisible === true,
 			updatedAt: typeof next.updatedAt === 'string' ? next.updatedAt : ''
 		};
-		const key = `${normalized.assetPath}|${normalized.title}|${normalized.description}|${normalized.updatedAt}`;
-		if (!isGM && dismissedLocally && dismissedLocally !== key) dismissedLocally = '';
+		const key = presentationKey(normalized);
+		if (dismissedLocally && dismissedLocally !== key) dismissedLocally = '';
 		await applyPresentation(
-			!isGM && dismissedLocally === key ? { ...normalized, visible: false } : normalized
+			dismissedLocally === key ? { ...normalized, visible: false } : normalized,
+			true
 		);
 	}
 	async function load() {
 		try {
-			await applyPresentation(await getPresentation(session, sceneId));
+			const next = await getPresentation(session, sceneId);
+			const key = presentationKey(next);
+			await applyPresentation(dismissedLocally === key ? { ...next, visible: false } : next);
 		} catch {
 			/* presentation is optional */
 		}
@@ -132,7 +155,14 @@
 			const detail = (event as CustomEvent<{ sceneId?: string }>).detail;
 			if (detail?.sceneId === sceneId) socket?.publishPresentationUpdated();
 		};
+		const onPresentationKeydown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape' && shouldShowPresentation) {
+				event.preventDefault();
+				void dismissPresentation();
+			}
+		};
 		window.addEventListener('maismorras:presentation-changed', onLocalPresentationChange);
+		window.addEventListener('keydown', onPresentationKeydown);
 		let fallbackTimer: number | undefined;
 		const updateFallback = (status: RealtimeStatus) => {
 			if (status === 'connected') {
@@ -153,6 +183,8 @@
 		);
 		return () => {
 			window.removeEventListener('maismorras:presentation-changed', onLocalPresentationChange);
+			window.removeEventListener('keydown', onPresentationKeydown);
+			autoDismiss.cancel();
 			socket?.close();
 			if (fallbackTimer) window.clearInterval(fallbackTimer);
 		};
@@ -162,16 +194,19 @@
 {#if shouldShowPresentation}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
-		class:presenter-preview={isGM}
 		onclick={(event) => {
-			if (!isGM && event.target === event.currentTarget) void dismissPresentation();
+			if (event.target === event.currentTarget) void dismissPresentation();
 		}}
 		onkeydown={(event) => {
-			if (!isGM && event.key === 'Escape') void dismissPresentation();
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				event.stopPropagation();
+				void dismissPresentation();
+			}
 		}}
-		tabindex={isGM ? -1 : 0}
+		tabindex="-1"
 		role="dialog"
-		aria-modal={isGM ? undefined : 'true'}
+		aria-modal="true"
 		aria-label={item.title || 'Imagem apresentada'}
 	>
 		{#if !isGM}<button
@@ -206,12 +241,6 @@
 		background: rgba(0, 0, 0, 0.82);
 		animation: presentation-in 0.35s ease both;
 		backdrop-filter: blur(3px);
-	}
-	/* Narrators see shared text presentations without blocking table controls. */
-	.presenter-preview {
-		pointer-events: none;
-		background: transparent;
-		backdrop-filter: none;
 	}
 	.presentation-close {
 		position: fixed;

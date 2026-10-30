@@ -29,6 +29,7 @@ export type WeaponFeat = { id: string; name: string; rules: Record<string, unkno
 /** UI boundary for weapon operations; pure rules stay independent of the callbacks' effects. */
 export type WeaponCombatActions = {
 	weaponKey: (item: InventoryItem) => string;
+	weaponMastery?: (item: InventoryItem) => unknown;
 	weaponAbility: (item: InventoryItem) => keyof AbilityScores;
 	abilityLabel: (key: keyof AbilityScores) => string;
 	abilityModifier: (key: keyof AbilityScores) => number;

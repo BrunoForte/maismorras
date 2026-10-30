@@ -169,4 +169,45 @@ describe('CharacterInventoryTab compendium picker', () => {
 		}).body;
 		expect(fallbackHtml).toContain('This bag can hold up to 500 pounds and 64 cubic feet.');
 	});
+
+	it('keeps the weapon mastery badge separate from the item name', () => {
+		setAppLocale('pt-BR');
+		const masteryItem = {
+			entryId: 'b',
+			name: 'Espada longa de duas mãos',
+			quantity: 1,
+			equipped: true,
+			rules: { catalog: 'weapons', mastery: 'Sap' }
+		};
+		const html = render(CharacterInventoryTab, {
+			props: {
+				itemEntries: entries,
+				allCompendiumEntries: entries,
+				visibleItems: [{ item: masteryItem, index: 0 }],
+				carriedWeight: 3,
+				capacityLb: 150,
+				pushDragLiftLb: 300,
+				powerfulBuildApplied: false,
+				loadIncomplete: false,
+				unknownItemCount: 0,
+				canUseLargeForm: false,
+				largeFormActive: false,
+				onLargeFormChange: vi.fn(),
+				money: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+				onMoneyChange: vi.fn(),
+				inventoryFilter: 'all' as const,
+				optionLabel: (entry: CompendiumEntry) => entry.name,
+				onAddCompendiumItem: vi.fn(),
+				onAddCustomItem: vi.fn(async () => true),
+				onRemoveItem: vi.fn(),
+				onChangeQuantity: vi.fn(),
+				onChangeDescription: vi.fn()
+			}
+		}).body;
+
+		expect(html).toMatch(
+			/<span class="inventory-item-name(?: svelte-[^"]+)?">Espada longa de duas mãos<\/span>/
+		);
+		expect(html).toMatch(/<small class="mastery-inline(?: svelte-[^"]+)?">Maestria: Sap<\/small>/);
+	});
 });

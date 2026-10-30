@@ -3,6 +3,7 @@
 	import type { Dnd2024Money, InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
 	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
+	import { weaponMasteryInfo } from '$lib/utils/weaponMastery';
 	import {
 		itemWeight,
 		type InventoryCategory,
@@ -349,6 +350,13 @@
 	{#if visibleItems.length}
 		<div class="inventory-list">
 			{#each visibleItems as { item, index } (`${item.entryId}:${index}`)}
+				{@const weaponEntry = allCompendiumEntries.find(
+					(entry) => entry.id === item.entryId && entry.rules.catalog === 'weapons'
+				)}
+				{@const mastery = weaponMasteryInfo(
+					item.rules.mastery ?? weaponEntry?.rules.mastery,
+					$appLocale
+				)}
 				{@const catalogEntry = magicItemCatalogEntry(item)}
 				{@const catalogDescription = catalogEntry
 					? translatedCompendiumText(
@@ -365,7 +373,10 @@
 						aria-expanded={expandedIndex === index}
 						onclick={() => (expandedIndex = expandedIndex === index ? null : index)}
 					>
-						{item.name}<span>{expandedIndex === index ? '⌃' : '⌄'}</span>
+						<span class="inventory-item-name">{item.name}</span>{#if mastery}<small
+								class="mastery-inline"
+								>{$appLocale === 'en' ? 'Mastery' : 'Maestria'}: {mastery.name}</small
+							>{/if}<span>{expandedIndex === index ? '⌃' : '⌄'}</span>
 					</button>
 					{#if catalogDescription && expandedIndex !== index}<small class="catalog-item-description"
 							>{catalogDescription}</small
@@ -390,6 +401,18 @@
 					>
 				</div>
 				{#if expandedIndex === index}
+					{#if mastery}<aside class="inventory-weapon-mastery">
+							<strong
+								>{$appLocale === 'en' ? 'Weapon mastery' : 'Maestria da arma'}: {mastery.name}</strong
+							>
+							<p>{mastery.description}</p>
+							<small>{mastery.manualResolutionNote}</small>
+							<a href={mastery.referenceUrl} target="_blank" rel="external noreferrer">
+								{$appLocale === 'en'
+									? '2024 Basic Rules reference'
+									: 'Referência das Regras Básicas 2024'}
+							</a>
+						</aside>{/if}
 					{#if catalogDescription}<p class="catalog-item-description full">
 							{catalogDescription}
 						</p>{/if}
@@ -608,8 +631,42 @@
 		min-width: 0;
 		text-align: left;
 	}
-	.inventory-item-expand span {
+	.inventory-item-name {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.inventory-item-expand > span:last-child {
 		color: #d8ad67;
+	}
+	.mastery-inline {
+		flex: 0 0 auto;
+		border: 1px solid #80683d;
+		border-radius: 999px;
+		padding: 0.15rem 0.4rem;
+		color: #f0d29d;
+		font-size: 0.62rem;
+		white-space: nowrap;
+	}
+	.inventory-weapon-mastery {
+		display: grid;
+		gap: 0.3rem;
+		grid-column: 1 / -1;
+		border-inline-start: 3px solid #d8ad67;
+		padding: 0.35rem 0.65rem;
+		color: #e5d8c7;
+		background: #211b19;
+		font-size: 0.72rem;
+		line-height: 1.4;
+	}
+	.inventory-weapon-mastery p {
+		margin: 0;
+	}
+	.inventory-weapon-mastery small {
+		color: #c5b5a5;
+	}
+	.inventory-weapon-mastery a {
+		width: fit-content;
+		color: #f0d29d;
 	}
 	.inventory-item input {
 		width: 100%;
@@ -660,6 +717,29 @@
 		font-size: 0.76rem;
 	}
 	@media (max-width: 700px) {
+		.inventory-item-expand {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: center;
+			column-gap: 0.4rem;
+			row-gap: 0.2rem;
+		}
+		.inventory-item-name,
+		.inventory-item-expand .mastery-inline {
+			grid-column: 1;
+		}
+		.inventory-item-name {
+			grid-row: 1;
+		}
+		.inventory-item-expand .mastery-inline {
+			grid-row: 2;
+			width: fit-content;
+		}
+		.inventory-item-expand > span:last-child {
+			grid-column: 2;
+			grid-row: 1 / span 2;
+			align-self: center;
+		}
 		.custom-item-form {
 			grid-template-columns: 1fr 1fr;
 		}
