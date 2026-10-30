@@ -4,7 +4,7 @@
 	import {
 		createCompendiumEntry,
 		deleteCompendiumEntry,
-		getCompendium,
+		getWorkspaceCompendium,
 		importCompendiumEntries,
 		translateCompendiumEntry,
 		updateCompendiumEntry,
@@ -36,7 +36,7 @@
 		compendiumEntryTranslationStatus,
 		canInitiateCompendiumTranslation,
 		hasPendingCompendiumTranslation,
-		isCompendiumTranslationPending,
+		translatedCompendiumName,
 		translatedCompendiumText,
 		type CompendiumCatalogFilters,
 		type CompendiumEditorModel
@@ -109,12 +109,7 @@
 	};
 	const sourceKindLabel = (source: CompendiumSource) =>
 		source.kind === 'srd' ? `SRD ${source.version}` : $appLocale === 'en' ? 'Private' : 'Privada';
-	const displayName = (entry: CompendiumEntry) => {
-		const localized = entry.translations?.['pt-BR'];
-		return $appLocale === 'pt-BR' && !isCompendiumTranslationPending(entry.name, localized)
-			? localized
-			: entry.name;
-	};
+	const displayName = (entry: CompendiumEntry) => translatedCompendiumName(entry, $appLocale);
 	const displaySummary = (entry: CompendiumEntry) =>
 		translatedCompendiumText(entry, 'summary', entry.summary, $appLocale);
 	const isMonster = (entry: CompendiumEntry) =>
@@ -165,7 +160,7 @@
 		loading = true;
 		message = '';
 		try {
-			const data = await getCompendium(session, campaignId);
+			const data = await getWorkspaceCompendium(session, campaignId, $appLocale);
 			sources = data.sources;
 			entries = data.entries;
 			canTranslateSharedSrd = data.canTranslateSharedSrd === true;

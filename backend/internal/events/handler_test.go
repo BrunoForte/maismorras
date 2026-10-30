@@ -1,26 +1,74 @@
 package events
 
-import "testing"
+import (
+	"strconv"
+	"testing"
 
-func TestRollWithModeReturnsKeptFaceAndBothRolledFaces(t *testing.T) {
-	for _, mode := range []string{"advantage", "disadvantage"} {
-		result, err := rollWithMode("1d20+4", mode)
-		if err != nil {
-			t.Fatalf("rollWithMode(%q): %v", mode, err)
+	"vtt-backend/internal/systems"
+)
+
+func TestRollWithModeUsesCampaignD20RuleAndOnlyDuplicatesTheD20(t *testing.T) {
+	tests := []struct {
+		name  string
+		mode  string
+		faces []int
+		want  int
+	}{
+		{name: "advantage keeps higher", mode: "advantage", faces: []int{4, 17}, want: 17},
+		{name: "disadvantage keeps lower", mode: "disadvantage", faces: []int{17, 4}, want: 4},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var sides []int
+			index := 0
+			roller := func(dieSides int) (int, error) {
+				sides = append(sides, dieSides)
+				face := test.faces[index]
+				index++
+				return face, nil
+			}
+			result, err := rollWithMode("1d20+4", test.mode, systems.Dnd2024Rules{}, roller)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(sides) != 2 || sides[0] != 20 || sides[1] != 20 {
+				t.Fatalf("expected exactly two d20 rolls, got %v", sides)
+			}
+			if len(result.Dice) != 1 || result.Dice[0] != test.want || result.Total != test.want+4 {
+				t.Fatalf("wrong selected d20: %#v", result)
+			}
+			if len(result.OriginalDice) != 2 || result.Mode != test.mode {
+				t.Fatalf("display payload must retain both faces and mode: %#v", result)
+			}
+		})
+	}
+}
+
+func TestRollWithModeRejectsDamageExpressionsWithoutRolling(t *testing.T) {
+	rollCount := 0
+	roller := func(sides int) (int, error) { rollCount++; return 4, nil }
+	if _, err := rollWithMode("1d20+2d6", "advantage", systems.Dnd2024Rules{}, roller); err == nil {
+		t.Fatal("advantage must only apply to a single d20 expression")
+	}
+	if rollCount != 0 {
+		t.Fatalf("invalid expression rolled %d dice", rollCount)
+	}
+}
+
+func TestRollWithNormalModeUsesExactlyOneD20(t *testing.T) {
+	rollCount := 0
+	result, err := rollWithMode("1d20+3", "normal", systems.Dnd2024Rules{}, func(sides int) (int, error) {
+		rollCount++
+		if sides != 20 {
+			t.Fatalf("normal d20 requested d%d", sides)
 		}
-		if len(result.Dice) != 1 || len(result.OriginalDice) != 2 {
-			t.Fatalf("mode result must include kept and both rolled faces: %#v", result)
-		}
-		wantKept := result.OriginalDice[0]
-		if mode == "advantage" && result.OriginalDice[1] > wantKept {
-			wantKept = result.OriginalDice[1]
-		}
-		if mode == "disadvantage" && result.OriginalDice[1] < wantKept {
-			wantKept = result.OriginalDice[1]
-		}
-		if result.Dice[0] != wantKept || result.Total != wantKept+4 {
-			t.Fatalf("incorrect kept result for %s: %#v", mode, result)
-		}
+		return 11, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rollCount != 1 || result.Total != 14 || result.Dice[0] != 11 || result.Mode != "normal" {
+		t.Fatalf("normal mode must roll once and apply modifier once: rolls=%d result=%+v", rollCount, result)
 	}
 }
 
@@ -71,7 +119,7 @@ func TestRollRejectsMoreThanOneHundredDiceAcrossGroups(t *testing.T) {
 }
 
 func TestWeaponDamageRollValidatesBaseAndDoublesCriticalDice(t *testing.T) {
-	for _, expression := range []string{"10d6", "2d6+3d8+5d10"} {
+	for _, expression := range []string{"10d6", "2d6+3d8+5d10", "1", "+4", "-1", "0"} {
 		if !validWeaponDamageRoll(expression) {
 			t.Errorf("expected non-critical weapon damage %q to be accepted", expression)
 		}
@@ -84,9 +132,27 @@ func TestWeaponDamageRollValidatesBaseAndDoublesCriticalDice(t *testing.T) {
 	if validWeaponDamageRoll("20d6+5") {
 		t.Fatal("critical damage must be sent as the validated base formula")
 	}
+	for _, expression := range []string{"10001", "-10001", "1d6+10001", "", "alert(1)"} {
+		if validWeaponDamageRoll(expression) {
+			t.Errorf("expected invalid weapon damage %q to be rejected", expression)
+		}
+	}
 	doubled, err := doubleDiceExpression("2d6+3d8+5")
 	if err != nil || doubled != "4d6+6d8+5" {
 		t.Fatalf("unexpected critical expression %q, error %v", doubled, err)
+	}
+}
+
+func TestFixedWeaponDamageIsNotDoubledOnCritical(t *testing.T) {
+	for _, expression := range []string{"1", "+4", "-2", "0"} {
+		result, err := rollWeaponDamageExpression(expression, true)
+		if err != nil {
+			t.Fatalf("fixed damage %q failed: %v", expression, err)
+		}
+		want, _ := strconv.Atoi(expression)
+		if len(result.Dice) != 0 || result.Total != want || result.Modifier != want {
+			t.Errorf("fixed critical damage %q was changed: %#v", expression, result)
+		}
 	}
 }
 

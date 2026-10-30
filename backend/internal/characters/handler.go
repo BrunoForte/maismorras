@@ -67,15 +67,42 @@ func (h *Handler) RollMine(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusCreated, result)
 }
 
-func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
+func (h *Handler) RollForGM(w http.ResponseWriter, r *http.Request) error {
 	p, _ := auth.FromContext(r.Context())
 	var in struct {
 		Kind string `json:"kind"`
+		Key  string `json:"key"`
+		Mode string `json:"mode"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
+		return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
+	}
+	result, err := h.repo.RollCharacterForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, strings.TrimSpace(in.Kind), strings.TrimSpace(in.Key), strings.TrimSpace(in.Mode))
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode rolar a ficha selecionada.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada nesta campanha.")
+	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
+	if err != nil {
+		return apperror.BadRequest("INVALID_ROLL", "A rolagem precisa ser uma ação autorizada pela ficha.")
+	}
+	return write(w, http.StatusCreated, result)
+}
+
+func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var in struct {
+		Kind         string `json:"kind"`
+		HitDiceCount *int   `json:"hitDiceCount"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&in); err != nil {
 		return apperror.BadRequest("INVALID_REST", "Descanso inválido.")
 	}
-	result, err := h.repo.RestCharacter(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("characterID"), strings.TrimSpace(in.Kind))
+	result, err := h.repo.RestCharacterWithHitDiceCount(r.Context(), r.PathValue("campaignID"), p.UserID, r.PathValue("characterID"), strings.TrimSpace(in.Kind), in.HitDiceCount)
 	if errors.Is(err, ErrForbidden) {
 		return apperror.Forbidden("Você não pode aplicar descanso nesta ficha.")
 	}
@@ -84,6 +111,15 @@ func (h *Handler) Rest(w http.ResponseWriter, r *http.Request) error {
 	}
 	if errors.Is(err, ErrNoHitDice) {
 		return apperror.BadRequest("NO_HIT_DICE", "Não há dados de vida disponíveis para este descanso curto.")
+	}
+	if errors.Is(err, ErrInvalidHitDiceCount) {
+		return apperror.BadRequest("INVALID_HIT_DICE_COUNT", "A quantidade de Dados de Vida precisa estar entre zero e o total disponível.")
+	}
+	if errors.Is(err, ErrInvalidRestState) {
+		return apperror.Conflict("INVALID_REST_STATE", "A ficha contém valores inválidos de vida ou Dados de Vida. Corrija a ficha antes de aplicar o descanso.")
+	}
+	if errors.Is(err, ErrInvalidSpellGrantState) {
+		return apperror.Conflict("INVALID_SPELL_GRANT_STATE", "A configuração persistida de usos precisa ser corrigida pelo narrador.")
 	}
 	if errors.Is(err, ErrInvalidRest) {
 		return apperror.BadRequest("INVALID_REST", "Tipo de descanso ou dado de vida inválido.")
@@ -122,6 +158,9 @@ func (h *Handler) CastMineSpell(w http.ResponseWriter, r *http.Request) error {
 	}
 	if errors.Is(err, ErrUnsupportedSystem) {
 		return unsupportedCampaignSystemError()
+	}
+	if errors.Is(err, ErrInvalidSpellGrantState) {
+		return apperror.Conflict("INVALID_SPELL_GRANT_STATE", "A configuração persistida de usos precisa ser corrigida pelo narrador.")
 	}
 	if err != nil {
 		return apperror.BadRequest("INVALID_SPELL_CAST", "Não há espaço compatível disponível para esta magia.")
@@ -180,6 +219,67 @@ func (h *Handler) SetInitiativeAdvantage(w http.ResponseWriter, r *http.Request)
 		return mapError(err)
 	}
 	return write(w, http.StatusOK, map[string]bool{"enabled": input.Enabled})
+}
+
+func (h *Handler) SetAvailableSpellSlotsForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		Level   *int `json:"level"`
+		Current *int `json:"current"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&input); err != nil || input.Level == nil || input.Current == nil {
+		return apperror.BadRequest("INVALID_SPELL_SLOT", "Quantidade de espaços de magia inválida.")
+	}
+	item, err := h.repo.SetAvailableSpellSlotsForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, *input.Level, *input.Current)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode ajustar os espaços de magia.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada.")
+	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
+	if errors.Is(err, ErrInvalidSpellSlot) {
+		return apperror.BadRequest("INVALID_SPELL_SLOT", "O valor disponível deve estar entre zero e o máximo deste nível.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	return write(w, http.StatusOK, item)
+}
+
+func (h *Handler) SetSpellGrantUseConfigForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	var input struct {
+		EntryID     string `json:"entryId"`
+		MaxUses     *int   `json:"maxUses"`
+		CurrentUses *int   `json:"currentUses"`
+		RestoreOn   string `json:"restoreOn"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<10)).Decode(&input); err != nil || input.MaxUses == nil || input.CurrentUses == nil {
+		return apperror.BadRequest("INVALID_SPELL_GRANT", "Configuração de usos da magia inválida.")
+	}
+	item, err := h.repo.SetSpellGrantUseConfigForGM(r.Context(), r.PathValue("campaignID"), r.PathValue("characterID"), p.UserID, r.PathValue("grantID"), strings.TrimSpace(input.EntryID), *input.MaxUses, *input.CurrentUses, input.RestoreOn)
+	if errors.Is(err, ErrForbidden) {
+		return apperror.Forbidden("Somente o narrador pode configurar os usos desta magia.")
+	}
+	if errors.Is(err, ErrNotFound) {
+		return apperror.NotFound("CHARACTER_NOT_FOUND", "Ficha não encontrada.")
+	}
+	if errors.Is(err, ErrUnsupportedSystem) {
+		return unsupportedCampaignSystemError()
+	}
+	if errors.Is(err, ErrInvalidSpellGrant) {
+		return apperror.BadRequest("INVALID_SPELL_GRANT", "Confira a magia, o máximo, os usos disponíveis e a recuperação.")
+	}
+	if errors.Is(err, ErrInvalidSpellGrantState) {
+		return apperror.Conflict("INVALID_SPELL_GRANT_STATE", "A configuração persistida de usos precisa ser corrigida pelo narrador.")
+	}
+	if err != nil {
+		return apperror.Internal(err)
+	}
+	return write(w, http.StatusOK, item)
 }
 
 func (h *Handler) DeleteForGM(w http.ResponseWriter, r *http.Request) error {

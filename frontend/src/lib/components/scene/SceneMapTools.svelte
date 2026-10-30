@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { SceneMapToolsActions, SceneMapToolsState } from '$lib/utils/sceneMapTools';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
 	let { state, actions }: { state: SceneMapToolsState; actions: SceneMapToolsActions } = $props();
 </script>
@@ -39,7 +40,8 @@
 					aria-expanded={state.openTool === 'layers'}
 					onclick={() => actions.onToolToggle('layers')}
 					aria-label={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}
-					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}>🗺️</button
+					title={state.isEnglish ? 'Map layers' : 'Camadas do mapa'}
+					><RpgIcon name="layers" size={22} /></button
 				>{#if state.openTool === 'layers'}
 					<div
 						class="layer-tools map-tool-menu"
@@ -81,7 +83,8 @@
 					aria-expanded={state.openTool === 'areas'}
 					onclick={() => actions.onToolToggle('areas')}
 					aria-label={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}
-					title={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}>📐</button
+					title={state.isEnglish ? 'Persistent areas' : 'Áreas persistentes'}
+					><RpgIcon name="persistent-area" size={22} /></button
 				>{#if state.openTool === 'areas'}
 					<div
 						class="area-tools map-tool-menu"
@@ -135,7 +138,8 @@
 					aria-expanded={state.openTool === 'barriers'}
 					onclick={() => actions.onToolToggle('barriers')}
 					aria-label={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}
-					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}>🧱</button
+					title={state.isEnglish ? 'Walls and doors' : 'Paredes e portas'}
+					><RpgIcon name="barrier-arch" size={22} /></button
 				>{#if state.openTool === 'barriers'}
 					<div
 						class="wall-tools map-tool-menu"
@@ -208,7 +212,7 @@
 
 {#if state.isGM && state.fogEnabled}
 	<div class="fog-tools">
-		<strong>🌫 Névoa</strong>
+		<strong><RpgIcon name="fog" size={18} /> Névoa</strong>
 		<div>
 			<button
 				class:active={state.fogMode === 'reveal'}
@@ -290,6 +294,11 @@
 		color: #ebddca;
 		background: rgba(25, 19, 23, 0.92);
 		font-size: 0.65rem;
+	}
+	.fog-tools strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
 	}
 	.fog-tools div {
 		display: flex;

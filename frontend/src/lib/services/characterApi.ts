@@ -3,6 +3,7 @@ import { request as httpRequest } from './httpClient';
 import { EMPTY_DND2024_MONEY, normalizeDnd2024Money } from '$lib/utils/character/dnd2024Money';
 import type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 import { parseDamageExpression, parseLegacyDamage } from '$lib/utils/weaponDamageBuilder';
+import { isDnd2024Size, type Dnd2024Size } from '$lib/utils/carryingCapacity';
 
 export type { Dnd2024Money } from '$lib/utils/character/dnd2024Money';
 
@@ -55,6 +56,8 @@ export type Dnd2024FeatSpellGrant = {
 	cantripEntryIds: string[];
 	firstLevelSpellEntryId: string;
 	freeCastsRemaining: number;
+	freeCastsMaxOverride?: number;
+	freeCastsRecovery?: 'none' | 'short' | 'long';
 	active?: boolean;
 };
 export type CampaignFeatSpellGrant = {
@@ -62,7 +65,24 @@ export type CampaignFeatSpellGrant = {
 	featEntryId: string;
 	spellcastingAbilities: Record<string, 'intelligence' | 'wisdom' | 'charisma'>;
 	freeCastsRemaining: Record<string, number>;
+	freeCastsMaxOverrides?: Record<string, number>;
+	freeCastsRecoveries?: Record<string, 'none' | 'short' | 'long'>;
 	active?: boolean;
+};
+export type SpeciesSpellGrant = {
+	id: string;
+	featureId: string;
+	speciesId: string;
+	lineageId: string;
+	spellEntryId: string;
+	freeCastsRemaining: number;
+	freeCastsMaxOverride?: number;
+	freeCastsRecovery?: 'none' | 'short' | 'long';
+	freeCastsMax: number;
+	defaultFreeCasts: number;
+	canUseExistingSlots: boolean;
+	spellcastingAbility?: 'intelligence' | 'wisdom' | 'charisma';
+	active: boolean;
 };
 export type InventoryItem = {
 	entryId: string;
@@ -80,6 +100,10 @@ export type CharacterSheet = {
 	level: number;
 	species: string;
 	speciesLineage: string;
+	/** Optional for legacy sheets; absent values use the species default, then Medium. */
+	creatureSize?: Dnd2024Size;
+	/** Player-managed temporary Goliath Large Form state; unset when the effect ends. */
+	largeFormActive?: boolean;
 	background: string;
 	alignment: string;
 	abilityScores: AbilityScores;
@@ -109,6 +133,8 @@ export type CharacterSheet = {
 	money?: Dnd2024Money;
 	featSpellGrants?: Dnd2024FeatSpellGrant[];
 	campaignFeatSpellGrants?: CampaignFeatSpellGrant[];
+	speciesSpellGrants?: SpeciesSpellGrant[];
+	speciesSpellcastingAbility?: 'intelligence' | 'wisdom' | 'charisma' | '';
 	visibleRolls?: string[];
 	resistances?: string[];
 	automaticTraits?: string[];
@@ -187,6 +213,9 @@ function normalizeCharacter(character: Character): Character {
 		skillProficiencies: character.sheet.skillProficiencies ?? [],
 		skillExpertise: character.sheet.skillExpertise ?? [],
 		speciesLineage: character.sheet.speciesLineage ?? '',
+		creatureSize: isDnd2024Size(character.sheet.creatureSize)
+			? character.sheet.creatureSize
+			: undefined,
 		feats: character.sheet.feats ?? '',
 		portraitPath: character.sheet.portraitPath ?? '',
 		resources: character.sheet.resources ?? [],
@@ -194,11 +223,13 @@ function normalizeCharacter(character: Character): Character {
 		money: normalizeDnd2024Money(character.sheet.money),
 		featSpellGrants: character.sheet.featSpellGrants ?? [],
 		campaignFeatSpellGrants: character.sheet.campaignFeatSpellGrants ?? [],
+		speciesSpellGrants: character.sheet.speciesSpellGrants ?? [],
 		hitDiceSpent: character.sheet.hitDiceSpent ?? 0,
 		visibleRolls: character.sheet.visibleRolls ?? [],
 		resistances: character.sheet.resistances ?? [],
 		automaticTraits: character.sheet.automaticTraits ?? [],
 		speciesHPBonusApplied: character.sheet.speciesHPBonusApplied ?? 0,
+		largeFormActive: character.sheet.largeFormActive === true,
 		initiative:
 			character.sheet.initiative ??
 			Math.floor(((character.sheet.abilityScores?.dexterity ?? 10) - 10) / 2),
@@ -240,6 +271,18 @@ export const setCharacterInitiativeAdvantage = (
 		`/api/v1/campaigns/${campaignId}/characters/${characterId}/initiative-advantage`,
 		{ method: 'PATCH', body: JSON.stringify({ enabled }) }
 	);
+export const setAvailableSpellSlotsForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	level: number,
+	current: number
+) =>
+	request<Character>(
+		session,
+		`/api/v1/campaigns/${campaignId}/characters/${characterId}/spell-slots`,
+		{ method: 'PATCH', body: JSON.stringify({ level, current }) }
+	).then(normalizeCharacter);
 export const createCharacterForGM = (session: Session, campaignId: string, ownerId: string) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters`, {
 		method: 'POST',
@@ -252,11 +295,32 @@ export const deleteCharacterForGM = (session: Session, campaignId: string, chara
 export type SheetRoll = {
 	eventId: number;
 	dados: number[];
+	dadoEscolhido: number;
 	modo: 'normal' | 'advantage' | 'disadvantage';
 	modificador: number;
 	total: number;
 	label: string;
 };
+
+export const setSpellGrantUseConfigForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	grantId: string,
+	entryId: string,
+	maxUses: number,
+	currentUses: number,
+	restoreOn: 'none' | 'short' | 'long'
+) =>
+	request<Character>(
+		session,
+		`/api/v1/campaigns/${campaignId}/characters/${characterId}/spell-grants/${encodeURIComponent(grantId)}`,
+		{
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ entryId, maxUses, currentUses, restoreOn })
+		}
+	).then(normalizeCharacter);
 export const rollMyCharacter = (
 	session: Session,
 	campaignId: string,
@@ -268,6 +332,18 @@ export const rollMyCharacter = (
 		method: 'POST',
 		body: JSON.stringify({ kind, key, mode })
 	});
+export const rollCharacterForGM = (
+	session: Session,
+	campaignId: string,
+	characterId: string,
+	kind: 'skill' | 'save' | 'spell',
+	key: string,
+	mode: SheetRoll['modo']
+) =>
+	request<SheetRoll>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}/roll`, {
+		method: 'POST',
+		body: JSON.stringify({ kind, key, mode })
+	});
 export type CharacterRest = {
 	eventId?: number;
 	sheet: CharacterSheet;
@@ -275,20 +351,22 @@ export type CharacterRest = {
 	dados?: number[];
 	modificador?: number;
 	total?: number;
+	hpRecovered?: number;
 	label?: string;
 };
 export const restCharacter = (
 	session: Session,
 	campaignId: string,
 	kind: CharacterRest['kind'],
-	characterId?: string | null
+	characterId?: string | null,
+	hitDiceCount?: number
 ) => {
 	const path = characterId
 		? `/api/v1/campaigns/${campaignId}/characters/${characterId}/rest`
 		: `/api/v1/campaigns/${campaignId}/character/rest`;
 	return request<CharacterRest>(session, path, {
 		method: 'POST',
-		body: JSON.stringify({ kind })
+		body: JSON.stringify({ kind, ...(hitDiceCount === undefined ? {} : { hitDiceCount }) })
 	}).then((result) => ({
 		...result,
 		sheet: normalizeCharacter({
@@ -384,6 +462,7 @@ export function createEmptySheet(): CharacterSheet {
 		visibleRolls: [],
 		resistances: [],
 		automaticTraits: [],
-		speciesHPBonusApplied: 0
+		speciesHPBonusApplied: 0,
+		largeFormActive: false
 	};
 }

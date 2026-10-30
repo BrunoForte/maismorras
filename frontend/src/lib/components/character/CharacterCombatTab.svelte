@@ -5,13 +5,14 @@
 		InventoryItem
 	} from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
-	import { appLocale } from '$lib/stores/locale';
+	import { appLocale, distanceText } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import CharacterWeaponAttacks from './CharacterWeaponAttacks.svelte';
 
 	type GrantedSpell = Sheet['spells'][number];
 	type Attack = Sheet['attacks'][number];
 	type Actions = {
-		rest: (kind: 'short' | 'long') => void;
+		rest: (kind: 'short' | 'long', hitDiceCount?: number) => void;
 		syncTokenSoon: () => void;
 		spendResource: (index: number) => void;
 		setResourceMax: (index: number, value: string) => void;
@@ -54,6 +55,13 @@
 		actions: Actions;
 	} = $props();
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
+	let selectedShortRestHitDice = $state(0);
+	const availableHitDice = $derived(Math.max(0, sheet.level - sheet.hitDiceSpent));
+	$effect(() => {
+		if (selectedShortRestHitDice > availableHitDice) {
+			selectedShortRestHitDice = availableHitDice;
+		}
+	});
 	const weaponItems = () =>
 		sheet.inventory.filter((item) => actions.equipmentCategory(item) === 'weapon');
 	const armorItems = () =>
@@ -64,7 +72,26 @@
 	<section class="combat">
 		<h3>{$appLocale === 'en' ? 'Combat' : 'Combate'}</h3>
 		<div class="rest-actions">
-			<button disabled={saving} onclick={() => actions.rest('short')}
+			<label class="short-rest-hit-dice">
+				{$appLocale === 'en' ? 'Hit Dice to spend' : 'Dados de Vida a gastar'}
+				<select
+					aria-label={$appLocale === 'en' ? 'Hit Dice to spend' : 'Dados de Vida a gastar'}
+					data-testid="short-rest-hit-dice-count"
+					bind:value={selectedShortRestHitDice}
+					disabled={saving}
+				>
+					{#each Array.from({ length: availableHitDice + 1 }, (_, count) => count) as count (count)}
+						<option value={count}>{count}</option>
+					{/each}
+				</select>
+				<small>
+					{availableHitDice}
+					{$appLocale === 'en' ? ` available of ${sheet.level}` : ` disponíveis de ${sheet.level}`}
+				</small>
+			</label>
+			<button
+				disabled={saving}
+				onclick={() => actions.rest('short', Math.min(selectedShortRestHitDice, availableHitDice))}
 				>{$appLocale === 'en' ? 'Short rest' : 'Descanso curto'}</button
 			><button disabled={saving} onclick={() => actions.rest('long')}
 				>{$appLocale === 'en' ? 'Long rest' : 'Descanso longo'}</button
@@ -184,7 +211,10 @@
 							>{$appLocale === 'en' ? 'Equipped' : 'Equipado'} · {item.name}</span
 						>{#if String(item.rules.description ?? item.rules.summary ?? '').trim()}<small
 								class="armor-description"
-								>{String(item.rules.description ?? item.rules.summary)}</small
+								>{distanceText(
+									String(item.rules.description ?? item.rules.summary),
+									$appLocale
+								)}</small
 							>{/if}</label
 					>
 				{/each}
@@ -261,8 +291,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'attack'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Attack'
-							: '🎲 Ataque'}</button
+							? 'Attack'
+							: 'Ataque'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button
 					class="roll-custom"
@@ -271,8 +301,8 @@
 					>{rollingAttack === index && rollingAttackAction === 'damage'
 						? '…'
 						: $appLocale === 'en'
-							? '🎲 Damage'
-							: '🎲 Dano'}</button
+							? 'Damage'
+							: 'Dano'}<RpgIcon name="d20" size={18} /></button
 				>
 				<button
 					type="button"
@@ -331,6 +361,7 @@
 	}
 	.rest-actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.45rem;
 	}
 	.rest-actions button,
@@ -517,6 +548,9 @@
 		font-size: 0.72rem;
 	}
 	.roll-custom {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		border: 1px solid #765d3d !important;
 		border-radius: 5px !important;
 		color: #f0d29d !important;

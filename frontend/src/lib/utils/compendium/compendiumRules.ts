@@ -16,6 +16,71 @@ export const COMPENDIUM_ENTRY_TYPES = [
 	['other', 'Monstro / outro']
 ] as const;
 
+const LEGACY_FEAT_ALIASES: Record<string, string> = {
+	archery: 'Fighting Style: Archery',
+	defense: 'Fighting Style: Defense',
+	'great weapon fighting': 'Fighting Style: Great Weapon Fighting',
+	'two-weapon fighting': 'Fighting Style: Two-Weapon Fighting'
+};
+const LEGACY_INDEX_SUMMARY = 'Entrada do System Reference Document 5.2.1.';
+
+function isLegacyFeatIndexStub(entry: CompendiumEntry): boolean {
+	return (
+		entry.entryType === 'feat' &&
+		Object.keys(entry.rules ?? {}).length === 0 &&
+		entry.summary === LEGACY_INDEX_SUMMARY &&
+		LEGACY_FEAT_ALIASES[entry.name.toLocaleLowerCase()] !== undefined
+	);
+}
+
+export function preferredCompendiumFeatEntries(
+	entries: CompendiumEntry[],
+	sources: CompendiumSource[]
+): CompendiumEntry[] {
+	const sharedSourceIds = new Set(
+		sources.filter((source) => source.kind === 'srd').map((source) => source.id)
+	);
+	return entries.filter((entry) => {
+		if (!isLegacyFeatIndexStub(entry) || !sharedSourceIds.has(entry.sourceId)) return true;
+		const fullName = LEGACY_FEAT_ALIASES[entry.name.toLocaleLowerCase()];
+		return !entries.some(
+			(candidate) =>
+				candidate.entryType === 'feat' &&
+				candidate.name === fullName &&
+				sharedSourceIds.has(candidate.sourceId) &&
+				Object.keys(candidate.rules ?? {}).length > 0
+		);
+	});
+}
+
+export function resolveCompendiumFeatEntry(
+	name: string,
+	entries: CompendiumEntry[],
+	displayName: (entry: CompendiumEntry) => string = (entry) => entry.name
+): CompendiumEntry | undefined {
+	const normalized = name.trim().toLocaleLowerCase();
+	const exact = entries.filter(
+		(entry) =>
+			entry.entryType === 'feat' &&
+			(entry.name.trim().toLocaleLowerCase() === normalized ||
+				displayName(entry).trim().toLocaleLowerCase() === normalized)
+	);
+	const completeExact = exact.find((entry) => !isLegacyFeatIndexStub(entry));
+	if (completeExact) return completeExact;
+
+	const canonicalName = LEGACY_FEAT_ALIASES[normalized];
+	if (canonicalName) {
+		const canonical = entries.find(
+			(entry) =>
+				entry.entryType === 'feat' &&
+				entry.name.toLocaleLowerCase() === canonicalName.toLocaleLowerCase() &&
+				Object.keys(entry.rules ?? {}).length > 0
+		);
+		if (canonical) return canonical;
+	}
+	return exact[0];
+}
+
 export type CompendiumEntryType = (typeof COMPENDIUM_ENTRY_TYPES)[number][0];
 export type CompendiumSortMode = 'name' | 'category' | 'challenge' | 'source';
 export type CompendiumLevelFeature = {
@@ -237,6 +302,13 @@ export function isCompendiumTranslationPending(source: unknown, translation: unk
 	);
 }
 
+export function translatedCompendiumName(entry: CompendiumEntry, locale: string): string {
+	const localized = entry.translations?.['pt-BR'];
+	return locale === 'pt-BR' && !isCompendiumTranslationPending(entry.name, localized)
+		? localized
+		: entry.name;
+}
+
 export function translatedCompendiumText(
 	entry: CompendiumEntry,
 	field: string,
@@ -397,14 +469,19 @@ export function filterAndSortCompendiumEntries(
 	displayName: (entry: CompendiumEntry) => string
 ): CompendiumEntry[] {
 	const query = normalizeCompendiumSearch(filters.query);
-	return entries
+	return preferredCompendiumFeatEntries(entries, sources)
 		.filter(
 			(entry) =>
 				(filters.entryType === 'all' || entry.entryType === filters.entryType) &&
 				(filters.sourceId === 'all' || entry.sourceId === filters.sourceId) &&
 				(!query ||
 					normalizeCompendiumSearch(
-						`${entry.name} ${entry.translations?.['pt-BR'] ?? ''}`
+						`${entry.name} ${entry.translations?.['pt-BR'] ?? ''} ${Object.entries(
+							LEGACY_FEAT_ALIASES
+						)
+							.filter(([, fullName]) => fullName === entry.name)
+							.map(([alias]) => alias)
+							.join(' ')}`
 					).includes(query))
 		)
 		.sort((a, b) => {

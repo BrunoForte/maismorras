@@ -13,7 +13,7 @@
 		type SceneSocket
 	} from '$lib/services/sceneRealtime';
 	import { getSignedAssetUrl } from '$lib/services/assetApi';
-	import { appLocale } from '$lib/stores/locale';
+	import { appLocale, distanceText } from '$lib/stores/locale';
 	let {
 		sceneId,
 		campaignId,
@@ -34,6 +34,11 @@
 	let dismissedLocally = $state('');
 	let presentationGeneration = 0;
 	let socket: SceneSocket | null = null;
+	const shouldShowPresentation = $derived(
+		item.visible &&
+			((!isGM && Boolean(url || item.description)) ||
+				(isGM && !item.assetPath && Boolean(item.description)))
+	);
 	async function dismissPresentation() {
 		if (!isGM) {
 			dismissedLocally = `${item.assetPath}|${item.title}|${item.description}|${item.updatedAt}`;
@@ -154,37 +159,38 @@
 	});
 </script>
 
-{#if item.visible && !isGM && (url || item.description)}<div
+{#if shouldShowPresentation}<div
 		transition:fade={{ duration: 350 }}
 		class="presentation-backdrop"
+		class:presenter-preview={isGM}
 		onclick={(event) => {
-			if (event.target === event.currentTarget) void dismissPresentation();
+			if (!isGM && event.target === event.currentTarget) void dismissPresentation();
 		}}
 		onkeydown={(event) => {
-			if (event.key === 'Escape') void dismissPresentation();
+			if (!isGM && event.key === 'Escape') void dismissPresentation();
 		}}
-		tabindex="0"
+		tabindex={isGM ? -1 : 0}
 		role="dialog"
-		aria-modal="true"
+		aria-modal={isGM ? undefined : 'true'}
 		aria-label={item.title || 'Imagem apresentada'}
 	>
-		<button
-			class="presentation-close"
-			onclick={() => void dismissPresentation()}
-			aria-label={isGM
-				? $appLocale === 'en'
-					? 'Dismiss image for everyone'
-					: 'Fechar imagem para todos'
-				: $appLocale === 'en'
-					? 'Close image for me'
-					: 'Fechar imagem para mim'}>×</button
-		>
+		{#if !isGM}<button
+				class="presentation-close"
+				onclick={() => void dismissPresentation()}
+				aria-label={isGM
+					? $appLocale === 'en'
+						? 'Dismiss image for everyone'
+						: 'Fechar imagem para todos'
+					: $appLocale === 'en'
+						? 'Close image for me'
+						: 'Fechar imagem para mim'}>×</button
+			>{/if}
 		<figure>
 			{#if url}<img src={url} alt={item.title || 'Imagem apresentada'} />{:else}<div
 					class="presentation-text"
 				>
 					<h2>{item.title}</h2>
-					<p>{item.description}</p>
+					<p>{distanceText(item.description, $appLocale)}</p>
 				</div>{/if}
 			{#if url && item.title}<figcaption>{item.title}</figcaption>{/if}
 		</figure>
@@ -200,6 +206,12 @@
 		background: rgba(0, 0, 0, 0.82);
 		animation: presentation-in 0.35s ease both;
 		backdrop-filter: blur(3px);
+	}
+	/* Narrators see shared text presentations without blocking table controls. */
+	.presenter-preview {
+		pointer-events: none;
+		background: transparent;
+		backdrop-filter: none;
 	}
 	.presentation-close {
 		position: fixed;

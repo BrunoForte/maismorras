@@ -69,12 +69,34 @@ jobs:
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase test db
+      - name: Test shared SRD catalog synchronization with a creature
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: go test ./internal/compendium -run '^TestSharedSRDCatalogAndOwnerTranslationIntegration$' -count=1
       - name: Configure Go for realtime integration test
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: backend/go.mod
           cache: true
           cache-dependency-path: backend/go.sum
+      - name: Test SetCombat transitions against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: go test ./internal/scenes -run '^TestSetCombatTransitionsPreserveDnd2024EffectsMovementAndEventsIntegration$' -count=1
+      - name: Test character rules and spell-slot authorization against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/character-sheet-integration.log"
+          go test -v ./internal/characters -run '^TestSheetOperationsUsePersistedCampaignReferenceIntegration$' -count=1 | tee "$output_file"
+          if grep -Fq -- '--- SKIP: TestSheetOperationsUsePersistedCampaignReferenceIntegration' "$output_file"; then
+            echo '::error::TestSheetOperationsUsePersistedCampaignReferenceIntegration was skipped.'
+            exit 1
+          fi
       - name: Test realtime fanout between independent API instances
         working-directory: backend
         env:

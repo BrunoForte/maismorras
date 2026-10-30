@@ -28,6 +28,10 @@
 	const canPlace = $derived(hasValidMonsterStatBlock(entry));
 	const field = (key: string, fallback: unknown) =>
 		localizedMonsterField(entry, key, fallback, locale);
+	const displayAction = (index: number, key: string, fallback: unknown) =>
+		field(`rules.actions.${index}.${key}`, fallback);
+	const displayTrait = (index: number, key: string, fallback: unknown) =>
+		field(`rules.traits.${index}.${key}`, fallback);
 	const challenge = $derived(getChallenge(entry));
 </script>
 
@@ -79,19 +83,19 @@
 		{/if}
 		{#if rules.traits?.length}<h4>{english ? 'Traits' : 'Traços'}</h4>
 			{#each rules.traits as trait, index (`${trait.name}-${index}`)}<p>
-					<b>{trait.name}</b>{#if trait.description}
-						— {trait.description}{/if}
+					<b>{displayTrait(index, 'name', trait.name)}</b>{#if trait.description}
+						— {displayTrait(index, 'description', trait.description)}{/if}
 				</p>{/each}
 		{/if}
 		{#if rules.actions?.length}<h4>{english ? 'Actions' : 'Ações'}</h4>
 			{#each rules.actions as action, index (`${action.name}-${index}`)}<p>
-					<b>{action.name}</b>{#if action.toHit !== undefined}
+					<b>{displayAction(index, 'name', action.name)}</b>{#if action.toHit !== undefined}
 						· +{action.toHit} para acertar{/if}
 					{#if action.damage}
-						· {action.damage}{/if}{#if action.range}
-						· {action.range}{/if}
+						· {displayAction(index, 'damage', action.damage)}{/if}{#if action.range}
+						· {formatDistance(displayAction(index, 'range', action.range), locale)}{/if}
 					{#if action.description}
-						— {action.description}{/if}
+						— {displayAction(index, 'description', action.description)}{/if}
 				</p>{/each}
 		{/if}
 		<button class="place" onclick={() => onPlace(entry)} disabled={placing}>

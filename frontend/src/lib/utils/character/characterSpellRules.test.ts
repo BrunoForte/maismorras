@@ -325,6 +325,15 @@ describe('character spell rules', () => {
 		expect(previous).toHaveLength(1);
 	});
 
+	it('localizes a spell school in the default sheet note without changing the canonical rule', () => {
+		const source = entry({ rules: { level: 3, school: 'Evocation', classes: ['wizard'] } });
+		const added = addSpellToSheet([], 'Fireball', 3, [0, 1, 2, 3], source, 'Bola de Fogo', 'pt-BR');
+
+		expect(added[0].notes).toBe('SRD · Evocação');
+		expect(source.rules.school).toBe('Evocation');
+		expect(source.rules.classes).toEqual(['wizard']);
+	});
+
 	it('updates and removes spells immutably and safely ignores invalid indexes and malformed rules', () => {
 		const previous = [spell(), spell({ name: 'Escudo', level: 1 })];
 		const changed = updateSpellOnSheet(previous, 0, { notes: 'teste' });
@@ -353,5 +362,63 @@ describe('character spell rules', () => {
 		expect(
 			eligibleSpellEntries([entry({ rules: {} })], [], (item) => item.name, '', undefined)
 		).toHaveLength(1);
+	});
+
+	it('projects active structured species grants and keeps their uses independent', () => {
+		const speciesGrant = {
+			id: 'dnd2024:species:elf:elven-lineage:high-elf:detect-magic',
+			featureId: 'elven-lineage',
+			speciesId: 'elf',
+			lineageId: 'high-elf',
+			spellEntryId: 'detect-magic',
+			freeCastsRemaining: 0,
+			freeCastsMax: 2,
+			defaultFreeCasts: 1,
+			canUseExistingSlots: true,
+			active: true
+		};
+		const compendium = entry({
+			id: 'detect-magic',
+			name: 'Detect Magic',
+			rules: { level: 1, classes: [] }
+		});
+		const projection = projectCharacterSpells(
+			[],
+			[],
+			[compendium],
+			(item) => item.name,
+			[],
+			[],
+			[speciesGrant],
+			'wisdom'
+		);
+		expect(projection).toHaveLength(1);
+		expect(projection[0]).toMatchObject({
+			spell: { entryId: 'detect-magic', origin: 'species' },
+			origins: ['species'],
+			featGrants: [
+				{
+					id: speciesGrant.id,
+					sourceKind: 'species',
+					freeCastsRemaining: 0,
+					freeCastsMax: 2,
+					defaultFreeCasts: 1,
+					ability: 'wisdom',
+					canUseExistingSlots: true
+				}
+			]
+		});
+		expect(
+			projectCharacterSpells(
+				[],
+				[],
+				[compendium],
+				(item) => item.name,
+				[],
+				[],
+				[{ ...speciesGrant, active: false }]
+			)
+		).toEqual([]);
+		expect(hasActiveFeatGrantedSpells([], [], [speciesGrant])).toBe(true);
 	});
 });

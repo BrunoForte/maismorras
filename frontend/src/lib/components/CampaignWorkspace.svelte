@@ -815,6 +815,7 @@
 			</main>
 		{:else if workspaceTab === 'sheets' && CampaignSheetsComponent}<CampaignSheetsComponent
 				campaignId={activeCampaign.id}
+				sceneId={activeScene?.id ?? ''}
 				{session}
 				isGM={activeCampaign.role === 'gm'}
 				SheetComponent={CharacterSheetComponent}

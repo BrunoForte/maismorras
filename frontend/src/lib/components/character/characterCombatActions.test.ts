@@ -32,7 +32,7 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 	let context = {
 		campaignId: 'campaign-1',
 		sceneId: 'scene-1',
-		characterId: 'character-1',
+		characterId: 'character-1' as string | null,
 		isGM: true,
 		session: { user: { id: 'user-1' }, access_token: 'test-token' } as Session,
 		locale: 'pt-BR' as const,
@@ -107,6 +107,15 @@ function setup(overrides: Partial<CharacterCombatActionDependencies> = {}) {
 		isRevisionCurrent: () => true,
 		finishExternalSaving: vi.fn(),
 		rollMyCharacter: vi.fn(),
+		rollCharacterForGM: vi.fn(async () => ({
+			eventId: 42,
+			dados: [14],
+			dadoEscolhido: 14,
+			modo: 'normal' as const,
+			modificador: 4,
+			total: 18,
+			label: 'Atletismo'
+		})),
 		rollDice,
 		rollTokenInitiative: vi.fn(),
 		setInitiativeAdvantage: vi.fn(),
@@ -155,6 +164,90 @@ const weapon: InventoryItem = {
 afterEach(() => vi.restoreAllMocks());
 
 describe('character combat actions', () => {
+	it.each(['normal', 'advantage', 'disadvantage'] as const)(
+		'passes the selected D&D d20 mode to the authoritative character roll (%s)',
+		async (mode) => {
+			const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>(
+				async () => ({
+					eventId: 41,
+					dados: mode === 'normal' ? [12] : [5, 18],
+					dadoEscolhido: mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12,
+					modo: mode,
+					modificador: 4,
+					total: (mode === 'disadvantage' ? 5 : mode === 'advantage' ? 18 : 12) + 4,
+					label: 'Atletismo'
+				})
+			);
+			const test = setup({ rollMyCharacter });
+			test.context({ isGM: false, characterId: null });
+
+			await test.controller.rollAuthorized('skill', 'Atletismo', 'Teste de Atletismo', mode);
+
+			expect(rollMyCharacter.mock.calls[0][4]).toBe(mode);
+			expect(test.setDiceOverlay.mock.calls[0][0].dice).toEqual(mode === 'normal' ? [12] : [5, 18]);
+			if (mode !== 'normal') {
+				expect(test.appendChat.mock.calls[0][0].texto).toContain('d20 [5, 18]');
+				expect(test.appendChat.mock.calls[0][0].texto).toContain(
+					mode === 'advantage' ? 'escolhido 18' : 'escolhido 5'
+				);
+				expect(test.appendChat.mock.calls[0][0].detalhesRolagem).toMatchObject({
+					dadosOriginais: [5, 18],
+					dadoEscolhido: mode === 'advantage' ? 18 : 5
+				});
+			}
+		}
+	);
+
+	it('routes a narrator roll for the selected character through the actor-specific operation', async () => {
+		const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>();
+		const rollCharacterForGM = vi.fn<CharacterCombatActionDependencies['rollCharacterForGM']>(
+			async () => ({
+				eventId: 42,
+				dados: [14],
+				dadoEscolhido: 14,
+				modo: 'normal',
+				modificador: 4,
+				total: 18,
+				label: 'Atletismo'
+			})
+		);
+		const test = setup({ rollMyCharacter, rollCharacterForGM });
+
+		await test.controller.rollAuthorized('skill', 'Atletismo', 'Teste de Atletismo', 'normal');
+
+		expect(rollCharacterForGM).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			'character-1',
+			'skill',
+			'Atletismo',
+			'normal'
+		);
+		expect(rollMyCharacter).not.toHaveBeenCalled();
+	});
+
+	it('keeps a player on the own-sheet roll path even if a character id is present in context', async () => {
+		const rollMyCharacter = vi.fn<CharacterCombatActionDependencies['rollMyCharacter']>(
+			async () => ({
+				eventId: 41,
+				dados: [12],
+				dadoEscolhido: 12,
+				modo: 'normal',
+				modificador: 4,
+				total: 16,
+				label: 'Atletismo'
+			})
+		);
+		const rollCharacterForGM = vi.fn<CharacterCombatActionDependencies['rollCharacterForGM']>();
+		const test = setup({ rollMyCharacter, rollCharacterForGM });
+		test.context({ isGM: false, characterId: 'another-character' });
+
+		await test.controller.rollAuthorized('skill', 'Atletismo', 'Teste de Atletismo', 'normal');
+
+		expect(rollMyCharacter).toHaveBeenCalledOnce();
+		expect(rollCharacterForGM).not.toHaveBeenCalled();
+	});
+
 	it('registra uma rolagem de arma e limpa o estado após sucesso', async () => {
 		const pending = deferred<{
 			id: string;
@@ -243,6 +336,42 @@ describe('character combat actions', () => {
 		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '1d8+5', '1d8+5']);
 		expect(test.rollDice.mock.calls[1][6]).toBe(true);
 		expect(test.rollDice.mock.calls[1][7]).toBe(true);
+	});
+
+	it('rola dano fixo sem dados e mantém o bônus uma vez mesmo em crítico', async () => {
+		const test = setup({
+			getWeaponRollDetails: () => ({
+				attackBonus: 5,
+				damageBonus: 4,
+				damageFormula: '',
+				stableWeaponKey: 'weapon-1',
+				profileKey: 'default',
+				damageType: 'contundente'
+			}),
+			rollDice: vi
+				.fn()
+				.mockResolvedValueOnce({
+					id: 'critical-attack',
+					payload: { expressao: '1d20+5', dados: [20], total: 25 }
+				})
+				.mockResolvedValueOnce({
+					id: 'fixed-damage',
+					payload: { expressao: '4', dados: [], total: 4 }
+				})
+		});
+		const fixedWeapon = { ...weapon, rules: { ...weapon.rules, damage: '' } };
+
+		await test.controller.rollWeapon(fixedWeapon, 'attack');
+		await test.controller.rollWeapon(fixedWeapon, 'damage');
+
+		expect(test.rollDice.mock.calls.map((call) => call[2])).toEqual(['1d20+5', '4']);
+		expect(test.rollDice.mock.calls[1][6]).toBe(true);
+		expect(test.rollDice.mock.calls[1][7]).toBe(true);
+		expect(test.appendChat.mock.calls[1][0].detalhesRolagem).toMatchObject({
+			modificador: 4,
+			dados: [],
+			total: 4
+		});
 	});
 
 	it('aplica o bônus de ataque somente ao ataque e mantém o modificador da fórmula de dano', async () => {
@@ -365,7 +494,14 @@ describe('character combat actions', () => {
 		test.controller.chooseSpellSlot(0, 2);
 		await test.controller.castSpell(test.getSheet().spells[0], 0);
 
-		expect(test.castMySpell).toHaveBeenCalledWith(expect.anything(), 'campaign-1', 0, 2, undefined);
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			0,
+			2,
+			undefined,
+			'scene-1'
+		);
 		expect(test.setSheet).toHaveBeenCalledOnce();
 		expect(test.appendChat).toHaveBeenCalledOnce();
 		expect(test.getSheet().name).toBe('Ficha após conjuração');
@@ -448,13 +584,51 @@ describe('character combat actions', () => {
 			grant
 		);
 
-		expect(test.castMySpell).toHaveBeenCalledWith(expect.anything(), 'campaign-1', -1, 0, grant);
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			-1,
+			0,
+			grant,
+			'scene-1'
+		);
 		expect(test.setSheet).toHaveBeenCalledWith(returnedSheet);
 		expect(test.getSheet().spellSlots[0].current).toBe(0);
 		expect(test.getSheet().featSpellGrants?.[0].freeCastsRemaining).toBe(0);
 		expect(test.appendChat.mock.calls[0][0].texto).toContain(
 			'uso gratuito do talento · restantes 0'
 		);
+	});
+
+	it('atualiza a apresentação textual somente após o backend confirmar magia com espaço', async () => {
+		const test = setup();
+		vi.mocked(test.castMySpell).mockResolvedValueOnce({
+			eventId: 28,
+			sheet: test.getSheet(),
+			spellName: 'Mísseis mágicos',
+			baseLevel: 1,
+			slotLevel: 1,
+			effect: '3d4 + 3',
+			presentationUpdated: true
+		});
+
+		await test.controller.castSpell(test.getSheet().spells[0], 0);
+
+		expect(test.publishPresentationUpdated).toHaveBeenCalledOnce();
+		expect(test.getSheet().spellSlots[0].current).toBe(1);
+	});
+
+	it('não apresenta magia quando o backend rejeita a conjuração', async () => {
+		const test = setup({
+			castMySpell: vi.fn().mockRejectedValue(new Error('Sem espaço compatível'))
+		});
+
+		await test.controller.castSpell(test.getSheet().spells[0], 0);
+
+		expect(test.publishPresentationUpdated).not.toHaveBeenCalled();
+		expect(test.setSheet).not.toHaveBeenCalled();
+		expect(test.appendChat).not.toHaveBeenCalled();
+		expect(test.setMessage).toHaveBeenCalledWith('Sem espaço compatível');
 	});
 
 	it.each([
@@ -527,6 +701,61 @@ describe('character combat actions', () => {
 		);
 	});
 
+	it.each([
+		{ role: 'jogador', isGM: false, characterId: 'own-character' },
+		{ role: 'narrador', isGM: true, characterId: 'selected-character' }
+	])(
+		'$role pode destacar habilidade e talento sem alterar autorização de cena',
+		async ({ isGM, characterId }) => {
+			const test = setup({
+				getContext: () => ({
+					campaignId: 'campaign-1',
+					sceneId: 'scene-1',
+					characterId,
+					isGM,
+					session: { user: { id: 'user-1' }, access_token: 'test-token' } as Session,
+					locale: 'pt-BR' as const,
+					onTokenCreated: vi.fn()
+				}),
+				getCanDisplaySelectedCharacter: () => true
+			});
+
+			await test.controller.presentContent(
+				'Canalizar Divindade',
+				'Descrição da habilidade',
+				'Habilidade'
+			);
+			await test.controller.presentContent('Agarrador', 'Descrição do talento', 'Talento');
+
+			expect(test.saveSpellDisplay).toHaveBeenNthCalledWith(
+				1,
+				expect.anything(),
+				'campaign-1',
+				'Heroína',
+				'Canalizar Divindade',
+				'Descrição da habilidade'
+			);
+			expect(test.saveSpellDisplay).toHaveBeenNthCalledWith(
+				2,
+				expect.anything(),
+				'campaign-1',
+				'Heroína',
+				'Agarrador',
+				'Descrição do talento'
+			);
+			expect(test.appendChat).toHaveBeenCalledTimes(2);
+			expect(test.savePresentation).toHaveBeenCalledTimes(isGM ? 2 : 0);
+			expect(test.publishPresentationUpdated).toHaveBeenCalledTimes(isGM ? 2 : 0);
+		}
+	);
+
+	it('não destaca conteúdo de ficha selecionada quando a permissão de exibição foi negada', async () => {
+		const test = setup({ getCanDisplaySelectedCharacter: () => false });
+		await test.controller.presentContent('Agarrador', 'Descrição', 'Talento');
+		expect(test.saveSpellDisplay).not.toHaveBeenCalled();
+		expect(test.savePresentation).not.toHaveBeenCalled();
+	});
+
 	it('aplica à ficha o retorno remoto de um descanso', async () => {
 		const test = setup();
 		await test.controller.rest('long');
@@ -534,6 +763,71 @@ describe('character combat actions', () => {
 		expect(test.restCharacter).toHaveBeenCalledOnce();
 		expect(test.getSheet().name).toBe('Ficha retornada');
 		expect(test.controller.state.rollingAttack).toBeNull();
+	});
+
+	it('envia a quantidade escolhida e apresenta os dados autoritativos do descanso curto', async () => {
+		const sheet = createEmptySheet();
+		sheet.name = 'Ficha curada';
+		sheet.hitPointsCurrent = 14;
+		sheet.hitDiceSpent = 2;
+		const restCharacter = vi.fn(async () => ({
+			kind: 'short' as const,
+			sheet,
+			dados: [3, 7],
+			modificador: -1,
+			total: 8,
+			hpRecovered: 8
+		}));
+		const test = setup({ restCharacter });
+
+		await test.controller.rest('short', 2);
+
+		expect(restCharacter).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			'short',
+			'character-1',
+			2
+		);
+		expect(test.getSheet().hitPointsCurrent).toBe(14);
+		expect(test.getSheet().hitDiceSpent).toBe(2);
+		expect(test.setDiceOverlay).toHaveBeenCalledWith({
+			expression: 'Ficha curada · Dados de vida',
+			notation: '2d8 -1 Constituição/dado',
+			total: 8,
+			dice: [3, 7]
+		});
+		expect(test.publishChatUpdated).toHaveBeenCalledOnce();
+	});
+
+	it('permite descanso curto com zero dados sem mostrar uma rolagem', async () => {
+		const sheet = createEmptySheet();
+		sheet.resources = [
+			{ id: 'short-feature', name: 'Recurso', current: 0, max: 1, restoreOn: 'short' }
+		];
+		const returnedSheet = { ...sheet, resources: [{ ...sheet.resources[0], current: 1 }] };
+		const restCharacter = vi.fn(async () => ({
+			kind: 'short' as const,
+			sheet: returnedSheet,
+			hpRecovered: 0
+		}));
+		const test = setup({ restCharacter });
+
+		await test.controller.rest('short', 0);
+
+		expect(restCharacter).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			'short',
+			'character-1',
+			0
+		);
+		expect(test.setDiceOverlay).not.toHaveBeenCalled();
+		expect(test.publishChatUpdated).toHaveBeenCalledOnce();
+		expect(test.getSheet().resources[0].current).toBe(1);
+		expect(test.setMessage).toHaveBeenCalledWith(
+			'Descanso curto aplicado sem gastar Dados de Vida; recursos recuperados.'
+		);
 	});
 
 	it('limpa estado transitório e apresenta mensagem quando a rolagem falha', async () => {

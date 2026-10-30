@@ -6,6 +6,7 @@
 		{
 			title: 'Dados',
 			icons: [
+				['dice-stack', 'Dados da mesa'],
 				['d4', 'D4'],
 				['d6', 'D6'],
 				['d8', 'D8'],
@@ -28,11 +29,22 @@
 			]
 		},
 		{
+			title: 'Ferramentas do mapa',
+			icons: [
+				['ruler', 'Régua de área'],
+				['layers', 'Camadas do mapa'],
+				['persistent-area', 'Área persistente'],
+				['map-signal', 'Sinalização no mapa'],
+				['fog', 'Névoa de guerra']
+			]
+		},
+		{
 			title: 'Mesa e campanha',
 			icons: [
 				['campaign', 'Campanha'],
 				['map', 'Mapa'],
 				['token', 'Token'],
+				['barrier-arch', 'Barreira'],
 				['combat', 'Combate'],
 				['chat', 'Chat'],
 				['notes', 'Notas'],

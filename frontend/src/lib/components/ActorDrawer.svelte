@@ -2,6 +2,7 @@
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { onMount } from 'svelte';
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
@@ -140,7 +141,7 @@
 	aria-label="Atores da cena"
 >
 	<button class="drawer-toggle" onclick={() => (open = !open)} aria-expanded={open}>
-		<span>♟</span>{open ? 'Atores da cena' : 'Abrir atores'}
+		<RpgIcon name="character" size={20} />{open ? 'Atores da cena' : 'Abrir atores'}
 	</button>
 	{#if open}
 		<div class="drawer-body">
@@ -235,9 +236,9 @@
 		cursor: pointer;
 		text-align: left;
 	}
-	.drawer-toggle span {
+	.drawer-toggle :global(svg) {
 		color: #d8ad67;
-		font-size: 1rem;
+		flex: 0 0 auto;
 	}
 	.drawer-body {
 		display: grid;

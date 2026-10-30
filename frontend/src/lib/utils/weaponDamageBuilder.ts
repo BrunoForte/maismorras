@@ -4,6 +4,20 @@ export const MAX_DAMAGE_DICE = 10;
 export const MAX_SERVER_DICE = 100;
 export const DAMAGE_DIE_TYPES = [4, 6, 8, 10, 12, 20, 100] as const;
 
+function normalizeNumericInput(value: number | '' | string): number | '' {
+	if (value === '') return '';
+	return typeof value === 'number' ? value : Number(value);
+}
+
+export function normalizeDamageComponents(
+	components: readonly DamageComponent[]
+): DamageComponent[] {
+	return components.map(({ count, sides }) => ({
+		count: normalizeNumericInput(count),
+		sides: normalizeNumericInput(sides)
+	}));
+}
+
 export function parseDamageExpression(value: unknown): DamageComponent[] | null {
 	const text = String(value ?? '').replace(/\s+/g, '');
 	if (!text) return [];
@@ -40,7 +54,7 @@ export function parseLegacyDamage(value: unknown): { damage: string; damageBonus
 }
 
 export function validateDamageComponents(components: readonly DamageComponent[]) {
-	return validateDamageComponentsWithLimit(components, MAX_DAMAGE_DICE);
+	return validateDamageComponentsWithLimit(normalizeDamageComponents(components), MAX_DAMAGE_DICE);
 }
 
 function validateDamageComponentsWithLimit(

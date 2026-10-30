@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	displayedSpeed,
+	catalogSpeciesTraits,
 	getActiveSpeciesTraits,
+	resolveSpeciesTraitReplacements,
 	getSpeciesHPBonus,
 	getSpeciesLineageOptions,
 	getSpeciesProfile,
@@ -10,11 +12,117 @@ import {
 	normalizeSpecies,
 	normalizeSpeciesLineage,
 	speciesTraitDescription,
+	speciesTraitsForDisplay,
 	storedSpeedFromDisplay,
 	updateSpeciesSelection
 } from './speciesRules';
 
 describe('species rules', () => {
+	it('uses reviewed catalog species trait text in Portuguese and source text as fallback', () => {
+		const entry = {
+			rules: {
+				traits: [
+					{ id: 'draconic-ancestry', name: 'Draconic Ancestry', description: 'Choose a dragon.' }
+				]
+			},
+			translations: {
+				'pt-BR.rules.traits.0.name': 'Ancestralidade Dracônica',
+				'pt-BR.rules.traits.0.description': 'Escolha um dragão.'
+			}
+		};
+		expect(catalogSpeciesTraits(entry, 'pt-BR')).toEqual([
+			{
+				id: 'draconic-ancestry',
+				name: 'Ancestralidade Dracônica',
+				description: 'Escolha um dragão.'
+			}
+		]);
+		expect(catalogSpeciesTraits(entry, 'en')).toEqual([
+			{ id: 'draconic-ancestry', name: 'Draconic Ancestry', description: 'Choose a dragon.' }
+		]);
+		expect(catalogSpeciesTraits({ rules: entry.rules }, 'pt-BR')).toEqual([
+			{ id: 'draconic-ancestry', name: 'Draconic Ancestry', description: 'Choose a dragon.' }
+		]);
+	});
+
+	it('shows the Elf Darkvision trait unchanged without a selected Drow lineage', () => {
+		const traits = speciesTraitsForDisplay(
+			'Elf',
+			'',
+			{
+				rules: {
+					traits: [
+						{ id: 'darkvision-elf', name: 'Darkvision', description: 'Range 60 feet.' },
+						{ id: 'fey-ancestry', name: 'Fey Ancestry', description: 'Advantage vs. Charmed.' },
+						{ id: 'keen-senses', name: 'Keen Senses', description: 'Skill proficiency.' }
+					]
+				}
+			},
+			'en'
+		);
+
+		expect(traits).toContainEqual(
+			expect.objectContaining({
+				id: 'darkvision-elf',
+				name: 'Darkvision',
+				description: 'Range 60 feet.'
+			})
+		);
+		expect(traits.some(({ id }) => id === 'darkvision-drow')).toBe(false);
+	});
+
+	it('uses Drow Darkvision as the explicit Elf replacement and preserves unrelated traits', () => {
+		const traits = speciesTraitsForDisplay(
+			'Elf',
+			'Drow',
+			{
+				rules: {
+					traits: [
+						{ id: 'darkvision-elf', name: 'Darkvision', description: 'Range 60 feet.' },
+						{ id: 'elven-lineage', name: 'Elven Lineage', description: 'Choose a lineage.' },
+						{ id: 'fey-ancestry', name: 'Fey Ancestry', description: 'Advantage vs. Charmed.' }
+					]
+				}
+			},
+			'en'
+		);
+
+		expect(traits.filter(({ id }) => id === 'darkvision-elf' || id === 'darkvision-drow')).toEqual([
+			expect.objectContaining({ id: 'darkvision-drow', name: 'Visão no escuro 36 m' })
+		]);
+		expect(traits.map(({ id }) => id)).toEqual(
+			expect.arrayContaining(['elven-lineage', 'fey-ancestry'])
+		);
+		expect(traits.map(({ name }) => name)).toContain(
+			'Luzes Dançantes; nível 3: Fogo das Fadas; nível 5: Escuridão'
+		);
+	});
+
+	it('resolves explicit replacements independently of source order and deduplicates stable IDs', () => {
+		const elf = { id: 'darkvision-elf', name: 'Elf Darkvision', description: '60 feet.' };
+		const drow = {
+			id: 'darkvision-drow',
+			name: 'Drow Darkvision',
+			description: '120 feet.',
+			replaces: ['darkvision-elf']
+		};
+		const other = { id: 'fey-ancestry', name: 'Fey Ancestry', description: 'Charm defense.' };
+		const duplicates = { ...other };
+		const forward = resolveSpeciesTraitReplacements([elf, drow, other, duplicates, other]);
+		const reverse = resolveSpeciesTraitReplacements([other, duplicates, drow, elf, other]);
+
+		expect(forward.map(({ id }) => id).sort()).toEqual(['darkvision-drow', 'fey-ancestry']);
+		expect(reverse.map(({ id }) => id).sort()).toEqual(['darkvision-drow', 'fey-ancestry']);
+	});
+
+	it('does not infer replacement from matching names without explicit metadata', () => {
+		const traits = resolveSpeciesTraitReplacements([
+			{ id: 'elf-darkvision', name: 'Darkvision', description: '60 feet.' },
+			{ id: 'feat-darkvision-benefit', name: 'Darkvision', description: 'A separate feat benefit.' }
+		]);
+
+		expect(traits).toHaveLength(2);
+	});
 	it('normalizes localized, accented, and legacy species names', () => {
 		expect(normalizeSpecies(' Draconáto ')).toBe('dragonborn');
 		expect(normalizeSpecies('ANÃO')).toBe('dwarf');

@@ -4,12 +4,12 @@
 	import { appLocale, distance } from '$lib/stores/locale';
 	import {
 		displayedSpeed,
-		getActiveSpeciesTraits,
 		getSpeciesProfile,
 		getSpeciesSpeed,
 		getSpeciesLineageOptions,
 		speciesProfileLabel,
-		speciesTraitDescription,
+		normalizeSpecies,
+		speciesTraitsForDisplay,
 		storedSpeedFromDisplay,
 		updateSpeciesSelection
 	} from '$lib/utils/speciesRules';
@@ -57,10 +57,12 @@
 		rollMode = $bindable<RollMode>('normal'),
 		passivePerception,
 		derivedFeatures,
+		canDisplayCharacter,
 		expandedFeature = $bindable<string | null>(null),
 		expertiseChoices,
 		skills,
-		onExpertiseChoice
+		onExpertiseChoice,
+		onPresentFeature
 	}: {
 		sheet: Sheet;
 		portraitPreview: string | null;
@@ -91,20 +93,32 @@
 		rollMode?: RollMode;
 		passivePerception: number;
 		derivedFeatures: ProgressionFeature[];
+		canDisplayCharacter: boolean;
 		expandedFeature?: string | null;
 		expertiseChoices: number;
 		skills: readonly Skill[];
 		onExpertiseChoice: (index: number, value: string) => void;
+		onPresentFeature: (title: string, description: string) => void;
 	} = $props();
 
 	const speciesProfile = () => getSpeciesProfile(sheet.species);
+	const catalogSpecies = () =>
+		optionsFor('species').find((entry) => {
+			const rules = (entry.rules ?? {}) as Record<string, unknown>;
+			return [rules.id, entry.name, entry.translations?.['pt-BR']].some(
+				(value) => normalizeSpecies(value) === normalizeSpecies(sheet.species)
+			);
+		});
 	const lineageOptions = () => getSpeciesLineageOptions(sheet.species);
 	const profileSpeed = () => getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
-	const activeSpeciesTraits = () =>
-		getActiveSpeciesTraits(sheet.species, sheet.speciesLineage).map((trait) => ({
-			name: trait,
-			description: speciesTraitDescription(trait, $appLocale)
-		}));
+	const activeSpeciesTraits = () => {
+		return speciesTraitsForDisplay(
+			sheet.species,
+			sheet.speciesLineage,
+			catalogSpecies(),
+			$appLocale
+		);
+	};
 	const shownSpeed = () => displayedSpeed(sheet.speed, $appLocale);
 
 	function applySpeciesSelection(species: string, lineage = sheet.speciesLineage ?? '') {
@@ -183,9 +197,11 @@
 	locale={$appLocale}
 	{passivePerception}
 	features={derivedFeatures}
+	{canDisplayCharacter}
 	bind:expandedFeature
 	{expertiseChoices}
 	{skills}
 	skillExpertise={sheet.skillExpertise}
 	{onExpertiseChoice}
+	{onPresentFeature}
 />

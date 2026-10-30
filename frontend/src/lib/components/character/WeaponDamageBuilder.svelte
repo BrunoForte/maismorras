@@ -2,10 +2,10 @@
 	import { appLocale } from '$lib/stores/locale';
 	import {
 		addDamageComponent,
-		DAMAGE_DIE_TYPES,
 		type DamageComponent,
 		removeDamageComponent
 	} from '$lib/utils/weaponDamageBuilder';
+	import DamageDieSelector from './DamageDieSelector.svelte';
 
 	let {
 		identifier,
@@ -58,30 +58,20 @@
 					}}
 				/>
 			</label>
-			<label for={`damage-sides-${identifier}-${index}`}>
-				{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}
-				<select
-					id={`damage-sides-${identifier}-${index}`}
-					value={component.sides}
-					aria-label={`${$appLocale === 'en' ? 'Die type for component' : 'Tipo de dado do componente'} ${index + 1}`}
-					aria-invalid={invalidIndex === index &&
+			<div class="die-type-field">
+				<span>{$appLocale === 'en' ? 'Die type' : 'Tipo de dado'}</span>
+				<DamageDieSelector
+					sides={component.sides}
+					label={`${$appLocale === 'en' ? 'Die type for component' : 'Tipo de dado do componente'} ${index + 1}`}
+					invalid={invalidIndex === index &&
 						(Number(component.sides) < 2 || Number(component.sides) > 1000)}
-					aria-describedby={invalidIndex === index && error
-						? `damage-error-${identifier}`
-						: undefined}
-					onchange={(event) =>
+					describedBy={invalidIndex === index && error ? `damage-error-${identifier}` : undefined}
+					onchange={(sides) =>
 						onchange(
-							components.map((part, partIndex) =>
-								partIndex === index ? { ...part, sides: Number(event.currentTarget.value) } : part
-							)
+							components.map((part, partIndex) => (partIndex === index ? { ...part, sides } : part))
 						)}
-				>
-					{#if !DAMAGE_DIE_TYPES.includes(component.sides as (typeof DAMAGE_DIE_TYPES)[number])}<option
-							value={component.sides}>{component.sides}</option
-						>{/if}
-					{#each DAMAGE_DIE_TYPES as sides (sides)}<option value={sides}>d{sides}</option>{/each}
-				</select>
-			</label>
+				/>
+			</div>
 			<button
 				type="button"
 				class="damage-remove"
@@ -103,6 +93,13 @@
 		</div>
 	{/each}
 	{#if components.length === 0}
+		<div class="no-damage-dice" data-testid="no-damage-dice">
+			<small>
+				{$appLocale === 'en'
+					? 'Only the damage bonus and applicable ability modifier are used.'
+					: 'Usa apenas o bônus de dano e o modificador de atributo aplicável.'}
+			</small>
+		</div>
 		<button
 			id={`damage-add-${identifier}`}
 			type="button"
@@ -118,25 +115,27 @@
 <style>
 	.damage-builder {
 		min-width: 0;
-		display: grid;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: end;
 		gap: 0.55rem;
 	}
 	.damage-component {
-		min-width: 0;
+		min-width: min(100%, 15rem);
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
 		align-items: end;
 		gap: 0.5rem;
 	}
-	.damage-component label {
+	.damage-component label,
+	.die-type-field {
 		min-width: 0;
 		display: grid;
 		gap: 0.25rem;
 		color: #bcae9f;
 		font-size: 0.68rem;
 	}
-	.damage-component input,
-	.damage-component select {
+	.damage-component input {
 		box-sizing: border-box;
 		width: 100%;
 		min-width: 0;
@@ -190,7 +189,13 @@
 		opacity: 0.55;
 		cursor: not-allowed;
 	}
+	.no-damage-dice small {
+		display: block;
+		color: #aa9d91;
+	}
 	.damage-error {
+		flex-basis: 100%;
+		margin: 0;
 		color: #f0a29b;
 		font-size: 0.72rem;
 	}

@@ -72,7 +72,21 @@ describe('character identity panels', () => {
 			props: {
 				locale: 'pt-BR',
 				sheet,
-				optionsFor: () => [],
+				optionsFor: (entryType) =>
+					entryType === 'class'
+						? [
+								{
+									id: 'wizard',
+									sourceId: 'srd',
+									entryType: 'class',
+									name: 'Wizard',
+									summary: 'A scholarly magic-user.',
+									rules: {},
+									translations: { 'pt-BR.summary': 'Um usuário de magia estudioso.' },
+									isPublished: true
+								}
+							]
+						: [],
 				optionLabel: (entry) => entry.name,
 				subclassOptions: ['Clérigo da Guerra', 'Clérigo da Vida'],
 				lineageOptions: ['Drow', 'Alto Elfo'],
@@ -89,6 +103,8 @@ describe('character identity panels', () => {
 		expect(html).toContain('Linhagem / legado');
 		expect(html).toContain('Drow');
 		expect(html).toContain('Acólito');
+		expect(html).toContain('Um usuário de magia estudioso.');
+		expect(html).not.toContain('A scholarly magic-user.');
 	});
 
 	it('disables initiative rolling when the character has no linked token', () => {
@@ -139,11 +155,13 @@ describe('character identity panels', () => {
 						description: 'Use um poder divino.'
 					}
 				],
+				canDisplayCharacter: true,
 				expandedFeature: 'channel-divinity',
 				expertiseChoices: 1,
 				skills: [['Percepção', 'wisdom']],
 				skillExpertise: [],
-				onExpertiseChoice: vi.fn()
+				onExpertiseChoice: vi.fn(),
+				onPresentFeature: vi.fn()
 			}
 		}).body;
 
@@ -151,5 +169,6 @@ describe('character identity panels', () => {
 		expect(html).toContain('Use um poder divino.');
 		expect(html).toContain('Especialização de classe');
 		expect(html).toContain('Percepção');
+		expect(html).toContain('Destacar na tela');
 	});
 });

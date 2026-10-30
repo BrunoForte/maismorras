@@ -11,6 +11,7 @@
 
 	let {
 		campaignId,
+		sceneId,
 		session,
 		isGM,
 		SheetComponent,
@@ -23,6 +24,7 @@
 		onresolved
 	}: {
 		campaignId: string;
+		sceneId: string;
 		session: Session;
 		isGM: boolean;
 		SheetComponent: SheetComponentType | null;
@@ -104,7 +106,7 @@
 	{#if !isGM}
 		{#if SheetComponent}<SheetComponent
 				{campaignId}
-				sceneId=""
+				{sceneId}
 				{session}
 				{isGM}
 				embedded
@@ -149,7 +151,7 @@
 			</div>
 			{#if SheetComponent}{#key selectedCharacterId}<SheetComponent
 						{campaignId}
-						sceneId=""
+						{sceneId}
 						{session}
 						{isGM}
 						characterId={selectedCharacterId}

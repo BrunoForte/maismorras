@@ -11,7 +11,10 @@
 		getMyCharacter,
 		restCharacter,
 		rollMyCharacter,
+		rollCharacterForGM,
 		setCharacterInitiativeAdvantage,
+		setAvailableSpellSlotsForGM,
+		setSpellGrantUseConfigForGM,
 		castMySpell,
 		saveCharacterForGM,
 		saveMyCharacter,
@@ -44,7 +47,13 @@
 	import { connectSceneSocket } from '$lib/services/sceneRealtime';
 	import { publishSpellToChat, rollDice } from '$lib/services/eventApi';
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { calculateArmorClass } from '$lib/utils/armorClass';
+	import { kilogramsToPounds } from '$lib/utils/dnd2024MetricUnits';
+	import {
+		preferredCompendiumFeatEntries,
+		resolveCompendiumFeatEntry
+	} from '$lib/utils/compendium/compendiumRules';
 	import { presentSpellMechanics } from '$lib/utils/compendium/spellMechanics';
 	import {
 		availableSpellCircles as projectAvailableSpellCircles,
@@ -78,9 +87,14 @@
 	import {
 		cloneInventoryRules,
 		filterItemEntries,
-		projectInventory,
-		totalInventoryWeight
+		projectInventory
 	} from '$lib/utils/inventoryRules';
+	import {
+		calculateDnd2024CarriedWeight,
+		calculateDnd2024CarryingCapacity,
+		defaultCharacterSize,
+		isDnd2024Size
+	} from '$lib/utils/carryingCapacity';
 	import {
 		addWeaponProfile,
 		deriveWeaponEffects,
@@ -94,18 +108,19 @@
 		weaponProficiencyStatus as resolveWeaponProficiency,
 		weaponSupportsGreatWeaponFighting,
 		updateInventoryItemRules,
-		resolveWeaponAttackMode,
 		type WeaponAttackProfile,
 		type WeaponEffect,
 		type WeaponFeat
 	} from '$lib/utils/weaponRules';
+	import { resolveDnd2024RollMode } from '$lib/utils/character/dnd2024RollRules';
 	import {
 		getActiveSpeciesTraits,
 		getSpeciesHPBonus,
 		getSpeciesProfile,
 		getSpeciesResistances,
 		getSpeciesSpeed,
-		normalizeSpeciesLineage
+		normalizeSpeciesLineage,
+		normalizeSpecies
 	} from '$lib/utils/speciesRules';
 	import CharacterSkillsTab from '$lib/components/character/CharacterSkillsTab.svelte';
 	import CharacterDetailsTab from '$lib/components/character/CharacterDetailsTab.svelte';
@@ -121,6 +136,7 @@
 	} from '$lib/data/dnd2024FeatSpells';
 	import { createCharacterSheetLifecycle } from '$lib/components/character/characterSheetLifecycle.svelte.js';
 	import {
+		normalizeDamageComponents,
 		parseDamageExpression,
 		serializeDamageComponents,
 		validateDamageBonus,
@@ -222,10 +238,7 @@
 			['Cego', 'Envenenado', 'Impedido'].includes(condition)
 		);
 	const selectedAttackMode = () =>
-		resolveWeaponAttackMode(weaponAttackMode, lifecycle.state.activeConditions);
-	$effect(() => {
-		if (hasAttackDisadvantage() && weaponAttackMode === 'advantage') weaponAttackMode = 'normal';
-	});
+		resolveDnd2024RollMode(weaponAttackMode, lifecycle.state.activeConditions);
 	$effect(() => {
 		if (!shouldShowSpellcasting() && activeTab === 'spells') activeTab = 'profile';
 	});
@@ -328,10 +341,22 @@
 					['details', 'Detalhes']
 				]
 		).filter(([tab]) => tab !== 'spells' || shouldShowSpellcasting());
+	const sheetTabIcon = (tab: string) =>
+		(
+			({
+				profile: 'character',
+				skills: 'skill',
+				combat: 'initiative',
+				inventory: 'inventory',
+				spells: 'spell',
+				details: 'notes'
+			}) as Record<string, string>
+		)[tab] ?? 'character';
 	const modifier = (score: number) => Math.floor((score - 10) / 2);
 	function onSpeciesChanged() {
 		const profile = getSpeciesProfile(sheet.species);
 		sheet.speciesLineage = normalizeSpeciesLineage(sheet.species, sheet.speciesLineage);
+		if (normalizeSpecies(sheet.species) !== 'goliath') sheet.largeFormActive = false;
 		if (profile) sheet.speed = getSpeciesSpeed(sheet.species, sheet.speciesLineage, sheet.speed);
 		syncProgression();
 		syncTokenSoon();
@@ -559,6 +584,7 @@
 		isRevisionCurrent: (operation) => lifecycle.isRevisionCurrent(operation),
 		finishExternalSaving: (operation) => lifecycle.finishExternalSaving(operation),
 		rollMyCharacter,
+		rollCharacterForGM,
 		rollDice,
 		rollTokenInitiative,
 		setInitiativeAdvantage: setCharacterInitiativeAdvantage,
@@ -587,8 +613,12 @@
 			lifecycle.cleanup();
 		};
 	});
-	const optionsFor = (entryType: string) =>
-		compendiumEntries.filter((entry) => entry.entryType === entryType);
+	const optionsFor = (entryType: string) => {
+		const options = compendiumEntries.filter((entry) => entry.entryType === entryType);
+		return entryType === 'feat'
+			? preferredCompendiumFeatEntries(options, compendiumSources)
+			: options;
+	};
 	const optionLabel = (entry: CompendiumEntry) =>
 		$appLocale === 'pt-BR' &&
 		entry.translations?.['pt-BR']?.trim() &&
@@ -631,21 +661,33 @@
 		profile?: WeaponAttackProfile
 	) {
 		const key = damageDraftKey(item, profile);
-		damageDrafts[key] = components;
+		const normalizedComponents = normalizeDamageComponents(components);
+		damageDrafts[key] = normalizedComponents;
 		invalidWeaponKey = weaponKey(item);
 		invalidDamageProfileId = profile?.id ?? null;
 		invalidWeaponField = 'damage';
-		const issue = validateDamageComponents(components);
+		const issue = validateDamageComponents(normalizedComponents);
 		invalidDamageIndex = issue?.index ?? 0;
 		if (issue) return;
-		const damage = components.map(({ count, sides }) => `${count}d${sides}`).join('+');
+		const damage = serializeDamageComponents(normalizedComponents);
 		if (profile) updateWeaponProfile(item, profile.id, { damage, damageNeedsRepair: false });
 		else updateWeaponRules(item, { damage, damageNeedsRepair: false }, true);
 		invalidWeaponKey = null;
 		invalidDamageProfileId = null;
 	}
 	const visibleInventory = () => projectInventory(sheet.inventory, inventoryFilter);
-	const inventoryWeight = () => totalInventoryWeight(sheet.inventory);
+	const carriedWeight = () => calculateDnd2024CarriedWeight(sheet.inventory, sheet.money);
+	const characterSize = () =>
+		isDnd2024Size(sheet.creatureSize) ? sheet.creatureSize : defaultCharacterSize(sheet.species);
+	const isGoliath = () => normalizeSpecies(sheet.species) === 'goliath';
+	const canUseLargeForm = () => isGoliath() && sheet.level >= 5;
+	const carryingCapacity = () =>
+		calculateDnd2024CarryingCapacity({
+			strength: sheet.abilityScores.strength,
+			size: characterSize(),
+			powerfulBuild: isGoliath(),
+			largeFormActive: canUseLargeForm() && sheet.largeFormActive === true
+		});
 	const weaponProficiencyStatus = (item: InventoryItem) => {
 		const rules = compendiumClass()?.rules ?? {};
 		const baseProficiencies = Array.isArray(rules.weaponProficiencies)
@@ -680,11 +722,7 @@
 			description: feature.description
 		}));
 		const feats: WeaponFeat[] = featList().flatMap((feat) => {
-			const entry = optionsFor('feat').find(
-				(candidate) =>
-					candidate.name.toLowerCase() === feat.toLowerCase() ||
-					optionLabel(candidate).toLowerCase() === feat.toLowerCase()
-			);
+			const entry = resolveCompendiumFeatEntry(feat, optionsFor('feat'), optionLabel);
 			return entry ? [{ id: entry.id, name: optionLabel(entry), rules: entry.rules ?? {} }] : [];
 		});
 		return deriveWeaponEffects(item, features, feats, sheet.inventory);
@@ -766,13 +804,18 @@
 		);
 	const shouldShowSpellcasting = () => {
 		return (
+			sheet.spells.length > 0 ||
 			spellcastingEnabled(
 				sheet.class,
 				sheet.level,
 				compendiumClass()?.rules.spellcasting,
 				sheet.spellcastingOverride
 			) ||
-			hasActiveFeatGrantedSpells(sheet.featSpellGrants ?? [], sheet.campaignFeatSpellGrants ?? [])
+			hasActiveFeatGrantedSpells(
+				sheet.featSpellGrants ?? [],
+				sheet.campaignFeatSpellGrants ?? [],
+				sheet.speciesSpellGrants ?? []
+			)
 		);
 	};
 	const compendiumSubclassOptions = () =>
@@ -907,7 +950,8 @@
 		combatActions.rollAuthorized(
 			'skill',
 			name,
-			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`
+			`${$appLocale === 'en' ? `${skillLabel(name)} check` : `Teste de ${skillLabel(name)}`}`,
+			resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
 		);
 	function toggleVisibleRoll(key: string) {
 		const current = sheet.visibleRolls ?? [];
@@ -917,6 +961,7 @@
 		syncTokenSoon();
 	}
 	function onLevelChanged() {
+		if (sheet.level < 5) sheet.largeFormActive = false;
 		if (sheet.level > previousLevel) levelChoiceOpen = true;
 		else {
 			previousLevel = sheet.level;
@@ -932,7 +977,9 @@
 			optionsFor('spell'),
 			optionLabel,
 			sheet.campaignFeatSpellGrants ?? [],
-			optionsFor('feat')
+			optionsFor('feat'),
+			sheet.speciesSpellGrants ?? [],
+			sheet.speciesSpellcastingAbility ?? ''
 		);
 	const availableSpellCircles = () =>
 		projectAvailableSpellCircles(
@@ -942,6 +989,71 @@
 	const addableSpellCircles = () => projectAddableSpellCircles(sheet.spellSlots);
 	const spellSlotForCircle = (circle: number) =>
 		sheet.spellSlots.find((slot) => slot.level === circle);
+	async function updateAvailableSpellSlots(level: number, current: number): Promise<boolean> {
+		if (!isGM) return false;
+		const targetCharacterId = characterId ?? lifecycle.state.resolvedCharacterId;
+		if (!targetCharacterId) {
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Save the character before adjusting spell slots.'
+					: 'Salve a ficha antes de ajustar os espaços de magia.';
+			return false;
+		}
+		try {
+			const updated = await setAvailableSpellSlotsForGM(
+				session,
+				campaignId,
+				targetCharacterId,
+				level,
+				current
+			);
+			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
+			sheet.spellSlots = updated.sheet.spellSlots;
+			lifecycle.state.message =
+				$appLocale === 'en'
+					? 'Available spell slots updated.'
+					: 'Espaços de magia disponíveis atualizados.';
+			return true;
+		} catch (error) {
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível ajustar os espaços de magia.';
+			return false;
+		}
+	}
+	async function updateSpellGrantUseConfig(
+		grantId: string,
+		entryId: string,
+		maxUses: number,
+		currentUses: number,
+		restoreOn: 'none' | 'short' | 'long'
+	): Promise<boolean> {
+		if (!isGM) return false;
+		const targetCharacterId = characterId ?? lifecycle.state.resolvedCharacterId;
+		if (!targetCharacterId) return false;
+		try {
+			const updated = await setSpellGrantUseConfigForGM(
+				session,
+				campaignId,
+				targetCharacterId,
+				grantId,
+				entryId,
+				maxUses,
+				currentUses,
+				restoreOn
+			);
+			if ((characterId ?? lifecycle.state.resolvedCharacterId) !== targetCharacterId) return true;
+			sheet.featSpellGrants = updated.sheet.featSpellGrants ?? [];
+			sheet.campaignFeatSpellGrants = updated.sheet.campaignFeatSpellGrants ?? [];
+			sheet.speciesSpellGrants = updated.sheet.speciesSpellGrants ?? [];
+			lifecycle.state.message =
+				$appLocale === 'en' ? 'Free spell uses updated.' : 'Usos gratuitos da magia atualizados.';
+			return true;
+		} catch (error) {
+			lifecycle.state.message =
+				error instanceof Error ? error.message : 'Não foi possível configurar os usos da magia.';
+			return false;
+		}
+	}
 	const spellsForCircle = (circle: number) =>
 		groupCharacterSpellsByCircle(projectedCharacterSpells(), circle);
 	const spellOrigin = (spell: Sheet['spells'][number]) => {
@@ -1008,7 +1120,7 @@
 			}
 		}
 		const rules: Record<string, unknown> = { category: draft.category, custom: true };
-		rules.weight = Math.max(0, Number(draft.weight) || 0);
+		rules.weight = Math.max(0, kilogramsToPounds(Number(draft.weight) || 0));
 		if (draft.category === 'weapon') {
 			if (draft.damage.trim()) rules.damage = draft.damage.trim();
 			rules.bonus = Math.round(draft.bonus);
@@ -1110,7 +1222,8 @@
 			newSpellLevel,
 			addableSpellCircles(),
 			existingSpell,
-			existingSpell ? optionLabel(existingSpell) : ''
+			existingSpell ? optionLabel(existingSpell) : '',
+			$appLocale
 		);
 		if (updated.length === sheet.spells.length) return;
 		sheet.spells = updated;
@@ -1289,7 +1402,8 @@
 				{#each sheetTabs() as [tab, label] (tab)}
 					<button
 						class:active={activeTab === tab}
-						onclick={() => (activeTab = tab as typeof activeTab)}>{label}</button
+						onclick={() => (activeTab = tab as typeof activeTab)}
+						><RpgIcon name={sheetTabIcon(tab)} size={17} />{label}</button
 					>
 				{/each}
 			</nav>{/if}
@@ -1339,13 +1453,22 @@
 						onScoreChange={updateScore}
 						{saveBonus}
 						onToggleSavingThrow={toggleSavingThrow}
-						onRollSave={(key, label) => combatActions.rollAuthorized('save', key, label)}
+						onRollSave={(key, label) =>
+							combatActions.rollAuthorized(
+								'save',
+								key,
+								label,
+								resolveDnd2024RollMode(rollMode, lifecycle.state.activeConditions)
+							)}
 						{hasAttackDisadvantage}
 						passivePerception={passivePerception()}
 						derivedFeatures={derivedFeatures()}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
 						expertiseChoices={expertiseChoices()}
 						{skills}
 						onExpertiseChoice={setExpertiseChoice}
+						onPresentFeature={(title, description) =>
+							void combatActions.presentContent(title, description, 'Habilidade')}
 					/>
 				{/if}
 				{#if activeTab === 'combat'}
@@ -1361,7 +1484,7 @@
 						attackDisadvantage={hasAttackDisadvantage()}
 						spells={grantedSpells()}
 						actions={{
-							rest: (kind) => void combatActions.rest(kind),
+							rest: (kind, hitDiceCount) => void combatActions.rest(kind, hitDiceCount),
 							syncTokenSoon,
 							spendResource: (index) => combatActions.spendResource(index),
 							setResourceMax: (index, value) => combatActions.setResourceMax(index, value),
@@ -1422,10 +1545,20 @@
 					/>
 				{/if}
 				{#if activeTab === 'inventory'}
+					{@const weightLimits = carryingCapacity()}
 					<CharacterInventoryTab
 						itemEntries={itemEntries()}
+						allCompendiumEntries={compendiumEntries}
 						visibleItems={visibleInventory()}
-						totalWeight={inventoryWeight()}
+						carriedWeight={carriedWeight().weightLb}
+						capacityLb={weightLimits?.capacityLb ?? null}
+						pushDragLiftLb={weightLimits?.pushDragLiftLb ?? null}
+						powerfulBuildApplied={weightLimits?.powerfulBuildApplied ?? false}
+						loadIncomplete={carriedWeight().incomplete}
+						unknownItemCount={carriedWeight().unknownItemCount}
+						canUseLargeForm={canUseLargeForm()}
+						largeFormActive={sheet.largeFormActive === true}
+						onLargeFormChange={(active) => (sheet.largeFormActive = active)}
 						money={sheet.money ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }}
 						onMoneyChange={(money) => (sheet.money = money)}
 						bind:inventoryFilter
@@ -1450,6 +1583,8 @@
 						{newSpellLevel}
 						{expandedSpell}
 						{isGM}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
+						canAdjustSlots={isGM && Boolean(characterId ?? lifecycle.state.resolvedCharacterId)}
 						canCastSpells={sheetOwnerId === session.user.id}
 						castingSpell={combatActions.state.castingSpell}
 						spellbook={{
@@ -1461,6 +1596,8 @@
 							compatibleSlots: combatActions.compatibleSlots,
 							selectedSlot: combatActions.selectedSlot
 						}}
+						speciesSpellcastingAbility={sheet.speciesSpellcastingAbility ?? ''}
+						hasSpeciesSpellGrants={(sheet.speciesSpellGrants ?? []).some((grant) => grant.active)}
 						presentation={{
 							optionLabel,
 							circleLabel,
@@ -1475,6 +1612,11 @@
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
 							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
+							setAvailableSpellSlots: updateAvailableSpellSlots,
+							setSpellGrantUseConfig: updateSpellGrantUseConfig,
+							setSpeciesSpellcastingAbility: (ability) => {
+								sheet.speciesSpellcastingAbility = ability as Sheet['speciesSpellcastingAbility'];
+							},
 							add: addSpell,
 							remove: removeSpell,
 							change: updateSpell,
@@ -1487,6 +1629,7 @@
 				{#if activeTab === 'details'}
 					<CharacterDetailsTab
 						{sheet}
+						canDisplayCharacter={isGM || !characterId || sheetOwnerId === session.user.id}
 						feats={featList()}
 						featEntries={optionsFor('feat')}
 						spellEntries={optionsFor('spell')}
@@ -1511,6 +1654,8 @@
 						onSpellcastingOverride={(enabled) => (sheet.spellcastingOverride = enabled)}
 						onFeaturesChange={(features) => (sheet.features = features)}
 						onEquipmentChange={(equipment) => (sheet.equipment = equipment)}
+						onPresentFeat={(title, description) =>
+							void combatActions.presentContent(title, description, 'Talento')}
 					/>
 				{/if}
 			</div>
@@ -1848,6 +1993,9 @@
 		background: #1b171a;
 	}
 	.sheet-tabs button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		flex: 0 0 auto;
 		border: 1px solid #4f433d;
 		border-radius: 999px;
@@ -1855,6 +2003,9 @@
 		color: #bcae9f;
 		background: #171316;
 		font-size: 0.72rem;
+	}
+	.sheet-tabs button :global(svg) {
+		flex: 0 0 auto;
 	}
 	.sheet-tabs button.active {
 		border-color: #c89655;

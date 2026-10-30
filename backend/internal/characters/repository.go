@@ -14,62 +14,70 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/compendium"
+	"vtt-backend/internal/sheetcompat"
 	"vtt-backend/internal/systems"
 )
 
 var (
-	ErrForbidden   = errors.New("forbidden")
-	ErrNotFound    = errors.New("character not found")
-	ErrNoHitDice   = errors.New("no hit dice available")
-	ErrInvalidRest = errors.New("invalid rest")
-	sceneIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	ErrForbidden              = errors.New("forbidden")
+	ErrNotFound               = errors.New("character not found")
+	ErrNoHitDice              = errors.New("no hit dice available")
+	ErrInvalidRest            = errors.New("invalid rest")
+	ErrInvalidSpellSlot       = errors.New("invalid spell slot quantity")
+	ErrInvalidSpellGrant      = errors.New("invalid spell grant configuration")
+	ErrInvalidSpellGrantState = errors.New("invalid persisted spell grant state")
+	sceneIDPattern            = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 )
 
 // Sheet deliberately stores the D&D 2024 MVP without rules text from the books.
 // Features, attacks and spells are user-authored notes, allowing the sheet to stay
 // compact while still retaining the practical information used at the table.
 type Sheet struct {
-	Name                    string                   `json:"name"`
-	PortraitPath            string                   `json:"portraitPath"`
-	TokenPortraitPath       string                   `json:"tokenPortraitPath"`
-	Class                   string                   `json:"class"`
-	Subclass                string                   `json:"subclass"`
-	Level                   int                      `json:"level"`
-	Species                 string                   `json:"species"`
-	SpeciesLineage          string                   `json:"speciesLineage"`
-	Background              string                   `json:"background"`
-	Alignment               string                   `json:"alignment"`
-	AbilityScores           AbilityScores            `json:"abilityScores"`
-	ProficiencyBonus        int                      `json:"proficiencyBonus"`
-	SavingThrows            []string                 `json:"savingThrows"`
-	SkillProficiencies      []string                 `json:"skillProficiencies"`
-	SkillExpertise          []string                 `json:"skillExpertise"`
-	ArmorClass              int                      `json:"armorClass"`
-	Initiative              int                      `json:"initiative"`
-	InitiativeAdvantage     bool                     `json:"initiativeAdvantage"`
-	Speed                   float64                  `json:"speed"`
-	HitPointsCurrent        int                      `json:"hitPointsCurrent"`
-	HitPointsMax            int                      `json:"hitPointsMax"`
-	TemporaryHP             int                      `json:"temporaryHP"`
-	HitDice                 string                   `json:"hitDice"`
-	HitDiceSpent            int                      `json:"hitDiceSpent"`
-	PassivePerception       int                      `json:"passivePerception"`
-	Attacks                 []Attack                 `json:"attacks"`
-	Spells                  []Spell                  `json:"spells"`
-	SpellcastingOverride    bool                     `json:"spellcastingOverride"`
-	Features                string                   `json:"features"`
-	Feats                   string                   `json:"feats"`
-	Equipment               string                   `json:"equipment"`
-	Inventory               []InventoryItem          `json:"inventory"`
-	Resources               []Resource               `json:"resources"`
-	SpellSlots              []SpellSlot              `json:"spellSlots"`
-	Money                   Dnd2024Money             `json:"money"`
-	FeatSpellGrants         []FeatSpellGrant         `json:"featSpellGrants,omitempty"`
-	CampaignFeatSpellGrants []CampaignFeatSpellGrant `json:"campaignFeatSpellGrants,omitempty"`
-	VisibleRolls            []string                 `json:"visibleRolls"`
-	Resistances             []string                 `json:"resistances,omitempty"`
-	AutomaticTraits         []string                 `json:"automaticTraits,omitempty"`
-	SpeciesHPBonusApplied   int                      `json:"speciesHPBonusApplied,omitempty"`
+	Name                       string                   `json:"name"`
+	PortraitPath               string                   `json:"portraitPath"`
+	TokenPortraitPath          string                   `json:"tokenPortraitPath"`
+	Class                      string                   `json:"class"`
+	Subclass                   string                   `json:"subclass"`
+	Level                      int                      `json:"level"`
+	Species                    string                   `json:"species"`
+	SpeciesLineage             string                   `json:"speciesLineage"`
+	SpeciesID                  string                   `json:"speciesId,omitempty"`
+	SpeciesLineageID           string                   `json:"speciesLineageId,omitempty"`
+	SpeciesSpellcastingAbility string                   `json:"speciesSpellcastingAbility,omitempty"`
+	Background                 string                   `json:"background"`
+	Alignment                  string                   `json:"alignment"`
+	AbilityScores              AbilityScores            `json:"abilityScores"`
+	ProficiencyBonus           int                      `json:"proficiencyBonus"`
+	SavingThrows               []string                 `json:"savingThrows"`
+	SkillProficiencies         []string                 `json:"skillProficiencies"`
+	SkillExpertise             []string                 `json:"skillExpertise"`
+	ArmorClass                 int                      `json:"armorClass"`
+	Initiative                 int                      `json:"initiative"`
+	InitiativeAdvantage        bool                     `json:"initiativeAdvantage"`
+	Speed                      float64                  `json:"speed"`
+	HitPointsCurrent           int                      `json:"hitPointsCurrent"`
+	HitPointsMax               int                      `json:"hitPointsMax"`
+	TemporaryHP                int                      `json:"temporaryHP"`
+	HitDice                    string                   `json:"hitDice"`
+	HitDiceSpent               int                      `json:"hitDiceSpent"`
+	PassivePerception          int                      `json:"passivePerception"`
+	Attacks                    []Attack                 `json:"attacks"`
+	Spells                     []Spell                  `json:"spells"`
+	SpellcastingOverride       bool                     `json:"spellcastingOverride"`
+	Features                   string                   `json:"features"`
+	Feats                      string                   `json:"feats"`
+	Equipment                  string                   `json:"equipment"`
+	Inventory                  []InventoryItem          `json:"inventory"`
+	Resources                  []Resource               `json:"resources"`
+	SpellSlots                 []SpellSlot              `json:"spellSlots"`
+	Money                      Dnd2024Money             `json:"money"`
+	FeatSpellGrants            []FeatSpellGrant         `json:"featSpellGrants,omitempty"`
+	CampaignFeatSpellGrants    []CampaignFeatSpellGrant `json:"campaignFeatSpellGrants,omitempty"`
+	SpeciesSpellGrants         []SpeciesSpellGrant      `json:"speciesSpellGrants,omitempty"`
+	VisibleRolls               []string                 `json:"visibleRolls"`
+	Resistances                []string                 `json:"resistances,omitempty"`
+	AutomaticTraits            []string                 `json:"automaticTraits,omitempty"`
+	SpeciesHPBonusApplied      int                      `json:"speciesHPBonusApplied,omitempty"`
 }
 
 // Dnd2024Money is the D&D 2024 coin purse, separate from carried inventory.
@@ -91,6 +99,8 @@ type FeatSpellGrant struct {
 	CantripEntryIDs        []string `json:"cantripEntryIds"`
 	FirstLevelSpellEntryID string   `json:"firstLevelSpellEntryId"`
 	FreeCastsRemaining     int      `json:"freeCastsRemaining"`
+	FreeCastsMaxOverride   *int     `json:"freeCastsMaxOverride,omitempty"`
+	FreeCastsRecovery      string   `json:"freeCastsRecovery,omitempty"`
 	Active                 bool     `json:"active,omitempty"`
 }
 
@@ -101,7 +111,29 @@ type CampaignFeatSpellGrant struct {
 	FeatEntryID           string            `json:"featEntryId"`
 	SpellcastingAbilities map[string]string `json:"spellcastingAbilities,omitempty"`
 	FreeCastsRemaining    map[string]int    `json:"freeCastsRemaining,omitempty"`
+	FreeCastsMaxOverrides map[string]int    `json:"freeCastsMaxOverrides,omitempty"`
+	FreeCastsRecoveries   map[string]string `json:"freeCastsRecoveries,omitempty"`
 	Active                bool              `json:"active,omitempty"`
+}
+
+// SpeciesSpellGrant stores server-derived identities and server-owned counters
+// for the subset of D&D 2024 species spell grants with stable spell IDs in the
+// campaign's enabled SRD catalog. Submitted values are always reconciled from
+// the character's canonical species/lineage selection before persistence.
+type SpeciesSpellGrant struct {
+	ID                   string `json:"id"`
+	FeatureID            string `json:"featureId"`
+	SpeciesID            string `json:"speciesId"`
+	LineageID            string `json:"lineageId"`
+	SpellEntryID         string `json:"spellEntryId"`
+	FreeCastsRemaining   int    `json:"freeCastsRemaining"`
+	FreeCastsMaxOverride *int   `json:"freeCastsMaxOverride,omitempty"`
+	FreeCastsRecovery    string `json:"freeCastsRecovery,omitempty"`
+	FreeCastsMax         int    `json:"freeCastsMax"`
+	DefaultFreeCasts     int    `json:"defaultFreeCasts"`
+	CanUseExistingSlots  bool   `json:"canUseExistingSlots"`
+	SpellcastingAbility  string `json:"spellcastingAbility,omitempty"`
+	Active               bool   `json:"active"`
 }
 
 type AbilityScores struct {
@@ -175,6 +207,7 @@ type Repository struct{ pool *pgxpool.Pool }
 type SheetRollResult struct {
 	EventID  int64  `json:"eventId"`
 	Dice     []int  `json:"dados"`
+	Kept     int    `json:"dadoEscolhido"`
 	Mode     string `json:"modo"`
 	Modifier int    `json:"modificador"`
 	Total    int    `json:"total"`
@@ -254,7 +287,39 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 	if err != nil {
 		return SheetRollResult{}, err
 	}
-	sheet := character.Sheet
+	return r.rollSheetForActor(ctx, campaignID, userID, character.Sheet, kind, key, mode, rules)
+}
+
+// RollCharacterForGM rolls a selected character sheet only for the campaign GM.
+// The actor lookup is always scoped to both the route campaign and character ID.
+func (r *Repository) RollCharacterForGM(ctx context.Context, campaignID, characterID, userID, kind, key, mode string) (SheetRollResult, error) {
+	if mode != "normal" && mode != "advantage" && mode != "disadvantage" {
+		return SheetRollResult{}, fmt.Errorf("invalid roll mode")
+	}
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return SheetRollResult{}, ErrForbidden
+	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return SheetRollResult{}, err
+	}
+	var raw []byte
+	err = r.pool.QueryRow(ctx, `select sheet from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID).Scan(&raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SheetRollResult{}, ErrNotFound
+	}
+	if err != nil {
+		return SheetRollResult{}, fmt.Errorf("get character for narrator roll: %w", err)
+	}
+	var sheet Sheet
+	if err := json.Unmarshal(raw, &sheet); err != nil {
+		return SheetRollResult{}, fmt.Errorf("decode character sheet: %w", err)
+	}
+	sheet = normalizeDerivedFields(sheet, rules)
+	return r.rollSheetForActor(ctx, campaignID, userID, sheet, kind, key, mode, rules)
+}
+
+func (r *Repository) rollSheetForActor(ctx context.Context, campaignID, userID string, sheet Sheet, kind, key, mode string, rules systems.Dnd2024CharacterRules) (SheetRollResult, error) {
 	result := SheetRollResult{Mode: mode}
 	switch kind {
 	case "skill":
@@ -301,9 +366,10 @@ func (r *Repository) RollSheet(ctx context.Context, campaignID, userID, kind, ke
 		return result, rollErr
 	}
 	result.Dice = d20.Rolls
+	result.Kept = d20.Kept
 	result.Total = d20.Total
-	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
-	err = r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
+	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "dadoEscolhido": result.Kept, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · escolhido %d · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Kept, result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
+	err := r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
 	return result, err
 }
 
@@ -314,6 +380,27 @@ func contains(items []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// setAvailableSpellSlots changes only the remaining count for a level. Maximum
+// counts are always recalculated from the stored class and level.
+func setAvailableSpellSlots(sheet *Sheet, level, current int) error {
+	if current < 0 {
+		return ErrInvalidSpellSlot
+	}
+	slots := dnd2024SpellSlots(sheet.Class, sheet.Level, sheet.SpellSlots)
+	for index := range slots {
+		if slots[index].Level != level {
+			continue
+		}
+		if current > slots[index].Max {
+			return ErrInvalidSpellSlot
+		}
+		slots[index].Current = current
+		sheet.SpellSlots = slots
+		return nil
+	}
+	return ErrInvalidSpellSlot
 }
 func joinDice(dice []int) string {
 	values := make([]string, len(dice))
@@ -355,10 +442,15 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		return SpellCastResult{}, err
 	}
 	sheet = normalizeDerivedFields(sheet, characterRules)
+	sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, sheet, sheet)
+	if err != nil {
+		return SpellCastResult{}, err
+	}
 	var spell Spell
 	var rules map[string]any
 	var selectedGrant *FeatSpellGrant
 	var selectedCampaignGrant *CampaignFeatSpellGrant
+	var selectedSpeciesGrant *SpeciesSpellGrant
 	var campaignGrantRule *compendium.CampaignFeatSpellDefinition
 	if input.GrantID != "" {
 		if input.EntryID == "" || input.SpellIndex >= 0 {
@@ -398,30 +490,59 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 				}
 			}
 			if selectedCampaignGrant == nil {
-				return SpellCastResult{}, fmt.Errorf("campaign feat spell grant not found")
-			}
-			data, ruleErr := loadCampaignFeatSpellRule(ctx, tx, campaignID, selectedCampaignGrant.FeatEntryID)
-			if ruleErr != nil || featOccurrenceCountForNames(sheet.Feats, data.Names) == 0 {
-				return SpellCastResult{}, fmt.Errorf("campaign feat spell grant is not authorized")
-			}
-			for i := range data.Rule.Spells {
-				if data.Rule.Spells[i].SpellEntryID == input.EntryID {
-					campaignGrantRule = &data.Rule.Spells[i]
-					break
+				for i := range sheet.SpeciesSpellGrants {
+					grant := &sheet.SpeciesSpellGrants[i]
+					if grant.ID == input.GrantID && grant.Active && grant.SpellEntryID == input.EntryID {
+						selectedSpeciesGrant = grant
+						break
+					}
 				}
+				if selectedSpeciesGrant == nil {
+					return SpellCastResult{}, fmt.Errorf("spell grant not found")
+				}
+				if !validSpellcastingAbility(sheet.SpeciesSpellcastingAbility) {
+					return SpellCastResult{}, fmt.Errorf("choose an ability for species spells")
+				}
+				var speciesRule *dnd2024SpeciesSpellRule
+				for i := range dnd2024SpeciesSpellRules {
+					if speciesSpellGrantID(dnd2024SpeciesSpellRules[i]) == selectedSpeciesGrant.ID {
+						speciesRule = &dnd2024SpeciesSpellRules[i]
+						break
+					}
+				}
+				if speciesRule == nil {
+					return SpellCastResult{}, fmt.Errorf("unsupported species spell grant")
+				}
+				choice, choiceErr := loadSpeciesSpellEntry(ctx, tx, campaignID, speciesRule.SpellRuleID)
+				if choiceErr != nil || choice.ID != input.EntryID || choice.Level != speciesRule.SpellLevel {
+					return SpellCastResult{}, fmt.Errorf("species spell is not available for this grant")
+				}
+				spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "species"}
+				rules = choice.Rules
+			} else {
+				data, ruleErr := loadCampaignFeatSpellRule(ctx, tx, campaignID, selectedCampaignGrant.FeatEntryID)
+				if ruleErr != nil || featOccurrenceCountForNames(sheet.Feats, data.Names) == 0 {
+					return SpellCastResult{}, fmt.Errorf("campaign feat spell grant is not authorized")
+				}
+				for i := range data.Rule.Spells {
+					if data.Rule.Spells[i].SpellEntryID == input.EntryID {
+						campaignGrantRule = &data.Rule.Spells[i]
+						break
+					}
+				}
+				if campaignGrantRule == nil {
+					return SpellCastResult{}, fmt.Errorf("spell is not granted by this campaign feat")
+				}
+				if len(campaignGrantRule.AbilityOptions) > 1 && !containsString(campaignGrantRule.AbilityOptions, selectedCampaignGrant.SpellcastingAbilities[input.EntryID]) {
+					return SpellCastResult{}, fmt.Errorf("campaign spellcasting ability is invalid")
+				}
+				choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
+				if choiceErr != nil {
+					return SpellCastResult{}, choiceErr
+				}
+				spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feat"}
+				rules = choice.Rules
 			}
-			if campaignGrantRule == nil {
-				return SpellCastResult{}, fmt.Errorf("spell is not granted by this campaign feat")
-			}
-			if len(campaignGrantRule.AbilityOptions) > 1 && !containsString(campaignGrantRule.AbilityOptions, selectedCampaignGrant.SpellcastingAbilities[input.EntryID]) {
-				return SpellCastResult{}, fmt.Errorf("campaign spellcasting ability is invalid")
-			}
-			choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
-			if choiceErr != nil {
-				return SpellCastResult{}, choiceErr
-			}
-			spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feat"}
-			rules = choice.Rules
 		}
 	} else {
 		if input.FreeCast || input.EntryID != "" || input.SpellIndex >= len(sheet.Spells) {
@@ -430,14 +551,25 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		spell = sheet.Spells[input.SpellIndex]
 	}
 	slotLevel := input.SlotLevel
-	freeCast := input.FreeCast && (selectedGrant != nil || selectedCampaignGrant != nil)
-	if input.FreeCast && selectedGrant == nil && selectedCampaignGrant == nil {
+	freeCast := input.FreeCast && (selectedGrant != nil || selectedCampaignGrant != nil || selectedSpeciesGrant != nil)
+	if input.FreeCast && selectedGrant == nil && selectedCampaignGrant == nil && selectedSpeciesGrant == nil {
 		return SpellCastResult{}, fmt.Errorf("free casting requires an authorized feat grant")
 	}
 	if selectedCampaignGrant != nil {
-		remaining := selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+		maximum := campaignGrantRule.FreeUses
+		recovery := campaignGrantRule.Recovery
+		if override, ok := selectedCampaignGrant.FreeCastsMaxOverrides[input.EntryID]; ok {
+			maximum = override
+		}
+		if override, ok := selectedCampaignGrant.FreeCastsRecoveries[input.EntryID]; ok {
+			recovery = override
+		}
+		remaining, hasRemaining := selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+		if maximum < 0 || maximum > 100 || (recovery != "none" && recovery != "short" && recovery != "long") || (hasRemaining && (remaining < 0 || remaining > maximum)) {
+			return SpellCastResult{}, ErrInvalidSpellGrantState
+		}
 		if freeCast {
-			if campaignGrantRule.FreeUses <= 0 || remaining <= 0 || slotLevel != 0 {
+			if maximum <= 0 || remaining <= 0 || slotLevel != 0 {
 				return SpellCastResult{}, fmt.Errorf("no free campaign feat casting available")
 			}
 			selectedCampaignGrant.FreeCastsRemaining[input.EntryID] = remaining - 1
@@ -456,8 +588,29 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 				return SpellCastResult{}, costErr
 			}
 		}
+	} else if selectedSpeciesGrant != nil {
+		if freeCast {
+			maxUses, _, configErr := validateSavedSpellUseConfig(selectedSpeciesGrant.DefaultFreeCasts, "long", selectedSpeciesGrant.FreeCastsMaxOverride, selectedSpeciesGrant.FreeCastsRecovery)
+			if configErr != nil || selectedSpeciesGrant.FreeCastsRemaining <= 0 || selectedSpeciesGrant.FreeCastsRemaining > maxUses || slotLevel != 0 {
+				return SpellCastResult{}, fmt.Errorf("no free species casting available")
+			}
+			selectedSpeciesGrant.FreeCastsRemaining--
+		} else if spell.Level > 0 {
+			if !selectedSpeciesGrant.CanUseExistingSlots || slotLevel < spell.Level {
+				return SpellCastResult{}, fmt.Errorf("species spell cannot use this slot")
+			}
+			if costErr := consumeSpellSlotForCast(&sheet, spell.Level, slotLevel); costErr != nil {
+				return SpellCastResult{}, costErr
+			}
+		} else if costErr := consumeSpellSlotForCast(&sheet, spell.Level, slotLevel); costErr != nil {
+			return SpellCastResult{}, costErr
+		}
 	} else if freeCast {
 		rule := dnd2024FeatSpellRules[selectedGrant.FeatID]
+		maximum, _, configErr := validateSavedSpellUseConfig(rule.FreeCasts, rule.Recovery, selectedGrant.FreeCastsMaxOverride, selectedGrant.FreeCastsRecovery)
+		if configErr != nil || selectedGrant.FreeCastsRemaining < 0 || selectedGrant.FreeCastsRemaining > maximum {
+			return SpellCastResult{}, ErrInvalidSpellGrantState
+		}
 		if spell.Level != rule.FreeCastSpellLevel || selectedGrant.FreeCastsRemaining <= 0 || slotLevel != 0 {
 			return SpellCastResult{}, fmt.Errorf("no free feat casting available")
 		}
@@ -505,7 +658,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		}
 		expression, dice, modifier, total = rollSpellEffect(rules, spell.Level, slotLevel)
 	}
-	raw, err = json.Marshal(sheet)
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, sheet)
 	if err != nil {
 		return SpellCastResult{}, err
 	}
@@ -517,6 +670,8 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		castingAbility = selectedGrant.Ability
 	} else if selectedCampaignGrant != nil {
 		castingAbility = selectedCampaignGrant.SpellcastingAbilities[input.EntryID]
+	} else if selectedSpeciesGrant != nil {
+		castingAbility = sheet.SpeciesSpellcastingAbility
 	}
 	castCost := "nenhum"
 	if freeCast {
@@ -525,8 +680,14 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 			remaining = selectedGrant.FreeCastsRemaining
 		} else if selectedCampaignGrant != nil {
 			remaining = selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+		} else if selectedSpeciesGrant != nil {
+			remaining = selectedSpeciesGrant.FreeCastsRemaining
 		}
-		castCost = fmt.Sprintf("uso gratuito do talento · restantes %d", remaining)
+		source := "talento"
+		if selectedSpeciesGrant != nil {
+			source = "espécie"
+		}
+		castCost = fmt.Sprintf("uso gratuito de %s · restantes %d", source, remaining)
 	} else if slotLevel > 0 {
 		castCost = fmt.Sprintf("1 espaço de nível %d", slotLevel)
 	}
@@ -545,10 +706,16 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		return SpellCastResult{}, err
 	}
 	presentationUpdated := false
-	if spell.Level == 0 && input.PresentationSceneID != "" {
+	if input.PresentationSceneID != "" {
 		description, _ := rules["description"].(string)
 		if strings.TrimSpace(description) == "" {
 			description = spell.Description
+		}
+		if strings.TrimSpace(description) == "" {
+			description, _ = rules["summary"].(string)
+		}
+		if strings.TrimSpace(description) == "" {
+			description = "Descrição não cadastrada no compêndio."
 		}
 		if len([]rune(spell.Name)) <= 200 && len([]rune(description)) <= 12_000 {
 			presentationResult, presentationErr := tx.Exec(ctx, `insert into scene_presentations(scene_id,campaign_id,asset_path,title,description,visible,visible_user_ids,audience_restricted,overlay_visible)
@@ -568,6 +735,8 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		remaining = selectedGrant.FreeCastsRemaining
 	} else if selectedCampaignGrant != nil {
 		remaining = selectedCampaignGrant.FreeCastsRemaining[input.EntryID]
+	} else if selectedSpeciesGrant != nil {
+		remaining = selectedSpeciesGrant.FreeCastsRemaining
 	}
 	return SpellCastResult{EventID: eventID, Sheet: sheet, SpellName: spell.Name, BaseLevel: spell.Level, SlotLevel: slotLevel, Effect: effect, ChatText: chatText, PresentationUpdated: presentationUpdated, Expression: expression, Dice: dice, Modifier: modifier, Total: total, SpellcastingAbility: castingAbility, FreeCastRemaining: remaining}, nil
 }
@@ -773,6 +942,10 @@ func (r *Repository) getMineWithRules(ctx context.Context, campaignID, userID st
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
 	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
+	item.Sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, r.pool, campaignID, item.Sheet, item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
 	return item, nil
 }
 
@@ -793,9 +966,32 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err != nil {
 		return Character{}, err
 	}
+	submitted := sheet
+	prepare := func(previous Sheet, previousRaw []byte) (Sheet, []byte, error) {
+		next := submitted
+		next.FeatSpellGrants, err = reconcileFeatSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate feat spell grants: %w", err)
+		}
+		next.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate campaign feat spell grants: %w", err)
+		}
+		next = normalizeDerivedFields(next, rules)
+		next.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, next, previous)
+		if err != nil {
+			return Sheet{}, nil, fmt.Errorf("validate species spell grants: %w", err)
+		}
+		next.SpellSlots = dnd2024SpellSlots(next.Class, next.Level, previous.SpellSlots)
+		next = normalizeDerivedFields(next, rules)
+		encoded, encodeErr := sheetcompat.MarshalPreservingUnknown(previousRaw, next)
+		return next, encoded, encodeErr
+	}
+
 	var previous Sheet
 	var previousRaw []byte
-	previousErr := tx.QueryRow(ctx, `select sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&previousRaw)
+	var characterID string
+	previousErr := tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &previousRaw)
 	if previousErr != nil && !errors.Is(previousErr, pgx.ErrNoRows) {
 		return Character{}, previousErr
 	}
@@ -804,29 +1000,37 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 			return Character{}, err
 		}
 	}
-	sheet.FeatSpellGrants, err = reconcileFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
-	if err != nil {
-		return Character{}, fmt.Errorf("validate feat spell grants: %w", err)
-	}
-	sheet.CampaignFeatSpellGrants, err = reconcileCampaignFeatSpellGrants(ctx, tx, campaignID, sheet, previous)
-	if err != nil {
-		return Character{}, fmt.Errorf("validate campaign feat spell grants: %w", err)
-	}
-	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
-	sheet = normalizeDerivedFields(sheet, rules)
-	raw, err := json.Marshal(sheet)
+	sheet, raw, err := prepare(previous, previousRaw)
 	if err != nil {
 		return Character{}, err
 	}
 	var item Character
-	err = tx.QueryRow(ctx, `
-		insert into actors(campaign_id,owner_id,kind,name,sheet)
-		values($1,$2,'character',$3,$4)
-		on conflict (campaign_id,owner_id) where kind='character'
-		do update set name=excluded.name,sheet=jsonb_set(excluded.sheet,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true)
-		returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, userID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
-	if err != nil {
-		return Character{}, fmt.Errorf("save character: %w", err)
+	if previousErr == nil {
+		err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id=$5 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		if err != nil {
+			return Character{}, fmt.Errorf("save character: %w", err)
+		}
+	} else {
+		err = tx.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character',$3,$4) on conflict (campaign_id,owner_id) where kind='character' do nothing returning id::text,campaign_id::text,owner_id::text,sheet`, campaignID, userID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another request created the character after our initial read. Lock
+			// and re-read it, then merge against that latest stored document rather
+			// than letting an upsert overwrite fields from the concurrent writer.
+			if err = tx.QueryRow(ctx, `select id::text,sheet from actors where campaign_id=$1 and owner_id=$2 and kind='character' for update`, campaignID, userID).Scan(&characterID, &previousRaw); err != nil {
+				return Character{}, fmt.Errorf("character changed while saving: %w", err)
+			}
+			if err := json.Unmarshal(previousRaw, &previous); err != nil {
+				return Character{}, err
+			}
+			sheet, raw, err = prepare(previous, previousRaw)
+			if err != nil {
+				return Character{}, err
+			}
+			err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id=$5 and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, userID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+		}
+		if err != nil {
+			return Character{}, fmt.Errorf("save character: %w", err)
+		}
 	}
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
@@ -835,7 +1039,7 @@ func (r *Repository) SaveMine(ctx context.Context, campaignID, userID string, sh
 	if err := tx.Commit(ctx); err != nil {
 		return Character{}, err
 	}
-	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
+	if err := r.syncSceneTokens(ctx, item.ID); err != nil {
 		return Character{}, err
 	}
 	return item, nil
@@ -868,6 +1072,10 @@ func (r *Repository) GetForGM(ctx context.Context, campaignID, characterID, user
 		return Character{}, fmt.Errorf("decode character sheet: %w", err)
 	}
 	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
+	item.Sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, r.pool, campaignID, item.Sheet, item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
 	return item, nil
 }
 
@@ -907,9 +1115,14 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err != nil {
 		return Character{}, fmt.Errorf("validate campaign feat spell grants: %w", err)
 	}
+	sheet = normalizeDerivedFields(sheet, rules)
+	sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, sheet, previous)
+	if err != nil {
+		return Character{}, fmt.Errorf("validate species spell grants: %w", err)
+	}
 	sheet.SpellSlots = dnd2024SpellSlots(sheet.Class, sheet.Level, previous.SpellSlots)
 	sheet = normalizeDerivedFields(sheet, rules)
-	raw, err := json.Marshal(sheet)
+	raw, err := sheetcompat.MarshalPreservingUnknown(previousRaw, sheet)
 	if err != nil {
 		return Character{}, err
 	}
@@ -928,7 +1141,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 	if err := tx.Commit(ctx); err != nil {
 		return Character{}, err
 	}
-	if err := r.syncSceneTokens(ctx, item.ID, item.Sheet); err != nil {
+	if err := r.syncSceneTokens(ctx, item.ID); err != nil {
 		return Character{}, err
 	}
 	return item, nil
@@ -972,6 +1185,195 @@ func (r *Repository) SetInitiativeAdvantage(ctx context.Context, campaignID, cha
 	_, err = r.pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{initiativeAdvantage}',to_jsonb($1::boolean),true) where id=$2 and campaign_id=$3 and owner_id is not distinct from $4::uuid and kind='character'`, enabled, characterID, campaignID, ownerID)
 	return err
 }
+
+// SetAvailableSpellSlotsForGM gives the narrator direct control over remaining
+// slots while keeping progression-derived maximums server-owned.
+func (r *Repository) SetAvailableSpellSlotsForGM(ctx context.Context, campaignID, characterID, userID string, level, current int) (Character, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Character{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var role string
+	if err := tx.QueryRow(ctx, `select role::text from campaign_members where campaign_id=$1 and user_id=$2 for share`, campaignID, userID).Scan(&role); err != nil || role != "gm" {
+		return Character{}, ErrForbidden
+	}
+
+	var item Character
+	var raw []byte
+	if err := tx.QueryRow(ctx, `select id::text,campaign_id::text,coalesce(owner_id::text,''),sheet from actors where id=$1 and campaign_id=$2 and kind='character' for update`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw); errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	} else if err != nil {
+		return Character{}, err
+	}
+
+	if _, err := dnd2024RulesForCampaign(ctx, campaignID, tx); err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	if err := setAvailableSpellSlots(&item.Sheet, level, current); err != nil {
+		return Character{}, err
+	}
+	raw, err = sheetcompat.MarshalPreservingUnknown(raw, item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	if err := tx.QueryRow(ctx, `update actors set sheet=$1::jsonb where id=$2 and campaign_id=$3 and kind='character' returning sheet`, raw, characterID, campaignID).Scan(&raw); err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Character{}, err
+	}
+	return item, nil
+}
+
+// SetSpellGrantUseConfigForGM updates a single server-derived spell grant.
+// The grant and spell IDs are selectors only: the locked character sheet,
+// campaign rule, and exact campaign system reference determine the source.
+func (r *Repository) SetSpellGrantUseConfigForGM(ctx context.Context, campaignID, characterID, userID, grantID, entryID string, maxUses, currentUses int, recovery string) (Character, error) {
+	if len(grantID) == 0 || len(grantID) > 120 || len(entryID) == 0 || len(entryID) > 120 || maxUses < 0 || maxUses > 100 || currentUses < 0 || currentUses > maxUses || (recovery != "none" && recovery != "short" && recovery != "long") {
+		return Character{}, ErrInvalidSpellGrant
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Character{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Character{}, err
+	}
+	if _, err := dnd2024RulesForCampaign(ctx, campaignID, tx); err != nil {
+		return Character{}, err
+	}
+	var item Character
+	var raw []byte
+	if err := tx.QueryRow(ctx, `select id::text,campaign_id::text,coalesce(owner_id::text,''),sheet from actors where id=$1 and campaign_id=$2 and kind='character' for update`, characterID, campaignID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw); errors.Is(err, pgx.ErrNoRows) {
+		return Character{}, ErrNotFound
+	} else if err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	item.Sheet = normalizeSpeciesIdentity(item.Sheet)
+	item.Sheet.SpeciesSpellGrants, err = reconcileSpeciesSpellGrants(ctx, tx, campaignID, item.Sheet, item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	found := false
+	for index := range item.Sheet.FeatSpellGrants {
+		grant := &item.Sheet.FeatSpellGrants[index]
+		if grant.ID != grantID || !grant.Active || grant.FirstLevelSpellEntryID != entryID {
+			continue
+		}
+		rule, ok := dnd2024FeatSpellRules[grant.FeatID]
+		if !ok || rule.FreeCasts <= 0 {
+			continue
+		}
+		if currentUses > maxUses {
+			return Character{}, ErrInvalidSpellGrant
+		}
+		grant.FreeCastsMaxOverride = intOverride(maxUses, rule.FreeCasts)
+		grant.FreeCastsRecovery = recoveryOverride(recovery, rule.Recovery)
+		grant.FreeCastsRemaining = currentUses
+		found = true
+		break
+	}
+	if !found {
+		for index := range item.Sheet.CampaignFeatSpellGrants {
+			grant := &item.Sheet.CampaignFeatSpellGrants[index]
+			if grant.ID != grantID || !grant.Active {
+				continue
+			}
+			data, loadErr := loadCampaignFeatSpellRule(ctx, tx, campaignID, grant.FeatEntryID)
+			if loadErr != nil || featOccurrenceCountForNames(item.Sheet.Feats, data.Names) == 0 {
+				return Character{}, ErrInvalidSpellGrant
+			}
+			for _, spell := range data.Rule.Spells {
+				if spell.SpellEntryID != entryID || spell.FreeUses <= 0 {
+					continue
+				}
+				if grant.FreeCastsMaxOverrides == nil {
+					grant.FreeCastsMaxOverrides = make(map[string]int)
+				}
+				if grant.FreeCastsRecoveries == nil {
+					grant.FreeCastsRecoveries = make(map[string]string)
+				}
+				if maxUses == spell.FreeUses {
+					delete(grant.FreeCastsMaxOverrides, entryID)
+				} else {
+					grant.FreeCastsMaxOverrides[entryID] = maxUses
+				}
+				if recovery == spell.Recovery {
+					delete(grant.FreeCastsRecoveries, entryID)
+				} else {
+					grant.FreeCastsRecoveries[entryID] = recovery
+				}
+				if grant.FreeCastsRemaining == nil {
+					grant.FreeCastsRemaining = make(map[string]int)
+				}
+				grant.FreeCastsRemaining[entryID] = currentUses
+				found = true
+				break
+			}
+			if found {
+				break
+			}
+		}
+	}
+	if !found {
+		for index := range item.Sheet.SpeciesSpellGrants {
+			grant := &item.Sheet.SpeciesSpellGrants[index]
+			if grant.ID != grantID || !grant.Active || grant.SpellEntryID != entryID {
+				continue
+			}
+			grant.FreeCastsMaxOverride = intOverride(maxUses, grant.DefaultFreeCasts)
+			grant.FreeCastsRecovery = recoveryOverride(recovery, "long")
+			grant.FreeCastsMax = maxUses
+			grant.FreeCastsRemaining = currentUses
+			found = true
+			break
+		}
+	}
+	if !found {
+		return Character{}, ErrInvalidSpellGrant
+	}
+	raw, err = json.Marshal(item.Sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	if err := tx.QueryRow(ctx, `update actors set sheet=$1::jsonb where id=$2 and campaign_id=$3 and kind='character' returning sheet`, raw, characterID, campaignID).Scan(&raw); err != nil {
+		return Character{}, err
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Character{}, err
+	}
+	return item, nil
+}
+
+func intOverride(value, defaultValue int) *int {
+	if value == defaultValue {
+		return nil
+	}
+	return &value
+}
+
+func recoveryOverride(value, defaultValue string) string {
+	if value == defaultValue {
+		return ""
+	}
+	return value
+}
+
 func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, userID string) error {
 	if err := r.requireGM(ctx, campaignID, userID); err != nil {
 		return err
@@ -991,14 +1393,29 @@ func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, u
 
 // Tokens linked to a character are instances for position and conditions, but
 // their sheet-derived combat numbers must follow the character sheet.
-func (r *Repository) syncSceneTokens(ctx context.Context, actorID string, sheet Sheet) error {
+func (r *Repository) syncSceneTokens(ctx context.Context, actorID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var raw []byte
+	if err = tx.QueryRow(ctx, `select sheet from actors where id=$1 and kind='character' for update`, actorID).Scan(&raw); err != nil {
+		return fmt.Errorf("load character before token sync: %w", err)
+	}
+	var sheet Sheet
+	if err = json.Unmarshal(raw, &sheet); err != nil {
+		return fmt.Errorf("decode character before token sync: %w", err)
+	}
 	portrait := sheet.TokenPortraitPath
 	if strings.TrimSpace(portrait) == "" {
 		portrait = sheet.PortraitPath
 	}
-	_, err := r.pool.Exec(ctx, `update scene_tokens set name=$1,hp_current=$2,hp_max=$3,armor_class=$4,initiative_bonus=$5,movement_limit=$6,image_url=nullif($7,''),updated_at=now() where actor_id=$8`, sheet.Name, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, MovementLimitSquares(sheet.Speed), portrait, actorID)
-	if err != nil {
+	if _, err = tx.Exec(ctx, `update scene_tokens set name=$1,hp_current=$2,hp_max=$3,armor_class=$4,initiative_bonus=$5,movement_limit=$6,image_url=nullif($7,''),updated_at=now() where actor_id=$8`, sheet.Name, sheet.HitPointsCurrent, sheet.HitPointsMax, sheet.ArmorClass, sheet.Initiative, MovementLimitSquares(sheet.Speed), portrait, actorID); err != nil {
 		return fmt.Errorf("sync character tokens: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return err
 	}
 	return nil
 }

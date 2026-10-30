@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AppLocale } from '$lib/utils/speciesRules';
+	import { distanceText } from '$lib/stores/locale';
 
 	type ProgressionFeature = { id: string; level: number; name: string; description: string };
 	type Skill = readonly [string, string];
@@ -8,20 +9,24 @@
 		locale,
 		passivePerception,
 		features,
+		canDisplayCharacter,
 		expandedFeature = $bindable<string | null>(null),
 		expertiseChoices,
 		skills,
 		skillExpertise,
-		onExpertiseChoice
+		onExpertiseChoice,
+		onPresentFeature
 	}: {
 		locale: AppLocale;
 		passivePerception: number;
 		features: ProgressionFeature[];
+		canDisplayCharacter: boolean;
 		expandedFeature?: string | null;
 		expertiseChoices: number;
 		skills: readonly Skill[];
 		skillExpertise: string[];
 		onExpertiseChoice: (index: number, value: string) => void;
+		onPresentFeature: (title: string, description: string) => void;
 	} = $props();
 </script>
 
@@ -52,7 +57,21 @@
 						><small>{expandedFeature === feature.id ? '⌃' : '⌄'}</small>
 					</button>
 					{#if expandedFeature === feature.id && feature.description}
-						<p class="feature-description">{feature.description}</p>
+						<p class="feature-description">{distanceText(feature.description, locale)}</p>
+					{/if}
+					{#if expandedFeature === feature.id && canDisplayCharacter}
+						<button
+							class="present-feature"
+							type="button"
+							onclick={() =>
+								onPresentFeature(
+									feature.name,
+									feature.description ||
+										(locale === 'en' ? 'Description unavailable.' : 'Descrição não cadastrada.')
+								)}
+						>
+							{locale === 'en' ? 'Show to table' : 'Destacar na tela'}
+						</button>
 					{/if}
 				</li>
 			{/each}
@@ -159,6 +178,17 @@
 		color: #bcae9e;
 		font-size: 0.74rem;
 		line-height: 1.45;
+	}
+	.present-feature {
+		margin: 0.1rem 0 0.45rem 4.1rem;
+		border: 1px solid #725a3b;
+		border-radius: 5px;
+		padding: 0.35rem 0.55rem;
+		color: #e8c786;
+		background: #241d1e;
+		font: inherit;
+		font-size: 0.68rem;
+		cursor: pointer;
 	}
 	.expertise-choices {
 		display: grid;

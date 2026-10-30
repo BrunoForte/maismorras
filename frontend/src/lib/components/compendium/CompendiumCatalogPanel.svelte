@@ -36,11 +36,26 @@
 		onselect: (id: string) => void;
 	} = $props();
 
+	const pageSize = 50;
+	let page = $state(0);
 	const visible = $derived(filterAndSortCompendiumEntries(entries, sources, filters, displayName));
+	const orderedVisible = $derived(
+		filters.entryType === 'all'
+			? COMPENDIUM_ENTRY_TYPES.flatMap(([type]) =>
+					visible.filter((entry) => entry.entryType === type)
+				)
+			: visible
+	);
+	const pageCount = $derived(Math.max(1, Math.ceil(orderedVisible.length / pageSize)));
+	const currentPage = $derived(Math.min(page, pageCount - 1));
+	const pageEntries = $derived(
+		orderedVisible.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+	);
 	const grouped = $derived(
 		COMPENDIUM_ENTRY_TYPES.map(([type]) => ({
 			label: typeName(type),
-			entries: visible.filter((entry) => entry.entryType === type)
+			count: visible.filter((entry) => entry.entryType === type).length,
+			entries: pageEntries.filter((entry) => entry.entryType === type)
 		})).filter((group) => group.entries.length)
 	);
 	const rules = (entry: CompendiumEntry) => entry.rules ?? {};
@@ -56,6 +71,7 @@
 	const entryCount = (sourceId: string) =>
 		entries.filter((entry) => entry.sourceId === sourceId).length;
 	const selectFilter = (value: string) => {
+		page = 0;
 		filters.entryType = value;
 		if (selectedEntryId) onselect('');
 	};
@@ -64,14 +80,23 @@
 {#if section === 'sources'}
 	<section class="sources">
 		<h3>{$appLocale === 'en' ? 'Active sources' : 'Fontes ativas'}</h3>
-		<button class:active={filters.sourceId === 'all'} onclick={() => (filters.sourceId = 'all')}>
+		<button
+			class:active={filters.sourceId === 'all'}
+			onclick={() => {
+				page = 0;
+				filters.sourceId = 'all';
+			}}
+		>
 			<strong>{$appLocale === 'en' ? 'All sources' : 'Todas as fontes'}</strong>
 			<small>{entries.length} {$appLocale === 'en' ? 'entries' : 'entradas'}</small>
 		</button>
 		{#each sources as source (source.id)}
 			<button
 				class:active={filters.sourceId === source.id}
-				onclick={() => (filters.sourceId = source.id)}
+				onclick={() => {
+					page = 0;
+					filters.sourceId = source.id;
+				}}
 			>
 				<strong>{source.title}</strong>
 				<small
@@ -87,6 +112,7 @@
 			<h3>{$appLocale === 'en' ? 'Entries' : 'Entradas'}</h3>
 			<input
 				bind:value={filters.query}
+				oninput={() => (page = 0)}
 				placeholder={$appLocale === 'en' ? 'Search by name…' : 'Buscar por nome…'}
 			/>
 			<select
@@ -99,6 +125,7 @@
 			</select>
 			<select
 				bind:value={filters.sortMode}
+				onchange={() => (page = 0)}
 				aria-label={$appLocale === 'en' ? 'Sort entries' : 'Ordenar entradas'}
 			>
 				<option value="name">{$appLocale === 'en' ? 'Sort: name' : 'Ordenar: nome'}</option>
@@ -115,10 +142,41 @@
 			<p class="empty">{$appLocale === 'en' ? 'Loading compendium…' : 'Carregando compêndio…'}</p>
 		{:else if visible.length}
 			<div class="catalog-list">
+				{#if orderedVisible.length > pageSize}
+					<nav
+						class="pagination"
+						aria-label={$appLocale === 'en' ? 'Compendium pages' : 'Páginas do compêndio'}
+					>
+						<button
+							type="button"
+							aria-label={$appLocale === 'en' ? 'Previous page' : 'Página anterior'}
+							disabled={currentPage === 0}
+							onclick={() => (page = Math.max(0, currentPage - 1))}
+						>
+							{$appLocale === 'en' ? 'Previous' : 'Anterior'}
+						</button>
+						<span aria-live="polite">
+							{currentPage * pageSize + 1}–{Math.min(
+								(currentPage + 1) * pageSize,
+								orderedVisible.length
+							)}
+							{$appLocale === 'en' ? 'of' : 'de'}
+							{orderedVisible.length}
+						</span>
+						<button
+							type="button"
+							aria-label={$appLocale === 'en' ? 'Next page' : 'Próxima página'}
+							disabled={currentPage >= pageCount - 1}
+							onclick={() => (page = Math.min(pageCount - 1, currentPage + 1))}
+						>
+							{$appLocale === 'en' ? 'Next' : 'Próxima'}
+						</button>
+					</nav>
+				{/if}
 				{#if filters.entryType === 'all'}
 					{#each grouped as group (group.label)}
 						<section class="category-group">
-							<h4>{group.label} <small>{group.entries.length}</small></h4>
+							<h4>{group.label} <small>{group.count}</small></h4>
 							<div class="entry-grid">
 								{#each group.entries as entry (entry.id)}
 									<button
@@ -143,7 +201,7 @@
 					{/each}
 				{:else}
 					<div class="entry-grid">
-						{#each visible as entry (entry.id)}
+						{#each pageEntries as entry (entry.id)}
 							<button
 								class:active={selectedEntryId === entry.id}
 								onclick={() => onselect(entry.id)}
@@ -257,6 +315,28 @@
 	}
 	.category-group h4 small {
 		color: #a99c91;
+	}
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		margin: 0 0 0.75rem;
+		color: #cdbba8;
+		font-size: 0.75rem;
+	}
+	.pagination button {
+		border: 1px solid #59483b;
+		border-radius: 6px;
+		padding: 0.4rem 0.65rem;
+		color: #eadfce;
+		background: #211b1e;
+		font: inherit;
+		cursor: pointer;
+	}
+	.pagination button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 	.entry-grid {
 		display: grid;

@@ -3,6 +3,8 @@ import { writable } from 'svelte/store';
 export type AppLocale = 'pt-BR' | 'en';
 export type UnitSystem = 'metric' | 'imperial';
 
+const METRIC_DISTANCE_INCREMENT_METERS = 1.5;
+
 const storageKey = 'maismorras.locale';
 
 export const appLocale = writable<AppLocale>('pt-BR');
@@ -26,8 +28,12 @@ export function restoreAppLocale() {
 
 export function distance(valueInMeters: number, locale: AppLocale): string {
 	if (!Number.isFinite(valueInMeters)) return '—';
-	if (locale === 'pt-BR')
-		return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valueInMeters)} m`;
+	if (locale === 'pt-BR') {
+		const roundedMeters =
+			Math.round(valueInMeters / METRIC_DISTANCE_INCREMENT_METERS) *
+			METRIC_DISTANCE_INCREMENT_METERS;
+		return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(roundedMeters)} m`;
+	}
 	const feet = valueInMeters * 3.28084;
 	return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(feet)} ft`;
 }
@@ -37,11 +43,15 @@ export function distance(valueInMeters: number, locale: AppLocale): string {
 // untouched, which prevents round-trip precision loss.
 export function distanceText(value: string, locale: AppLocale): string {
 	if (locale === 'en') {
-		return value.replace(/(\d+(?:[.,]\d+)?)\s*\bm\b/gi, (_, raw: string) =>
+		return value.replace(/(\d+(?:[.,]\d+)?)\s*\bm\b(?![²³]|\s*\/\s*s)/gi, (_, raw: string) =>
 			distance(Number(raw.replace(',', '.')), 'en')
 		);
 	}
-	return value.replace(/(\d+(?:\.\d+)?)\s*\b(?:ft|feet)\b\.?/gi, (_, raw: string) =>
-		distance(Number(raw) * 0.3048, 'pt-BR')
-	);
+	return value
+		.replace(/(\d+(?:[.,]\d+)?)\s*\bm\b(?![²³]|\s*\/\s*s)/gi, (_, raw: string) =>
+			distance(Number(raw.replace(',', '.')), 'pt-BR')
+		)
+		.replace(/(\d+(?:\.\d+)?)\s*\b(?:ft|feet)\b\.?/gi, (_, raw: string) =>
+			distance(Number(raw) * 0.3048, 'pt-BR')
+		);
 }

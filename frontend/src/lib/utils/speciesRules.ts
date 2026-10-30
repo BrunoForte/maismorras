@@ -4,11 +4,53 @@ export type SpeciesProfile = {
 	label: string;
 	labelEn: string;
 	speed: number;
-	traits: readonly string[];
-	lineages?: Readonly<Record<string, readonly string[]>>;
+	traits: readonly SpeciesTraitValue[];
+	lineages?: Readonly<Record<string, readonly SpeciesTraitValue[]>>;
+};
+
+export type SpeciesTraitMetadata = {
+	id: string;
+	replaces?: readonly string[];
+};
+type SpeciesTraitValue = string | (SpeciesTraitMetadata & { name: string });
+
+export type SpeciesDisplayTrait = {
+	id?: string;
+	replaces?: readonly string[];
+	name: string;
+	description: string;
 };
 
 export type SpeciesSelection = { species: string; speciesLineage?: string };
+export type CatalogSpeciesText = {
+	id?: string;
+	name: string;
+	description: string;
+};
+
+/** Reads user-facing species trait text from the shared SRD catalog translations. */
+export function catalogSpeciesTraits(
+	entry: {
+		rules?: unknown;
+		translations?: Record<string, string>;
+	},
+	locale: AppLocale
+): CatalogSpeciesText[] {
+	const rules = (entry.rules ?? {}) as { traits?: unknown };
+	if (!Array.isArray(rules.traits)) return [];
+	return rules.traits.map((raw, index) => {
+		const trait = (raw ?? {}) as { id?: unknown; name?: unknown; description?: unknown };
+		const sourceName = String(trait.name ?? '');
+		const sourceDescription = String(trait.description ?? '');
+		const name = entry.translations?.[`pt-BR.rules.traits.${index}.name`]?.trim();
+		const description = entry.translations?.[`pt-BR.rules.traits.${index}.description`]?.trim();
+		return {
+			...(typeof trait.id === 'string' && trait.id.trim() ? { id: trait.id } : {}),
+			name: locale === 'pt-BR' && name ? name : sourceName,
+			description: locale === 'pt-BR' && description ? description : sourceDescription
+		};
+	});
+}
 
 // Species mechanics are shared by the profile UI and sheet progression so
 // speed, traits, and hit-point adjustments always come from one catalog.
@@ -51,13 +93,20 @@ export const speciesProfiles: Readonly<Record<string, SpeciesProfile>> = {
 		labelEn: 'Elf',
 		speed: 9,
 		traits: [
-			'Visão no escuro 18 m',
+			{ id: 'darkvision-elf', name: 'Visão no escuro 18 m' },
 			'Ancestralidade feérica: vantagem contra Enfeitiçado',
 			'Sentidos aguçados; Transe (Descanso Longo em 4 h)'
 		],
 		lineages: {
 			Drow: [
-				'Visão no escuro 36 m',
+				// D&D 2024 Character Origins says Drow Darkvision "increases to 120 feet".
+				// This is an explicit replacement for Elf's 60-foot trait, not a name-based rule.
+				// https://www.dndbeyond.com/sources/dnd/br-2024/character-origins
+				{
+					id: 'darkvision-drow',
+					name: 'Visão no escuro 36 m',
+					replaces: ['darkvision-elf']
+				},
 				'Luzes Dançantes; nível 3: Fogo das Fadas; nível 5: Escuridão'
 			],
 			'Alto Elfo': [
@@ -213,7 +262,88 @@ export function getActiveSpeciesTraits(species: unknown, lineage: unknown): stri
 	return [
 		...profile.traits,
 		...(normalizedLineage ? (profile.lineages?.[normalizedLineage] ?? []) : [])
-	];
+	].map((trait) => (typeof trait === 'string' ? trait : trait.name));
+}
+
+function profileTraitDisplayValue(
+	trait: SpeciesTraitValue
+): Pick<SpeciesDisplayTrait, 'id' | 'name' | 'replaces'> {
+	return typeof trait === 'string' ? { name: trait } : trait;
+}
+
+/**
+ * Applies only explicit, stable-ID replacement metadata to species presentation traits.
+ * Traits without IDs or replacement declarations are always retained.
+ */
+export function resolveSpeciesTraitReplacements(
+	traits: readonly SpeciesDisplayTrait[]
+): SpeciesDisplayTrait[] {
+	const byId = new Map<string, SpeciesDisplayTrait[]>();
+	for (const trait of traits) {
+		if (!trait.id) continue;
+		const sameId = byId.get(trait.id) ?? [];
+		sameId.push(trait);
+		byId.set(trait.id, sameId);
+	}
+
+	// Stable IDs identify the same feature; choose identical-ID records deterministically.
+	const selectedById = new Map<string, SpeciesDisplayTrait>();
+	for (const [id, candidates] of byId) {
+		selectedById.set(
+			id,
+			[...candidates].sort((a, b) =>
+				`${a.name}\u0000${a.description}\u0000${(a.replaces ?? []).join(',')}`.localeCompare(
+					`${b.name}\u0000${b.description}\u0000${(b.replaces ?? []).join(',')}`
+				)
+			)[0]
+		);
+	}
+	const seenIds = new Set<string>();
+	const uniqueTraits: SpeciesDisplayTrait[] = [];
+	for (const trait of traits) {
+		if (!trait.id) {
+			uniqueTraits.push(trait);
+			continue;
+		}
+		if (!seenIds.has(trait.id) && selectedById.get(trait.id) === trait) {
+			seenIds.add(trait.id);
+			uniqueTraits.push(trait);
+		}
+	}
+	const replacedIds = new Set(
+		uniqueTraits.flatMap((trait) => (trait.id ? (trait.replaces ?? []) : []))
+	);
+	return uniqueTraits.filter((trait) => !trait.id || !replacedIds.has(trait.id));
+}
+
+/** Builds the species panel from catalog traits plus selected lineage benefits. */
+export function speciesTraitsForDisplay(
+	species: unknown,
+	lineage: unknown,
+	catalogEntry: { rules?: unknown; translations?: Record<string, string> } | undefined,
+	locale: AppLocale
+): SpeciesDisplayTrait[] {
+	const profile = getSpeciesProfile(species);
+	const normalizedLineage = normalizeSpeciesLineage(species, lineage);
+	const profileTraits = profile
+		? [
+				...profile.traits,
+				...(normalizedLineage ? (profile.lineages?.[normalizedLineage] ?? []) : [])
+			]
+		: [];
+	const profileDisplayTraits = profileTraits.map((value) => {
+		const trait = profileTraitDisplayValue(value);
+		return {
+			...trait,
+			description: speciesTraitDescription(trait.name, locale)
+		};
+	});
+	const catalogTraits = catalogEntry ? catalogSpeciesTraits(catalogEntry, locale) : [];
+	const lineageDisplayTraits = profileDisplayTraits.slice(profile?.traits.length ?? 0);
+	const baseTraits = catalogEntry
+		? [...catalogTraits, ...lineageDisplayTraits]
+		: profileDisplayTraits;
+	return resolveSpeciesTraitReplacements(baseTraits);
 }
 
 export function getSpeciesSpeed(species: unknown, lineage: unknown, fallback: number): number {

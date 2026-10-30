@@ -3,8 +3,10 @@ import {
 	castMySpell,
 	createEmptySheet,
 	getMyCharacter,
+	rollCharacterForGM,
 	saveMyCharacter,
-	setCharacterInitiativeAdvantage
+	setCharacterInitiativeAdvantage,
+	restCharacter
 } from './characterApi';
 
 const session = { access_token: 'test-token' } as never;
@@ -28,6 +30,7 @@ describe('createEmptySheet', () => {
 		expect(sheet.inventory).toEqual([]);
 		expect(sheet.resources).toEqual([]);
 		expect(sheet.money).toEqual({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+		expect(sheet.largeFormActive).toBe(false);
 		expect(sheet.featSpellGrants).toEqual([]);
 		expect(sheet.initiativeAdvantage).toBe(false);
 	});
@@ -39,7 +42,13 @@ describe('createEmptySheet', () => {
 					id: 'actor-1',
 					campaignId: 'campaign-1',
 					ownerId: 'player-1',
-					sheet: { ...createEmptySheet(), money: { cp: 7, gp: 12 }, featSpellGrants: [] }
+					sheet: {
+						...createEmptySheet(),
+						money: { cp: 7, gp: 12 },
+						creatureSize: undefined,
+						largeFormActive: undefined,
+						featSpellGrants: []
+					}
 				}),
 				{ status: 200 }
 			)
@@ -48,6 +57,8 @@ describe('createEmptySheet', () => {
 		const character = await getMyCharacter(session, 'campaign-1');
 		expect(character.sheet.money).toEqual({ cp: 7, sp: 0, ep: 0, gp: 12, pp: 0 });
 		expect(character.sheet.inventory).toEqual([]);
+		expect(character.sheet.creatureSize).toBeUndefined();
+		expect(character.sheet.largeFormActive).toBe(false);
 	});
 
 	it('normalizes legacy weapon damage and unified bonus once without discarding unsupported text', async () => {
@@ -129,9 +140,11 @@ describe('createEmptySheet', () => {
 		expect(reloaded.sheet.inventory).toEqual(normalized.sheet.inventory);
 	});
 
-	it('persists D&D money separately from inventory when saving a sheet', async () => {
+	it('persists carrying choices and D&D money separately from inventory', async () => {
 		const sheet = {
 			...createEmptySheet(),
+			creatureSize: 'large' as const,
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope', quantity: 1, equipped: false, rules: {} }]
 		};
@@ -149,10 +162,14 @@ describe('createEmptySheet', () => {
 		expect(String(url)).toContain('/campaigns/campaign-1/character');
 		expect(init.method).toBe('PUT');
 		expect(JSON.parse(String(init.body))).toMatchObject({
+			creatureSize: 'large',
+			largeFormActive: true,
 			money: { cp: 13, sp: 4, ep: 2, gp: 51, pp: 1 },
 			inventory: [{ entryId: 'rope', name: 'Rope' }]
 		});
 		expect(saved.sheet.money).toEqual(sheet.money);
+		expect(saved.sheet.creatureSize).toBe('large');
+		expect(saved.sheet.largeFormActive).toBe(true);
 		expect(saved.sheet.inventory).toHaveLength(1);
 	});
 
@@ -201,5 +218,61 @@ describe('createEmptySheet', () => {
 		expect(init.method).toBe('PATCH');
 		expect(JSON.parse(String(init.body))).toEqual({ enabled: true });
 		expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token');
+	});
+
+	it('uses the actor-scoped roll route for a narrator-selected character', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					eventId: 9,
+					dados: [15],
+					dadoEscolhido: 15,
+					modo: 'normal',
+					modificador: 3,
+					total: 18,
+					label: 'Percepção'
+				}),
+				{ status: 201 }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await rollCharacterForGM(session, 'campaign-1', 'actor-7', 'skill', 'Percepção', 'normal');
+
+		const [url, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+		expect(String(url)).toContain('/campaigns/campaign-1/characters/actor-7/roll');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(String(init.body))).toEqual({
+			kind: 'skill',
+			key: 'Percepção',
+			mode: 'normal'
+		});
+	});
+});
+
+describe('restCharacter', () => {
+	it('sends only the requested Hit Dice count and preserves omission for older callers', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ kind: 'short', sheet: createEmptySheet(), dados: [] }), {
+					status: 200
+				})
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ kind: 'short', sheet: createEmptySheet() }), { status: 200 })
+			);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await restCharacter(session, 'campaign-1', 'short', 'character-1', 0);
+		await restCharacter(session, 'campaign-1', 'short', 'character-1');
+
+		const firstRequest = fetchMock.mock.calls[0][1] as RequestInit;
+		const secondRequest = fetchMock.mock.calls[1][1] as RequestInit;
+		expect(JSON.parse(String(firstRequest.body))).toEqual({ kind: 'short', hitDiceCount: 0 });
+		expect(JSON.parse(String(secondRequest.body))).toEqual({ kind: 'short' });
+		expect(fetchMock.mock.calls[0][0]).toContain(
+			'/api/v1/campaigns/campaign-1/characters/character-1/rest'
+		);
 	});
 });

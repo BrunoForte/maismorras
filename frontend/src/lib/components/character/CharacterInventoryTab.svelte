@@ -2,6 +2,7 @@
 	import type { CompendiumEntry } from '$lib/services/compendiumApi';
 	import type { Dnd2024Money, InventoryItem } from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { translatedCompendiumText } from '$lib/utils/compendium/compendiumRules';
 	import {
 		itemWeight,
 		type InventoryCategory,
@@ -10,11 +11,25 @@
 	import { groupInventoryOptions } from '$lib/utils/inventoryRules';
 	import type { CustomInventoryItemDraft } from './inventoryTypes';
 	import { parseDnd2024CoinAmount } from '$lib/utils/character/dnd2024Money';
+	import {
+		formatDnd2024Distance,
+		formatDnd2024Weight,
+		poundsToKilograms
+	} from '$lib/utils/dnd2024MetricUnits';
 
 	let {
 		itemEntries,
+		allCompendiumEntries,
 		visibleItems,
-		totalWeight,
+		carriedWeight,
+		capacityLb,
+		pushDragLiftLb,
+		powerfulBuildApplied,
+		loadIncomplete,
+		unknownItemCount,
+		canUseLargeForm,
+		largeFormActive,
+		onLargeFormChange,
 		money,
 		onMoneyChange,
 		inventoryFilter = $bindable(),
@@ -26,8 +41,17 @@
 		onChangeDescription
 	}: {
 		itemEntries: CompendiumEntry[];
+		allCompendiumEntries: CompendiumEntry[];
 		visibleItems: { item: InventoryItem; index: number }[];
-		totalWeight: number;
+		carriedWeight: number;
+		capacityLb: number | null;
+		pushDragLiftLb: number | null;
+		powerfulBuildApplied: boolean;
+		loadIncomplete: boolean;
+		unknownItemCount: number;
+		canUseLargeForm: boolean;
+		largeFormActive: boolean;
+		onLargeFormChange: (active: boolean) => void;
 		money: Dnd2024Money;
 		onMoneyChange: (money: Dnd2024Money) => void;
 		inventoryFilter: InventoryCategory;
@@ -61,6 +85,14 @@
 	const itemOptionGroups = $derived(
 		groupInventoryOptions(itemEntries, optionLabel, $appLocale === 'en' ? 'en' : 'pt-BR')
 	);
+	const magicItemCatalogEntry = (item: InventoryItem) =>
+		allCompendiumEntries.find(
+			(entry) =>
+				entry.id === item.entryId &&
+				entry.entryType === 'other' &&
+				entry.rules.catalog === 'magic-item'
+		);
+	const formatWeight = (weight: number | null) => formatDnd2024Weight(weight, $appLocale);
 	const moneyFields: { key: keyof Dnd2024Money; labelPt: string; labelEn: string }[] = [
 		{ key: 'cp', labelPt: 'PC · Cobre', labelEn: 'CP · Copper' },
 		{ key: 'sp', labelPt: 'PP · Prata', labelEn: 'SP · Silver' },
@@ -112,9 +144,75 @@
 <section class="inventory-section">
 	<div class="section-title">
 		<h3>{$appLocale === 'en' ? 'Equipment' : 'Equipamento'}</h3>
-		<span class="defense-hint"
-			>{$appLocale === 'en' ? 'Total weight' : 'Peso total'}: {totalWeight} lb</span
+	</div>
+	<div
+		class="carrying-capacity"
+		aria-label={$appLocale === 'en' ? 'Carrying capacity' : 'Capacidade de carga'}
+	>
+		<strong
+			>{$appLocale === 'en'
+				? 'Carried weight / maximum capacity'
+				: 'Peso carregado / capacidade máxima'}</strong
 		>
+		<span data-testid="carrying-weight"
+			>{formatWeight(carriedWeight)} / {formatWeight(capacityLb)} kg</span
+		>
+		<div class="weight-limit-row">
+			<strong
+				>{$appLocale === 'en'
+					? 'Push / drag / lift limit'
+					: 'Limite para empurrar / arrastar / levantar'}</strong
+			>
+			<span data-testid="push-drag-lift-limit">{formatWeight(pushDragLiftLb)} kg</span>
+		</div>
+		{#if powerfulBuildApplied}
+			<small class="capacity-adjustment" data-testid="powerful-build-capacity-note">
+				{$appLocale === 'en'
+					? 'Powerful Build changes carrying capacity only; the push, drag, and lift limit uses your actual size.'
+					: 'Porte Poderoso altera apenas a capacidade de carga; o limite para empurrar, arrastar e levantar usa seu tamanho atual.'}
+			</small>
+		{/if}
+		<small class="unit-conversion-note" data-testid="metric-rounding-note">
+			{$appLocale === 'en'
+				? 'Weights are rounded to 0.01 kg for display only; distance is rounded to the nearest 1.5 m. Calculations keep their exact internal values.'
+				: 'Pesos são arredondados a 0,01 kg apenas na exibição; distâncias são arredondadas ao múltiplo mais próximo de 1,5 m. Os cálculos mantêm os valores internos exatos.'}
+		</small>
+		{#if pushDragLiftLb !== null && capacityLb !== null}
+			<small class="movement-limit-note" data-testid="hauling-speed-limit">
+				{$appLocale === 'en'
+					? `When pushing, dragging, or lifting more than your carrying capacity, your Speed can be no more than ${formatDnd2024Distance(5, $appLocale)} m.`
+					: `Ao empurrar, arrastar ou levantar mais que sua capacidade de carga, seu deslocamento não pode exceder ${formatDnd2024Distance(5, $appLocale)} m.`}
+			</small>
+		{/if}
+		{#if loadIncomplete}
+			<small role="status">
+				{$appLocale === 'en'
+					? `The total may be incomplete: ${unknownItemCount} item(s) have missing or invalid weight or quantity.`
+					: `O total pode estar incompleto: ${unknownItemCount} item(ns) têm peso ou quantidade ausente ou inválida.`}
+			</small>
+		{/if}
+		{#if capacityLb !== null && carriedWeight > capacityLb}
+			<small role="status" class="over-capacity">
+				{$appLocale === 'en'
+					? 'Above carrying capacity; resolve according to the table rules.'
+					: 'Acima da capacidade de carga; adjudique conforme as regras da mesa.'}
+			</small>
+		{/if}
+		{#if canUseLargeForm}
+			<label class="large-form-toggle">
+				<input
+					type="checkbox"
+					checked={largeFormActive}
+					onchange={(event) => onLargeFormChange(event.currentTarget.checked)}
+				/>
+				{$appLocale === 'en' ? 'Large Form active' : 'Forma Grande ativa'}
+				<small
+					>{$appLocale === 'en'
+						? 'Turn off when the 10-minute effect ends.'
+						: 'Desative quando o efeito de 10 minutos terminar.'}</small
+				>
+			</label>
+		{/if}
 	</div>
 	<fieldset class="money-panel">
 		<legend>{$appLocale === 'en' ? 'Money' : 'Dinheiro'}</legend>
@@ -195,11 +293,11 @@
 			<option value="consumable">{$appLocale === 'en' ? 'Consumable' : 'Consumível'}</option>
 		</select>
 		<label
-			>{$appLocale === 'en' ? 'Weight (lb)' : 'Peso (lb)'}<input
+			>{$appLocale === 'en' ? 'Weight (kg)' : 'Peso (kg)'}<input
 				type="number"
 				min="0"
-				max="9999"
-				step="0.1"
+				max={poundsToKilograms(9999)}
+				step="0.01"
 				bind:value={customItem.weight}
 			/></label
 		>
@@ -251,6 +349,15 @@
 	{#if visibleItems.length}
 		<div class="inventory-list">
 			{#each visibleItems as { item, index } (`${item.entryId}:${index}`)}
+				{@const catalogEntry = magicItemCatalogEntry(item)}
+				{@const catalogDescription = catalogEntry
+					? translatedCompendiumText(
+							catalogEntry,
+							'rules.description',
+							catalogEntry.rules.description,
+							$appLocale
+						)
+					: ''}
 				<div class="inventory-item">
 					<button
 						type="button"
@@ -260,6 +367,9 @@
 					>
 						{item.name}<span>{expandedIndex === index ? '⌃' : '⌄'}</span>
 					</button>
+					{#if catalogDescription && expandedIndex !== index}<small class="catalog-item-description"
+							>{catalogDescription}</small
+						>{/if}
 					<input
 						type="number"
 						min="0"
@@ -271,7 +381,7 @@
 						onchange={(event) => onChangeQuantity(index, Number(event.currentTarget.value))}
 					/>
 					<small class="inventory-weight"
-						>{itemWeight(item) > 0 ? `${itemWeight(item)} lb` : '—'}</small
+						>{itemWeight(item) > 0 ? `${formatWeight(itemWeight(item))} kg` : '—'}</small
 					>
 					<button
 						type="button"
@@ -280,6 +390,9 @@
 					>
 				</div>
 				{#if expandedIndex === index}
+					{#if catalogDescription}<p class="catalog-item-description full">
+							{catalogDescription}
+						</p>{/if}
 					<label class="inventory-item-description"
 						>{$appLocale === 'en' ? 'Description / function' : 'Descrição / função'}<textarea
 							value={String(item.rules.playerDescription ?? '')}
@@ -303,6 +416,61 @@
 	.inventory-section {
 		display: grid;
 		gap: 0.75rem;
+	}
+	.carrying-capacity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 0.65rem;
+		border: 1px solid #554841;
+		border-radius: 7px;
+		padding: 0.65rem 0.8rem;
+		background: #1c1718;
+	}
+	.carrying-capacity strong {
+		color: #e7c98c;
+	}
+	.carrying-capacity > span {
+		font-variant-numeric: tabular-nums;
+	}
+	.carrying-capacity > small {
+		flex-basis: 100%;
+		color: #e2bc76;
+	}
+	.weight-limit-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.55rem;
+		align-items: baseline;
+	}
+	.weight-limit-row strong {
+		color: #d7cec4;
+		font-size: 0.82rem;
+	}
+	.weight-limit-row span {
+		font-variant-numeric: tabular-nums;
+	}
+	.carrying-capacity > .capacity-adjustment {
+		color: #b9aa9d;
+	}
+	.carrying-capacity > .movement-limit-note {
+		color: #b9aa9d;
+	}
+	.over-capacity {
+		color: #f0a29b !important;
+	}
+	.large-form-toggle {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		color: #d7cec4;
+	}
+	.large-form-toggle small {
+		flex-basis: 100%;
+		margin-left: 1.25rem;
+		color: #a99c91;
 	}
 	.section-title {
 		display: flex;
@@ -344,10 +512,6 @@
 		color: #eee4d6;
 		background: #161216;
 		font: inherit;
-	}
-	.defense-hint {
-		color: #aa9d91;
-		font-size: 0.72rem;
 	}
 	.inventory-filters {
 		display: flex;
@@ -461,6 +625,24 @@
 		grid-column: 1 / -1;
 		color: #b9aa9d;
 		font-size: 0.7rem;
+	}
+	.catalog-item-description {
+		grid-column: 1 / -1;
+		margin: 0;
+		color: #b9aa9d;
+		font-size: 0.7rem;
+		line-height: 1.35;
+		display: -webkit-box;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+	}
+	.catalog-item-description.full {
+		display: block;
+		line-clamp: unset;
+		-webkit-line-clamp: unset;
+		overflow: visible;
 	}
 	.inventory-item-description textarea {
 		min-height: 3.5rem;

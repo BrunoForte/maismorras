@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { appLocale } from '$lib/stores/locale';
+	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import type { AbilityScores, CharacterSheet } from '$lib/services/characterApi';
 
 	type RollMode = 'normal' | 'advantage' | 'disadvantage';
@@ -33,13 +34,20 @@
 		<h3>{$appLocale === 'en' ? 'Skills' : 'Perícias'}</h3>
 		<label class="roll-mode">
 			<select bind:value={rollMode} aria-label="Modo de rolagem">
-				<option value="advantage" disabled={hasAttackDisadvantage()}>
+				<option value="advantage">
 					{$appLocale === 'en' ? 'Advantage' : 'Vantagem'}
 				</option>
 				<option value="normal">Normal</option>
 				<option value="disadvantage">{$appLocale === 'en' ? 'Disadvantage' : 'Desvantagem'}</option>
 			</select>
 		</label>
+		{#if hasAttackDisadvantage() && rollMode === 'advantage'}
+			<small
+				>{$appLocale === 'en'
+					? 'Advantage and disadvantage cancel; one d20 is rolled.'
+					: 'Vantagem e desvantagem se cancelam; um d20 será rolado.'}</small
+			>
+		{/if}
 		{#if isNewCharacter}
 			<span>
 				{$appLocale === 'en'
@@ -72,7 +80,8 @@
 				<button
 					class="skill-roll"
 					onclick={() => void rollSkill(name)}
-					aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}>⚄</button
+					aria-label={$appLocale === 'en' ? `Roll ${skillLabel(name)}` : `Rolar ${name}`}
+					><RpgIcon name="d20" size={20} /></button
 				>
 			</div>
 		{/each}
@@ -157,9 +166,13 @@
 		text-align: center;
 	}
 	.skill-roll {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid #765d3d;
 		border-radius: 6px;
-		padding: 0.32rem 0.4rem;
+		padding: 0;
 		color: #f0d29d;
 		background: #2b211c;
 		cursor: pointer;
