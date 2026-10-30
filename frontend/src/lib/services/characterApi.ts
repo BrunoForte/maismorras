@@ -147,6 +147,7 @@ export type Participant = {
 	role: 'gm' | 'player';
 	character: Character | null;
 };
+export type NPCCharacterSummary = { id: string; name: string; class: string; level: number };
 
 async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
 	return httpRequest<T>(session, path, init);
@@ -246,6 +247,15 @@ export const saveMyCharacter = (session: Session, campaignId: string, sheet: Cha
 	}).then(normalizeCharacter);
 export const listParticipants = (session: Session, campaignId: string) =>
 	request<{ participants: Participant[] }>(session, `/api/v1/campaigns/${campaignId}/participants`);
+export const listNPCCharacters = (session: Session, campaignId: string) =>
+	request<{ characters: NPCCharacterSummary[] }>(
+		session,
+		`/api/v1/campaigns/${campaignId}/npc-characters`
+	);
+export const createNPCCharacterForGM = (session: Session, campaignId: string) =>
+	request<Character>(session, `/api/v1/campaigns/${campaignId}/npc-characters`, {
+		method: 'POST'
+	}).then(normalizeCharacter);
 export const getCharacterForGM = (session: Session, campaignId: string, characterId: string) =>
 	request<Character>(session, `/api/v1/campaigns/${campaignId}/characters/${characterId}`).then(
 		normalizeCharacter

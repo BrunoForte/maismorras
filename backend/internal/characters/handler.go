@@ -314,6 +314,24 @@ func (h *Handler) CreateForGM(w http.ResponseWriter, r *http.Request) error {
 	return write(w, http.StatusCreated, item)
 }
 
+func (h *Handler) ListNPCCharactersForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	items, err := h.repo.ListNPCCharactersForGM(r.Context(), r.PathValue("campaignID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusOK, map[string]any{"characters": items})
+}
+
+func (h *Handler) CreateNPCCharacterForGM(w http.ResponseWriter, r *http.Request) error {
+	p, _ := auth.FromContext(r.Context())
+	item, err := h.repo.CreateNPCCharacterForGM(r.Context(), r.PathValue("campaignID"), p.UserID)
+	if err != nil {
+		return mapError(err)
+	}
+	return write(w, http.StatusCreated, item)
+}
+
 func validate(sheet Sheet) error {
 	// ArmorClass, proficiencyBonus and passivePerception are server-derived;
 	// ignore client values and recompute them before persistence.
