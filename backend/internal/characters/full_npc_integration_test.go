@@ -126,8 +126,12 @@ func TestFullNPCCharactersAreIndependentAndGMManagedIntegration(t *testing.T) {
 	opened.Sheet.Level = 3
 	opened.Sheet.Features = "Updated campaign NPC features"
 	updated, err := characters.SaveForGM(ctx, campaignID, first.ID, gmID, opened.Sheet)
-	if err != nil || updated.Sheet.Name != "Edited NPC" || updated.Sheet.Features != opened.Sheet.Features {
+	if err != nil || updated.OwnerID != "" || updated.Sheet.Name != "Edited NPC" || updated.Sheet.Features != opened.Sheet.Features {
 		t.Fatalf("GM save = (%q, %q, %v), want edited full sheet", updated.Sheet.Name, updated.Sheet.Features, err)
+	}
+	reloaded, err := characters.GetForGM(ctx, campaignID, first.ID, gmID)
+	if err != nil || reloaded.OwnerID != "" || reloaded.Sheet.Name != "Edited NPC" || reloaded.Sheet.Features != opened.Sheet.Features {
+		t.Fatalf("reloaded full NPC = (owner %q, name %q, %v), want persisted ownerless edited sheet", reloaded.OwnerID, reloaded.Sheet.Name, err)
 	}
 	listed, err = characters.ListNPCCharactersForGM(ctx, campaignID, gmID)
 	if err != nil || len(listed) != 2 {
