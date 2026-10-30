@@ -97,6 +97,24 @@ jobs:
             echo '::error::TestSheetOperationsUsePersistedCampaignReferenceIntegration was skipped.'
             exit 1
           fi
+      - name: Test full NPC sheets and token placement against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/full-npc-integration.log"
+          go test -v ./internal/characters ./internal/scenes \
+            -run '^(TestFullNPCCharactersAreIndependentAndGMManagedIntegration|TestFullNPCCharacterCanBePlacedWithoutPlayerOwnershipIntegration)$' \
+            -count=1 | tee "$output_file"
+          for test_name in \
+            TestFullNPCCharactersAreIndependentAndGMManagedIntegration \
+            TestFullNPCCharacterCanBePlacedWithoutPlayerOwnershipIntegration; do
+            if grep -Fq -- "--- SKIP: $test_name" "$output_file"; then
+              echo "::error::$test_name was skipped."
+              exit 1
+            fi
+          done
       - name: Test realtime fanout between independent API instances
         working-directory: backend
         env:

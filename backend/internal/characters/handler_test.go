@@ -30,6 +30,7 @@ func TestCharacterAccessIsLimitedToOwnerOrCampaignGM(t *testing.T) {
 		{name: "sheet owner who is a member", member: true, owner: true, want: true},
 		{name: "other campaign member", member: true, want: false},
 		{name: "owner outside campaign", owner: true, want: false},
+		{name: "ownerless full NPC sheet is narrator-only", member: true, want: false},
 		{name: "outsider", want: false},
 	}
 	for _, test := range cases {

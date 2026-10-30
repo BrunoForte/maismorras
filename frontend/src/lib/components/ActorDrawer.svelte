@@ -4,7 +4,11 @@
 	import { resizablePanel, resizablePanelPreference } from '$lib/utils/resizablePanel';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { listParticipants, type Participant } from '$lib/services/characterApi';
+	import {
+		listNPCCharacters,
+		listParticipants,
+		type Participant
+	} from '$lib/services/characterApi';
 	import { listNPCs, type NPC } from '$lib/services/npcApi';
 	import {
 		createTokenFromCharacter,
@@ -47,11 +51,13 @@
 	async function load() {
 		loading = true;
 		try {
-			const [participantResponse, npcResponse, sceneResponse] = await Promise.all([
-				listParticipants(session, campaignId),
-				listNPCs(session, campaignId),
-				loadScene(session, sceneId)
-			]);
+			const [participantResponse, npcCharacterResponse, npcResponse, sceneResponse] =
+				await Promise.all([
+					listParticipants(session, campaignId),
+					listNPCCharacters(session, campaignId),
+					listNPCs(session, campaignId),
+					loadScene(session, sceneId)
+				]);
 			const characters = participantResponse.participants
 				.filter((participant: Participant) => participant.character)
 				.map((participant: Participant) => ({
@@ -60,13 +66,19 @@
 					kind: 'character' as const,
 					detail: `Personagem de ${participant.displayName}`
 				}));
+			const fullNPCs = npcCharacterResponse.characters.map((character) => ({
+				id: character.id,
+				name: character.name,
+				kind: 'character' as const,
+				detail: `Ficha completa de NPC · ${character.class || 'Sem classe'} · nível ${character.level}`
+			}));
 			const npcs = npcResponse.npcs.map((npc: NPC) => ({
 				id: npc.id,
 				name: npc.name,
 				kind: 'npc' as const,
 				detail: `${npc.sheet.creatureType || 'Criatura'} · PV ${npc.sheet.hitPointsCurrent}/${npc.sheet.hitPointsMax}`
 			}));
-			actors = [...characters, ...npcs];
+			actors = [...characters, ...fullNPCs, ...npcs];
 			const actorTokens = new SvelteMap(
 				sceneResponse.tokens.flatMap((token) =>
 					token.actorId ? [[token.actorId, token.id] as const] : []

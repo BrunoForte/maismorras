@@ -202,6 +202,15 @@ type Participant struct {
 	Character   *Character `json:"character"`
 }
 
+// NPCCharacterSummary is intentionally lightweight: the narrator's campaign
+// roster can contain many full NPC sheets, which are fetched only when opened.
+type NPCCharacterSummary struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Class string `json:"class"`
+	Level int    `json:"level"`
+}
+
 type Repository struct{ pool *pgxpool.Pool }
 
 type SheetRollResult struct {
@@ -1127,7 +1136,7 @@ func (r *Repository) SaveForGM(ctx context.Context, campaignID, characterID, use
 		return Character{}, err
 	}
 	var item Character
-	err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id is not distinct from $5::uuid and kind='character' returning id::text,campaign_id::text,owner_id::text,sheet`, sheet.Name, raw, characterID, campaignID, currentOwnerID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	err = tx.QueryRow(ctx, `update actors set name=$1,sheet=jsonb_set($2::jsonb,'{initiativeAdvantage}',coalesce(actors.sheet->'initiativeAdvantage','false'::jsonb),true) where id=$3 and campaign_id=$4 and owner_id is not distinct from $5::uuid and kind='character' returning id::text,campaign_id::text,coalesce(owner_id::text,''),sheet`, sheet.Name, raw, characterID, campaignID, currentOwnerID).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Character{}, ErrNotFound
 	}
@@ -1378,17 +1387,22 @@ func (r *Repository) DeleteForGM(ctx context.Context, campaignID, characterID, u
 	if err := r.requireGM(ctx, campaignID, userID); err != nil {
 		return err
 	}
-	if _, err := r.pool.Exec(ctx, `delete from scene_tokens where actor_id=$1`, characterID); err != nil {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
 		return err
 	}
-	result, err := r.pool.Exec(ctx, `delete from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID)
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `delete from scene_tokens st using scenes s where st.scene_id=s.id and st.actor_id=$1 and s.campaign_id=$2`, characterID, campaignID); err != nil {
+		return err
+	}
+	result, err := tx.Exec(ctx, `delete from actors where id=$1 and campaign_id=$2 and kind='character'`, characterID, campaignID)
 	if err != nil {
 		return err
 	}
 	if result.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // Tokens linked to a character are instances for position and conditions, but
@@ -1447,6 +1461,57 @@ func (r *Repository) CreateForGM(ctx context.Context, campaignID, ownerID, userI
 	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
 		return Character{}, err
 	}
+	return item, nil
+}
+
+// ListNPCCharactersForGM lists metadata only. Full sheet JSON is loaded by
+// GetForGM after the narrator selects an NPC, avoiding an unbounded roster
+// response as campaigns accumulate NPCs.
+func (r *Repository) ListNPCCharactersForGM(ctx context.Context, campaignID, userID string) ([]NPCCharacterSummary, error) {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return nil, ErrForbidden
+	}
+	rows, err := r.pool.Query(ctx, `select id::text,name,coalesce(sheet->>'class',''),case when sheet->>'level' ~ '^[0-9]+$' then (sheet->>'level')::integer else 1 end from actors where campaign_id=$1 and kind='character' and full_npc=true order by created_at,id`, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NPCCharacterSummary{}
+	for rows.Next() {
+		var item NPCCharacterSummary
+		if err := rows.Scan(&item.ID, &item.Name, &item.Class, &item.Level); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+// CreateNPCCharacterForGM creates an independently managed full character
+// sheet. It has no campaign participant owner and is therefore accessible only
+// through the campaign-GM paths.
+func (r *Repository) CreateNPCCharacterForGM(ctx context.Context, campaignID, userID string) (Character, error) {
+	if err := r.requireGM(ctx, campaignID, userID); err != nil {
+		return Character{}, ErrForbidden
+	}
+	rules, err := dnd2024RulesForCampaign(ctx, campaignID, r.pool)
+	if err != nil {
+		return Character{}, err
+	}
+	sheet := normalizeDerivedFields(Sheet{Name: "Novo NPC", Level: 1, AbilityScores: AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}, ProficiencyBonus: 2, ArmorClass: 10, Speed: 9, HitPointsCurrent: 10, HitPointsMax: 10, HitDice: "1d8", PassivePerception: 10, Attacks: []Attack{}, Spells: []Spell{}, Inventory: []InventoryItem{}, SavingThrows: []string{}, SkillProficiencies: []string{}}, rules)
+	raw, err := json.Marshal(sheet)
+	if err != nil {
+		return Character{}, err
+	}
+	var item Character
+	err = r.pool.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,full_npc,name,sheet) values($1,null,'character',true,$2,$3) returning id::text,campaign_id::text,coalesce(owner_id::text,''),sheet`, campaignID, sheet.Name, raw).Scan(&item.ID, &item.CampaignID, &item.OwnerID, &raw)
+	if err != nil {
+		return Character{}, fmt.Errorf("create full npc character: %w", err)
+	}
+	if err := json.Unmarshal(raw, &item.Sheet); err != nil {
+		return Character{}, err
+	}
+	item.Sheet = normalizeDerivedFields(item.Sheet, rules)
 	return item, nil
 }
 

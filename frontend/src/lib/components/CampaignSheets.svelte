@@ -3,7 +3,11 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		createCharacterForGM,
+		createNPCCharacterForGM,
+		deleteCharacterForGM,
+		listNPCCharacters,
 		listParticipants,
+		type NPCCharacterSummary,
 		type Participant
 	} from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
@@ -38,19 +42,26 @@
 	} = $props();
 
 	let participants = $state<Participant[]>([]);
+	let npcCharacters = $state<NPCCharacterSummary[]>([]);
 	let loading = $state(true);
 	let message = $state('');
 	let creatingFor = $state<string | null>(null);
+	let creatingNPC = $state(false);
+	let deletingNPC = $state<string | null>(null);
 	let selectedParticipant = $derived(
 		participants.find((participant) => participant.character?.id === selectedCharacterId) ?? null
 	);
-	let availableSheets = $derived(
+	let selectedNPC = $derived(
+		npcCharacters.find((character) => character.id === selectedCharacterId) ?? null
+	);
+	let availableParticipantSheets = $derived(
 		participants.filter(
 			(participant) =>
 				participant.character &&
 				(participant.role === 'player' || participant.character.id === selectedCharacterId)
 		)
 	);
+	let hasSelectedSheet = $derived(Boolean(selectedParticipant?.character || selectedNPC));
 
 	onMount(async () => {
 		if (!isGM) {
@@ -58,16 +69,30 @@
 			return;
 		}
 		try {
-			participants = (await listParticipants(session, campaignId)).participants;
+			const [participantResponse, npcResponse] = await Promise.all([
+				listParticipants(session, campaignId),
+				listNPCCharacters(session, campaignId)
+			]);
+			participants = participantResponse.participants;
+			npcCharacters = npcResponse.characters;
 			const currentSelection = participants.find(
 				(participant) => participant.character?.id === selectedCharacterId
 			);
-			if (currentSelection?.character) return;
+			if (
+				currentSelection?.character ||
+				npcCharacters.some((character) => character.id === selectedCharacterId)
+			)
+				return;
 			const firstWithSheet = participants.find(
 				(participant) => participant.role === 'player' && participant.character
 			);
 			if (firstWithSheet?.character)
 				onselectcharacter(firstWithSheet.character.id, firstWithSheet.displayName);
+			else if (npcCharacters[0])
+				onselectcharacter(
+					npcCharacters[0].id,
+					$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'
+				);
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -97,6 +122,72 @@
 			creatingFor = null;
 		}
 	}
+	async function createNPCCharacter() {
+		creatingNPC = true;
+		message = '';
+		try {
+			const character = await createNPCCharacterForGM(session, campaignId);
+			npcCharacters = [
+				...npcCharacters,
+				{
+					id: character.id,
+					name: character.sheet.name,
+					class: character.sheet.class,
+					level: character.sheet.level
+				}
+			];
+			onselectcharacter(character.id, $appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha');
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not create NPC sheet.'
+						: 'Não foi possível criar a ficha do NPC.';
+		} finally {
+			creatingNPC = false;
+		}
+	}
+	async function deleteNPCCharacter(character: NPCCharacterSummary) {
+		if (
+			!confirm(
+				$appLocale === 'en'
+					? `Delete ${character.name}'s sheet? Any linked scene tokens will also be removed.`
+					: `Excluir a ficha de ${character.name}? Os tokens associados nas cenas também serão removidos.`
+			)
+		)
+			return;
+		deletingNPC = character.id;
+		message = '';
+		try {
+			await deleteCharacterForGM(session, campaignId, character.id);
+			npcCharacters = npcCharacters.filter((item) => item.id !== character.id);
+			if (selectedCharacterId === character.id) onclearselection();
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not delete NPC sheet.'
+						: 'Não foi possível excluir a ficha do NPC.';
+		} finally {
+			deletingNPC = null;
+		}
+	}
+	async function returnToCast() {
+		message = '';
+		try {
+			npcCharacters = (await listNPCCharacters(session, campaignId)).characters;
+		} catch (error) {
+			message =
+				error instanceof Error
+					? error.message
+					: $appLocale === 'en'
+						? 'Could not refresh NPC sheets.'
+						: 'Não foi possível atualizar as fichas de NPC.';
+		}
+		onclearselection();
+	}
 </script>
 
 <section
@@ -123,7 +214,7 @@
 		</p>
 	{:else if message}<p class="status error">{message}</p>
 	{:else}
-		{#if selectedCharacterId && selectedParticipant?.character}
+		{#if selectedCharacterId && hasSelectedSheet}
 			<div class="sheet-picker">
 				<label for="campaign-sheet-picker">
 					{$appLocale === 'en' ? 'Campaign character' : 'Personagem da campanha'}
@@ -131,21 +222,31 @@
 						id="campaign-sheet-picker"
 						value={selectedCharacterId}
 						onchange={(event) => {
-							const participant = availableSheets.find(
+							const participant = availableParticipantSheets.find(
 								(item) => item.character?.id === event.currentTarget.value
 							);
-							if (participant?.character)
+							if (participant?.character) {
 								onselectcharacter(participant.character.id, participant.displayName);
+								return;
+							}
+							const npc = npcCharacters.find((item) => item.id === event.currentTarget.value);
+							if (npc)
+								onselectcharacter(npc.id, $appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha');
 						}}
 					>
-						{#each availableSheets as participant (participant.character!.id)}
+						{#each availableParticipantSheets as participant (participant.character!.id)}
 							<option value={participant.character!.id}>
 								{participant.character!.sheet.name} · {participant.displayName}
 							</option>
 						{/each}
+						{#each npcCharacters as character (character.id)}<option value={character.id}
+								>{character.name} · {$appLocale === 'en'
+									? 'Campaign NPC'
+									: 'NPC da campanha'}</option
+							>{/each}
 					</select>
 				</label>
-				<button type="button" onclick={onclearselection}>
+				<button type="button" onclick={() => void returnToCast()}>
 					{$appLocale === 'en' ? 'Back to cast' : 'Voltar ao elenco'}
 				</button>
 			</div>
@@ -155,13 +256,17 @@
 						{session}
 						{isGM}
 						characterId={selectedCharacterId}
-						characterOwnerName={selectedCharacterOwnerName || selectedParticipant.displayName}
+						characterOwnerName={selectedCharacterOwnerName ||
+							(selectedParticipant?.displayName ??
+								($appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'))}
 						embedded
 						onCharacterResolved={onresolved}
 						onOpenPanel={(characterId) =>
 							onopenpanel(
 								characterId,
-								selectedCharacterOwnerName || selectedParticipant.displayName
+								selectedCharacterOwnerName ||
+									selectedParticipant?.displayName ||
+									($appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha')
 							)}
 						onOpenNewWindow={onopenwindow}
 						onclose={() => {}}
@@ -212,6 +317,74 @@
 					</article>
 				{/each}
 			</div>
+			<section
+				class="npc-sheets"
+				aria-label={$appLocale === 'en' ? 'Full NPC sheets' : 'Fichas completas de NPC'}
+			>
+				<header>
+					<div>
+						<strong>{$appLocale === 'en' ? 'Full NPC sheets' : 'Fichas completas de NPC'}</strong
+						><small
+							>{$appLocale === 'en'
+								? 'Independent from campaign participants.'
+								: 'Independentes dos participantes da campanha.'}</small
+						>
+					</div>
+					<button
+						class="create"
+						type="button"
+						onclick={() => void createNPCCharacter()}
+						disabled={creatingNPC}
+						>{creatingNPC
+							? $appLocale === 'en'
+								? 'Creating…'
+								: 'Criando…'
+							: $appLocale === 'en'
+								? 'Create NPC sheet'
+								: 'Criar ficha de NPC'}</button
+					>
+				</header>
+				{#if npcCharacters.length === 0}<p class="status">
+						{$appLocale === 'en'
+							? 'No full NPC sheets yet.'
+							: 'Nenhuma ficha completa de NPC ainda.'}
+					</p>
+				{:else}<div class="npc-grid">
+						{#each npcCharacters as character (character.id)}<article>
+								<div class="details">
+									<span class="owner"
+										>{$appLocale === 'en' ? 'CAMPAIGN NPC' : 'NPC DA CAMPANHA'}</span
+									><strong>{character.name}</strong><small
+										>{character.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · {$appLocale ===
+										'en'
+											? 'level'
+											: 'nível'}
+										{character.level}</small
+									>
+								</div>
+								<button
+									type="button"
+									onclick={() =>
+										onselectcharacter(
+											character.id,
+											$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'
+										)}>{$appLocale === 'en' ? 'Open sheet' : 'Abrir ficha'}</button
+								><button
+									class="danger"
+									type="button"
+									onclick={() => void deleteNPCCharacter(character)}
+									disabled={deletingNPC === character.id}
+									>{deletingNPC === character.id
+										? $appLocale === 'en'
+											? 'Deleting…'
+											: 'Excluindo…'
+										: $appLocale === 'en'
+											? 'Delete'
+											: 'Excluir'}</button
+								>
+							</article>{/each}
+					</div>{/if}
+			</section>
 		{/if}
 	{/if}
 </section>
@@ -308,6 +481,50 @@
 	.sheet-grid article.unready {
 		opacity: 0.7;
 		border-style: dashed;
+	}
+	.npc-sheets {
+		display: grid;
+		gap: 0.65rem;
+		min-height: 0;
+		overflow: auto;
+		padding-bottom: 0.4rem;
+	}
+	.npc-sheets > header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+	.npc-sheets > header > div {
+		display: grid;
+		gap: 0.2rem;
+	}
+	.npc-sheets > header small {
+		color: #a99c91;
+		font-size: 0.75rem;
+	}
+	.npc-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+		gap: 0.6rem;
+	}
+	.npc-grid article {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		min-width: 0;
+		padding: 0.7rem;
+		border: 1px solid #4b3d3c;
+		border-radius: 9px;
+		background: #201b1e;
+	}
+	.npc-grid button {
+		flex: 0 0 auto;
+		padding: 0.5rem 0.6rem;
+	}
+	button.danger {
+		border-color: #8a4c43;
+		color: #ffc0b8;
 	}
 	.avatar {
 		width: 2.35rem;
