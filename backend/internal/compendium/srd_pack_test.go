@@ -42,8 +42,49 @@ func TestSRDPackRevisionTracksFeatContentCorrections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadSRDPack() error = %v", err)
 	}
-	if pack.Revision != "cartridge-import-8" {
-		t.Fatalf("SRD package revision = %q, want feat-content revision cartridge-import-8", pack.Revision)
+	if pack.Revision != "cartridge-import-9" {
+		t.Fatalf("SRD package revision = %q, want weapon-mastery revision cartridge-import-9", pack.Revision)
+	}
+}
+
+func TestSRDPackWeaponMasteriesMatch2024EquipmentTable(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"battleaxe": "Topple", "blowgun": "Vex", "club": "Slow", "dagger": "Nick", "dart": "Vex",
+		"flail": "Sap", "glaive": "Graze", "greataxe": "Cleave", "greatclub": "Push", "greatsword": "Graze",
+		"halberd": "Cleave", "hand-crossbow": "Vex", "handaxe": "Vex", "heavy-crossbow": "Push", "javelin": "Slow",
+		"lance": "Topple", "light-crossbow": "Slow", "light-hammer": "Nick", "longbow": "Slow", "longsword": "Sap",
+		"mace": "Sap", "maul": "Topple", "morningstar": "Sap", "musket": "Slow", "pike": "Push", "pistol": "Vex",
+		"quarterstaff": "Topple", "rapier": "Vex", "scimitar": "Nick", "shortbow": "Vex", "shortsword": "Vex",
+		"sickle": "Nick", "sling": "Slow", "spear": "Sap", "trident": "Topple", "war-pick": "Sap",
+		"warhammer": "Push", "whip": "Slow",
+	}
+	found := make(map[string]bool, len(want))
+	for _, entry := range pack.Entries {
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Fatalf("decode %s rules: %v", entry.Name, err)
+		}
+		if rules["catalog"] != "weapons" {
+			continue
+		}
+		id, _ := rules["id"].(string)
+		mastery, _ := rules["mastery"].(string)
+		if expected, exists := want[id]; !exists {
+			t.Errorf("unexpected weapon mastery catalog entry %q", id)
+		} else if mastery != expected {
+			t.Errorf("%s mastery = %q, want %q", id, mastery, expected)
+		}
+		if rules["masteryReference"] != "dnd-srd-5.2.1#weapon-mastery-properties" {
+			t.Errorf("%s mastery reference = %v", id, rules["masteryReference"])
+		}
+		found[id] = true
+	}
+	if len(found) != len(want) {
+		t.Errorf("weapon mastery entries = %d, want %d", len(found), len(want))
 	}
 }
 
@@ -318,7 +359,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 
 	// Removing this batch's item descriptions and restoring the prior package
 	// revision pins the package source snapshot, including the creature-action
-	// restorations now reviewed in the current branch.
+	// restorations and the separately asserted weapon-mastery fields.
 	for _, entry := range targets {
 		translations, _ := entry["translations"].(map[string]any)
 		delete(translations, "pt-BR.rules.description")
@@ -331,7 +372,7 @@ func TestSRDMagicItemNamesAreReviewedAndOnlyTheirTranslationsChanged(t *testing.
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "d9ca84ba1888f1303fd5c2a939bbdf4af0cd2628bbab0ef5feba86c097f067f0" {
+	if got := hex.EncodeToString(digest[:]); got != "0b1292663ea8ef7a9d3bf864fb87dc1726f12ed3deefd78de90d06e4ce6bdb9c" {
 		t.Fatalf("SRD package source snapshot changed: digest=%s", got)
 	}
 }
@@ -464,7 +505,7 @@ func TestSRDCreatureCatalogIsLocalizedAndNonTargetMechanicsRemainUnchanged(t *te
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(canonical)
-	if got := hex.EncodeToString(digest[:]); got != "c0bfeffaa1ad20c0eb2f2002a9c9173c4613b866cf4142e89c7c4612fbc03f5c" {
+	if got := hex.EncodeToString(digest[:]); got != "39c1199da57537e4cbf68d9bbf5ccb176004ab7a28c01f66ce183871aaca8d1d" {
 		t.Fatalf("non-translation SRD pack content changed: digest=%s", got)
 	}
 }
@@ -1107,7 +1148,7 @@ func TestSRDSpeciesAndBackgroundTranslationsAreReviewedWithoutChangingRules(t *t
 		t.Fatal(err)
 	}
 	mechanicsHash := sha256.Sum256(mechanicsJSON)
-	if got := hex.EncodeToString(mechanicsHash[:]); got != "33d83ec105194191729491ec032f08c67f111b3316c53e774a22d2bdba31c852" {
+	if got := hex.EncodeToString(mechanicsHash[:]); got != "16566e309c85fa2200efc9feeb587fbf05ea73057d5e7c33dbd7c2e4c288396f" {
 		t.Fatalf("non-translation package content changed: projection digest %s", got)
 	}
 }
@@ -1434,7 +1475,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "6faa96c8cbe6c3b5e2a5d7e614465ddcb243cc2b60b24aa9f9eb32a64c4159f9"
+	const wantSourceDigest = "b9258aeb031a000f9049ca5357ebfab6a4a290a592d93d39e17e0250b126a265"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

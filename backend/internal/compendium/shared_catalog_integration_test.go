@@ -167,7 +167,7 @@ func TestSharedSRDFeatRevisionEightIntegration(t *testing.T) {
 	if _, err = pool.Exec(ctx, `update srd_catalog_entries set rules=jsonb_set(rules,'{integrationSentinel}','"preserve-me"'::jsonb,true) where source_id=$1 and entry_type='feat' and name='Alert'`, sharedSource.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-7' where id=$1`, sharedSource.ID); err != nil {
+	if _, err = pool.Exec(ctx, `update srd_catalog_sources set revision='cartridge-import-8' where id=$1`, sharedSource.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,7 +179,7 @@ func TestSharedSRDFeatRevisionEightIntegration(t *testing.T) {
 	if err = pool.QueryRow(ctx, `select revision from srd_catalog_sources where id=$1`, sharedSource.ID).Scan(&upgradedRevision); err != nil {
 		t.Fatal(err)
 	}
-	if upgradedRevision != pack.Revision || upgradedRevision != "cartridge-import-8" {
+	if upgradedRevision != pack.Revision || upgradedRevision != "cartridge-import-9" {
 		t.Fatalf("persisted catalog revision = %q, want %q", upgradedRevision, pack.Revision)
 	}
 

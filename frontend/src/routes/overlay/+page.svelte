@@ -152,6 +152,7 @@
 			const keyChanged =
 				next.assetPath !== overlayPresentation?.assetPath ||
 				next.title !== overlayPresentation?.title ||
+				next.description !== overlayPresentation?.description ||
 				next.updatedAt !== overlayPresentation?.updatedAt;
 			overlayPresentation = next.visible && next.overlayVisible ? next : null;
 			if (keyChanged) overlayPresentationClosed = false;
@@ -165,6 +166,15 @@
 		} catch {
 			overlayPresentation = null;
 			overlayPresentationUrl = '';
+		}
+	}
+	function dismissOverlayPresentation() {
+		overlayPresentationClosed = true;
+	}
+	function handleOverlayKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && overlayPresentation && !overlayPresentationClosed) {
+			event.preventDefault();
+			dismissOverlayPresentation();
 		}
 	}
 	function applyLayoutDocument(value: unknown) {
@@ -642,6 +652,8 @@
 	<meta name="theme-color" content="#09070b" />
 </svelte:head>
 
+<svelte:window onkeydown={handleOverlayKeydown} />
+
 <main
 	class="live-overlay"
 	aria-label="Overlay da live"
@@ -785,9 +797,22 @@
 				<strong>LiveKit · {overlayLayout.livekitRoom || 'Sala'}</strong>
 			</article>{/if}
 
-		{#if overlayPresentation && !overlayPresentationClosed}<section
+		{#if overlayPresentation && !overlayPresentationClosed}<div
 				class="overlay-presentation"
+				role="dialog"
+				aria-modal="true"
+				tabindex="-1"
 				aria-label={overlayPresentation.title || 'Imagem apresentada'}
+				onclick={(event) => {
+					if (event.target === event.currentTarget) dismissOverlayPresentation();
+				}}
+				onkeydown={(event) => {
+					if (event.key === 'Escape') {
+						event.preventDefault();
+						event.stopPropagation();
+						dismissOverlayPresentation();
+					}
+				}}
 			>
 				{#if overlayPresentationUrl}<img
 						src={overlayPresentationUrl}
@@ -799,11 +824,10 @@
 				{#if overlayPresentation.title && overlayPresentationUrl}<strong
 						>{overlayPresentation.title}</strong
 					>{/if}
-				<button
-					onclick={() => (overlayPresentationClosed = true)}
-					aria-label="Fechar imagem nesta overlay">×</button
+				<button onclick={dismissOverlayPresentation} aria-label="Fechar imagem nesta overlay"
+					>×</button
 				>
-			</section>{/if}
+			</div>{/if}
 	{/if}
 </main>
 
@@ -1116,6 +1140,7 @@
 		position: fixed;
 		z-index: 10000;
 		inset: 0;
+		box-sizing: border-box;
 		display: grid;
 		place-items: center;
 		padding: 3rem;
@@ -1125,8 +1150,8 @@
 	}
 	.overlay-presentation img {
 		display: block;
-		max-width: 94vw;
-		max-height: 88vh;
+		max-width: 100%;
+		max-height: min(88vh, 100%);
 		object-fit: contain;
 		border-radius: 12px;
 		box-shadow: 0 20px 80px #000;

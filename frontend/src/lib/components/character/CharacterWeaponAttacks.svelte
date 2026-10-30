@@ -2,6 +2,7 @@
 	import type { AbilityScores, InventoryItem } from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
 	import { appLocale } from '$lib/stores/locale';
+	import { weaponMasteryInfo } from '$lib/utils/weaponMastery';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 	import { tick } from 'svelte';
 	import WeaponDamageBuilder from './WeaponDamageBuilder.svelte';
@@ -77,6 +78,10 @@
 	{#if items.length}
 		<div class="weapon-combat-list">
 			{#each items as item (actions.weaponKey(item))}
+				{@const mastery = weaponMasteryInfo(
+					actions.weaponMastery?.(item) ?? item.rules.mastery,
+					$appLocale
+				)}
 				<article class="weapon-combat-card">
 					<button
 						class="weapon-toggle"
@@ -86,11 +91,21 @@
 							(expandedWeapon =
 								expandedWeapon === actions.weaponKey(item) ? null : actions.weaponKey(item))}
 					>
-						<strong>{item.name}</strong><span
-							>{expandedWeapon === actions.weaponKey(item) ? '⌃' : '⌄'}</span
-						>
+						<strong>{item.name}</strong>{#if mastery}<small class="mastery-badge"
+								>{$appLocale === 'en' ? 'Mastery' : 'Maestria'}: {mastery.name}</small
+							>{/if}<span>{expandedWeapon === actions.weaponKey(item) ? '⌃' : '⌄'}</span>
 					</button>
 					{#if expandedWeapon === actions.weaponKey(item)}
+						{#if mastery}<aside class="weapon-mastery">
+								<strong>{mastery.name}</strong>
+								<p>{mastery.description}</p>
+								<small>{mastery.manualResolutionNote}</small>
+								<a href={mastery.referenceUrl} target="_blank" rel="external noreferrer">
+									{$appLocale === 'en'
+										? '2024 Basic Rules reference'
+										: 'Referência das Regras Básicas 2024'}
+								</a>
+							</aside>{/if}
 						<div class="weapon-combat-fields">
 							<label
 								>{$appLocale === 'en' ? 'Enchantment bonus' : 'Bônus de encantamento'}
@@ -528,6 +543,34 @@
 	}
 	.weapon-toggle span {
 		color: #c9a972;
+	}
+	.mastery-badge {
+		flex: 0 0 auto;
+		border: 1px solid #80683d;
+		border-radius: 999px;
+		padding: 0.18rem 0.45rem;
+		color: #f0d29d;
+		font-size: 0.66rem;
+	}
+	.weapon-mastery {
+		display: grid;
+		gap: 0.35rem;
+		border-inline-start: 3px solid #d8ad67;
+		padding: 0.35rem 0.65rem;
+		color: #e5d8c7;
+		background: #211b19;
+		font-size: 0.75rem;
+		line-height: 1.45;
+	}
+	.weapon-mastery p {
+		margin: 0;
+	}
+	.weapon-mastery small {
+		color: #c5b5a5;
+	}
+	.weapon-mastery a {
+		width: fit-content;
+		color: #f0d29d;
 	}
 	.weapon-description-field textarea {
 		width: 100%;
