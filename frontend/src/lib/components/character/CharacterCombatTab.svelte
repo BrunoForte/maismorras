@@ -304,7 +304,14 @@
 							? 'Damage'
 							: 'Dano'}<RpgIcon name="d20" size={18} /></button
 				>
-				<button onclick={() => actions.removeAttack(index)}>×</button>
+				<button
+					type="button"
+					class="attack-remove"
+					aria-label={$appLocale === 'en'
+						? `Remove ${attack.name.trim() || `attack ${index + 1}`}`
+						: `Remover ${attack.name.trim() || `ataque ${index + 1}`}`}
+					onclick={() => actions.removeAttack(index)}>×</button
+				>
 			</div>
 		{/each}
 	</section>
@@ -490,6 +497,27 @@
 	.attack-row .attack-damage-bonus {
 		text-align: center;
 	}
+	.attack-remove {
+		width: 2rem;
+		min-height: 2rem;
+		border: 1px solid #5b493b;
+		border-radius: 6px;
+		padding: 0;
+		color: #cda692;
+		background: #241d1e;
+		font: inherit;
+		font-size: 1rem;
+		cursor: pointer;
+	}
+	.attack-remove:hover {
+		border-color: #a06b5f;
+		color: #f0c1b4;
+		background: #382321;
+	}
+	.attack-remove:focus-visible {
+		outline: 2px solid #f0d29d;
+		outline-offset: 2px;
+	}
 	.attack-row .attack-bonus-field input,
 	.attack-row .attack-damage-bonus-field input {
 		text-align: center;
@@ -542,7 +570,7 @@
 		.attack-row .attack-name {
 			grid-area: 1 / 2 / 2 / 3;
 		}
-		.attack-row > button:last-child {
+		.attack-row .attack-remove {
 			grid-area: 1 / 3;
 		}
 		.attack-row .attack-type {
