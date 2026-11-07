@@ -81,7 +81,30 @@ func srdIndexEntries() []srdEntry {
 		}
 	}
 	add("class", "Barbarian|Bard|Cleric|Druid|Fighter|Monk|Paladin|Ranger|Rogue|Sorcerer|Warlock|Wizard")
-	add("subclass", "Path of the Berserker|College of Lore|Life Domain|Circle of the Land|Champion|Warrior of the Open Hand|Oath of Devotion|Hunter|Thief|Draconic Sorcery|Fiend Patron|Evoker")
+	for _, subclass := range []struct{ name, classID string }{
+		{"Path of the Berserker", "barbarian"},
+		{"College of Lore", "bard"},
+		{"Life Domain", "cleric"},
+		{"Circle of the Land", "druid"},
+		{"Champion", "fighter"},
+		{"Warrior of the Open Hand", "monk"},
+		{"Oath of Devotion", "paladin"},
+		{"Hunter", "ranger"},
+		{"Thief", "rogue"},
+		{"Draconic Sorcery", "sorcerer"},
+		{"Fiend Patron", "warlock"},
+		{"Evoker", "wizard"},
+	} {
+		rules, _ := json.Marshal(map[string]string{"classId": subclass.classID})
+		translations, _ := json.Marshal(map[string]string{"pt-BR": subclass.name})
+		entries = append(entries, srdEntry{
+			EntryType:    "subclass",
+			Name:         subclass.name,
+			Summary:      "Entrada do System Reference Document 5.2.1.",
+			Rules:        rules,
+			Translations: translations,
+		})
+	}
 	add("background", "Acolyte|Criminal|Sage|Soldier")
 	add("species", "Dragonborn|Dwarf|Elf|Gnome|Goliath|Halfling|Human|Orc|Tiefling")
 	add("feat", "Alert|Magic Initiate|Savage Attacker|Skilled|Ability Score Improvement|Boon of Combat Prowess|Boon of Dimensional Travel|Boon of Fate|Boon of Irresistible Offense|Boon of Spell Recall|Boon of the Night Spirit|Boon of Truesight")

@@ -2,6 +2,7 @@
 	import type {
 		AbilityScores,
 		CharacterSheet as Sheet,
+		ArmorClassAdjustment,
 		InventoryItem
 	} from '$lib/services/characterApi';
 	import type { WeaponCombatActions } from '$lib/utils/weaponRules';
@@ -33,6 +34,7 @@
 		sheet = $bindable<Sheet>(),
 		saving,
 		armorClass,
+		baseArmorClass,
 		attributes,
 		rollingWeaponAction,
 		rollingAttack,
@@ -45,6 +47,7 @@
 		sheet: Sheet;
 		saving: boolean;
 		armorClass: number;
+		baseArmorClass: number;
 		attributes: { key: keyof AbilityScores; label: string }[];
 		rollingWeaponAction: string | null;
 		rollingAttack: number | null;
@@ -66,6 +69,32 @@
 		sheet.inventory.filter((item) => actions.equipmentCategory(item) === 'weapon');
 	const armorItems = () =>
 		sheet.inventory.filter((item) => actions.equipmentCategory(item) === 'armor');
+	const acAdjustments = () => sheet.armorClassAdjustments ?? [];
+	const activeACAdjustments = () =>
+		acAdjustments().filter(
+			(adjustment) =>
+				adjustment.active &&
+				adjustment.value !== null &&
+				Number.isFinite(adjustment.value) &&
+				adjustment.source.trim().length > 0
+		);
+	function addACAdjustment() {
+		sheet.armorClassAdjustments = [
+			...acAdjustments(),
+			{ id: crypto.randomUUID(), value: 1, source: '', active: true }
+		];
+		actions.syncTokenSoon();
+	}
+	function updateACAdjustment(index: number, changes: Partial<ArmorClassAdjustment>) {
+		sheet.armorClassAdjustments = acAdjustments().map((adjustment, itemIndex) =>
+			itemIndex === index ? { ...adjustment, ...changes } : adjustment
+		);
+		actions.syncTokenSoon();
+	}
+	function removeACAdjustment(index: number) {
+		sheet.armorClassAdjustments = acAdjustments().filter((_, itemIndex) => itemIndex !== index);
+		actions.syncTokenSoon();
+	}
 </script>
 
 <div class="combat-tab">
@@ -106,6 +135,67 @@
 				readonly
 			/></label
 		>
+		<div
+			class="ac-adjustments"
+			role="group"
+			aria-label={$appLocale === 'en' ? 'Armor class adjustments' : 'Ajustes de classe de armadura'}
+		>
+			<div class="ac-summary">
+				<strong>{$appLocale === 'en' ? 'AC summary' : 'Resumo da CA'}:</strong>
+				<span
+					>{baseArmorClass}{#each activeACAdjustments() as adjustment (adjustment.id)}
+						{Number(adjustment.value) >= 0 ? '+' : '−'}{Math.abs(Number(adjustment.value))} ({adjustment.source}){/each}
+					= {armorClass}</span
+				>
+			</div>
+			{#each acAdjustments() as adjustment, index (adjustment.id)}
+				<div class="ac-adjustment-row">
+					<label class="ac-adjustment-active">
+						<input
+							type="checkbox"
+							checked={adjustment.active}
+							aria-label={`${$appLocale === 'en' ? 'Apply adjustment' : 'Ativar ajuste'} ${index + 1}`}
+							onchange={(event) =>
+								updateACAdjustment(index, { active: event.currentTarget.checked })}
+						/>
+						{$appLocale === 'en' ? 'Active' : 'Ativo'}
+					</label>
+					<label>
+						{$appLocale === 'en' ? 'Signed value' : 'Valor com sinal'}
+						<input
+							type="number"
+							step="1"
+							placeholder="+1 / -1"
+							value={adjustment.value ?? ''}
+							aria-label={`${$appLocale === 'en' ? 'Adjustment value' : 'Valor do ajuste'} ${index + 1}`}
+							oninput={(event) =>
+								updateACAdjustment(index, {
+									value: event.currentTarget.value === '' ? null : event.currentTarget.valueAsNumber
+								})}
+						/>
+					</label>
+					<label>
+						{$appLocale === 'en' ? 'Source' : 'Origem'}
+						<input
+							value={adjustment.source}
+							maxlength="100"
+							placeholder={$appLocale === 'en' ? 'Feat or item' : 'Talento ou item'}
+							aria-label={`${$appLocale === 'en' ? 'Adjustment source' : 'Origem do ajuste'} ${index + 1}`}
+							oninput={(event) => updateACAdjustment(index, { source: event.currentTarget.value })}
+						/>
+					</label>
+					<button
+						type="button"
+						class="ghost"
+						aria-label={`${$appLocale === 'en' ? 'Remove adjustment' : 'Remover ajuste'} ${index + 1}`}
+						onclick={() => removeACAdjustment(index)}>×</button
+					>
+				</div>
+			{/each}
+			<button type="button" class="secondary-button" onclick={addACAdjustment}
+				>+ {$appLocale === 'en' ? 'Add AC adjustment' : 'Adicionar ajuste de CA'}</button
+			>
+		</div>
 		<label
 			>{$appLocale === 'en' ? 'Current HP' : 'PV atuais'}<input
 				type="number"
@@ -172,7 +262,7 @@
 			{/each}
 			{#if spells.length}
 				<div class="granted-spells">
-					<h4>{$appLocale === 'en' ? 'Species and feat spells' : 'Magias de raça e talentos'}</h4>
+					<h4>{$appLocale === 'en' ? 'Granted spells' : 'Magias concedidas'}</h4>
 					{#each spells as spell, index (spell.entryId ?? `${spell.name}-${index}`)}
 						<div>
 							<strong>{actions.spellDisplayName(spell)}</strong>
@@ -181,9 +271,13 @@
 									? $appLocale === 'en'
 										? 'Species'
 										: 'Raça'
-									: $appLocale === 'en'
-										? 'Feat'
-										: 'Talento'}</span
+									: actions.spellOrigin(spell) === 'feature'
+										? $appLocale === 'en'
+											? 'Class feature'
+											: 'Característica de classe'
+										: $appLocale === 'en'
+											? 'Feat'
+											: 'Talento'}</span
 							>
 						</div>
 					{/each}
@@ -347,6 +441,39 @@
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.7rem;
+	}
+	.ac-adjustments {
+		grid-column: 1 / -1;
+		min-width: 0;
+		display: grid;
+		gap: 0.55rem;
+		padding: 0.65rem;
+		border: 1px solid #403536;
+		border-radius: 8px;
+	}
+	.ac-summary {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		color: #d9d0c4;
+	}
+	.ac-adjustment-row {
+		display: grid;
+		grid-template-columns: auto minmax(5rem, 0.5fr) minmax(8rem, 1fr) auto;
+		align-items: end;
+		gap: 0.45rem;
+	}
+	.ac-adjustment-row label {
+		min-width: 0;
+		display: grid;
+		gap: 0.25rem;
+	}
+	.ac-adjustment-row .ac-adjustment-active {
+		display: flex;
+		align-items: center;
+	}
+	.ac-adjustment-active input {
+		width: auto;
 	}
 	.combat h3,
 	.rest-actions {
@@ -571,6 +698,12 @@
 		}
 	}
 	@media (max-width: 520px) {
+		.ac-adjustment-row {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+		}
+		.ac-adjustment-row .ac-adjustment-active {
+			grid-column: 1 / -1;
+		}
 		.resource-row {
 			grid-template-columns: minmax(0, 1fr) auto auto;
 		}

@@ -215,6 +215,16 @@
 								placeholder={$appLocale === 'en'
 									? 'Short objective description'
 									: 'Descrição curta e objetiva'}></textarea>
+							<input
+								bind:value={feature.spellEntryIds}
+								class="feature-spell-grants"
+								aria-label={$appLocale === 'en'
+									? 'Granted spell entry IDs'
+									: 'IDs das magias concedidas'}
+								placeholder={$appLocale === 'en'
+									? 'Granted spell IDs, comma-separated (optional)'
+									: 'IDs de magia concedida, separados por vírgula (opcional)'}
+							/>
 							<button
 								class="ghost"
 								type="button"
@@ -507,7 +517,7 @@
 	}
 	.level-feature-row {
 		display: grid;
-		grid-template-columns: 5rem minmax(9rem, 1fr) minmax(12rem, 2fr) auto;
+		grid-template-columns: 5rem minmax(9rem, 1fr) minmax(12rem, 2fr) minmax(10rem, 1.2fr) auto;
 		gap: 0.45rem;
 		align-items: start;
 	}
@@ -525,6 +535,9 @@
 			grid-template-columns: 4.5rem 1fr auto;
 		}
 		.level-feature-row textarea {
+			grid-column: 1 / -1;
+		}
+		.level-feature-row .feature-spell-grants {
 			grid-column: 1 / -1;
 		}
 		.feat-spell-rule {

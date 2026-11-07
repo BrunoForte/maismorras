@@ -205,6 +205,40 @@ describe('createEmptySheet', () => {
 		expect(String(init.body)).not.toContain('freeCastsRemaining');
 	});
 
+	it('sends class-feature grant identity for a spell absent from the manual sheet', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					eventId: 2,
+					sheet: createEmptySheet(),
+					spellName: 'Auxílio',
+					baseLevel: 2,
+					slotLevel: 3,
+					effect: 'A criatura recebe proteção.'
+				}),
+				{ status: 200 }
+			)
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await castMySpell(session, 'campaign-1', 0, 3, {
+			entryId: 'spell-aid',
+			freeCast: false,
+			featureEntryId: 'subclass-crown',
+			featureId: 'crown-spells'
+		});
+
+		const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+		expect(JSON.parse(String(init.body))).toEqual({
+			spellIndex: -1,
+			slotLevel: 3,
+			entryId: 'spell-aid',
+			freeCast: false,
+			featureEntryId: 'subclass-crown',
+			featureId: 'crown-spells'
+		});
+	});
+
 	it('persists the one-use initiative advantage through the authenticated API', async () => {
 		const fetchMock = vi
 			.fn()

@@ -244,6 +244,8 @@ type SpellCastInput struct {
 	SlotLevel           int
 	GrantID             string
 	EntryID             string
+	FeatureEntryID      string
+	FeatureID           string
 	FreeCast            bool
 	PresentationSceneID string
 }
@@ -422,8 +424,15 @@ func joinDice(dice []int) string {
 // CastSpell locks the character row and consumes a compatible slot together
 // with the chat event, preventing duplicate spending from concurrent clients.
 func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, input SpellCastInput) (SpellCastResult, error) {
-	if (input.GrantID == "" && input.SpellIndex < 0) || input.SlotLevel < 0 || len(input.GrantID) > 80 || len(input.EntryID) > 120 || (input.PresentationSceneID != "" && !sceneIDPattern.MatchString(input.PresentationSceneID)) {
+	featureGrantSelected := input.FeatureEntryID != "" || input.FeatureID != ""
+	if (input.GrantID == "" && !featureGrantSelected && input.SpellIndex < 0) ||
+		input.SlotLevel < 0 || len(input.GrantID) > 80 || len(input.EntryID) > 120 ||
+		len(input.FeatureEntryID) > 120 || len(input.FeatureID) > 200 ||
+		(input.PresentationSceneID != "" && !sceneIDPattern.MatchString(input.PresentationSceneID)) {
 		return SpellCastResult{}, fmt.Errorf("invalid spell")
+	}
+	if featureGrantSelected && (input.FeatureEntryID == "" || input.FeatureID == "" || input.EntryID == "" || input.GrantID != "" || input.SpellIndex >= 0 || input.FreeCast) {
+		return SpellCastResult{}, fmt.Errorf("invalid class feature spell cast")
 	}
 	member, err := r.isMember(ctx, campaignID, userID)
 	if err != nil || !member {
@@ -553,6 +562,24 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 				rules = choice.Rules
 			}
 		}
+	} else if featureGrantSelected {
+		featureEntry, entryErr := loadCharacterFeatureEntry(ctx, tx, campaignID, input.FeatureEntryID)
+		if entryErr != nil {
+			return SpellCastResult{}, entryErr
+		}
+		classEntries, classErr := loadEnabledCharacterClassEntries(ctx, tx, campaignID)
+		if classErr != nil {
+			return SpellCastResult{}, classErr
+		}
+		if _, allowed := authorizedFeatureSpellLevel(sheet, featureEntry, classEntries, input.FeatureID, input.EntryID); !allowed {
+			return SpellCastResult{}, fmt.Errorf("spell is not granted by the character's current class feature")
+		}
+		choice, choiceErr := loadCompendiumSpellChoice(ctx, tx, campaignID, input.EntryID)
+		if choiceErr != nil {
+			return SpellCastResult{}, choiceErr
+		}
+		spell = Spell{EntryID: choice.ID, Name: choice.Name, Level: choice.Level, Origin: "feature"}
+		rules = choice.Rules
 	} else {
 		if input.FreeCast || input.EntryID != "" || input.SpellIndex >= len(sheet.Spells) {
 			return SpellCastResult{}, fmt.Errorf("spell not found")

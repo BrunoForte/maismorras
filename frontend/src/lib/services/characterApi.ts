@@ -33,7 +33,13 @@ export type Spell = {
 	diceFormula?: string;
 	higherLevels?: string;
 	scalingDicePerLevel?: number;
-	origin?: 'class' | 'species' | 'feat';
+	origin?: 'class' | 'species' | 'feat' | 'feature';
+};
+export type ArmorClassAdjustment = {
+	id: string;
+	value: number | null;
+	source: string;
+	active: boolean;
 };
 export type CharacterResource = {
 	id: string;
@@ -112,6 +118,8 @@ export type CharacterSheet = {
 	skillProficiencies: string[];
 	skillExpertise: string[];
 	armorClass: number;
+	/** Optional additive adjustments; absent values keep legacy sheets compatible. */
+	armorClassAdjustments?: ArmorClassAdjustment[];
 	initiative: number;
 	initiativeAdvantage?: boolean;
 	speed: number;
@@ -403,20 +411,27 @@ export type SpellCast = {
 	spellcastingAbility?: keyof AbilityScores | string;
 	freeCastRemaining?: number;
 };
+export type SpellCastAuthorization = {
+	grantId?: string;
+	entryId: string;
+	freeCast: boolean;
+	featureEntryId?: string;
+	featureId?: string;
+};
 export const castMySpell = (
 	session: Session,
 	campaignId: string,
 	spellIndex: number,
 	slotLevel: number,
-	featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+	authorization?: SpellCastAuthorization,
 	presentationSceneId?: string
 ) =>
 	request<SpellCast>(session, `/api/v1/campaigns/${campaignId}/character/cast-spell`, {
 		method: 'POST',
 		body: JSON.stringify({
-			spellIndex: featGrant ? -1 : spellIndex,
+			spellIndex: authorization ? -1 : spellIndex,
 			slotLevel,
-			...featGrant,
+			...authorization,
 			...(presentationSceneId ? { presentationSceneId } : {})
 		})
 	}).then((result) => ({
@@ -448,6 +463,7 @@ export function createEmptySheet(): CharacterSheet {
 		skillProficiencies: [],
 		skillExpertise: [],
 		armorClass: 10,
+		armorClassAdjustments: [],
 		initiative: 0,
 		initiativeAdvantage: false,
 		speed: 9,

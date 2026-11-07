@@ -37,13 +37,69 @@ func TestSRDPackHasCompleteSpellIndex(t *testing.T) {
 	}
 }
 
-func TestSRDPackRevisionTracksFeatContentCorrections(t *testing.T) {
+func TestSRDPackRevisionTracksCatalogCorrections(t *testing.T) {
 	pack, err := loadSRDPack()
 	if err != nil {
 		t.Fatalf("loadSRDPack() error = %v", err)
 	}
-	if pack.Revision != "cartridge-import-9" {
-		t.Fatalf("SRD package revision = %q, want weapon-mastery revision cartridge-import-9", pack.Revision)
+	if pack.Revision != "cartridge-import-10" {
+		t.Fatalf("SRD package revision = %q, want subclass-association revision cartridge-import-10", pack.Revision)
+	}
+}
+
+func TestSRDSubclassIndexHasTrustedBaseClassAssociations(t *testing.T) {
+	pack, err := loadSRDPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"Path of the Berserker":    "barbarian",
+		"College of Lore":          "bard",
+		"Life Domain":              "cleric",
+		"Circle of the Land":       "druid",
+		"Champion":                 "fighter",
+		"Warrior of the Open Hand": "monk",
+		"Oath of Devotion":         "paladin",
+		"Hunter":                   "ranger",
+		"Thief":                    "rogue",
+		"Draconic Sorcery":         "sorcerer",
+		"Fiend Patron":             "warlock",
+		"Evoker":                   "wizard",
+	}
+	classIDs := map[string]bool{
+		"barbarian": true, "bard": true, "cleric": true, "druid": true,
+		"fighter": true, "monk": true, "paladin": true, "ranger": true,
+		"rogue": true, "sorcerer": true, "warlock": true, "wizard": true,
+	}
+	found := make(map[string]bool, len(want))
+	for _, entry := range uniqueEntries(pack.Entries) {
+		if entry.EntryType != "subclass" {
+			continue
+		}
+		var rules map[string]any
+		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
+			t.Errorf("decode subclass %q rules: %v", entry.Name, err)
+			continue
+		}
+		classID, _ := rules["classId"].(string)
+		if strings.TrimSpace(classID) == "" {
+			t.Errorf("subclass %q has no identifiable base class", entry.Name)
+			continue
+		}
+		if !classIDs[classID] {
+			t.Errorf("subclass %q has unknown classId %q", entry.Name, classID)
+		}
+		if expected, indexed := want[entry.Name]; indexed {
+			if classID != expected {
+				t.Errorf("subclass %q classId = %q, want %q", entry.Name, classID, expected)
+			}
+			found[entry.Name] = true
+		}
+	}
+	for name := range want {
+		if !found[name] {
+			t.Errorf("SRD subclass index is missing %q", name)
+		}
 	}
 }
 
@@ -1350,6 +1406,9 @@ func TestSRDClassFeatFeatureCoreTranslationCoverage(t *testing.T) {
 		if err := json.Unmarshal(entry.Rules, &rules); err != nil {
 			t.Fatalf("decode %s rules: %v", entry.Name, err)
 		}
+		if entry.EntryType == "subclass" && entry.Summary == "Entrada do System Reference Document 5.2.1." && len(rules) == 1 && rules["classId"] != nil {
+			continue // The linked index row is not a full reviewed subclass record.
+		}
 		if len(rules) == 0 {
 			continue // Ignore the legacy name-only index appended by loadSRDPack.
 		}
@@ -1475,7 +1534,7 @@ func TestSRDLocalizationBatchPreservesAllSourceAndMechanicalFields(t *testing.T)
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(data)
-	const wantSourceDigest = "b9258aeb031a000f9049ca5357ebfab6a4a290a592d93d39e17e0250b126a265"
+	const wantSourceDigest = "8e8b9910bcb619ca3500bf29ec560afc72d1a9326488f85aedd22d286c418ea1"
 	if got := hex.EncodeToString(digest[:]); got != wantSourceDigest {
 		t.Fatalf("source/mechanical snapshot changed: SHA-256 = %s", got)
 	}

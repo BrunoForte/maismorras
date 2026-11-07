@@ -2,6 +2,7 @@ import type { CompendiumEntry } from '$lib/services/compendiumApi';
 
 export type CompendiumDetailsView = {
 	entry: CompendiumEntry;
+	classEntries?: CompendiumEntry[];
 	artUrl: string;
 	displayName: string;
 	displaySummary: string;

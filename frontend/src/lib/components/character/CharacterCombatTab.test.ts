@@ -21,6 +21,7 @@ describe('CharacterCombatTab equipped armor description', () => {
 				sheet,
 				saving: false,
 				armorClass: 15,
+				baseArmorClass: 15,
 				attributes: [],
 				rollingWeaponAction: null,
 				rollingAttack: null,
@@ -60,6 +61,7 @@ describe('CharacterCombatTab equipped armor description', () => {
 				sheet,
 				saving: false,
 				armorClass: 15,
+				baseArmorClass: 15,
 				attributes: [],
 				rollingWeaponAction: null,
 				rollingAttack: null,
@@ -90,5 +92,48 @@ describe('CharacterCombatTab equipped armor description', () => {
 		expect(html).toMatch(/2\s+disponíveis de 4/);
 		for (const count of [0, 1, 2]) expect(html).toContain(`<option value="${count}"`);
 		expect(html).not.toContain('<option value="3"');
+	});
+
+	it('shows the automatic and adjusted AC summary with editable source-labelled rows', () => {
+		const sheet = createEmptySheet();
+		sheet.armorClassAdjustments = [
+			{ id: 'shield-spell', value: 5, source: 'Shield', active: true },
+			{ id: 'disabled', value: -2, source: 'Curse', active: false }
+		];
+		const props = {
+			sheet,
+			saving: false,
+			armorClass: 19,
+			baseArmorClass: 14,
+			attributes: [],
+			rollingWeaponAction: null,
+			rollingAttack: null,
+			rollingAttackAction: null,
+			spells: [],
+			actions: {
+				rest: () => {},
+				syncTokenSoon: () => {},
+				spendResource: () => {},
+				setResourceMax: () => {},
+				spellDisplayName: () => '',
+				circleLabel: () => '',
+				spellOrigin: () => '',
+				equipmentCategory: () => 'weapon',
+				weapons: {} as WeaponCombatActions,
+				addAttack: () => {},
+				toggleVisibleRoll: () => {},
+				setAttackType: () => {},
+				rollCustomAttack: () => {},
+				rollCustomDamage: () => {},
+				removeAttack: () => {}
+			}
+		};
+		const html = render(CharacterCombatTab, { props }).body;
+		expect(html).toContain('Resumo da CA');
+		expect(html.replace(/<!--.*?-->/gs, '')).toContain('14+5 (Shield) = 19');
+		expect(html).toContain('Shield');
+		expect(html).toContain('Valor do ajuste 1');
+		expect(html).toContain('Origem do ajuste 1');
+		expect(html).toContain('Remover ajuste 2');
 	});
 });

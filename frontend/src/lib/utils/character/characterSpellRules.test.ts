@@ -9,6 +9,7 @@ import {
 	compatibleSpellSlots,
 	defaultSpellSlot,
 	deriveGrantedSpells,
+	deriveFeatureSpellGrants,
 	eligibleSpellEntries,
 	groupSpellsByCircle,
 	groupCharacterSpellsByCircle,
@@ -162,9 +163,9 @@ describe('character spell rules', () => {
 	it('selects only compatible slots and repairs a stale slot choice to the first valid slot', () => {
 		const known = spell({ level: 1 });
 		expect(compatibleSpellSlots(known, slots).map(({ level }) => level)).toEqual([1, 3]);
-		expect(defaultSpellSlot(known, 0, { 0: 3 }, slots)).toBe(3);
-		expect(defaultSpellSlot(known, 0, { 0: 2 }, slots)).toBe(1);
-		expect(defaultSpellSlot(spell({ level: 5 }), 0, {}, slots)).toBe(5);
+		expect(defaultSpellSlot(known, 'feature:oath:aid', { 'feature:oath:aid': 3 }, slots)).toBe(3);
+		expect(defaultSpellSlot(known, 'feature:oath:aid', { 'other-card': 3 }, slots)).toBe(1);
+		expect(defaultSpellSlot(spell({ level: 5 }), 'manual:spell-5', {}, slots)).toBe(5);
 	});
 
 	it('projects a feat spell once while preserving class and feat origins', () => {
@@ -420,5 +421,176 @@ describe('character spell rules', () => {
 			)
 		).toEqual([]);
 		expect(hasActiveFeatGrantedSpells([], [], [speciesGrant])).toBe(true);
+	});
+
+	it('derives only declarative spell grants unlocked by the selected class and subclass level', () => {
+		const classEntry = entry({
+			id: 'paladin',
+			entryType: 'class',
+			rules: {
+				features: [
+					{
+						id: 'paladin-feature-1',
+						level: 1,
+						name: 'Lay on Hands',
+						grants: [{ type: 'spell', spellEntryId: 'shield-of-faith' }]
+					},
+					{
+						id: 'locked',
+						level: 3,
+						name: 'Aura',
+						grants: [{ type: 'spell', spellEntryId: 'aid' }]
+					},
+					{
+						id: 'untrusted',
+						level: 1,
+						name: 'Ignored',
+						grants: [
+							{ type: 'javascript', source: 'nope' },
+							{ type: 'spell', spellEntryId: 'window.alert' }
+						]
+					}
+				]
+			}
+		});
+		const oath = entry({
+			id: 'oath-crown',
+			entryType: 'subclass',
+			name: 'Oath of the Crown',
+			rules: {
+				features: [
+					{
+						id: 'turn-undead',
+						level: 3,
+						name: 'Channel Divinity: Turn the Tide',
+						grants: [{ type: 'spell', spellEntryId: 'aid' }]
+					}
+				]
+			}
+		});
+		const spells = [
+			entry({ id: 'shield-of-faith', name: 'Shield of Faith' }),
+			entry({ id: 'aid', name: 'Aid' })
+		];
+		const levelTwo = deriveFeatureSpellGrants(classEntry, oath, 2, 'en', spells);
+		expect(levelTwo).toMatchObject([
+			{ spellEntryId: 'shield-of-faith', featureName: 'Lay on Hands' }
+		]);
+		const levelThree = deriveFeatureSpellGrants(classEntry, oath, 3, 'en', spells);
+		expect(levelThree.map((grant) => grant.spellEntryId)).toEqual([
+			'shield-of-faith',
+			'aid',
+			'aid'
+		]);
+		expect(deriveFeatureSpellGrants(classEntry, undefined, 3, 'en', spells)).toHaveLength(2);
+	});
+
+	it('projects feature spells off the normal class list once and keeps manual choices when the grant disappears', () => {
+		const aid = entry({ id: 'aid', name: 'Aid', rules: { level: 2, classes: ['wizard'] } });
+		const featureGrants = deriveFeatureSpellGrants(
+			entry({
+				id: 'paladin',
+				entryType: 'class',
+				rules: {
+					features: [
+						{ id: 'aura', level: 3, name: 'Aura', grants: [{ type: 'spell', spellEntryId: 'aid' }] }
+					]
+				}
+			}),
+			undefined,
+			3,
+			'en',
+			[aid]
+		);
+		const manual = spell({ entryId: 'aid', name: 'Aid', level: 2, origin: 'class' });
+		const projected = projectCharacterSpells(
+			[manual],
+			[],
+			[aid],
+			(item) => item.name,
+			[],
+			[],
+			[],
+			'',
+			featureGrants
+		);
+		expect(projected).toHaveLength(1);
+		expect(projected[0]).toMatchObject({
+			spell: { entryId: 'aid', origin: 'class' },
+			key: 'sheet:aid:0',
+			origins: ['class', 'feature'],
+			featureGrants: [{ featureName: 'Aura', spellEntryId: 'aid' }]
+		});
+		expect(manual).toMatchObject({ entryId: 'aid', origin: 'class' });
+		expect(projectCharacterSpells([manual], [], [aid])).toHaveLength(1);
+		const duplicateFeatureProjection = projectCharacterSpells(
+			[],
+			[],
+			[aid],
+			(item) => item.name,
+			[],
+			[],
+			[],
+			'',
+			[...featureGrants, { ...featureGrants[0], featureEntryId: 'oath-subclass' }]
+		);
+		expect(duplicateFeatureProjection).toHaveLength(1);
+		expect(duplicateFeatureProjection[0].featureGrants).toHaveLength(2);
+	});
+
+	it('projects a feature-only spell with its authoritative feature and spell identity', () => {
+		const grantSpell = entry({
+			id: 'crown-aid',
+			name: 'Auxílio',
+			rules: { level: 2, classes: ['wizard'] }
+		});
+		const grant = deriveFeatureSpellGrants(
+			entry({
+				id: 'paladin',
+				entryType: 'class',
+				rules: {
+					features: [
+						{
+							id: 'crown-spells',
+							level: 3,
+							name: 'Magias do Juramento',
+							grants: [{ type: 'spell', spellEntryId: 'crown-aid' }]
+						}
+					]
+				}
+			}),
+			undefined,
+			3,
+			'pt-BR',
+			[grantSpell]
+		);
+
+		const projected = projectCharacterSpells(
+			[],
+			[],
+			[grantSpell],
+			(item) => item.name,
+			[],
+			[],
+			[],
+			'',
+			grant
+		);
+
+		expect(projected).toHaveLength(1);
+		expect(projected[0]).toMatchObject({
+			spell: { entryId: 'crown-aid', level: 2, origin: 'feature' },
+			index: -1,
+			key: 'feature:crown-spells:crown-aid',
+			featureGrants: [
+				{
+					featureEntryId: 'paladin',
+					featureId: 'crown-spells',
+					spellEntryId: 'crown-aid',
+					spellLevel: 2,
+					level: 3
+				}
+			]
+		});
 	});
 });

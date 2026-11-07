@@ -5,6 +5,7 @@ import {
 	canInitiateCompendiumTranslation,
 	compendiumEntryTranslationStatus,
 	compendiumRulesFromEditor,
+	featureSpellGrantIds,
 	editorModelFromEntry,
 	emptyCompendiumEditorModel,
 	filterAndSortCompendiumEntries,
@@ -307,7 +308,13 @@ describe('compendium rules', () => {
 				entryType: 'class',
 				classHitDie: 10,
 				levelFeatures: [
-					{ id: 'x', level: 2, name: '  Action Surge ', description: ' Extra action ' }
+					{
+						id: 'x',
+						level: 2,
+						name: '  Action Surge ',
+						description: ' Extra action ',
+						spellEntryIds: ''
+					}
 				]
 			})
 		).toEqual({
@@ -319,7 +326,9 @@ describe('compendium rules', () => {
 				...emptyCompendiumEditorModel(),
 				entryType: 'subclass',
 				parentClass: ' Fighter ',
-				levelFeatures: [{ id: 'x', level: 3, name: 'Maneuvers', description: '' }]
+				levelFeatures: [
+					{ id: 'x', level: 3, name: 'Maneuvers', description: '', spellEntryIds: '' }
+				]
 			})
 		).toEqual({
 			className: 'Fighter',
@@ -345,6 +354,36 @@ describe('compendium rules', () => {
 		).toMatchObject({ kind: 'monster', hpMax: 22, imageUrl: 'assets/ogre.webp' });
 	});
 
+	it('preserves validated feature spell grants while editing and rejects arbitrary grant shapes', () => {
+		const original = entry('oath-crown', 'Oath of the Crown', 'subclass');
+		original.rules = {
+			classId: 'paladin',
+			features: [
+				{
+					id: 'turn-tide',
+					level: 3,
+					name: 'Turn the Tide',
+					description: 'A synthetic feature.',
+					grants: [{ type: 'spell', spellEntryId: 'aid' }]
+				}
+			]
+		};
+		const model = editorModelFromEntry(original);
+		model.levelFeatures[0].name = 'Edited feature';
+		const saved = compendiumDraftFromEditor(model, original);
+		expect(saved.rules).toMatchObject({
+			classId: 'paladin',
+			features: [{ id: 'turn-tide', grants: [{ type: 'spell', spellEntryId: 'aid' }] }]
+		});
+		expect(
+			featureSpellGrantIds([
+				{ type: 'spell', spellEntryId: 'aid' },
+				{ type: 'script', spellEntryId: 'evil' },
+				{ type: 'spell', spellEntryId: 'bad id' }
+			])
+		).toEqual(['aid']);
+	});
+
 	it('builds a draft without losing existing translations or mutating entry rules', () => {
 		const original = entry('1', 'Ogre', 'other', 'home');
 		original.rules = { kind: 'monster', hpMax: 30, armorClass: 11, extra: { preserved: true } };
@@ -355,6 +394,36 @@ describe('compendium rules', () => {
 		expect(draft.rules).toMatchObject({ hpMax: 35, extra: { preserved: true } });
 		expect(draft.translations).toMatchObject(original.translations);
 		expect(original.rules.hpMax).toBe(30);
+	});
+
+	it('preserves a subclass classId and parentClass when an edit field is blank', () => {
+		const original = entry('champion', 'Champion', 'subclass');
+		original.rules = { classId: 'fighter', parentClass: 'fighter', features: [] };
+		const model = editorModelFromEntry(original, [], 'pt-BR');
+		expect(model.parentClass).toBe('Guerreiro');
+		model.parentClass = '';
+
+		const draft = compendiumDraftFromEditor(model, original, [], 'pt-BR');
+
+		expect(draft.rules).toMatchObject({ classId: 'fighter', parentClass: 'fighter' });
+		expect(original.rules).toMatchObject({ classId: 'fighter', parentClass: 'fighter' });
+
+		const classes = [
+			{ ...entry('fighter', 'Fighter', 'class'), rules: { id: 'fighter' } },
+			{
+				...entry('wizard', 'Wizard', 'class'),
+				rules: { id: 'wizard' },
+				translations: { 'pt-BR': 'Mago' }
+			}
+		];
+		const localizedModel = editorModelFromEntry(original, classes, 'pt-BR');
+		localizedModel.parentClass = 'Mago';
+		expect(
+			compendiumDraftFromEditor(localizedModel, original, classes, 'pt-BR').rules
+		).toMatchObject({
+			classId: 'wizard',
+			className: 'Mago'
+		});
 	});
 
 	it('marks an edited Portuguese name as manually reviewed without replacing official provenance', () => {

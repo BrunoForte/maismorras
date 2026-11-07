@@ -116,6 +116,15 @@ test.describe('authenticated Sheets tab', () => {
 			await gm.goto(`/?campaign=${fixture.campaignId}&scene=${fixture.sceneId}`);
 			await gm.getByRole('button', { name: 'Fichas', exact: true }).click();
 			await expect(gm.locator('.floating-chat')).toHaveCSS('visibility', 'hidden');
+			const cast = gm.locator('.sheets-view');
+			await expect(cast).toBeVisible();
+			const firstCharacterCard = cast
+				.locator('.sheet-grid article')
+				.filter({ hasText: 'Personagem Aurora' });
+			await expect(firstCharacterCard).toHaveCount(1);
+			await firstCharacterCard
+				.getByRole('button', { name: /^(Select sheet|Selecionar ficha)$/ })
+				.click();
 			const picker = gm.getByLabel('Personagem da campanha');
 			await expect(picker).toBeVisible();
 			await expect(picker.locator('option')).toHaveCount(2);

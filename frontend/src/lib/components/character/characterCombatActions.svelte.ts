@@ -5,6 +5,7 @@ import type {
 	CharacterSheet,
 	Spell,
 	SpellCast,
+	SpellCastAuthorization,
 	SheetRoll,
 	AbilityScores,
 	InventoryItem
@@ -45,7 +46,7 @@ export type CharacterCombatActionState = {
 	rollingAttack: number | null;
 	rollingAttackAction: 'attack' | 'damage' | null;
 	castingSpell: number | null;
-	spellSlotChoice: Record<number, number>;
+	spellSlotChoice: Record<string, number>;
 };
 
 type DiceEvent = { id: number | string; author?: string; payload: unknown };
@@ -139,7 +140,7 @@ export type CharacterCombatActionDependencies = {
 		campaignId: string,
 		spellIndex: number,
 		slotLevel: number,
-		featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+		authorization?: SpellCastAuthorization,
 		presentationSceneId?: string
 	) => Promise<SpellCast>;
 	savePresentation: (
@@ -919,18 +920,19 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		return compatibleSpellSlots(spell, deps.getSheet().spellSlots);
 	}
 
-	function selectedSlot(spell: Spell, index: number) {
-		return defaultSpellSlot(spell, index, state.spellSlotChoice, deps.getSheet().spellSlots);
+	function selectedSlot(spell: Spell, selectionKey: string) {
+		return defaultSpellSlot(spell, selectionKey, state.spellSlotChoice, deps.getSheet().spellSlots);
 	}
 
-	function chooseSpellSlot(index: number, value: number) {
-		state.spellSlotChoice[index] = value;
+	function chooseSpellSlot(selectionKey: string, value: number) {
+		state.spellSlotChoice[selectionKey] = value;
 	}
 
 	async function castSpell(
 		spell: Spell,
 		index: number,
-		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
+		authorization?: SpellCastAuthorization,
+		selectionKey = `index:${index}`
 	) {
 		if (!deps.getCanCastSelectedCharacter()) {
 			deps.setMessage('Só é possível lançar magias da sua própria ficha.');
@@ -938,20 +940,21 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		}
 		if (
 			state.castingSpell !== null ||
-			(spell.level > 0 && !compatibleSlots(spell).length && !featGrant?.freeCast)
+			(spell.level > 0 && !compatibleSlots(spell).length && !authorization?.freeCast)
 		)
 			return;
 		const operation = captureOperation();
 		const context = deps.getContext();
 		state.castingSpell = index;
 		try {
-			const slotLevel = spell.level === 0 || featGrant?.freeCast ? 0 : selectedSlot(spell, index);
+			const slotLevel =
+				spell.level === 0 || authorization?.freeCast ? 0 : selectedSlot(spell, selectionKey);
 			const result = await deps.castMySpell(
 				context.session,
 				context.campaignId,
 				index,
 				slotLevel,
-				featGrant,
+				authorization,
 				context.sceneId || undefined
 			);
 			if (!isCurrent(operation)) return;
@@ -973,7 +976,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					autor: sheet.name || 'Personagem',
 					texto:
 						result.chatText ||
-						`✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || featGrant?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
+						`✨ ${result.spellName} · nível base ${result.baseLevel} · espaço usado ${result.slotLevel} · custo: ${(result.freeCastRemaining ?? 0) > 0 || authorization?.freeCast ? `uso gratuito do talento · restantes ${result.freeCastRemaining ?? 0}` : result.slotLevel ? `1 espaço de nível ${result.slotLevel}` : 'nenhum'}${result.spellcastingAbility ? ` · habilidade: ${result.spellcastingAbility}` : ''}${result.expression ? ` · rolagem: ${result.expression} = ${result.total ?? 0}` : ''} · efeito: ${result.effect}`,
 					tipo: 'rolagem',
 					canal: 'combat',
 					detalhesRolagem: {

@@ -49,4 +49,15 @@ describe('calculateArmorClass', () => {
 			])
 		).toBe(18);
 	});
+	it('adds only active, complete, source-labelled manual adjustments to automatic AC', () => {
+		const adjustments = [
+			{ id: 'feat', value: 1, source: 'Defensive Duelist', active: true },
+			{ id: 'item', value: -2, source: 'Curse', active: true },
+			{ id: 'disabled', value: 5, source: 'Inactive item', active: false },
+			{ id: 'missing-source', value: 4, source: '  ', active: true },
+			{ id: 'missing-value', value: null, source: 'Unfinished', active: true }
+		];
+		expect(calculateArmorClass(scores, 'fighter', [], adjustments)).toBe(13);
+		expect(calculateArmorClass(scores, 'fighter', [], [])).toBe(14);
+	});
 });

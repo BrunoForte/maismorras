@@ -134,7 +134,7 @@
 	function addLevelFeature() {
 		draft.levelFeatures = [
 			...draft.levelFeatures,
-			{ id: crypto.randomUUID(), name: '', level: 1, description: '' }
+			{ id: crypto.randomUUID(), name: '', level: 1, description: '', spellEntryIds: '' }
 		];
 	}
 	function removeLevelFeature(id: string) {
@@ -191,7 +191,9 @@
 			const payload = {
 				...compendiumDraftFromEditor(
 					draft,
-					editingEntryId ? entries.find((item) => item.id === editingEntryId) : undefined
+					editingEntryId ? entries.find((item) => item.id === editingEntryId) : undefined,
+					entries.filter((item) => item.entryType === 'class'),
+					$appLocale
 				),
 				sourceId: draft.sourceId,
 				entryType: draft.entryType
@@ -227,7 +229,11 @@
 	function editEntry(entry: CompendiumEntry) {
 		if (sources.find((source) => source.id === entry.sourceId)?.readOnly) return;
 		editingEntryId = entry.id;
-		draft = editorModelFromEntry(entry);
+		draft = editorModelFromEntry(
+			entry,
+			entries.filter((item) => item.entryType === 'class'),
+			$appLocale
+		);
 	}
 	function configureCampaignFeatRule(entry: CompendiumEntry) {
 		if (!isGM || entry.entryType !== 'feat') return;
@@ -472,6 +478,7 @@
 		selectedEntry
 			? {
 					entry: selectedEntry,
+					classEntries: entries.filter((entry) => entry.entryType === 'class'),
 					artUrl: selectedArtUrl,
 					displayName: displayName(selectedEntry),
 					displaySummary: displaySummary(selectedEntry),

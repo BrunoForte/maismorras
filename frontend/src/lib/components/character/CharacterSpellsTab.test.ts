@@ -112,7 +112,9 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 		isGM = false,
 		canAdjustSlots = isGM,
 		slotCurrent = 1,
-		slotMaximum = 1
+		slotMaximum = 1,
+		selectedSlot: (spell: Spell, selectionKey: string) => number = (spell) =>
+			Math.max(1, spell.level)
 	) {
 		return render(CharacterSpellsTab, {
 			props: {
@@ -136,8 +138,8 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 					spellsForCircle: (level: number) => spells.filter(({ spell }) => spell.level === level),
 					entriesForCircle: () => [],
 					compatibleSlots: (spell: Spell) =>
-						spell.level > 0 ? [{ level: 1, current: 1, max: 1 }] : [],
-					selectedSlot: () => 1
+						spell.level > 0 ? [{ level: Math.max(1, spell.level), current: 1, max: 1 }] : [],
+					selectedSlot
 				},
 				presentation: {
 					optionLabel: () => '',
@@ -176,6 +178,116 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 		const expanded = renderSpell(0);
 		expect(expanded).toContain('data-icon="chevron-up"');
 		expect(expanded).toContain('aria-expanded="true"');
+	});
+
+	it('labels a spell as prepared by its class feature without turning it into a manual spell grant', () => {
+		const html = renderSpell(null, false, [
+			{
+				spell: { entryId: 'aid', name: 'Auxílio', level: 2, notes: '', origin: 'feature' },
+				index: -1,
+				key: 'feature:oath:aid',
+				featureGrants: [
+					{
+						featureEntryId: 'oath-crown',
+						featureId: 'oath-feature',
+						featureName: 'Virar a Maré',
+						spellEntryId: 'aid',
+						spellName: 'Auxílio',
+						spellLevel: 2,
+						level: 3
+					}
+				],
+				origins: ['feature']
+			}
+		]);
+		expect(html).toContain('Preparada pela característica: Virar a Maré');
+		expect(html).toContain('Característica de classe');
+		expect(html).not.toContain('Origem da magia');
+	});
+
+	it('offers normal slot casting for a feature spell that has no manual sheet entry', () => {
+		const featureOnly = renderSpell(null, true, [
+			{
+				spell: { entryId: 'aid', name: 'Auxílio', level: 2, notes: '', origin: 'feature' },
+				index: -1,
+				key: 'feature:oath-crown:aid',
+				featureGrants: [
+					{
+						featureEntryId: 'oath-crown',
+						featureId: 'crown-spells',
+						featureName: 'Magias do Juramento',
+						spellEntryId: 'aid',
+						spellName: 'Auxílio',
+						spellLevel: 2,
+						level: 3
+					}
+				],
+				origins: ['feature']
+			}
+		]);
+
+		expect(featureOnly).toContain('Preparada pela característica: Magias do Juramento');
+		expect(featureOnly).toContain('aria-label="Espaço de magia"');
+		expect(featureOnly).toContain('2º círculo · 1/1');
+		expect(featureOnly).toMatch(/class="cast-spell[^"]*"[^>]*>Lançar<\/button>/);
+		expect(featureOnly).not.toMatch(/class="cast-spell[^"]*"[^>]*disabled/);
+		expect(featureOnly).not.toContain('Lançar grátis');
+	});
+
+	it('looks up selected slots by each feature card stable key', () => {
+		const firstKey = 'feature:crown-spells:aid';
+		const secondKey = 'feature:crown-spells:shield';
+		const selectedSlot = vi.fn((_spell: Spell, key: string) => (key === firstKey ? 3 : 2));
+		const html = renderSpell(
+			null,
+			true,
+			[
+				{
+					spell: { entryId: 'aid', name: 'Auxílio', level: 1, notes: '', origin: 'feature' },
+					index: -1,
+					key: firstKey,
+					featureGrants: [
+						{
+							featureEntryId: 'oath-crown',
+							featureId: 'crown-spells',
+							featureName: 'Magias do Juramento',
+							spellEntryId: 'aid',
+							spellName: 'Auxílio',
+							spellLevel: 1,
+							level: 3
+						}
+					]
+				},
+				{
+					spell: { entryId: 'shield', name: 'Escudo', level: 1, notes: '', origin: 'feature' },
+					index: -2,
+					key: secondKey,
+					featureGrants: [
+						{
+							featureEntryId: 'oath-crown',
+							featureId: 'crown-spells',
+							featureName: 'Magias do Juramento',
+							spellEntryId: 'shield',
+							spellName: 'Escudo',
+							spellLevel: 1,
+							level: 3
+						}
+					]
+				}
+			],
+			false,
+			false,
+			false,
+			1,
+			1,
+			selectedSlot
+		);
+
+		expect(selectedSlot.mock.calls).toEqual([
+			[expect.objectContaining({ entryId: 'aid' }), firstKey],
+			[expect.objectContaining({ entryId: 'shield' }), secondKey]
+		]);
+		expect(html.match(/aria-label="Espaço de magia"/g)).toHaveLength(2);
 	});
 
 	it('shows explicit cast controls for known spells even when details are collapsed', () => {

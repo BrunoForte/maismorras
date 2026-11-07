@@ -66,6 +66,7 @@
 		hasAISpellTranslation,
 		localizedSpellField,
 		normalizeSpellName,
+		deriveFeatureSpellGrants,
 		projectCharacterSpells,
 		removeSpellFromSheet,
 		resolveSpellOrigin,
@@ -84,6 +85,11 @@
 		synchronizeProgressionResources,
 		synchronizeSpellSlots
 	} from '$lib/utils/character/characterProgressionRules';
+	import {
+		retainCompatibleSubclass,
+		subclassMatchesClass,
+		subclassOptionsForClass
+	} from '$lib/utils/character/subclassAssociations';
 	import {
 		cloneInventoryRules,
 		filterItemEntries,
@@ -696,6 +702,7 @@
 		const subclass = compendiumEntries.find(
 			(entry) =>
 				entry.entryType === 'subclass' &&
+				subclassMatchesClass(entry, sheet.class, compendiumClassEntries()) &&
 				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
 		const subclassProficiencies = Array.isArray(subclass?.rules.weaponProficiencies)
@@ -784,15 +791,9 @@
 		const updated = updateWeaponProfileRule(item, profileId, changes);
 		updateWeaponRules(item, { attackProfiles: updated.rules.attackProfiles }, true);
 	}
-	const normalizedClassName = (value: string) =>
-		value
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.toLowerCase()
-			.trim();
 	function onClassChanged() {
 		sheet.hitDice = hitDieForClass(sheet.class, sheet.hitDice);
-		if (!subclassOptions().includes(sheet.subclass)) sheet.subclass = '';
+		sheet.subclass = retainCompatibleSubclass(sheet.subclass, subclassOptions());
 		syncProgression();
 	}
 	const compendiumClass = () =>
@@ -815,37 +816,38 @@
 				sheet.featSpellGrants ?? [],
 				sheet.campaignFeatSpellGrants ?? [],
 				sheet.speciesSpellGrants ?? []
-			)
+			) ||
+			featureSpellGrants().length > 0
 		);
 	};
-	const compendiumSubclassOptions = () =>
-		compendiumEntries
-			.filter(
-				(entry) =>
-					entry.entryType === 'subclass' &&
-					((!entry.rules.classId && !entry.rules.className && !entry.rules.parentClass) ||
-						[entry.rules.classId, entry.rules.className, entry.rules.parentClass]
-							.filter(Boolean)
-							.some(
-								(value) =>
-									canonicalClass(String(value)) === canonicalClass(sheet.class) ||
-									normalizedClassName(String(value)) === normalizedClassName(sheet.class)
-							))
-			)
-			.map((entry) => entry.name);
+	const compendiumClassEntries = () =>
+		compendiumEntries.filter((entry) => entry.entryType === 'class');
 	const subclassOptions = () =>
-		compendiumSubclassOptions().length
-			? compendiumSubclassOptions()
-			: subclassesForClass(sheet.class);
-	const derivedFeatures = () => {
-		const subclassEntry = compendiumEntries.find(
+		subclassOptionsForClass(
+			compendiumEntries,
+			sheet.class,
+			subclassesForClass(sheet.class),
+			compendiumClassEntries()
+		);
+	const selectedSubclassEntry = () =>
+		compendiumEntries.find(
 			(entry) =>
 				entry.entryType === 'subclass' &&
+				subclassMatchesClass(entry, sheet.class, compendiumClassEntries()) &&
 				(entry.name === sheet.subclass || optionLabel(entry) === sheet.subclass)
 		);
+	const featureSpellGrants = () =>
+		deriveFeatureSpellGrants(
+			compendiumClass(),
+			selectedSubclassEntry(),
+			sheet.level,
+			$appLocale,
+			compendiumEntries
+		);
+	const derivedFeatures = () => {
 		return deriveCharacterFeatures(
 			compendiumClass(),
-			subclassEntry,
+			selectedSubclassEntry(),
 			compendiumEntries,
 			sheet.class,
 			sheet.level,
@@ -979,7 +981,8 @@
 			sheet.campaignFeatSpellGrants ?? [],
 			optionsFor('feat'),
 			sheet.speciesSpellGrants ?? [],
-			sheet.speciesSpellcastingAbility ?? ''
+			sheet.speciesSpellcastingAbility ?? '',
+			featureSpellGrants()
 		);
 	const availableSpellCircles = () =>
 		projectAvailableSpellCircles(
@@ -1072,7 +1075,7 @@
 			optionLabel
 		);
 		const curatedFeatGrants = projectedCharacterSpells()
-			.filter(({ origins }) => origins?.includes('feat'))
+			.filter(({ origins }) => origins?.includes('feat') || origins?.includes('feature'))
 			.map(({ spell }) => spell);
 		const seen: string[] = [];
 		return [...speciesGrants, ...curatedFeatGrants].filter((spell) => {
@@ -1174,8 +1177,15 @@
 	function removeInventoryItem(index: number) {
 		sheet.inventory = sheet.inventory.filter((_, itemIndex) => itemIndex !== index);
 	}
-	const calculatedArmorClass = () =>
+	const calculatedBaseArmorClass = () =>
 		calculateArmorClass(sheet.abilityScores, sheet.class, sheet.inventory);
+	const calculatedArmorClass = () =>
+		calculateArmorClass(
+			sheet.abilityScores,
+			sheet.class,
+			sheet.inventory,
+			sheet.armorClassAdjustments ?? []
+		);
 	$effect(() => {
 		const armorClass = calculatedArmorClass();
 		if (sheet.armorClass !== armorClass) sheet.armorClass = armorClass;
@@ -1476,6 +1486,7 @@
 						bind:sheet
 						{saving}
 						armorClass={calculatedArmorClass()}
+						baseArmorClass={calculatedBaseArmorClass()}
 						{attributes}
 						rollingWeaponAction={combatActions.state.rollingWeaponAction}
 						rollingAttack={combatActions.state.rollingAttack}
@@ -1616,7 +1627,8 @@
 							setNewSpellName: (value) => (newSpellName = value),
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
-							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
+							chooseSlot: (selectionKey, value) =>
+								combatActions.chooseSpellSlot(selectionKey, value),
 							setAvailableSpellSlots: updateAvailableSpellSlots,
 							setSpellGrantUseConfig: updateSpellGrantUseConfig,
 							setSpeciesSpellcastingAbility: (ability) => {
@@ -1627,7 +1639,8 @@
 							change: updateSpell,
 							present: (spell) => void combatActions.presentSpell(spell),
 							rollEffect: (spell) => void combatActions.rollSpellDamage(spell),
-							cast: (spell, index, grant) => void combatActions.castSpell(spell, index, grant)
+							cast: (spell, index, grant, selectionKey) =>
+								void combatActions.castSpell(spell, index, grant, selectionKey)
 						}}
 					/>
 				{/if}

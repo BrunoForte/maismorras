@@ -80,6 +80,42 @@ jobs:
           go-version-file: backend/go.mod
           cache: true
           cache-dependency-path: backend/go.sum
+      - name: Test SRD subclass-class migration against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_name=TestSubclassClassAssociationsMigrationIntegration
+          output_file="$RUNNER_TEMP/subclass-class-migration-integration.log"
+          go test -v ./internal/compendium -run "^${test_name}$" -count=1 | tee "$output_file"
+          if grep -Fq -- "--- SKIP: ${test_name}" "$output_file"; then
+            echo "::error::${test_name} was skipped."
+            exit 1
+          fi
+          if ! grep -Fq -- "--- PASS: ${test_name}" "$output_file"; then
+            echo "::error::${test_name} did not report an explicit pass."
+            exit 1
+          fi
+      - name: Test class-feature spell casting against isolated Supabase Postgres
+        working-directory: backend
+        env:
+          REALTIME_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_name=TestClassFeatureSpellGrantCastingIntegration
+          output_file="$RUNNER_TEMP/class-feature-spell-grant-integration.log"
+          go test -v ./internal/characters -run "^${test_name}$" -count=1 | tee "$output_file"
+          if grep -Fq -- "--- SKIP: ${test_name}" "$output_file"; then
+            echo "::error::${test_name} was skipped."
+            exit 1
+          fi
+          if ! grep -Fq -- "--- PASS: ${test_name}" "$output_file"; then
+            echo "::error::${test_name} did not report an explicit pass."
+            exit 1
+          fi
       - name: Test SetCombat transitions against isolated Supabase Postgres
         working-directory: backend
         env:
