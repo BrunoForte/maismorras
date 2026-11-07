@@ -134,7 +134,7 @@ func TestClassFeatureSpellGrantCastingIntegration(t *testing.T) {
 		t.Fatal("spell grant from an unselected subclass was accepted")
 	}
 	afterInvalid, err := repo.GetMine(ctx, campaignID, playerID)
-	if err != nil || afterInvalid.Sheet.SpellSlots[0].Current != 0 {
+	if err != nil || len(afterInvalid.Sheet.SpellSlots) == 0 || afterInvalid.Sheet.SpellSlots[0].Current != cast.Sheet.SpellSlots[0].Current {
 		t.Fatalf("rejected invalid subclass grant changed the sheet: %+v err=%v", afterInvalid.Sheet, err)
 	}
 
