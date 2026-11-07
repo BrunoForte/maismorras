@@ -109,7 +109,7 @@ func TestClassFeatureSpellGrantCastingIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cast authorized class feature spell without a manual sheet entry: %v", err)
 	}
-	if cast.SpellName != "Crown Aid" || cast.BaseLevel != 1 || cast.SlotLevel != 1 || cast.Sheet.SpellSlots[0].Current != 0 || !cast.PresentationUpdated || cast.EventID == 0 {
+	if len(created.Sheet.SpellSlots) == 0 || len(cast.Sheet.SpellSlots) == 0 || created.Sheet.SpellSlots[0].Current <= 0 || cast.SpellName != "Crown Aid" || cast.BaseLevel != 1 || cast.SlotLevel != 1 || cast.Sheet.SpellSlots[0].Current != created.Sheet.SpellSlots[0].Current-1 || !cast.PresentationUpdated || cast.EventID == 0 {
 		t.Fatalf("feature spell did not consume a compatible slot and present: %+v", cast)
 	}
 	var eventCount int
@@ -140,15 +140,18 @@ func TestClassFeatureSpellGrantCastingIntegration(t *testing.T) {
 
 	lowerLevel := cast.Sheet
 	lowerLevel.Level = 2
-	lowerLevel.SpellSlots[0].Current = 1
-	if _, err := repo.SaveMine(ctx, campaignID, playerID, lowerLevel); err != nil {
+	lowerLevelSaved, err := repo.SaveMine(ctx, campaignID, playerID, lowerLevel)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if lowerLevelSaved.Sheet.Level != 2 || len(lowerLevelSaved.Sheet.SpellSlots) == 0 {
+		t.Fatalf("could not lower the character level for the authorization check: %+v", lowerLevelSaved.Sheet)
 	}
 	if _, err := repo.CastSpell(ctx, campaignID, playerID, castInput); err == nil {
 		t.Fatal("spell grant above the current character level was accepted")
 	}
 	afterLowLevel, err := repo.GetMine(ctx, campaignID, playerID)
-	if err != nil || afterLowLevel.Sheet.SpellSlots[0].Current != 1 {
+	if err != nil || afterLowLevel.Sheet.SpellSlots[0].Current != lowerLevelSaved.Sheet.SpellSlots[0].Current {
 		t.Fatalf("rejected insufficient-level grant consumed a slot: %+v err=%v", afterLowLevel.Sheet, err)
 	}
 }
