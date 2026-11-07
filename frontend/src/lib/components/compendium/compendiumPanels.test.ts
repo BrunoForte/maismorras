@@ -663,4 +663,47 @@ describe('compendium panels', () => {
 		expect(gmHtml).toContain('Descanso longo');
 		expect(playerHtml).not.toContain('REGRA ESPECÍFICA DA CAMPANHA');
 	});
+
+	it('shows the localized base class when a subclass stores only its class id', () => {
+		setAppLocale('pt-BR');
+		const subclass: CompendiumEntry = {
+			...monster,
+			id: 'champion',
+			entryType: 'subclass',
+			name: 'Champion',
+			rules: { classId: 'fighter' }
+		};
+		const view = {
+			entry: subclass,
+			classEntries: [],
+			artUrl: '',
+			displayName: 'Campeão',
+			displaySummary: '',
+			typeLabel: 'Subclasse',
+			isMonster: false,
+			hasMonsterSheet: false,
+			sourceReadOnly: true,
+			hasPrivateSource: false,
+			isGM: false,
+			canConfigureFeatSpellRule: false,
+			canTranslate: false,
+			translationStatus: 'complete' as const,
+			canPlace: false,
+			translating: false,
+			placing: false
+		};
+		const actions = {
+			close: vi.fn(),
+			edit: vi.fn(),
+			configureFeatSpellRule: vi.fn(),
+			remove: vi.fn(),
+			translate: vi.fn(),
+			copyToCampaign: vi.fn(),
+			place: vi.fn()
+		};
+
+		const html = render(CompendiumEntryDetails, { props: { view, actions } }).body;
+
+		expect(html).toMatch(/Classe-base:\s+Guerreiro/);
+	});
 });

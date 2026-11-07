@@ -1,4 +1,8 @@
-import type { AbilityScores, InventoryItem } from '$lib/services/characterApi';
+import type {
+	AbilityScores,
+	ArmorClassAdjustment,
+	InventoryItem
+} from '$lib/services/characterApi';
 
 const normalized = (value: unknown) =>
 	String(value ?? '')
@@ -21,7 +25,7 @@ function numericBonus(rules: Record<string, unknown>, keys: string[]) {
 }
 
 /** Calculates D&D 5e AC from equipped inventory without allowing stacked armor. */
-export function calculateArmorClass(
+export function calculateBaseArmorClass(
 	abilityScores: AbilityScores,
 	className: string,
 	inventory: InventoryItem[]
@@ -103,4 +107,29 @@ export function calculateArmorClass(
 		0
 	);
 	return Math.max(0, Math.round(total));
+}
+
+export function activeArmorClassAdjustments(
+	adjustments: readonly ArmorClassAdjustment[] = []
+): ArmorClassAdjustment[] {
+	return adjustments.filter(
+		(adjustment) =>
+			adjustment.active === true &&
+			Number.isFinite(adjustment.value) &&
+			String(adjustment.source ?? '').trim().length > 0
+	);
+}
+
+export function calculateArmorClass(
+	abilityScores: AbilityScores,
+	className: string,
+	inventory: InventoryItem[],
+	adjustments: readonly ArmorClassAdjustment[] = []
+) {
+	const base = calculateBaseArmorClass(abilityScores, className, inventory);
+	const bonus = activeArmorClassAdjustments(adjustments).reduce(
+		(total, adjustment) => total + Number(adjustment.value),
+		0
+	);
+	return Math.max(0, Math.round(base + bonus));
 }

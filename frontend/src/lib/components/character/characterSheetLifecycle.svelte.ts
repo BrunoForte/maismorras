@@ -154,7 +154,7 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 				deps.onValidationFailure?.();
 				return;
 			}
-			// Armor class is derived from authoritative sheet data, never a manual override.
+			// Recalculate from equipment and abilities, then apply only valid manual adjustments.
 			const sheet = deps.getSheet();
 			sheet.armorClass = deps.calculateArmorClass();
 			const snapshot = JSON.parse(JSON.stringify(sheet)) as CharacterSheet;

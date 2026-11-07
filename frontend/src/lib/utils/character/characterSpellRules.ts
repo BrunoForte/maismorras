@@ -13,8 +13,18 @@ import { campaignFeatSpellRuleFromEntryRules } from '$lib/utils/compendium/campa
 import { spellIsOnSheet, unlockedSpellCircles } from '$lib/utils/spellbook';
 import type { SpellMechanicsPresentation } from '$lib/utils/compendium/spellMechanics';
 import { spellSchoolLabel } from '$lib/utils/compendium/spellMetadataLabels';
+import {
+	featureSpellGrantIds,
+	translatedCompendiumText
+} from '$lib/utils/compendium/compendiumRules';
 
 export type SpellOrigin = NonNullable<Spell['origin']>;
+export type FeatureSpellGrant = {
+	featureId: string;
+	featureName: string;
+	spellEntryId: string;
+	level: number;
+};
 export type SpellFeatGrantProjection = {
 	id: string;
 	featId: string;
@@ -36,6 +46,7 @@ export type SpellCircleEntry = {
 	index: number;
 	key?: string;
 	featGrants?: SpellFeatGrantProjection[];
+	featureGrants?: FeatureSpellGrant[];
 	origins?: SpellOrigin[];
 };
 
@@ -163,7 +174,8 @@ export function projectCharacterSpells(
 	campaignGrants: readonly CampaignFeatSpellGrant[] = [],
 	featEntries: readonly CompendiumEntry[] = [],
 	speciesGrants: readonly SpeciesSpellGrant[] = [],
-	speciesSpellcastingAbility = ''
+	speciesSpellcastingAbility = '',
+	featureGrants: readonly FeatureSpellGrant[] = []
 ): SpellCircleEntry[] {
 	const result: SpellCircleEntry[] = spells.map((spell, index) => ({
 		spell,
@@ -265,7 +277,85 @@ export function projectCharacterSpells(
 			virtualIndex--
 		);
 	}
+	for (const grant of featureGrants) {
+		const compendium = entries.find(
+			(entry) => entry.id === grant.spellEntryId && entry.entryType === 'spell'
+		);
+		if (!compendium) continue;
+		const level = Number(compendium.rules.level);
+		if (!Number.isInteger(level) || level < 0 || level > 9) continue;
+		const displayName = label(compendium);
+		const existing = result.find(
+			({ spell }) =>
+				spell.entryId === compendium.id ||
+				[compendium.name, displayName].some(
+					(name) => normalizeSpellName(spell.name) === normalizeSpellName(name)
+				)
+		);
+		if (existing) {
+			existing.featureGrants = [...(existing.featureGrants ?? []), grant];
+			existing.origins = [...new Set<SpellOrigin>([...(existing.origins ?? []), 'feature'])];
+			continue;
+		}
+		result.push({
+			spell: {
+				entryId: compendium.id,
+				name: displayName,
+				level,
+				notes: '',
+				description: String(compendium.rules.description ?? compendium.summary ?? ''),
+				origin: 'feature'
+			},
+			index: virtualIndex,
+			key: `feature:${grant.featureId}:${grant.spellEntryId}`,
+			featureGrants: [grant],
+			origins: ['feature']
+		});
+		virtualIndex--;
+	}
 	return result;
+}
+
+/** Reads only the declarative spell-grant shape; arbitrary Compendium data is never executed. */
+export function deriveFeatureSpellGrants(
+	classEntry: CompendiumEntry | undefined,
+	subclassEntry: CompendiumEntry | undefined,
+	classLevel: number,
+	locale = 'en',
+	spellEntries: readonly CompendiumEntry[]
+): FeatureSpellGrant[] {
+	if (!Number.isInteger(classLevel) || classLevel < 1) return [];
+	const results: FeatureSpellGrant[] = [];
+	for (const entry of [classEntry, subclassEntry]) {
+		if (!entry || !['class', 'subclass'].includes(entry.entryType)) continue;
+		if (!Array.isArray(entry.rules.features)) continue;
+		entry.rules.features.forEach((rawFeature, index) => {
+			if (!rawFeature || typeof rawFeature !== 'object' || Array.isArray(rawFeature)) return;
+			const feature = rawFeature as Record<string, unknown>;
+			const unlockLevel = Number(feature.level);
+			if (!Number.isInteger(unlockLevel) || unlockLevel < 1 || unlockLevel > classLevel) return;
+			const originalFeatureName = String(feature.name ?? '').trim();
+			if (!originalFeatureName) return;
+			const featureName = translatedCompendiumText(
+				entry,
+				`rules.features.${index}.name`,
+				originalFeatureName,
+				locale
+			);
+			const featureId = String(feature.id ?? `${entry.id}:feature:${index}`);
+			for (const spellEntryId of featureSpellGrantIds(feature.grants)) {
+				if (!spellEntries.some((spell) => spell.entryType === 'spell' && spell.id === spellEntryId))
+					continue;
+				results.push({ featureId, featureName, spellEntryId, level: unlockLevel });
+			}
+		});
+	}
+	return results.filter(
+		(grant, index) =>
+			results.findIndex(
+				(item) => item.featureId === grant.featureId && item.spellEntryId === grant.spellEntryId
+			) === index
+	);
 }
 
 function addGrantedSpell(

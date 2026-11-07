@@ -11,6 +11,7 @@
 		type Participant
 	} from '$lib/services/characterApi';
 	import { appLocale } from '$lib/stores/locale';
+	import { resolveCampaignSheetSelection } from '$lib/utils/campaignSheetNavigation';
 	type SheetComponentType = typeof import('$lib/components/CharacterSheet.svelte').default;
 
 	let {
@@ -48,17 +49,27 @@
 	let creatingFor = $state<string | null>(null);
 	let creatingNPC = $state(false);
 	let deletingNPC = $state<string | null>(null);
+	let availableCharacterIds = $derived([
+		...participants.flatMap((participant) =>
+			participant.character ? [participant.character.id] : []
+		),
+		...npcCharacters.map((character) => character.id)
+	]);
+	let resolvedSelectedCharacterId = $derived(
+		resolveCampaignSheetSelection(selectedCharacterId, availableCharacterIds)
+	);
 	let selectedParticipant = $derived(
-		participants.find((participant) => participant.character?.id === selectedCharacterId) ?? null
+		participants.find((participant) => participant.character?.id === resolvedSelectedCharacterId) ??
+			null
 	);
 	let selectedNPC = $derived(
-		npcCharacters.find((character) => character.id === selectedCharacterId) ?? null
+		npcCharacters.find((character) => character.id === resolvedSelectedCharacterId) ?? null
 	);
 	let availableParticipantSheets = $derived(
 		participants.filter(
 			(participant) =>
 				participant.character &&
-				(participant.role === 'player' || participant.character.id === selectedCharacterId)
+				(participant.role === 'player' || participant.character.id === resolvedSelectedCharacterId)
 		)
 	);
 	let hasSelectedSheet = $derived(Boolean(selectedParticipant?.character || selectedNPC));
@@ -75,24 +86,14 @@
 			]);
 			participants = participantResponse.participants;
 			npcCharacters = npcResponse.characters;
-			const currentSelection = participants.find(
-				(participant) => participant.character?.id === selectedCharacterId
-			);
-			if (
-				currentSelection?.character ||
-				npcCharacters.some((character) => character.id === selectedCharacterId)
-			)
-				return;
-			const firstWithSheet = participants.find(
-				(participant) => participant.role === 'player' && participant.character
-			);
-			if (firstWithSheet?.character)
-				onselectcharacter(firstWithSheet.character.id, firstWithSheet.displayName);
-			else if (npcCharacters[0])
-				onselectcharacter(
-					npcCharacters[0].id,
-					$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'
-				);
+			const availableIds = [
+				...participants.flatMap((participant) =>
+					participant.character ? [participant.character.id] : []
+				),
+				...npcCharacters.map((character) => character.id)
+			];
+			if (selectedCharacterId && !resolveCampaignSheetSelection(selectedCharacterId, availableIds))
+				onclearselection();
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -162,7 +163,7 @@
 		try {
 			await deleteCharacterForGM(session, campaignId, character.id);
 			npcCharacters = npcCharacters.filter((item) => item.id !== character.id);
-			if (selectedCharacterId === character.id) onclearselection();
+			if (resolvedSelectedCharacterId === character.id) onclearselection();
 		} catch (error) {
 			message =
 				error instanceof Error
@@ -214,13 +215,13 @@
 		</p>
 	{:else if message}<p class="status error">{message}</p>
 	{:else}
-		{#if selectedCharacterId && hasSelectedSheet}
+		{#if resolvedSelectedCharacterId && hasSelectedSheet}
 			<div class="sheet-picker">
 				<label for="campaign-sheet-picker">
 					{$appLocale === 'en' ? 'Campaign character' : 'Personagem da campanha'}
 					<select
 						id="campaign-sheet-picker"
-						value={selectedCharacterId}
+						value={resolvedSelectedCharacterId}
 						onchange={(event) => {
 							const participant = availableParticipantSheets.find(
 								(item) => item.character?.id === event.currentTarget.value
@@ -234,28 +235,33 @@
 								onselectcharacter(npc.id, $appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha');
 						}}
 					>
-						{#each availableParticipantSheets as participant (participant.character!.id)}
-							<option value={participant.character!.id}>
-								{participant.character!.sheet.name} · {participant.displayName}
-							</option>
-						{/each}
-						{#each npcCharacters as character (character.id)}<option value={character.id}
-								>{character.name} · {$appLocale === 'en'
-									? 'Campaign NPC'
-									: 'NPC da campanha'}</option
-							>{/each}
+						{#if availableParticipantSheets.length > 0}<optgroup
+								label={$appLocale === 'en' ? 'Characters' : 'Personagens'}
+							>
+								{#each availableParticipantSheets as participant (participant.character!.id)}
+									<option value={participant.character!.id}>
+										{participant.character!.sheet.name} · {participant.displayName}
+									</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if npcCharacters.length > 0}<optgroup label="NPCs">
+								{#each npcCharacters as character (character.id)}
+									<option value={character.id}>{character.name}</option>
+								{/each}
+							</optgroup>{/if}
 					</select>
 				</label>
 				<button type="button" onclick={() => void returnToCast()}>
 					{$appLocale === 'en' ? 'Back to cast' : 'Voltar ao elenco'}
 				</button>
 			</div>
-			{#if SheetComponent}{#key selectedCharacterId}<SheetComponent
+			{#if SheetComponent}{#key resolvedSelectedCharacterId}<SheetComponent
 						{campaignId}
 						{sceneId}
 						{session}
 						{isGM}
-						characterId={selectedCharacterId}
+						characterId={resolvedSelectedCharacterId}
 						characterOwnerName={selectedCharacterOwnerName ||
 							(selectedParticipant?.displayName ??
 								($appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'))}
@@ -273,118 +279,167 @@
 						onTokenCreated={() => {}}
 					/>{/key}{/if}
 		{:else}
-			<div class="sheet-grid">
-				{#each participants as participant (participant.userId)}
-					<article class:unready={!participant.character}>
-						<div class="avatar">{participant.displayName.slice(0, 1).toUpperCase()}</div>
-						<div class="details">
-							<span class="owner"
-								>{participant.displayName} · {participant.role === 'gm'
-									? $appLocale === 'en'
-										? 'Game Master'
-										: 'Narrador'
-									: $appLocale === 'en'
-										? 'Player'
-										: 'Jogador'}</span
-							>
-							<strong>{participant.character?.sheet.name ?? 'Ficha ainda não criada'}</strong>
-							<small
-								>{participant.character
-									? `${participant.character.sheet.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · ${$appLocale === 'en' ? 'level' : 'nível'} ${participant.character.sheet.level}`
-									: $appLocale === 'en'
-										? 'The player can create it from the Sheets tab.'
-										: 'O jogador poderá criá-la pela própria aba Fichas.'}</small
-							>
+			<div class="cast-list">
+				<details class="cast-section" open>
+					<summary>
+						<span>{$appLocale === 'en' ? 'Characters' : 'Personagens'}</span>
+						<span class="section-count">{participants.length}</span>
+					</summary>
+					{#if participants.length === 0}
+						<p class="status">
+							{$appLocale === 'en'
+								? 'No campaign participants yet.'
+								: 'Ainda não há participantes na campanha.'}
+						</p>
+					{:else}
+						<div class="sheet-grid">
+							{#each participants as participant (participant.userId)}
+								<article class:unready={!participant.character}>
+									<div class="avatar" aria-hidden="true">
+										{(participant.character?.sheet.name ?? participant.displayName)
+											.slice(0, 1)
+											.toUpperCase()}
+									</div>
+									<div class="card-main">
+										<div class="details">
+											<span class="owner"
+												>{$appLocale === 'en'
+													? 'Participant: '
+													: 'Participante: '}{participant.displayName}
+												· {participant.role === 'gm'
+													? $appLocale === 'en'
+														? 'Game Master'
+														: 'Narrador'
+													: $appLocale === 'en'
+														? 'Player'
+														: 'Jogador'}</span
+											>
+											<strong
+												>{participant.character?.sheet.name ??
+													($appLocale === 'en'
+														? 'Sheet not created yet'
+														: 'Ficha ainda não criada')}</strong
+											>
+											<small
+												>{participant.character
+													? `${participant.character.sheet.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · ${$appLocale === 'en' ? 'level' : 'nível'} ${participant.character.sheet.level}`
+													: $appLocale === 'en'
+														? 'The player can create this from the Sheets tab.'
+														: 'O jogador poderá criar esta ficha pela aba Fichas.'}</small
+											>
+										</div>
+										<div class="card-actions">
+											{#if participant.character}
+												<button
+													class="quiet-action"
+													type="button"
+													onclick={() =>
+														onselectcharacter(participant.character!.id, participant.displayName)}
+													>{$appLocale === 'en' ? 'Select sheet' : 'Selecionar ficha'}</button
+												>
+											{:else}<button
+													class="create quiet-action"
+													type="button"
+													onclick={() => void createSheet(participant)}
+													disabled={creatingFor === participant.userId}
+													>{creatingFor === participant.userId
+														? $appLocale === 'en'
+															? 'Creating…'
+															: 'Criando…'
+														: $appLocale === 'en'
+															? 'Create sheet'
+															: 'Criar ficha'}</button
+												>{/if}
+										</div>
+									</div>
+								</article>
+							{/each}
 						</div>
-						{#if participant.character}
+					{/if}
+				</details>
+				<details class="cast-section npc-sheets" open>
+					<summary>
+						<span>{$appLocale === 'en' ? 'NPCs' : 'NPCs'}</span>
+						<span class="section-count">{npcCharacters.length}</span>
+					</summary>
+					<div class="npc-section-content">
+						<div class="npc-section-intro">
+							<p>
+								{$appLocale === 'en'
+									? 'Full NPC sheets are independent from campaign participants.'
+									: 'Fichas completas de NPC são independentes dos participantes da campanha.'}
+							</p>
 							<button
-								onclick={() =>
-									onselectcharacter(participant.character!.id, participant.displayName)}
-								>{$appLocale === 'en' ? 'Select sheet' : 'Selecionar ficha'}</button
-							>
-						{:else}<button
 								class="create"
-								onclick={() => void createSheet(participant)}
-								disabled={creatingFor === participant.userId}
-								>{creatingFor === participant.userId
+								type="button"
+								onclick={() => void createNPCCharacter()}
+								disabled={creatingNPC}
+								>{creatingNPC
 									? $appLocale === 'en'
 										? 'Creating…'
 										: 'Criando…'
 									: $appLocale === 'en'
-										? 'Create sheet'
-										: 'Criar ficha'}</button
-							>{/if}
-					</article>
-				{/each}
-			</div>
-			<section
-				class="npc-sheets"
-				aria-label={$appLocale === 'en' ? 'Full NPC sheets' : 'Fichas completas de NPC'}
-			>
-				<header>
-					<div>
-						<strong>{$appLocale === 'en' ? 'Full NPC sheets' : 'Fichas completas de NPC'}</strong
-						><small
-							>{$appLocale === 'en'
-								? 'Independent from campaign participants.'
-								: 'Independentes dos participantes da campanha.'}</small
-						>
+										? 'Create NPC sheet'
+										: 'Criar ficha de NPC'}</button
+							>
+						</div>
+						{#if npcCharacters.length === 0}
+							<p class="status">
+								{$appLocale === 'en'
+									? 'No full NPC sheets yet.'
+									: 'Nenhuma ficha completa de NPC ainda.'}
+							</p>
+						{:else}
+							<div class="npc-grid">
+								{#each npcCharacters as character (character.id)}
+									<article>
+										<div class="avatar" aria-hidden="true">
+											{character.name.slice(0, 1).toUpperCase()}
+										</div>
+										<div class="card-main">
+											<div class="details">
+												<span class="owner"
+													>{$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'}</span
+												>
+												<strong>{character.name}</strong>
+												<small
+													>{character.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · {$appLocale ===
+													'en'
+														? 'level'
+														: 'nível'}
+													{character.level}</small
+												>
+											</div>
+											<div class="card-actions">
+												<button
+													type="button"
+													onclick={() =>
+														onselectcharacter(
+															character.id,
+															$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'
+														)}>{$appLocale === 'en' ? 'Open sheet' : 'Abrir ficha'}</button
+												><button
+													class="danger quiet-action"
+													type="button"
+													onclick={() => void deleteNPCCharacter(character)}
+													disabled={deletingNPC === character.id}
+													>{deletingNPC === character.id
+														? $appLocale === 'en'
+															? 'Deleting…'
+															: 'Excluindo…'
+														: $appLocale === 'en'
+															? 'Delete'
+															: 'Excluir'}</button
+												>
+											</div>
+										</div>
+									</article>
+								{/each}
+							</div>
+						{/if}
 					</div>
-					<button
-						class="create"
-						type="button"
-						onclick={() => void createNPCCharacter()}
-						disabled={creatingNPC}
-						>{creatingNPC
-							? $appLocale === 'en'
-								? 'Creating…'
-								: 'Criando…'
-							: $appLocale === 'en'
-								? 'Create NPC sheet'
-								: 'Criar ficha de NPC'}</button
-					>
-				</header>
-				{#if npcCharacters.length === 0}<p class="status">
-						{$appLocale === 'en'
-							? 'No full NPC sheets yet.'
-							: 'Nenhuma ficha completa de NPC ainda.'}
-					</p>
-				{:else}<div class="npc-grid">
-						{#each npcCharacters as character (character.id)}<article>
-								<div class="details">
-									<span class="owner"
-										>{$appLocale === 'en' ? 'CAMPAIGN NPC' : 'NPC DA CAMPANHA'}</span
-									><strong>{character.name}</strong><small
-										>{character.class || ($appLocale === 'en' ? 'No class' : 'Sem classe')} · {$appLocale ===
-										'en'
-											? 'level'
-											: 'nível'}
-										{character.level}</small
-									>
-								</div>
-								<button
-									type="button"
-									onclick={() =>
-										onselectcharacter(
-											character.id,
-											$appLocale === 'en' ? 'Campaign NPC' : 'NPC da campanha'
-										)}>{$appLocale === 'en' ? 'Open sheet' : 'Abrir ficha'}</button
-								><button
-									class="danger"
-									type="button"
-									onclick={() => void deleteNPCCharacter(character)}
-									disabled={deletingNPC === character.id}
-									>{deletingNPC === character.id
-										? $appLocale === 'en'
-											? 'Deleting…'
-											: 'Excluindo…'
-										: $appLocale === 'en'
-											? 'Delete'
-											: 'Excluir'}</button
-								>
-							</article>{/each}
-					</div>{/if}
-			</section>
+				</details>
+			</div>
 		{/if}
 	{/if}
 </section>
@@ -401,6 +456,59 @@
 		min-height: 0;
 		padding: 0.5rem clamp(0.35rem, 1vw, 0.8rem);
 		color: #eee4d6;
+	}
+	.cast-list {
+		display: grid;
+		align-content: start;
+		flex: 1 1 auto;
+		min-height: 0;
+		gap: 1rem;
+		overflow: auto;
+		padding: 0.15rem 0.2rem 0.75rem;
+	}
+	.cast-section {
+		display: grid;
+		align-content: start;
+		min-width: 0;
+		gap: 0.7rem;
+	}
+	.cast-section > summary {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		min-height: 2.4rem;
+		padding: 0.35rem 0.5rem;
+		border-bottom: 1px solid #5e4931;
+		color: #f0cb85;
+		font:
+			600 1.05rem Georgia,
+			serif;
+		cursor: pointer;
+		list-style: none;
+	}
+	.cast-section > summary::-webkit-details-marker {
+		display: none;
+	}
+	.cast-section > summary::before {
+		content: '▸';
+		color: #c8a268;
+		font:
+			700 0.9rem system-ui,
+			sans-serif;
+	}
+	.cast-section[open] > summary::before {
+		content: '▾';
+	}
+	.cast-section > summary:focus-visible {
+		outline: 2px solid #e0b86f;
+		outline-offset: 2px;
+	}
+	.section-count {
+		margin-left: auto;
+		color: #b9aa9d;
+		font:
+			500 0.78rem system-ui,
+			sans-serif;
 	}
 	button {
 		border: 1px solid #79603e;
@@ -434,10 +542,7 @@
 	}
 	.sheet-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-		min-height: 0;
-		flex: 1 1 auto;
-		overflow: auto;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
 		gap: 0.8rem;
 	}
 	.sheet-picker {
@@ -455,11 +560,14 @@
 	.sheet-picker label {
 		display: grid;
 		flex: 1;
+		min-width: 0;
 		gap: 0.35rem;
 		color: #cbb9a7;
 		font-size: 0.75rem;
 	}
 	.sheet-picker select {
+		width: 100%;
+		min-width: 0;
 		min-height: 2.6rem;
 		border: 1px solid #79603e;
 		border-radius: 8px;
@@ -469,10 +577,12 @@
 		font: inherit;
 	}
 	.sheet-grid article {
-		display: flex;
-		align-items: center;
+		display: grid;
+		grid-template-columns: 2.8rem minmax(0, 1fr);
+		align-items: start;
 		gap: 0.75rem;
-		min-height: 100px;
+		min-width: 0;
+		min-height: 7rem;
 		padding: 1rem;
 		border: 1px solid #4b3d3c;
 		border-radius: 10px;
@@ -483,25 +593,23 @@
 		border-style: dashed;
 	}
 	.npc-sheets {
-		display: grid;
-		gap: 0.65rem;
-		min-height: 0;
-		overflow: auto;
-		padding-bottom: 0.4rem;
+		gap: 0.7rem;
 	}
-	.npc-sheets > header {
+	.npc-section-content {
+		display: grid;
+		gap: 0.7rem;
+	}
+	.npc-section-intro {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.65rem;
 	}
-	.npc-sheets > header > div {
-		display: grid;
-		gap: 0.2rem;
-	}
-	.npc-sheets > header small {
+	.npc-section-intro p {
+		margin: 0;
 		color: #a99c91;
-		font-size: 0.75rem;
+		font-size: 0.82rem;
 	}
 	.npc-grid {
 		display: grid;
@@ -509,18 +617,15 @@
 		gap: 0.6rem;
 	}
 	.npc-grid article {
-		display: flex;
-		align-items: center;
+		display: grid;
+		grid-template-columns: 2.8rem minmax(0, 1fr);
+		align-items: start;
 		gap: 0.55rem;
 		min-width: 0;
 		padding: 0.7rem;
 		border: 1px solid #4b3d3c;
 		border-radius: 9px;
 		background: #201b1e;
-	}
-	.npc-grid button {
-		flex: 0 0 auto;
-		padding: 0.5rem 0.6rem;
 	}
 	button.danger {
 		border-color: #8a4c43;
@@ -533,24 +638,40 @@
 	}
 	.details {
 		display: grid;
-		flex: 1;
+		gap: 0.22rem;
 		min-width: 0;
-		gap: 0.18rem;
 	}
 	.owner {
-		overflow: hidden;
+		overflow-wrap: anywhere;
 		color: #b6a89b;
 		font-size: 0.67rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		line-height: 1.4;
 	}
 	.details strong {
-		overflow: hidden;
 		font:
 			600 1rem Georgia,
 			serif;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
+	}
+	.details small {
+		overflow-wrap: anywhere;
+		line-height: 1.4;
+	}
+	.card-main {
+		display: grid;
+		min-width: 0;
+		gap: 0.65rem;
+	}
+	.card-actions {
+		display: flex;
+		justify-content: flex-end;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+	}
+	.quiet-action {
+		padding: 0.42rem 0.65rem;
+		font-size: 0.82rem;
+		line-height: 1.2;
 	}
 	.create {
 		border-color: #806039;
@@ -573,6 +694,34 @@
 		}
 		.sheet-picker {
 			padding: 0.45rem;
+		}
+	}
+	@media (max-width: 380px) {
+		.sheet-grid article,
+		.npc-grid article {
+			grid-template-columns: 2.35rem minmax(0, 1fr);
+			gap: 0.55rem;
+			padding: 0.7rem;
+		}
+		.avatar {
+			width: 2.35rem;
+			height: 2.35rem;
+		}
+		.card-actions > button {
+			max-width: 100%;
+			white-space: normal;
+		}
+	}
+	@media (max-width: 480px) {
+		.sheet-picker {
+			align-items: stretch;
+			flex-wrap: wrap;
+		}
+		.sheet-picker label {
+			flex: 1 1 100%;
+		}
+		.sheet-picker > button {
+			align-self: flex-end;
 		}
 	}
 </style>

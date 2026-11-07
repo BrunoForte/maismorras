@@ -178,6 +178,23 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 		expect(expanded).toContain('aria-expanded="true"');
 	});
 
+	it('labels a spell as prepared by its class feature without turning it into a manual spell grant', () => {
+		const html = renderSpell(null, false, [
+			{
+				spell: { entryId: 'aid', name: 'Auxílio', level: 2, notes: '', origin: 'feature' },
+				index: -1,
+				key: 'feature:oath:aid',
+				featureGrants: [
+					{ featureId: 'oath-feature', featureName: 'Virar a Maré', spellEntryId: 'aid', level: 3 }
+				],
+				origins: ['feature']
+			}
+		]);
+		expect(html).toContain('Preparada pela característica: Virar a Maré');
+		expect(html).toContain('Característica de classe');
+		expect(html).not.toContain('Origem da magia');
+	});
+
 	it('shows explicit cast controls for known spells even when details are collapsed', () => {
 		const test = renderSpell(null, true, [
 			{ spell: { name: 'Luz', level: 0, notes: '' }, index: 0, key: 'light' },

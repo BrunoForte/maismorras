@@ -250,7 +250,7 @@
 				</div>
 			</header>
 			{#if spellbook.spellsForCircle(circle).length}
-				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], origins = [] } (key ?? index)}
+				{#each spellbook.spellsForCircle(circle) as { spell, index, key, featGrants = [], featureGrants = [], origins = [] } (key ?? index)}
 					{@const freeCastGrants = featGrants.filter((grant) => grant.freeUses > 0)}
 					{@const atWillGrant = featGrants.find((grant) => grant.freeUses === 0)}
 					{@const spellGrant = featGrants.find((grant) => grant.canUseExistingSlots)}
@@ -279,7 +279,7 @@
 								/></span
 							>
 						</button>
-						{#if origins.length > 1 || origins[0] === 'feat' || origins[0] === 'species'}
+						{#if origins.length > 1 || origins[0] === 'feat' || origins[0] === 'species' || origins[0] === 'feature'}
 							<small class="spell-origins"
 								>{$appLocale === 'en' ? 'Sources' : 'Origens'}: {origins
 									.map((origin) =>
@@ -291,13 +291,22 @@
 												? $appLocale === 'en'
 													? 'Species'
 													: 'Espécie'
-												: $appLocale === 'en'
-													? 'Class'
-													: 'Classe'
+												: origin === 'feature'
+													? $appLocale === 'en'
+														? 'Class feature'
+														: 'Característica de classe'
+													: $appLocale === 'en'
+														? 'Class'
+														: 'Classe'
 									)
 									.join(' · ')}</small
 							>
 						{/if}
+						{#each featureGrants as grant (grant.featureId + grant.spellEntryId)}
+							<small class="feature-spell-source">
+								{$appLocale === 'en' ? 'Prepared by feature' : 'Preparada pela característica'}: {grant.featureName}
+							</small>
+						{/each}
 						{#if expandedSpell === index}
 							<div class="spell-details">
 								{#if index >= 0}<label

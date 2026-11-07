@@ -33,7 +33,13 @@ export type Spell = {
 	diceFormula?: string;
 	higherLevels?: string;
 	scalingDicePerLevel?: number;
-	origin?: 'class' | 'species' | 'feat';
+	origin?: 'class' | 'species' | 'feat' | 'feature';
+};
+export type ArmorClassAdjustment = {
+	id: string;
+	value: number | null;
+	source: string;
+	active: boolean;
 };
 export type CharacterResource = {
 	id: string;
@@ -112,6 +118,8 @@ export type CharacterSheet = {
 	skillProficiencies: string[];
 	skillExpertise: string[];
 	armorClass: number;
+	/** Optional additive adjustments; absent values keep legacy sheets compatible. */
+	armorClassAdjustments?: ArmorClassAdjustment[];
 	initiative: number;
 	initiativeAdvantage?: boolean;
 	speed: number;
@@ -448,6 +456,7 @@ export function createEmptySheet(): CharacterSheet {
 		skillProficiencies: [],
 		skillExpertise: [],
 		armorClass: 10,
+		armorClassAdjustments: [],
 		initiative: 0,
 		initiativeAdvantage: false,
 		speed: 9,

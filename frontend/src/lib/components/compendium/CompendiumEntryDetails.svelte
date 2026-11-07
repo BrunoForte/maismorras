@@ -10,6 +10,7 @@
 		compendiumTranslationIsOfficial,
 		translatedCompendiumText
 	} from '$lib/utils/compendium/compendiumRules';
+	import { subclassBaseClassLabel } from '$lib/utils/character/subclassAssociations';
 
 	let {
 		view,
@@ -73,6 +74,14 @@
 	};
 	const displayConditionEffect = (index: number, value: unknown) =>
 		translatedCompendiumText(entry, `rules.effects.${index}`, value, locale);
+	const subclassBaseClass = $derived(
+		translatedCompendiumText(
+			entry,
+			'rules.className',
+			subclassBaseClassLabel(entry, view.classEntries ?? [], locale),
+			locale
+		)
+	);
 </script>
 
 <aside class="entry-detail">
@@ -287,10 +296,8 @@
 		{#if subclassDescription}<p>{subclassDescription}</p>{/if}
 		<div class="rules">
 			<b
-				>{$appLocale === 'en' ? 'Base class' : 'Classe-base'}: {displayRule(
-					'className',
-					detail.className ?? '—'
-				)}</b
+				>{$appLocale === 'en' ? 'Base class' : 'Classe-base'}:
+				{subclassBaseClass}</b
 			>
 		</div>
 		{#if Array.isArray(detail.features) && detail.features.length}

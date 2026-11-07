@@ -13,6 +13,7 @@
 		createInitialCampaignViewState,
 		type WorkspaceTab
 	} from '$lib/utils/campaignWorkspaceState';
+	import { campaignSheetSelectionAfterTabChange } from '$lib/utils/campaignSheetNavigation';
 	import { savePresentation } from '$lib/services/presentationApi';
 	import { createScene, listScenes, type Scene } from '$lib/services/sceneApi';
 	import { personagens } from '$lib/stores/gameStore';
@@ -156,9 +157,19 @@
 	let sheetFocusRequest = $state(0);
 	let workspaceTab = $state<WorkspaceTab>('map');
 	let tokenInspectorOpen = $state(false);
+	function setWorkspaceTab(tab: WorkspaceTab) {
+		embeddedCharacter = campaignSheetSelectionAfterTabChange(
+			embeddedCharacter,
+			activeCampaign?.role ?? 'player',
+			workspaceTab,
+			tab
+		);
+		workspaceTab = tab;
+		floatingSheetVisibleOnSheetsTab = false;
+	}
 	$effect(() => {
 		if (activeCampaign && !canAccessWorkspaceTab(workspaceTab, activeCampaign.role))
-			workspaceTab = 'map';
+			setWorkspaceTab('map');
 	});
 	let sceneRevision = $state(0);
 	let inviteStatus = $state('');
@@ -762,8 +773,7 @@
 		onopenscenesettings={() => (sceneSettingsOpen = true)}
 		onpublishscenetooverlay={() => void publishOverlayScene()}
 		ontabchange={(tab) => {
-			workspaceTab = tab;
-			floatingSheetVisibleOnSheetsTab = false;
+			setWorkspaceTab(tab);
 		}}
 		onlanguagechange={(locale) => setAppLocale(locale)}
 		{onlogout}
@@ -806,7 +816,7 @@
 									{sheetOpen}
 									tokenSelected={tokenInspectorOpen}
 									onadded={() => reloadActiveScene()}
-									oncompendium={() => (workspaceTab = 'compendium')}
+									oncompendium={() => setWorkspaceTab('compendium')}
 								/>{/if}
 						</div>
 					{/key}{:else}<p class="status-message">

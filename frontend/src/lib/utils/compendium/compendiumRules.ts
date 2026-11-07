@@ -3,6 +3,8 @@ import type {
 	CompendiumEntry,
 	CompendiumSource
 } from '$lib/services/compendiumApi';
+import { classIdForLabel, subclassBaseClassLabel } from '$lib/utils/character/subclassAssociations';
+import type { AppLocale } from '$lib/utils/speciesRules';
 
 export const COMPENDIUM_ENTRY_TYPES = [
 	['species', 'Espécie'],
@@ -23,6 +25,13 @@ const LEGACY_FEAT_ALIASES: Record<string, string> = {
 	'two-weapon fighting': 'Fighting Style: Two-Weapon Fighting'
 };
 const LEGACY_INDEX_SUMMARY = 'Entrada do System Reference Document 5.2.1.';
+const normalizeClassReference = (value: string) =>
+	value
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLocaleLowerCase()
+		.replace(/\s+/g, ' ')
+		.trim();
 
 function isLegacyFeatIndexStub(entry: CompendiumEntry): boolean {
 	return (
@@ -88,7 +97,27 @@ export type CompendiumLevelFeature = {
 	name: string;
 	level: number;
 	description: string;
+	spellEntryIds: string;
+	grants?: { type: 'spell'; spellEntryId: string }[];
 };
+
+const isStableCompendiumEntryId = (value: string) =>
+	/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value);
+
+export function featureSpellGrantIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return [
+		...new Set(
+			value.flatMap((grant) => {
+				if (!grant || typeof grant !== 'object' || Array.isArray(grant)) return [];
+				const item = grant as Record<string, unknown>;
+				if (item.type !== 'spell' || typeof item.spellEntryId !== 'string') return [];
+				const id = item.spellEntryId.trim();
+				return isStableCompendiumEntryId(id) ? [id] : [];
+			})
+		)
+	].slice(0, 20);
+}
 
 export type CompendiumEditorModel = {
 	sourceId: string;
@@ -161,7 +190,11 @@ export function emptyCompendiumEditorModel(sourceId = ''): CompendiumEditorModel
 	};
 }
 
-export function editorModelFromEntry(entry: CompendiumEntry): CompendiumEditorModel {
+export function editorModelFromEntry(
+	entry: CompendiumEntry,
+	classEntries: readonly CompendiumEntry[] = [],
+	locale: AppLocale = 'en'
+): CompendiumEditorModel {
 	const rules = entry.rules ?? {};
 	return {
 		...emptyCompendiumEditorModel(entry.sourceId),
@@ -186,7 +219,10 @@ export function editorModelFromEntry(entry: CompendiumEntry): CompendiumEditorMo
 		spellLevel: Number(rules.level ?? 1),
 		spellClasses: Array.isArray(rules.classes) ? rules.classes.join(', ') : '',
 		classHitDie: Number(rules.hitDie ?? 8),
-		parentClass: String(rules.className ?? ''),
+		parentClass:
+			entry.entryType === 'subclass'
+				? subclassBaseClassLabel(entry, classEntries, locale)
+				: String(rules.className ?? rules.parentClass ?? ''),
 		speed: Number(rules.speed ?? 9),
 		levelFeatures: Array.isArray(rules.features)
 			? rules.features.map((feature, index) => {
@@ -195,14 +231,20 @@ export function editorModelFromEntry(entry: CompendiumEntry): CompendiumEditorMo
 						id: String(item.id ?? `feature-${index}`),
 						name: String(item.name ?? ''),
 						level: Number(item.level ?? 1),
-						description: String(item.description ?? '')
+						description: String(item.description ?? ''),
+						spellEntryIds: featureSpellGrantIds(item.grants).join(', ')
 					};
 				})
 			: []
 	};
 }
 
-export function compendiumRulesFromEditor(model: CompendiumEditorModel): Record<string, unknown> {
+export function compendiumRulesFromEditor(
+	model: CompendiumEditorModel,
+	previousEntry?: CompendiumEntry,
+	classEntries: readonly CompendiumEntry[] = [],
+	locale: AppLocale = 'en'
+): Record<string, unknown> {
 	if (model.entryType === 'other')
 		return {
 			...(model.category === 'monster' ? model.monsterExtraRules : {}),
@@ -232,30 +274,72 @@ export function compendiumRulesFromEditor(model: CompendiumEditorModel): Record<
 				.map((value) => value.trim())
 				.filter(Boolean)
 		};
-	if (model.entryType === 'class' || model.entryType === 'subclass')
+	if (model.entryType === 'class' || model.entryType === 'subclass') {
+		const previousRules = previousEntry?.entryType === 'subclass' ? previousEntry.rules : {};
+		const className = model.parentClass.trim() || String(previousRules.className ?? '').trim();
+		const previousClassLabel =
+			previousEntry?.entryType === 'subclass'
+				? subclassBaseClassLabel(previousEntry, classEntries, locale)
+				: '';
+		const preservePreviousAssociation = Boolean(
+			previousEntry?.entryType === 'subclass' &&
+			(!model.parentClass.trim() ||
+				normalizeClassReference(model.parentClass) === normalizeClassReference(previousClassLabel))
+		);
+		const classId = preservePreviousAssociation
+			? previousRules.classId
+			: classIdForLabel(model.parentClass.trim(), classEntries);
 		return {
 			...(model.entryType === 'class'
 				? { hitDie: model.classHitDie }
-				: { className: model.parentClass.trim() }),
+				: {
+						...(classId ? { classId } : {}),
+						...(preservePreviousAssociation && previousRules.parentClass
+							? { parentClass: previousRules.parentClass }
+							: {}),
+						...(className ? { className } : {})
+					}),
 			...(model.levelFeatures.length
 				? {
 						features: model.levelFeatures
 							.filter((feature) => feature.name.trim())
-							.map((feature) => ({
-								...feature,
-								name: feature.name.trim(),
-								description: feature.description.trim()
-							}))
+							.map((feature) => {
+								const ids = [
+									...new Set(
+										String(feature.spellEntryIds ?? '')
+											.split(',')
+											.map((id) => id.trim())
+											.filter(isStableCompendiumEntryId)
+									)
+								].slice(0, 20);
+								return {
+									id: feature.id,
+									level: feature.level,
+									name: feature.name.trim(),
+									description: feature.description.trim(),
+									...(ids.length
+										? {
+												grants: ids.map((spellEntryId) => ({
+													type: 'spell' as const,
+													spellEntryId
+												}))
+											}
+										: {})
+								};
+							})
 					}
 				: {})
 		};
+	}
 	if (model.entryType === 'species') return { speed: model.speed };
 	return {};
 }
 
 export function compendiumDraftFromEditor(
 	model: CompendiumEditorModel,
-	previousEntry?: CompendiumEntry
+	previousEntry?: CompendiumEntry,
+	classEntries: readonly CompendiumEntry[] = [],
+	locale: AppLocale = 'en'
 ): CompendiumDraft {
 	const translations: Record<string, string> = model.portugueseName.trim()
 		? { ...model.extraTranslations, 'pt-BR': model.portugueseName.trim() }
@@ -278,7 +362,7 @@ export function compendiumDraftFromEditor(
 	return {
 		name: model.name.trim(),
 		summary: model.summary.trim(),
-		rules: compendiumRulesFromEditor(model),
+		rules: compendiumRulesFromEditor(model, previousEntry, classEntries, locale),
 		translations,
 		isPublished: model.published
 	};
