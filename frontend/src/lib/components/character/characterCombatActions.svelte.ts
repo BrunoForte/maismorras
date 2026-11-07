@@ -46,7 +46,7 @@ export type CharacterCombatActionState = {
 	rollingAttack: number | null;
 	rollingAttackAction: 'attack' | 'damage' | null;
 	castingSpell: number | null;
-	spellSlotChoice: Record<number, number>;
+	spellSlotChoice: Record<string, number>;
 };
 
 type DiceEvent = { id: number | string; author?: string; payload: unknown };
@@ -920,15 +920,20 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		return compatibleSpellSlots(spell, deps.getSheet().spellSlots);
 	}
 
-	function selectedSlot(spell: Spell, index: number) {
-		return defaultSpellSlot(spell, index, state.spellSlotChoice, deps.getSheet().spellSlots);
+	function selectedSlot(spell: Spell, selectionKey: string) {
+		return defaultSpellSlot(spell, selectionKey, state.spellSlotChoice, deps.getSheet().spellSlots);
 	}
 
-	function chooseSpellSlot(index: number, value: number) {
-		state.spellSlotChoice[index] = value;
+	function chooseSpellSlot(selectionKey: string, value: number) {
+		state.spellSlotChoice[selectionKey] = value;
 	}
 
-	async function castSpell(spell: Spell, index: number, authorization?: SpellCastAuthorization) {
+	async function castSpell(
+		spell: Spell,
+		index: number,
+		authorization?: SpellCastAuthorization,
+		selectionKey = `index:${index}`
+	) {
 		if (!deps.getCanCastSelectedCharacter()) {
 			deps.setMessage('Só é possível lançar magias da sua própria ficha.');
 			return;
@@ -943,7 +948,7 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 		state.castingSpell = index;
 		try {
 			const slotLevel =
-				spell.level === 0 || authorization?.freeCast ? 0 : selectedSlot(spell, index);
+				spell.level === 0 || authorization?.freeCast ? 0 : selectedSlot(spell, selectionKey);
 			const result = await deps.castMySpell(
 				context.session,
 				context.campaignId,

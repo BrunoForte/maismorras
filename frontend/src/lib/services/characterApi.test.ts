@@ -221,7 +221,7 @@ describe('createEmptySheet', () => {
 		);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await castMySpell(session, 'campaign-1', -1, 3, {
+		await castMySpell(session, 'campaign-1', 0, 3, {
 			entryId: 'spell-aid',
 			freeCast: false,
 			featureEntryId: 'subclass-crown',

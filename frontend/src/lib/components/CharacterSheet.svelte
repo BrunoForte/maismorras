@@ -1627,7 +1627,8 @@
 							setNewSpellName: (value) => (newSpellName = value),
 							setNewSpellLevel: (value) => (newSpellLevel = value),
 							setExpandedSpell: (value) => (expandedSpell = value),
-							chooseSlot: (index, value) => combatActions.chooseSpellSlot(index, value),
+							chooseSlot: (selectionKey, value) =>
+								combatActions.chooseSpellSlot(selectionKey, value),
 							setAvailableSpellSlots: updateAvailableSpellSlots,
 							setSpellGrantUseConfig: updateSpellGrantUseConfig,
 							setSpeciesSpellcastingAbility: (ability) => {
@@ -1638,7 +1639,8 @@
 							change: updateSpell,
 							present: (spell) => void combatActions.presentSpell(spell),
 							rollEffect: (spell) => void combatActions.rollSpellDamage(spell),
-							cast: (spell, index, grant) => void combatActions.castSpell(spell, index, grant)
+							cast: (spell, index, grant, selectionKey) =>
+								void combatActions.castSpell(spell, index, grant, selectionKey)
 						}}
 					/>
 				{/if}

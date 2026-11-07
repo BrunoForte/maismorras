@@ -163,9 +163,9 @@ describe('character spell rules', () => {
 	it('selects only compatible slots and repairs a stale slot choice to the first valid slot', () => {
 		const known = spell({ level: 1 });
 		expect(compatibleSpellSlots(known, slots).map(({ level }) => level)).toEqual([1, 3]);
-		expect(defaultSpellSlot(known, 0, { 0: 3 }, slots)).toBe(3);
-		expect(defaultSpellSlot(known, 0, { 0: 2 }, slots)).toBe(1);
-		expect(defaultSpellSlot(spell({ level: 5 }), 0, {}, slots)).toBe(5);
+		expect(defaultSpellSlot(known, 'feature:oath:aid', { 'feature:oath:aid': 3 }, slots)).toBe(3);
+		expect(defaultSpellSlot(known, 'feature:oath:aid', { 'other-card': 3 }, slots)).toBe(1);
+		expect(defaultSpellSlot(spell({ level: 5 }), 'manual:spell-5', {}, slots)).toBe(5);
 	});
 
 	it('projects a feat spell once while preserving class and feat origins', () => {
@@ -517,6 +517,7 @@ describe('character spell rules', () => {
 		expect(projected).toHaveLength(1);
 		expect(projected[0]).toMatchObject({
 			spell: { entryId: 'aid', origin: 'class' },
+			key: 'sheet:aid:0',
 			origins: ['class', 'feature'],
 			featureGrants: [{ featureName: 'Aura', spellEntryId: 'aid' }]
 		});
@@ -580,6 +581,7 @@ describe('character spell rules', () => {
 		expect(projected[0]).toMatchObject({
 			spell: { entryId: 'crown-aid', level: 2, origin: 'feature' },
 			index: -1,
+			key: 'feature:crown-spells:crown-aid',
 			featureGrants: [
 				{
 					featureEntryId: 'paladin',

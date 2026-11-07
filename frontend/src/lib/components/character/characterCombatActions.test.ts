@@ -491,8 +491,13 @@ describe('character combat actions', () => {
 			slotLevel: 2,
 			effect: '4d4 + 4 de dano'
 		});
-		test.controller.chooseSpellSlot(0, 2);
-		await test.controller.castSpell(test.getSheet().spells[0], 0);
+		test.controller.chooseSpellSlot('manual:magic-missiles', 2);
+		await test.controller.castSpell(
+			test.getSheet().spells[0],
+			0,
+			undefined,
+			'manual:magic-missiles'
+		);
 
 		expect(test.castMySpell).toHaveBeenCalledWith(
 			expect.anything(),
@@ -602,7 +607,9 @@ describe('character combat actions', () => {
 
 	it('conjura magia concedida por característica com espaço e envia sua origem autoritativa', async () => {
 		const test = setup();
+		test.getSheet().spellSlots.push({ level: 3, current: 1, max: 1 });
 		const featureSpell = { name: 'Auxílio', entryId: 'spell-aid', level: 2, notes: '' };
+		const selectionKey = 'feature:subclass-crown:crown-spells:spell-aid';
 		const authorization = {
 			entryId: 'spell-aid',
 			freeCast: false,
@@ -611,30 +618,64 @@ describe('character combat actions', () => {
 		};
 		vi.mocked(test.castMySpell).mockResolvedValueOnce({
 			eventId: 11,
-			sheet: { ...test.getSheet(), spellSlots: [{ level: 2, current: 0, max: 1 }] },
+			sheet: {
+				...test.getSheet(),
+				spellSlots: [
+					{ level: 1, current: 1, max: 1 },
+					{ level: 2, current: 1, max: 1 },
+					{ level: 3, current: 0, max: 1 }
+				]
+			},
 			spellName: 'Auxílio',
 			baseLevel: 2,
-			slotLevel: 2,
+			slotLevel: 3,
 			effect: 'A criatura recebe proteção.',
-			chatText: '✨ Auxílio · nível base 2 · espaço usado 2 · custo: 1 espaço de nível 2',
+			chatText: '✨ Auxílio · nível base 2 · espaço usado 3 · custo: 1 espaço de nível 3',
 			presentationUpdated: true
 		});
 
-		test.controller.chooseSpellSlot(-1, 2);
-		await test.controller.castSpell(featureSpell, -1, authorization);
+		test.controller.chooseSpellSlot(selectionKey, 3);
+		test.controller.chooseSpellSlot('feature:another-card:spell-aid', 2);
+		await test.controller.castSpell(featureSpell, -2, authorization, selectionKey);
 
 		expect(test.castMySpell).toHaveBeenCalledWith(
 			expect.anything(),
 			'campaign-1',
-			-1,
-			2,
+			-2,
+			3,
 			authorization,
 			'scene-1'
 		);
-		expect(test.getSheet().spellSlots[0].current).toBe(0);
-		expect(test.appendChat.mock.calls[0][0].texto).toContain('1 espaço de nível 2');
+		expect(test.getSheet().spellSlots[2].current).toBe(0);
+		expect(test.appendChat.mock.calls[0][0].texto).toContain('1 espaço de nível 3');
 		expect(test.appendChat.mock.calls[0][0].texto).not.toContain('uso gratuito');
 		expect(test.publishPresentationUpdated).toHaveBeenCalledWith(undefined);
+	});
+
+	it('mantém a escolha do cartão manual combinado com uma concessão, sem compartilhá-la com outro cartão', async () => {
+		const test = setup();
+		test.getSheet().spellSlots.push({ level: 3, current: 1, max: 1 });
+		const featureSpell = { name: 'Auxílio', entryId: 'spell-aid', level: 2, notes: '' };
+		const selectionKey = 'sheet:spell-aid:0';
+		const authorization = {
+			entryId: 'spell-aid',
+			freeCast: false,
+			featureEntryId: 'subclass-crown',
+			featureId: 'crown-spells'
+		};
+		test.controller.chooseSpellSlot(selectionKey, 3);
+		test.controller.chooseSpellSlot('sheet:other-spell:1', 2);
+
+		await test.controller.castSpell(featureSpell, 0, authorization, selectionKey);
+
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			0,
+			3,
+			authorization,
+			'scene-1'
+		);
 	});
 
 	it('atualiza a apresentação textual somente após o backend confirmar magia com espaço', async () => {

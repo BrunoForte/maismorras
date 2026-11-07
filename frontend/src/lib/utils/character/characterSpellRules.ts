@@ -74,7 +74,7 @@ export type SpellbookProjection = {
 	spellsForCircle: (circle: number) => SpellCircleEntry[];
 	entriesForCircle: (circle?: number) => CompendiumEntry[];
 	compatibleSlots: (spell: Spell) => SpellSlot[];
-	selectedSlot: (spell: Spell, index: number) => number;
+	selectedSlot: (spell: Spell, selectionKey: string) => number;
 };
 
 export type SpellPresentation = {
@@ -91,7 +91,7 @@ export type SpellTabActions = {
 	setNewSpellName: (value: string) => void;
 	setNewSpellLevel: (value: number) => void;
 	setExpandedSpell: (value: number | null) => void;
-	chooseSlot: (index: number, value: number) => void;
+	chooseSlot: (selectionKey: string, value: number) => void;
 	setAvailableSpellSlots: (level: number, current: number) => Promise<boolean>;
 	setSpellGrantUseConfig: (
 		grantId: string,
@@ -106,7 +106,12 @@ export type SpellTabActions = {
 	change: (index: number, changes: Partial<Spell>) => void;
 	present: (spell: Spell) => void;
 	rollEffect: (spell: Spell) => void;
-	cast: (spell: Spell, index: number, authorization?: SpellCastAuthorization) => void;
+	cast: (
+		spell: Spell,
+		index: number,
+		authorization?: SpellCastAuthorization,
+		selectionKey?: string
+	) => void;
 };
 
 export function normalizeSpellName(value: string): string {
@@ -430,12 +435,12 @@ export function compatibleSpellSlots(spell: Spell, slots: readonly SpellSlot[]):
 
 export function defaultSpellSlot(
 	spell: Spell,
-	index: number,
-	choices: Readonly<Record<number, number>>,
+	selectionKey: string,
+	choices: Readonly<Record<string, number>>,
 	slots: readonly SpellSlot[]
 ): number {
 	const compatible = compatibleSpellSlots(spell, slots);
-	const chosen = choices[index];
+	const chosen = choices[selectionKey];
 	return compatible.some((slot) => slot.level === chosen)
 		? chosen
 		: (compatible[0]?.level ?? spell.level);
