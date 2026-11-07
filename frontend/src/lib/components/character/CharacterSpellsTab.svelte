@@ -4,8 +4,10 @@
 		SpellbookProjection,
 		SpellPresentation,
 		SpellTabActions,
-		SpellFeatGrantProjection
+		SpellFeatGrantProjection,
+		FeatureSpellGrant
 	} from '$lib/utils/character/characterSpellRules';
+	import type { SpellCastAuthorization } from '$lib/services/characterApi';
 	import { appLocale, distanceText } from '$lib/stores/locale';
 	import RpgIcon from '$lib/components/RpgIcon.svelte';
 
@@ -62,13 +64,20 @@
 	function castSpellAction(
 		spell: Spell,
 		index: number,
-		grant?: Pick<SpellFeatGrantProjection, 'id' | 'spellEntryId'>
+		grant?: Pick<SpellFeatGrantProjection, 'id' | 'spellEntryId'> | FeatureSpellGrant
 	) {
-		void actions.cast(
-			spell,
-			index,
-			grant ? { grantId: grant.id, entryId: grant.spellEntryId, freeCast: false } : undefined
-		);
+		let authorization: SpellCastAuthorization | undefined;
+		if (grant && 'featureEntryId' in grant) {
+			authorization = {
+				entryId: grant.spellEntryId,
+				freeCast: false,
+				featureEntryId: grant.featureEntryId,
+				featureId: grant.featureId
+			};
+		} else if (grant) {
+			authorization = { grantId: grant.id, entryId: grant.spellEntryId, freeCast: false };
+		}
+		void actions.cast(spell, authorization ? -1 : index, authorization);
 	}
 	function grantConfigKey(grant: { id: string; spellEntryId: string }) {
 		return `${grant.id}:${grant.spellEntryId}`;
@@ -254,6 +263,15 @@
 					{@const freeCastGrants = featGrants.filter((grant) => grant.freeUses > 0)}
 					{@const atWillGrant = featGrants.find((grant) => grant.freeUses === 0)}
 					{@const spellGrant = featGrants.find((grant) => grant.canUseExistingSlots)}
+					{@const featureSpellGrant = featureGrants[0]}
+					{@const slotCastingSpell = featureSpellGrant
+						? {
+								...spell,
+								entryId: featureSpellGrant.spellEntryId,
+								name: featureSpellGrant.spellName,
+								level: featureSpellGrant.spellLevel
+							}
+						: spell}
 					<article class="spell-card">
 						<button
 							class="spell-toggle"
@@ -302,7 +320,7 @@
 									.join(' · ')}</small
 							>
 						{/if}
-						{#each featureGrants as grant (grant.featureId + grant.spellEntryId)}
+						{#each featureGrants as grant (grant.featureEntryId + grant.featureId + grant.spellEntryId)}
 							<small class="feature-spell-source">
 								{$appLocale === 'en' ? 'Prepared by feature' : 'Preparada pela característica'}: {grant.featureName}
 							</small>
@@ -584,13 +602,13 @@
 								</div>
 							</div>
 						{/if}
-						{#if (canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)) || (canCastSpells && spell.level > 0 && (index >= 0 || spellGrant))}
+						{#if (canCastSpells && slotCastingSpell.level === 0 && (index >= 0 || atWillGrant || featureSpellGrant)) || (canCastSpells && slotCastingSpell.level > 0 && (index >= 0 || spellGrant || featureSpellGrant))}
 							<div
 								class="spell-cast-controls"
 								role="group"
 								aria-label={$appLocale === 'en' ? 'Cast spell' : 'Lançar magia'}
 							>
-								{#if canCastSpells && spell.level === 0 && (index >= 0 || atWillGrant)}
+								{#if canCastSpells && slotCastingSpell.level === 0 && (index >= 0 || atWillGrant || featureSpellGrant)}
 									{#if index < 0 && atWillGrant}<small class="feat-casting-source">
 											{$appLocale === 'en' ? 'Granted cantrip' : 'Truque concedido'} · {atWillGrant.featName}
 										</small>{/if}
@@ -599,7 +617,8 @@
 										type="button"
 										disabled={castingSpell === index}
 										aria-busy={castingSpell === index}
-										onclick={() => castSpellAction(spell, index, atWillGrant)}
+										onclick={() =>
+											castSpellAction(slotCastingSpell, index, featureSpellGrant ?? atWillGrant)}
 										>{castingSpell === index
 											? '…'
 											: $appLocale === 'en'
@@ -607,14 +626,14 @@
 												: 'Lançar truque'}</button
 									>
 								{/if}
-								{#if canCastSpells && spell.level > 0 && (index >= 0 || spellGrant)}
+								{#if canCastSpells && slotCastingSpell.level > 0 && (index >= 0 || spellGrant || featureSpellGrant)}
 									<select
-										value={spellbook.selectedSlot(spell, index)}
+										value={spellbook.selectedSlot(slotCastingSpell, index)}
 										onchange={(event) =>
 											actions.chooseSlot(index, Number(event.currentTarget.value))}
 										aria-label={$appLocale === 'en' ? 'Spell slot' : 'Espaço de magia'}
 									>
-										{#each spellbook.compatibleSlots(spell) as slot (slot.level)}<option
+										{#each spellbook.compatibleSlots(slotCastingSpell) as slot (slot.level)}<option
 												value={slot.level}
 												>{presentation.circleLabel(slot.level)} · {slot.current}/{slot.max}</option
 											>{/each}
@@ -623,18 +642,24 @@
 										class="cast-spell"
 										type="button"
 										disabled={castingSpell === index ||
-											!spellbook.compatibleSlots(spell).length ||
+											!spellbook.compatibleSlots(slotCastingSpell).length ||
 											(spellGrant?.sourceKind === 'species' && !spellGrant.ability)}
 										aria-busy={castingSpell === index}
 										onclick={() =>
-											castSpellAction(spell, index, index < 0 ? spellGrant : undefined)}
+											castSpellAction(
+												slotCastingSpell,
+												index < 0 && featureSpellGrant ? -1 : index,
+												featureSpellGrant ?? (index < 0 ? spellGrant : undefined)
+											)}
 										>{castingSpell === index
 											? '…'
 											: $appLocale === 'en'
 												? 'Cast'
 												: 'Lançar'}</button
 									>
-									{#if !spellbook.compatibleSlots(spell).length}<small class="spell-slot-empty">
+									{#if !spellbook.compatibleSlots(slotCastingSpell).length}<small
+											class="spell-slot-empty"
+										>
 											{$appLocale === 'en'
 												? 'No compatible spell slots available.'
 												: 'Nenhum espaço compatível disponível.'}

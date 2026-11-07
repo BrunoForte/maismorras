@@ -531,9 +531,64 @@ describe('character spell rules', () => {
 			[],
 			[],
 			'',
-			[...featureGrants, { ...featureGrants[0], featureId: 'oath-feature' }]
+			[...featureGrants, { ...featureGrants[0], featureEntryId: 'oath-subclass' }]
 		);
 		expect(duplicateFeatureProjection).toHaveLength(1);
 		expect(duplicateFeatureProjection[0].featureGrants).toHaveLength(2);
+	});
+
+	it('projects a feature-only spell with its authoritative feature and spell identity', () => {
+		const grantSpell = entry({
+			id: 'crown-aid',
+			name: 'Auxílio',
+			rules: { level: 2, classes: ['wizard'] }
+		});
+		const grant = deriveFeatureSpellGrants(
+			entry({
+				id: 'paladin',
+				entryType: 'class',
+				rules: {
+					features: [
+						{
+							id: 'crown-spells',
+							level: 3,
+							name: 'Magias do Juramento',
+							grants: [{ type: 'spell', spellEntryId: 'crown-aid' }]
+						}
+					]
+				}
+			}),
+			undefined,
+			3,
+			'pt-BR',
+			[grantSpell]
+		);
+
+		const projected = projectCharacterSpells(
+			[],
+			[],
+			[grantSpell],
+			(item) => item.name,
+			[],
+			[],
+			[],
+			'',
+			grant
+		);
+
+		expect(projected).toHaveLength(1);
+		expect(projected[0]).toMatchObject({
+			spell: { entryId: 'crown-aid', level: 2, origin: 'feature' },
+			index: -1,
+			featureGrants: [
+				{
+					featureEntryId: 'paladin',
+					featureId: 'crown-spells',
+					spellEntryId: 'crown-aid',
+					spellLevel: 2,
+					level: 3
+				}
+			]
+		});
 	});
 });

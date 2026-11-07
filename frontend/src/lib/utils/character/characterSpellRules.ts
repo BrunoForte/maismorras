@@ -4,7 +4,8 @@ import type {
 	Dnd2024FeatSpellGrant,
 	SpeciesSpellGrant,
 	Spell,
-	SpellSlot
+	SpellSlot,
+	SpellCastAuthorization
 } from '$lib/services/characterApi';
 import type { CampaignFeatSpellRule } from '$lib/services/compendiumApi';
 import { canonicalClass } from '$lib/data/classProgression';
@@ -20,9 +21,12 @@ import {
 
 export type SpellOrigin = NonNullable<Spell['origin']>;
 export type FeatureSpellGrant = {
+	featureEntryId: string;
 	featureId: string;
 	featureName: string;
 	spellEntryId: string;
+	spellName: string;
+	spellLevel: number;
 	level: number;
 };
 export type SpellFeatGrantProjection = {
@@ -102,11 +106,7 @@ export type SpellTabActions = {
 	change: (index: number, changes: Partial<Spell>) => void;
 	present: (spell: Spell) => void;
 	rollEffect: (spell: Spell) => void;
-	cast: (
-		spell: Spell,
-		index: number,
-		featGrant?: { grantId: string; entryId: string; freeCast: boolean }
-	) => void;
+	cast: (spell: Spell, index: number, authorization?: SpellCastAuthorization) => void;
 };
 
 export function normalizeSpellName(value: string): string {
@@ -346,14 +346,31 @@ export function deriveFeatureSpellGrants(
 			for (const spellEntryId of featureSpellGrantIds(feature.grants)) {
 				if (!spellEntries.some((spell) => spell.entryType === 'spell' && spell.id === spellEntryId))
 					continue;
-				results.push({ featureId, featureName, spellEntryId, level: unlockLevel });
+				const spell = spellEntries.find(
+					(candidate) => candidate.entryType === 'spell' && candidate.id === spellEntryId
+				);
+				if (!spell) continue;
+				const spellLevel = Number(spell.rules.level);
+				if (!Number.isInteger(spellLevel) || spellLevel < 0 || spellLevel > 9) continue;
+				results.push({
+					featureEntryId: entry.id,
+					featureId,
+					featureName,
+					spellEntryId,
+					spellName: translatedCompendiumText(spell, 'name', spell.name, locale),
+					spellLevel,
+					level: unlockLevel
+				});
 			}
 		});
 	}
 	return results.filter(
 		(grant, index) =>
 			results.findIndex(
-				(item) => item.featureId === grant.featureId && item.spellEntryId === grant.spellEntryId
+				(item) =>
+					item.featureEntryId === grant.featureEntryId &&
+					item.featureId === grant.featureId &&
+					item.spellEntryId === grant.spellEntryId
 			) === index
 	);
 }

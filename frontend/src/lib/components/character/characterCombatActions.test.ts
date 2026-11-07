@@ -600,6 +600,43 @@ describe('character combat actions', () => {
 		);
 	});
 
+	it('conjura magia concedida por característica com espaço e envia sua origem autoritativa', async () => {
+		const test = setup();
+		const featureSpell = { name: 'Auxílio', entryId: 'spell-aid', level: 2, notes: '' };
+		const authorization = {
+			entryId: 'spell-aid',
+			freeCast: false,
+			featureEntryId: 'subclass-crown',
+			featureId: 'crown-spells'
+		};
+		vi.mocked(test.castMySpell).mockResolvedValueOnce({
+			eventId: 11,
+			sheet: { ...test.getSheet(), spellSlots: [{ level: 2, current: 0, max: 1 }] },
+			spellName: 'Auxílio',
+			baseLevel: 2,
+			slotLevel: 2,
+			effect: 'A criatura recebe proteção.',
+			chatText: '✨ Auxílio · nível base 2 · espaço usado 2 · custo: 1 espaço de nível 2',
+			presentationUpdated: true
+		});
+
+		test.controller.chooseSpellSlot(-1, 2);
+		await test.controller.castSpell(featureSpell, -1, authorization);
+
+		expect(test.castMySpell).toHaveBeenCalledWith(
+			expect.anything(),
+			'campaign-1',
+			-1,
+			2,
+			authorization,
+			'scene-1'
+		);
+		expect(test.getSheet().spellSlots[0].current).toBe(0);
+		expect(test.appendChat.mock.calls[0][0].texto).toContain('1 espaço de nível 2');
+		expect(test.appendChat.mock.calls[0][0].texto).not.toContain('uso gratuito');
+		expect(test.publishPresentationUpdated).toHaveBeenCalledWith(undefined);
+	});
+
 	it('atualiza a apresentação textual somente após o backend confirmar magia com espaço', async () => {
 		const test = setup();
 		vi.mocked(test.castMySpell).mockResolvedValueOnce({

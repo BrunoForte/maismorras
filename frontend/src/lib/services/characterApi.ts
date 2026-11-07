@@ -411,20 +411,27 @@ export type SpellCast = {
 	spellcastingAbility?: keyof AbilityScores | string;
 	freeCastRemaining?: number;
 };
+export type SpellCastAuthorization = {
+	grantId?: string;
+	entryId: string;
+	freeCast: boolean;
+	featureEntryId?: string;
+	featureId?: string;
+};
 export const castMySpell = (
 	session: Session,
 	campaignId: string,
 	spellIndex: number,
 	slotLevel: number,
-	featGrant?: { grantId: string; entryId: string; freeCast: boolean },
+	authorization?: SpellCastAuthorization,
 	presentationSceneId?: string
 ) =>
 	request<SpellCast>(session, `/api/v1/campaigns/${campaignId}/character/cast-spell`, {
 		method: 'POST',
 		body: JSON.stringify({
-			spellIndex: featGrant ? -1 : spellIndex,
+			spellIndex: authorization ? -1 : spellIndex,
 			slotLevel,
-			...featGrant,
+			...authorization,
 			...(presentationSceneId ? { presentationSceneId } : {})
 		})
 	}).then((result) => ({

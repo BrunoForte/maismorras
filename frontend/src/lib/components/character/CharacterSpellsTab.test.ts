@@ -136,8 +136,8 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 					spellsForCircle: (level: number) => spells.filter(({ spell }) => spell.level === level),
 					entriesForCircle: () => [],
 					compatibleSlots: (spell: Spell) =>
-						spell.level > 0 ? [{ level: 1, current: 1, max: 1 }] : [],
-					selectedSlot: () => 1
+						spell.level > 0 ? [{ level: Math.max(1, spell.level), current: 1, max: 1 }] : [],
+					selectedSlot: (spell: Spell) => Math.max(1, spell.level)
 				},
 				presentation: {
 					optionLabel: () => '',
@@ -185,7 +185,15 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 				index: -1,
 				key: 'feature:oath:aid',
 				featureGrants: [
-					{ featureId: 'oath-feature', featureName: 'Virar a Maré', spellEntryId: 'aid', level: 3 }
+					{
+						featureEntryId: 'oath-crown',
+						featureId: 'oath-feature',
+						featureName: 'Virar a Maré',
+						spellEntryId: 'aid',
+						spellName: 'Auxílio',
+						spellLevel: 2,
+						level: 3
+					}
 				],
 				origins: ['feature']
 			}
@@ -193,6 +201,35 @@ describe('CharacterSpellsTab spell disclosure icons and casting actions', () => 
 		expect(html).toContain('Preparada pela característica: Virar a Maré');
 		expect(html).toContain('Característica de classe');
 		expect(html).not.toContain('Origem da magia');
+	});
+
+	it('offers normal slot casting for a feature spell that has no manual sheet entry', () => {
+		const featureOnly = renderSpell(null, true, [
+			{
+				spell: { entryId: 'aid', name: 'Auxílio', level: 2, notes: '', origin: 'feature' },
+				index: -1,
+				key: 'feature:oath-crown:aid',
+				featureGrants: [
+					{
+						featureEntryId: 'oath-crown',
+						featureId: 'crown-spells',
+						featureName: 'Magias do Juramento',
+						spellEntryId: 'aid',
+						spellName: 'Auxílio',
+						spellLevel: 2,
+						level: 3
+					}
+				],
+				origins: ['feature']
+			}
+		]);
+
+		expect(featureOnly).toContain('Preparada pela característica: Magias do Juramento');
+		expect(featureOnly).toContain('aria-label="Espaço de magia"');
+		expect(featureOnly).toContain('2º círculo · 1/1');
+		expect(featureOnly).toMatch(/class="cast-spell[^"]*"[^>]*>Lançar<\/button>/);
+		expect(featureOnly).not.toMatch(/class="cast-spell[^"]*"[^>]*disabled/);
+		expect(featureOnly).not.toContain('Lançar grátis');
 	});
 
 	it('shows explicit cast controls for known spells even when details are collapsed', () => {
