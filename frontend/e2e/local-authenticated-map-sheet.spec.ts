@@ -748,10 +748,22 @@ test.describe('local authenticated map and character sheet E2E', () => {
 			const page = fixture!.gm;
 			const chat = page.locator('.floating-chat');
 			const actors = page.locator('.actor-drawer');
+			const openEmbeddedSheetFromCast = async () => {
+				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
+				const cast = page.locator('.sheets-view');
+				await expect(cast).toBeVisible();
+				const characterCard = cast
+					.locator('.sheet-grid article')
+					.filter({ hasText: 'Painéis mobile E2E' });
+				await expect(characterCard).toHaveCount(1);
+				await characterCard
+					.getByRole('button', { name: /^(Select sheet|Selecionar ficha)$/ })
+					.click();
+				await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
+			};
 			if (await chat.evaluate((node) => node.classList.contains('closed')))
 				await page.getByRole('button', { name: 'Abrir chat' }).click();
-			await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-			await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
+			await openEmbeddedSheetFromCast();
 			await page.getByRole('button', { name: 'Abrir como painel' }).click();
 			const sheet = page.locator('.sheet-backdrop.floating .sheet');
 			await expect(sheet).toBeVisible();
@@ -768,8 +780,7 @@ test.describe('local authenticated map and character sheet E2E', () => {
 				const actorBox = (await actors.boundingBox())!;
 				const footerBox = (await page.locator('.audio-channels').boundingBox())!;
 				expect(actorBox.y + actorBox.height).toBeLessThanOrEqual(footerBox.y + 2);
-				await page.getByRole('button', { name: 'Fichas', exact: true }).click();
-				await expect(page.locator('.sheet-backdrop.embedded .sheet')).toBeVisible();
+				await openEmbeddedSheetFromCast();
 				await expect(sheet).toBeHidden();
 				await page.getByRole('button', { name: 'Mesa', exact: true }).click();
 				await expect(sheet).toBeVisible();
