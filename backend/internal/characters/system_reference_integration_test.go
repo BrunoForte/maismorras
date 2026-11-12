@@ -204,7 +204,14 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 			if err := pool.QueryRow(ctx, `select sheet #> '{armorClassAdjustments,0,futureMetadata}' from actors where id=$1`, actorID).Scan(&futureMetadata); err != nil {
 				t.Fatalf("%s: read nested forward-compatible metadata: %v", "adjustment update", err)
 			}
-			if string(futureMetadata) != `{"preserved":"synthetic"}` {
+			var gotMetadata, wantMetadata map[string]any
+			if err := json.Unmarshal(futureMetadata, &gotMetadata); err != nil {
+				t.Fatalf("adjustment update: decode nested forward-compatible metadata: %v", err)
+			}
+			if err := json.Unmarshal([]byte(`{"preserved":"synthetic"}`), &wantMetadata); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotMetadata, wantMetadata) {
 				t.Fatalf("manual adjustment update lost nested unknown JSONB metadata: %s", futureMetadata)
 			}
 		}
