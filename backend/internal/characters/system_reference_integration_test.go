@@ -107,7 +107,7 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	sheet := Sheet{
 		Name: "Versioned character", Class: "wizard", Level: 5, Species: "Goliath", Speed: 10.5, AbilityScores: AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 10, Wisdom: 12, Charisma: 10},
 		ProficiencyBonus: 99, ArmorClass: 99, PassivePerception: 99, SkillProficiencies: []string{"Percepção"},
-		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", Spells: []Spell{
+		HitPointsCurrent: 1, HitPointsMax: 10, HitDice: "1d8", ArmorClassAdjustments: []ArmorClassAdjustment{{ID: "manual-ac-1", Value: intPointer(2), Source: "Talento sintético", Active: true}}, Spells: []Spell{
 			{Name: "Teste de slot", Level: 1, DiceFormula: "1d4", Description: "Descrição autoritativa do teste."},
 			{Name: "Truque de teste", Level: 0, Description: "Texto do truque."},
 		}, SpellSlots: []SpellSlot{}, Resources: []Resource{},
@@ -143,9 +143,89 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &saved); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Sheet.ProficiencyBonus != 3 || saved.Sheet.ArmorClass != 12 || saved.Sheet.PassivePerception != 14 {
+	if saved.Sheet.ProficiencyBonus != 3 || saved.Sheet.ArmorClass != 14 || saved.Sheet.PassivePerception != 14 {
 		t.Fatalf("derived fields did not use persisted D&D reference: proficiency=%d AC=%d passive=%d", saved.Sheet.ProficiencyBonus, saved.Sheet.ArmorClass, saved.Sheet.PassivePerception)
 	}
+	assertManualArmorClass := func(stage string, adjustments []ArmorClassAdjustment, wantAC int) {
+		t.Helper()
+		loaded, loadErr := repo.GetMine(ctx, campaignID, playerID)
+		if loadErr != nil {
+			t.Fatalf("%s: reload character: %v", stage, loadErr)
+		}
+		if !reflect.DeepEqual(loaded.Sheet.ArmorClassAdjustments, adjustments) || loaded.Sheet.ArmorClass != wantAC {
+			t.Fatalf("%s: reloaded adjustments/AC = %+v/%d, want %+v/%d", stage, loaded.Sheet.ArmorClassAdjustments, loaded.Sheet.ArmorClass, adjustments, wantAC)
+		}
+		var tokenAC int
+		if err := pool.QueryRow(ctx, `select armor_class from scene_tokens where scene_id=$1 and actor_id=$2`, sceneID, actorID).Scan(&tokenAC); err != nil {
+			t.Fatalf("%s: load synchronized token AC: %v", stage, err)
+		}
+		if tokenAC != wantAC {
+			t.Fatalf("%s: synchronized token AC = %d, want %d", stage, tokenAC, wantAC)
+		}
+		saved = loaded
+	}
+	assertManualArmorClass("first addition with absent JSONB key", sheet.ArmorClassAdjustments, 14)
+	if _, err := pool.Exec(ctx, `update actors set sheet=jsonb_set(sheet,'{armorClassAdjustments,0,futureMetadata}','{"preserved":"synthetic"}'::jsonb,true) where id=$1`, actorID); err != nil {
+		t.Fatal(err)
+	}
+	updatedAdjustments := []ArmorClassAdjustment{{ID: "manual-ac-1", Value: intPointer(-1), Source: "Maldição sintética", Active: true}}
+	applyAdjustments := func(adjustments []ArmorClassAdjustment) {
+		t.Helper()
+		current := saved.Sheet
+		current.ArmorClassAdjustments = adjustments
+		body, marshalErr := json.Marshal(current)
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		if len(adjustments) > 0 {
+			var clientPayload map[string]any
+			if err := json.Unmarshal(body, &clientPayload); err != nil {
+				t.Fatal(err)
+			}
+			rows := clientPayload["armorClassAdjustments"].([]any)
+			rows[0].(map[string]any)["futureMetadata"] = map[string]any{"client": "overwrite"}
+			body, marshalErr = json.Marshal(clientPayload)
+			if marshalErr != nil {
+				t.Fatal(marshalErr)
+			}
+		}
+		req := httptest.NewRequest("PUT", "/", bytes.NewReader(body))
+		req.SetPathValue("campaignID", campaignID)
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{UserID: playerID}))
+		res := httptest.NewRecorder()
+		if err := handler.SaveMine(res, req); err != nil || res.Code != http.StatusOK {
+			t.Fatalf("save adjustment edit returned %d, err=%v body=%s", res.Code, err, res.Body.String())
+		}
+		if err := json.Unmarshal(res.Body.Bytes(), &saved); err != nil {
+			t.Fatal(err)
+		}
+		if len(adjustments) > 0 {
+			var futureMetadata json.RawMessage
+			if err := pool.QueryRow(ctx, `select sheet #> '{armorClassAdjustments,0,futureMetadata}' from actors where id=$1`, actorID).Scan(&futureMetadata); err != nil {
+				t.Fatalf("%s: read nested forward-compatible metadata: %v", "adjustment update", err)
+			}
+			var gotMetadata, wantMetadata map[string]any
+			if err := json.Unmarshal(futureMetadata, &gotMetadata); err != nil {
+				t.Fatalf("adjustment update: decode nested forward-compatible metadata: %v", err)
+			}
+			if err := json.Unmarshal([]byte(`{"preserved":"synthetic"}`), &wantMetadata); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotMetadata, wantMetadata) {
+				t.Fatalf("manual adjustment update lost nested unknown JSONB metadata: %s", futureMetadata)
+			}
+		}
+	}
+	applyAdjustments(updatedAdjustments)
+	assertManualArmorClass("edit", updatedAdjustments, 11)
+	deactivated := []ArmorClassAdjustment{{ID: "manual-ac-1", Value: intPointer(-1), Source: "Maldição sintética", Active: false}}
+	applyAdjustments(deactivated)
+	assertManualArmorClass("deactivate", deactivated, 12)
+	reactivated := []ArmorClassAdjustment{{ID: "manual-ac-1", Value: intPointer(-1), Source: "Maldição sintética", Active: true}}
+	applyAdjustments(reactivated)
+	assertManualArmorClass("reactivate", reactivated, 11)
+	applyAdjustments([]ArmorClassAdjustment{})
+	assertManualArmorClass("remove", []ArmorClassAdjustment{}, 12)
 	assertCompatibilityFields := func(stage string) {
 		t.Helper()
 		assertStoredForwardSheetFields(t, ctx, pool, actorID, stage)
@@ -217,6 +297,17 @@ func TestSheetOperationsUsePersistedCampaignReferenceIntegration(t *testing.T) {
 	}
 	if response.Code != 200 {
 		t.Fatalf("GM SaveForGM status = %d, body=%s", response.Code, response.Body.String())
+	}
+	var gmSaved Character
+	if err := json.Unmarshal(response.Body.Bytes(), &gmSaved); err != nil {
+		t.Fatal(err)
+	}
+	if gmSaved.Sheet.ArmorClass != 14 || !reflect.DeepEqual(gmSaved.Sheet.ArmorClassAdjustments, sheet.ArmorClassAdjustments) {
+		t.Fatalf("SaveForGM did not preserve and calculate manual AC adjustments: AC=%d adjustments=%+v", gmSaved.Sheet.ArmorClass, gmSaved.Sheet.ArmorClassAdjustments)
+	}
+	var tokenAC int
+	if err := pool.QueryRow(ctx, `select armor_class from scene_tokens where scene_id=$1 and actor_id=$2`, sceneID, actorID).Scan(&tokenAC); err != nil || tokenAC != 14 {
+		t.Fatalf("SaveForGM synchronized token AC = %d, err=%v; want 14", tokenAC, err)
 	}
 	assertCompatibilityFields("SaveForGM")
 	var persistedSystemID, persistedSystemVersion string

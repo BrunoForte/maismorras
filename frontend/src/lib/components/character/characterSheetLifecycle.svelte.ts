@@ -160,6 +160,7 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 			const snapshot = JSON.parse(JSON.stringify(sheet)) as CharacterSheet;
 			const savedCharacter = await persist(snapshot);
 			if (!isCurrent(generation)) return;
+			presentationSocket?.publishCharacterSheetInvalidated(savedCharacter.id);
 			state.resolvedCharacterId = savedCharacter.id;
 			// A stale response must not discard edits performed while the save was in flight.
 			if (editRevision === savedRevision) deps.setSheet(savedCharacter.sheet);
@@ -223,6 +224,7 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 			deps.setSheet(character.sheet);
 			await deps.createTokenFromCharacter(context.session, context.sceneId, character.id);
 			if (!isCurrent(generation)) return;
+			presentationSocket?.publishCharacterSheetInvalidated(character.id);
 			state.message = 'Token criado e vinculado à ficha.';
 			readContext().onTokenCreated();
 		} catch (error) {
@@ -401,6 +403,8 @@ export function createCharacterSheetLifecycle(deps: CharacterSheetLifecycleDepen
 		publishChatUpdated: () => presentationSocket?.publishChatUpdated(),
 		publishCombatUpdated: () => presentationSocket?.publishCombatUpdated(),
 		publishPresentationUpdated: (data?: unknown) =>
-			presentationSocket?.publishPresentationUpdated(data)
+			presentationSocket?.publishPresentationUpdated(data),
+		publishCharacterSheetInvalidated: (actorId: string) =>
+			presentationSocket?.publishCharacterSheetInvalidated(actorId)
 	};
 }

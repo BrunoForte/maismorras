@@ -174,7 +174,13 @@ func calculateArmorClass(sheet Sheet, rules systems.Dnd2024CharacterRules) int {
 	for _, item := range equipped {
 		total += item.rules.ACBonus + item.rules.ArmorBonus + item.rules.EnhancementBonus + item.rules.MagicBonus
 	}
-	return max(0, int(math.Round(total)))
+	manualAdjustment := 0
+	for _, adjustment := range sheet.ArmorClassAdjustments {
+		if adjustment.Active && adjustment.Value != nil && strings.TrimSpace(adjustment.Source) != "" {
+			manualAdjustment += *adjustment.Value
+		}
+	}
+	return max(0, int(math.Round(total))+manualAdjustment)
 }
 
 type inventoryRules struct {

@@ -5,7 +5,8 @@ import {
 	type SceneSocket,
 	type RealtimeStatus,
 	type SceneDelta,
-	type TokenUpdateSignal
+	type TokenUpdateSignal,
+	type CharacterSheetInvalidation
 } from '$lib/services/sceneRealtime';
 
 export type SceneRealtimeLifecycleContext = {
@@ -24,6 +25,7 @@ export type SceneRealtimeLifecycleHandlers = {
 	onPresentation?: (data?: unknown) => void;
 	onLayout?: (data?: unknown) => void;
 	onTokens?: (data?: TokenUpdateSignal) => void;
+	onCharacterSheetInvalidated?: (data: CharacterSheetInvalidation) => void;
 	onCombat?: (data?: unknown) => void;
 	onChat?: () => void;
 	onSceneDelta?: (data: SceneDelta) => void;
@@ -94,6 +96,7 @@ export class SceneRealtimeLifecycleController {
 			onPresentation: guarded(handlers.onPresentation),
 			onLayout: guarded(handlers.onLayout),
 			onTokens: guarded(handlers.onTokens),
+			onCharacterSheetInvalidated: guarded(handlers.onCharacterSheetInvalidated),
 			onCombat: guarded(handlers.onCombat),
 			onChat: guarded(handlers.onChat),
 			onSceneDelta: guarded(handlers.onSceneDelta)
@@ -174,7 +177,8 @@ function connectSceneContext(
 		handlers.onCombat,
 		handlers.onChat,
 		handlers.onSceneDelta,
-		handlers.onAudioEffects
+		handlers.onAudioEffects,
+		handlers.onCharacterSheetInvalidated
 	);
 }
 

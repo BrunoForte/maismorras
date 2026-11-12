@@ -98,6 +98,22 @@ func TestCalculateArmorClassUnarmoredDefenseAndBonuses(t *testing.T) {
 	}
 }
 
+func TestCalculateArmorClassAppliesOnlyCompleteActiveManualAdjustments(t *testing.T) {
+	sheet := validSheet()
+	value := 2
+	negative := -1
+	sheet.ArmorClassAdjustments = []ArmorClassAdjustment{
+		{ID: "active", Value: &value, Source: "Talento", Active: true},
+		{ID: "inactive", Value: &value, Source: "Item", Active: false},
+		{ID: "missing-source", Value: &value, Active: true},
+		{ID: "missing-value", Source: "Escudo", Active: true},
+		{ID: "negative", Value: &negative, Source: "Maldição", Active: true},
+	}
+	if got := calculateArmorClass(sheet, dnd2024TestRules()); got != 13 {
+		t.Fatalf("calculateArmorClass() = %d, want base 12 + 2 - 1 = 13", got)
+	}
+}
+
 func TestResourceOverridesAndShortRestRecoverySurviveRoundTrip(t *testing.T) {
 	sheet := validSheet()
 	max := 7

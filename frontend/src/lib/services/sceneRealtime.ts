@@ -11,6 +11,21 @@ type PresentationUpdated = { type: 'presentation.updated'; data?: unknown };
 type LayoutUpdated = { type: 'overlay.layout.updated'; data?: unknown };
 export type TokenUpdateSignal = { tokenId: string; deleted?: boolean };
 type TokenUpdated = { type: 'token.updated'; data?: TokenUpdateSignal };
+export type CharacterSheetInvalidation = { actorId: string };
+type CharacterSheetInvalidated = {
+	type: 'character.sheet.invalidated';
+	data: CharacterSheetInvalidation;
+};
+export function isValidCharacterSheetInvalidation(
+	value: unknown
+): value is CharacterSheetInvalidation {
+	if (!value || typeof value !== 'object') return false;
+	const data = value as Record<string, unknown>;
+	if (Object.keys(data).length !== 1 || typeof data.actorId !== 'string') return false;
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+		data.actorId
+	);
+}
 type CombatUpdated = { type: 'combat.updated'; data?: unknown };
 export type SceneDelta =
 	| { kind: 'area'; action: 'upsert'; item: SceneArea }
@@ -31,6 +46,7 @@ export type SceneSocket = {
 	publishPresentationUpdated: (data?: unknown) => void;
 	publishLayoutUpdated: (data?: unknown) => void;
 	publishTokenUpdated: (data: TokenUpdateSignal) => void;
+	publishCharacterSheetInvalidated: (actorId: string) => void;
 	publishCombatUpdated: (data?: unknown) => void;
 	publishSceneDelta: (data: SceneDelta) => void;
 	publishChatUpdated: () => void;
@@ -44,6 +60,7 @@ type Subscriber = {
 	onPresentation?: (data?: unknown) => void;
 	onLayout?: (data?: unknown) => void;
 	onTokens?: (data?: TokenUpdateSignal) => void;
+	onCharacterSheetInvalidated?: (data: CharacterSheetInvalidation) => void;
 	onCombat?: (data?: unknown) => void;
 	onSceneDelta?: (data: SceneDelta) => void;
 	onChat?: () => void;
@@ -85,6 +102,7 @@ class SharedSceneConnection {
 		| PresentationUpdated
 		| LayoutUpdated
 		| TokenUpdated
+		| CharacterSheetInvalidated
 		| CombatUpdated
 		| SceneDeltaEvent
 		| ChatUpdated
@@ -129,6 +147,8 @@ class SharedSceneConnection {
 			publishPresentationUpdated: (data) => this.publish({ type: 'presentation.updated', data }),
 			publishLayoutUpdated: (data) => this.publish({ type: 'overlay.layout.updated', data }),
 			publishTokenUpdated: (data) => this.publish({ type: 'token.updated', data }),
+			publishCharacterSheetInvalidated: (actorId) =>
+				this.publish({ type: 'character.sheet.invalidated', data: { actorId } }),
 			publishCombatUpdated: (data) => this.publish({ type: 'combat.updated', data }),
 			publishSceneDelta: (data) => this.publish({ type: 'scene.delta', data }),
 			publishChatUpdated: () => this.publish({ type: 'chat.updated' }),
@@ -172,6 +192,7 @@ class SharedSceneConnection {
 					| PresentationUpdated
 					| LayoutUpdated
 					| TokenUpdated
+					| CharacterSheetInvalidated
 					| CombatUpdated
 					| SceneDeltaEvent
 					| ChatUpdated
@@ -187,6 +208,11 @@ class SharedSceneConnection {
 					for (const subscriber of this.subscribers) subscriber.onLayout?.(payload.data);
 				if (payload.type === 'token.updated')
 					for (const subscriber of this.subscribers) subscriber.onTokens?.(payload.data);
+				if (payload.type === 'character.sheet.invalidated') {
+					if (!isValidCharacterSheetInvalidation(payload.data)) return;
+					for (const subscriber of this.subscribers)
+						subscriber.onCharacterSheetInvalidated?.(payload.data);
+				}
 				if (payload.type === 'combat.updated')
 					for (const subscriber of this.subscribers) subscriber.onCombat?.(payload.data);
 				if (payload.type === 'scene.delta') {
@@ -220,6 +246,7 @@ class SharedSceneConnection {
 			| PresentationUpdated
 			| LayoutUpdated
 			| TokenUpdated
+			| CharacterSheetInvalidated
 			| CombatUpdated
 			| SceneDeltaEvent
 			| ChatUpdated
@@ -263,7 +290,8 @@ export function connectSceneSocket(
 	onCombat?: (data?: unknown) => void,
 	onChat?: () => void,
 	onSceneDelta?: (data: SceneDelta) => void,
-	onAudioEffects?: (state: AudioPlaybackState) => void
+	onAudioEffects?: (state: AudioPlaybackState) => void,
+	onCharacterSheetInvalidated?: (data: CharacterSheetInvalidation) => void
 ): SceneSocket {
 	const key = `${session.user.id}:${sceneId}`;
 	let connection = sharedConnections.get(key);
@@ -280,6 +308,7 @@ export function connectSceneSocket(
 		onPresentation,
 		onLayout,
 		onTokens,
+		onCharacterSheetInvalidated,
 		onCombat,
 		onChat,
 		onSceneDelta

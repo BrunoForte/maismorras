@@ -59,6 +59,20 @@ func TestTokenUpdateSignalDoesNotContainTokenFields(t *testing.T) {
 	}
 }
 
+func TestCharacterSheetInvalidationContainsOnlyActorID(t *testing.T) {
+	const actorID = "12345678-1234-4234-a234-123456789012"
+	var payload struct {
+		Type string         `json:"type"`
+		Data map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(characterSheetInvalidationBroadcast(actorID), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Type != "character.sheet.invalidated" || len(payload.Data) != 1 || payload.Data["actorId"] != actorID {
+		t.Fatalf("invalidation payload = %#v, expected only actor id", payload)
+	}
+}
+
 func TestPresentationRealtimeOnlyAllowsPlayerInvalidations(t *testing.T) {
 	for _, value := range []json.RawMessage{nil, []byte("  "), []byte("null")} {
 		if !canPublishPresentationUpdate(false, value) {

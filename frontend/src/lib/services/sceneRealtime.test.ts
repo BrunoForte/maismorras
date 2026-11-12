@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isValidSceneDelta, notifySingleSceneRefresh } from './sceneRealtime';
+import {
+	isValidCharacterSheetInvalidation,
+	isValidSceneDelta,
+	notifySingleSceneRefresh
+} from './sceneRealtime';
 
-const uuid = '12345678-1234-1234-1234-123456789012';
+const uuid = '12345678-1234-4234-a234-123456789012';
 
 describe('shared scene reconnect invalidation', () => {
 	it('runs one synchronization callback for the shared connection', () => {
@@ -40,5 +44,17 @@ describe('realtime scene delta validation', () => {
 		]) {
 			expect(isValidSceneDelta(event)).toBe(false);
 		}
+	});
+});
+
+describe('character sheet realtime invalidation', () => {
+	it('uses a minimal actor identifier signal and rejects malformed ids', () => {
+		const valid = { actorId: uuid };
+		expect(JSON.stringify({ type: 'character.sheet.invalidated', data: valid })).not.toContain(
+			'armorClass'
+		);
+		expect(isValidCharacterSheetInvalidation(valid)).toBe(true);
+		expect(isValidCharacterSheetInvalidation({ ...valid, sheet: { armorClass: 12 } })).toBe(false);
+		expect(isValidCharacterSheetInvalidation({ actorId: 'short' })).toBe(false);
 	});
 });

@@ -165,6 +165,8 @@
 						<input
 							type="number"
 							step="1"
+							min="-99"
+							max="99"
 							placeholder="+1 / -1"
 							value={adjustment.value ?? ''}
 							aria-label={`${$appLocale === 'en' ? 'Adjustment value' : 'Valor do ajuste'} ${index + 1}`}
