@@ -298,11 +298,13 @@ describe('scene character summary controller', () => {
 			const test = setup();
 			test.controller.syncContext();
 			test.controller.state.sheetsByActor['actor-a'] = sheet();
+			test.controller.state.loadedSheetByActor['actor-a'] = true;
 			test.controller.state.initiativeAdvantageByActor['actor-a'] = true;
 
 			test.setContext(patch);
 
 			expect(test.controller.state.sheetsByActor).toEqual({});
+			expect(test.controller.state.loadedSheetByActor).toEqual({});
 			expect(test.controller.state.initiativeAdvantageByActor).toEqual({});
 			expect(test.deps.clearSelection).toHaveBeenCalledOnce();
 		}
@@ -366,6 +368,101 @@ describe('scene character summary controller', () => {
 		await pending;
 		expect(test.controller.state.sheetsByActor['actor-a']).toBeUndefined();
 		expect(test.updateCharacters).not.toHaveBeenCalled();
+	});
+
+	it('reloads only the selected sheet after targeted invalidation and keeps token-owned current HP separate', async () => {
+		const test = setup();
+		await test.controller.loadSelectedCharacter();
+		expect(test.controller.selectedSheet().name).toBe('Ficha selecionada');
+		const refreshed = sheet();
+		refreshed.name = 'Ficha atualizada em outro cliente';
+		refreshed.armorClass = 17;
+		refreshed.hitPointsMax = 24;
+		refreshed.hitPointsCurrent = 22;
+		vi.mocked(test.deps.getMyCharacter).mockResolvedValueOnce({
+			id: 'actor-a',
+			campaignId: 'campaign-a',
+			ownerId: 'user-a',
+			sheet: refreshed
+		});
+
+		await test.controller.invalidateSelectedCharacter('another-actor');
+		expect(test.getMine).toHaveBeenCalledOnce();
+		await test.controller.invalidateSelectedCharacter('actor-a');
+
+		expect(test.getMine).toHaveBeenCalledTimes(2);
+		expect(test.controller.selectedSheet()).toMatchObject({
+			name: 'Ficha atualizada em outro cliente',
+			armorClass: 17,
+			hitPointsMax: 24,
+			hitPointsCurrent: 22
+		});
+		// Compact-sheet current/max HP are read from the selected token, not the sheet cache.
+		expect(test.deps.getContext().selectedToken?.hpAtual).toBe(10);
+		expect(test.deps.getContext().selectedToken?.hpMax).toBe(10);
+		expect(test.updateCharacters).toHaveBeenCalledTimes(2);
+	});
+
+	it('invalidates a cached non-selected actor and reloads it when selected later', async () => {
+		const test = setup({ isGM: true, selectedToken: token(1, 'actor-a', false) });
+		await test.controller.loadSelectedCharacter();
+		test.controller.state.sheetsByActor['actor-b'] = sheet();
+		test.controller.state.loadedSheetByActor['actor-b'] = true;
+		test.controller.state.initiativeAdvantageByActor['actor-b'] = true;
+		await test.controller.invalidateSelectedCharacter('actor-b');
+		expect(test.getGM).toHaveBeenCalledOnce();
+		expect(test.getMine).not.toHaveBeenCalled();
+		expect(test.controller.state.loadedSheetByActor['actor-b']).toBeUndefined();
+		expect(test.controller.state.initiativeAdvantageByActor['actor-b']).toBeUndefined();
+
+		const updated = sheet();
+		updated.name = 'Ficha renovada';
+		vi.mocked(test.deps.getCharacterForGM).mockResolvedValueOnce({
+			id: 'actor-b',
+			campaignId: 'campaign-a',
+			ownerId: 'user-a',
+			sheet: updated
+		});
+		test.select(token(2, 'actor-b', false));
+		await test.controller.loadSelectedCharacter();
+		expect(test.controller.selectedSheet().name).toBe('Ficha renovada');
+		expect(test.getGM).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let an older refresh replace a newer refresh for the same selection', async () => {
+		const older = deferred<{
+			id: string;
+			campaignId: string;
+			ownerId: string;
+			sheet: CharacterSheet;
+		}>();
+		const newer = deferred<{
+			id: string;
+			campaignId: string;
+			ownerId: string;
+			sheet: CharacterSheet;
+		}>();
+		const test = setup();
+		vi.mocked(test.deps.getMyCharacter)
+			.mockReturnValueOnce(older.promise)
+			.mockReturnValueOnce(newer.promise);
+		const first = test.controller.loadSelectedCharacter();
+		const second = test.controller.invalidateSelectedCharacter('actor-a');
+		newer.resolve({
+			id: 'actor-a',
+			campaignId: 'campaign-a',
+			ownerId: 'user-a',
+			sheet: Object.assign(sheet(), { name: 'Nova' })
+		});
+		await second;
+		older.resolve({
+			id: 'actor-a',
+			campaignId: 'campaign-a',
+			ownerId: 'user-a',
+			sheet: Object.assign(sheet(), { name: 'Antiga' })
+		});
+		await first;
+		expect(test.controller.selectedSheet().name).toBe('Nova');
 	});
 
 	it('does not let a pending spell action publish or mutate after selection changes', async () => {

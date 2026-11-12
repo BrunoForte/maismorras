@@ -52,6 +52,7 @@ type Sheet struct {
 	SkillProficiencies         []string                 `json:"skillProficiencies"`
 	SkillExpertise             []string                 `json:"skillExpertise"`
 	ArmorClass                 int                      `json:"armorClass"`
+	ArmorClassAdjustments      []ArmorClassAdjustment   `json:"armorClassAdjustments"`
 	Initiative                 int                      `json:"initiative"`
 	InitiativeAdvantage        bool                     `json:"initiativeAdvantage"`
 	Speed                      float64                  `json:"speed"`
@@ -78,6 +79,15 @@ type Sheet struct {
 	Resistances                []string                 `json:"resistances,omitempty"`
 	AutomaticTraits            []string                 `json:"automaticTraits,omitempty"`
 	SpeciesHPBonusApplied      int                      `json:"speciesHPBonusApplied,omitempty"`
+}
+
+// ArmorClassAdjustment is a named manual modifier. An empty source or nil
+// value is retained while editing but is intentionally excluded from AC.
+type ArmorClassAdjustment struct {
+	ID     string `json:"id"`
+	Value  *int   `json:"value"`
+	Source string `json:"source"`
+	Active bool   `json:"active"`
 }
 
 // Dnd2024Money is the D&D 2024 coin purse, separate from carried inventory.

@@ -263,6 +263,36 @@ func TestValidateRejectsInvalidAbilityScore(t *testing.T) {
 	}
 }
 
+func TestValidateArmorClassAdjustments(t *testing.T) {
+	value := 1
+	valid := validSheet()
+	valid.ArmorClassAdjustments = []ArmorClassAdjustment{{ID: "adjustment-1", Value: &value, Source: "Anel", Active: true}}
+	if err := validate(valid); err != nil {
+		t.Fatalf("validate accepted a valid armor class adjustment: %v", err)
+	}
+	for name, adjustments := range map[string][]ArmorClassAdjustment{
+		"empty id":     {{Value: &value, Source: "Anel", Active: true}},
+		"out of range": {{ID: "adjustment-1", Value: func() *int { x := 100; return &x }(), Source: "Anel", Active: true}},
+		"duplicate id": {{ID: "same", Value: &value, Source: "Anel"}, {ID: "same", Value: &value, Source: "Talento"}},
+		"long source":  {{ID: "adjustment-1", Value: &value, Source: strings.Repeat("x", 101)}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			sheet := validSheet()
+			sheet.ArmorClassAdjustments = adjustments
+			if err := validate(sheet); err == nil {
+				t.Fatal("validate accepted invalid armor class adjustments")
+			}
+		})
+	}
+
+	// Incomplete rows are valid draft data and remain inactive in AC calculations.
+	draft := validSheet()
+	draft.ArmorClassAdjustments = []ArmorClassAdjustment{{ID: "draft", Source: "", Active: true}}
+	if err := validate(draft); err != nil {
+		t.Fatalf("validate rejected an incomplete adjustment row: %v", err)
+	}
+}
+
 func TestValidateAcceptsSpeciesLineage(t *testing.T) {
 	sheet := validSheet()
 	sheet.Species = "Elf"

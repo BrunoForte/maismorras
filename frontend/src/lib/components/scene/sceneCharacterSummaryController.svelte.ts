@@ -50,6 +50,7 @@ export type SceneCharacterSummaryCombatDependencies = Omit<
 
 export type SceneCharacterSummaryState = {
 	sheetsByActor: Record<string, CharacterSheet>;
+	loadedSheetByActor: Record<string, boolean>;
 	initiativeAdvantageByActor: Record<string, boolean>;
 	hitPointsUpdating: boolean;
 };
@@ -88,6 +89,7 @@ export function createSceneCharacterSummaryController(
 ) {
 	const state = $state<SceneCharacterSummaryState>({
 		sheetsByActor: {},
+		loadedSheetByActor: {},
 		initiativeAdvantageByActor: {},
 		hitPointsUpdating: false
 	});
@@ -96,6 +98,7 @@ export function createSceneCharacterSummaryController(
 	let sessionToken = '';
 	let selectionKey = '';
 	let disposed = false;
+	let sheetLoadSequence = 0;
 
 	function context(): SceneCharacterSummaryContext {
 		return dependencies.getContext();
@@ -131,6 +134,7 @@ export function createSceneCharacterSummaryController(
 		const sessionTokenChanged = sessionToken !== nextSessionToken;
 		if (structuralContextChanged) {
 			state.sheetsByActor = {};
+			state.loadedSheetByActor = {};
 			state.initiativeAdvantageByActor = {};
 			state.hitPointsUpdating = false;
 			dependencies.clearSelection();
@@ -225,17 +229,19 @@ export function createSceneCharacterSummaryController(
 			!actorId ||
 			current.selectedTokenIsNPC ||
 			!canViewSelectedCharacter(current) ||
-			actorId in state.initiativeAdvantageByActor
+			state.loadedSheetByActor[actorId]
 		)
 			return;
+		const requestSequence = ++sheetLoadSequence;
 
 		try {
 			const character = current.isGM
 				? await dependencies.getCharacterForGM(current.session, current.campaignId, actorId)
 				: await dependencies.getMyCharacter(current.session, current.campaignId);
-			if (!isCurrent(operation)) return;
+			if (!isCurrent(operation) || requestSequence !== sheetLoadSequence) return;
 			const sheet = character.sheet;
 			state.sheetsByActor = { ...state.sheetsByActor, [actorId]: sheet };
+			state.loadedSheetByActor = { ...state.loadedSheetByActor, [actorId]: true };
 			dependencies.updateCharacters((tokens) =>
 				tokens.map((item) =>
 					item.actorId === actorId ? { ...item, nome: sheet.name || item.nome } : item
@@ -246,12 +252,27 @@ export function createSceneCharacterSummaryController(
 				[actorId]: sheet.initiativeAdvantage ?? false
 			};
 		} catch {
-			if (isCurrent(operation))
+			if (isCurrent(operation) && requestSequence === sheetLoadSequence) {
+				state.loadedSheetByActor = { ...state.loadedSheetByActor, [actorId]: true };
 				state.initiativeAdvantageByActor = {
 					...state.initiativeAdvantageByActor,
 					[actorId]: false
 				};
+			}
 		}
+	}
+
+	/** Invalidate one cached actor; fetch immediately only when it is selected. */
+	async function invalidateSelectedCharacter(actorId: string): Promise<void> {
+		syncContext();
+		if (!actorId) return;
+		const loadedSheets = { ...state.loadedSheetByActor };
+		delete loadedSheets[actorId];
+		state.loadedSheetByActor = loadedSheets;
+		const initiativeAdvantage = { ...state.initiativeAdvantageByActor };
+		delete initiativeAdvantage[actorId];
+		state.initiativeAdvantageByActor = initiativeAdvantage;
+		if (context().selectedToken?.actorId === actorId) await loadSelectedCharacter();
 	}
 
 	async function saveHitPoints(update: HitPointUpdate): Promise<void> {
@@ -384,6 +405,7 @@ export function createSceneCharacterSummaryController(
 		combatActions,
 		syncContext,
 		loadSelectedCharacter,
+		invalidateSelectedCharacter,
 		selectedSheet,
 		canViewSelectedCharacter,
 		canCastSelectedCharacter,

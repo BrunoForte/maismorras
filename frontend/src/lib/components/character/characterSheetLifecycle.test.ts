@@ -20,10 +20,11 @@ function setup(
 	const savedMine = vi.fn(async (_session, _campaignId, value) => ({ id: 'char-1', sheet: value }));
 	const setSheet = vi.fn();
 	const socketClose = vi.fn();
+	const publishCharacterSheetInvalidated = vi.fn();
 	const socketCallbacks: Array<() => void> = [];
 	const connectPresentationSocket = vi.fn((_session, _sceneId, onAdvantageUpdated: () => void) => {
 		socketCallbacks.push(onAdvantageUpdated);
-		return { close: socketClose };
+		return { close: socketClose, publishCharacterSheetInvalidated };
 	});
 	const getCharacterForGM = vi.fn(async () => ({ id: 'char-1', sheet: {} }));
 	const loadScene = vi.fn(async () => ({ tokens: [] }));
@@ -66,6 +67,7 @@ function setup(
 		savedMine,
 		deps,
 		socketClose,
+		publishCharacterSheetInvalidated,
 		socketCallbacks,
 		connectPresentationSocket,
 		getCharacterForGM,
@@ -80,6 +82,16 @@ function setup(
 afterEach(() => vi.useRealTimers());
 
 describe('character sheet lifecycle', () => {
+	it('publishes a minimal sheet invalidation after a successful save', async () => {
+		const { lifecycle, publishCharacterSheetInvalidated } = setup({}, { sceneId: 'scene-1' });
+		lifecycle.start();
+		await lifecycle.save();
+
+		expect(publishCharacterSheetInvalidated).toHaveBeenCalledOnce();
+		expect(publishCharacterSheetInvalidated).toHaveBeenCalledWith('char-1');
+		lifecycle.cleanup();
+	});
+
 	it('persists through the GM endpoint for an explicitly selected character', async () => {
 		const { lifecycle, saved, savedMine } = setup();
 		await lifecycle.save();

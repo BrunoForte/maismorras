@@ -48,6 +48,7 @@ type peer struct {
 	roomType    string
 	campaignID  string
 	role        string
+	roomID      string
 	overlayOnly bool
 }
 
@@ -175,7 +176,7 @@ func (h *Hub) rememberRemoteEvent(eventID string) bool {
 
 func validRemoteEventType(kind string) bool {
 	switch kind {
-	case "scene.refresh", "presentation.updated", "overlay.layout.updated", "token.updated", "combat.updated", "scene.delta", "chat.updated", "audio.state", "audio.effects", "map.ping":
+	case "scene.refresh", "presentation.updated", "overlay.layout.updated", "token.updated", "character.sheet.invalidated", "combat.updated", "scene.delta", "chat.updated", "audio.state", "audio.effects", "map.ping":
 		return true
 	default:
 		return false
@@ -297,7 +298,7 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 		slog.Error("websocket accept failed", append(attrs, observability.SafeErrorAttrs(err)...)...)
 		return nil
 	}
-	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl, roomType: roomType, campaignID: campaignID, role: role}
+	peer := &peer{conn: conn, userID: p.UserID, ip: clientIP(r.RemoteAddr), canControl: canControl, roomType: roomType, campaignID: campaignID, role: role, roomID: roomID}
 	peer.overlayOnly = p.OverlayOnly
 	if peer.overlayOnly {
 		peer.canControl = false
@@ -385,6 +386,27 @@ func (h *Handler) connect(w http.ResponseWriter, r *http.Request) error {
 				continue
 			}
 			h.hub.publishRoomEvent(requestCtx, sceneID, tokenUpdateBroadcast(signal.TokenID, signal.Deleted))
+		case "character.sheet.invalidated":
+			// The sheet itself never travels over Realtime. Only a GM or the
+			// character owner may invalidate a character currently placed in this
+			// scene; recipients reload through their permission-filtered REST API.
+			var signal struct {
+				ActorID string `json:"actorId"`
+			}
+			if peer.roomType != sceneRoomType || json.Unmarshal(event.Data, &signal) != nil || len(signal.ActorID) != 36 {
+				continue
+			}
+			var allowed bool
+			if err := h.pool.QueryRow(requestCtx, `select exists(
+				select 1 from actors a
+				join scene_tokens t on t.actor_id=a.id
+				join scenes s on s.id=t.scene_id
+				where a.id=$1 and s.id=$2 and a.kind='character'
+				and ($3::boolean or a.owner_id=$4)
+			)`, signal.ActorID, peer.roomID, peer.canControl, peer.userID).Scan(&allowed); err != nil || !allowed {
+				continue
+			}
+			h.hub.publishRoomEvent(requestCtx, sceneID, characterSheetInvalidationBroadcast(signal.ActorID))
 		case "combat.updated":
 			if peer.canControl {
 				h.hub.publishRoomEvent(requestCtx, sceneID, eventBroadcast(event.Type, event.Data))
@@ -490,6 +512,19 @@ func tokenUpdateBroadcast(tokenID string, deleted bool) []byte {
 		TokenID string `json:"tokenId"`
 		Deleted bool   `json:"deleted"`
 	}{TokenID: tokenID, Deleted: deleted}})
+	if err != nil {
+		return []byte(`{"type":"scene.refresh"}`)
+	}
+	return payload
+}
+
+func characterSheetInvalidationBroadcast(actorID string) []byte {
+	payload, err := json.Marshal(struct {
+		Type string `json:"type"`
+		Data any    `json:"data"`
+	}{Type: "character.sheet.invalidated", Data: struct {
+		ActorID string `json:"actorId"`
+	}{ActorID: actorID}})
 	if err != nil {
 		return []byte(`{"type":"scene.refresh"}`)
 	}

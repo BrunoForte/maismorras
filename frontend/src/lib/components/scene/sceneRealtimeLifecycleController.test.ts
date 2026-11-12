@@ -36,6 +36,7 @@ function makeSocket(): SceneSocket {
 		publishPresentationUpdated: vi.fn(),
 		publishLayoutUpdated: vi.fn(),
 		publishTokenUpdated: vi.fn(),
+		publishCharacterSheetInvalidated: vi.fn(),
 		publishCombatUpdated: vi.fn(),
 		publishSceneDelta: vi.fn(),
 		publishChatUpdated: vi.fn(),
@@ -55,6 +56,7 @@ function setup(fallbackIntervalMs = 60_000) {
 	const handlers: SceneRealtimeLifecycleHandlers = {
 		onRefresh: vi.fn(),
 		onTokens: vi.fn(),
+		onCharacterSheetInvalidated: vi.fn(),
 		onSceneDelta: vi.fn(),
 		onStatus: vi.fn()
 	};
@@ -134,10 +136,14 @@ describe('scene realtime lifecycle controller', () => {
 
 		staleHandlers.onRefresh?.();
 		staleHandlers.onTokens?.({ tokenId: 'old-token' });
+		staleHandlers.onCharacterSheetInvalidated?.({
+			actorId: '12345678-1234-4234-a234-123456789012'
+		});
 		state.connections[1].handlers.onRefresh?.();
 
 		expect(state.handlers.onRefresh).toHaveBeenCalledOnce();
 		expect(state.handlers.onTokens).not.toHaveBeenCalled();
+		expect(state.handlers.onCharacterSheetInvalidated).not.toHaveBeenCalled();
 	});
 
 	it('runs one reconciliation callback for a reconnect without creating another socket', () => {

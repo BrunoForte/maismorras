@@ -141,6 +141,8 @@
 			},
 			onPing: (ping) => motor?.showPing(ping.x, ping.y, ping.color),
 			onTokens: (signal) => void atualizarTokenRecebido(signal),
+			onCharacterSheetInvalidated: ({ actorId }) =>
+				void summaryController.invalidateSelectedCharacter(actorId),
 			onSceneDelta: (delta) => aplicarDeltaCena(delta)
 		},
 		setSocket: (socket) => (sceneSocket = socket),
@@ -1079,6 +1081,8 @@
 	></canvas>
 	<SceneMapTools state={mapToolsState} actions={mapToolsActions} />
 	{#if personagemSelecionado}
+		<!-- Resumo: identidade, CA, ataques e magias vêm da ficha; iniciativa e PV atuais/máximos
+		     vêm do token, fonte autoritativa para alterações rápidas no tabuleiro. -->
 		<TokenInspector
 			token={personagemSelecionado}
 			npc={npcSelecionado}

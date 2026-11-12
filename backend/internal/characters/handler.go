@@ -352,6 +352,18 @@ func validate(sheet Sheet) error {
 	if len(sheet.Inventory) > 200 {
 		return apperror.BadRequest("INVALID_SHEET", "A ficha pode ter no máximo 200 itens.")
 	}
+	seenAdjustmentIDs := make(map[string]struct{}, len(sheet.ArmorClassAdjustments))
+	for _, adjustment := range sheet.ArmorClassAdjustments {
+		id := strings.TrimSpace(adjustment.ID)
+		if id == "" || len([]rune(id)) > 80 || len([]rune(adjustment.Source)) > 100 ||
+			(adjustment.Value != nil && (*adjustment.Value < -99 || *adjustment.Value > 99)) {
+			return apperror.BadRequest("INVALID_SHEET", "Confira identificador, valor e origem dos ajustes de CA.")
+		}
+		if _, exists := seenAdjustmentIDs[id]; exists {
+			return apperror.BadRequest("INVALID_SHEET", "Cada ajuste de CA precisa de um identificador único.")
+		}
+		seenAdjustmentIDs[id] = struct{}{}
+	}
 	for _, coins := range []int64{sheet.Money.CP, sheet.Money.SP, sheet.Money.EP, sheet.Money.GP, sheet.Money.PP} {
 		if coins < 0 || coins > 9007199254740991 {
 			return apperror.BadRequest("INVALID_SHEET", "Valores de moedas devem ser inteiros não negativos.")
