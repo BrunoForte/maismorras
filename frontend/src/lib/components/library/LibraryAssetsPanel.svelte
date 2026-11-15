@@ -169,8 +169,8 @@
 			</strong>
 			<small>
 				{$appLocale === 'en'
-					? 'or click to choose · images, audio, PDF and text up to 20 MB each'
-					: 'ou clique para escolher · imagens, áudio, PDF e texto até 20 MB por arquivo'}
+					? 'or click to choose · images, audio, PDF and text up to 20 MB each. New uploads are visible only to the GM until access is changed.'
+					: 'ou clique para escolher · imagens, áudio, PDF e texto até 20 MB por arquivo. Novos arquivos ficam visíveis somente ao narrador até o acesso ser alterado.'}
 			</small>
 		</button>
 	{/if}
