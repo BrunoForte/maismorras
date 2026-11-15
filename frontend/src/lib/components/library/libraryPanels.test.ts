@@ -46,6 +46,7 @@ describe('library panels role controls', () => {
 		const gmHtml = render(LibraryAssetsPanel, { props }).body;
 		const playerHtml = render(LibraryAssetsPanel, { props: { ...props, isGM: false } }).body;
 		expect(gmHtml).toContain('Adicionar mídia');
+		expect(gmHtml).toContain('Novos arquivos ficam visíveis somente ao narrador');
 		expect(gmHtml).toContain('Gerenciar acesso a mapa.png');
 		expect(gmHtml).toContain('Exibir mapa.png para a mesa');
 		expect(playerHtml).not.toContain('Adicionar mídia');

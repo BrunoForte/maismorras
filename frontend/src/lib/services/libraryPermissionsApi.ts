@@ -38,3 +38,12 @@ export async function saveLibraryPermissions(
 		'Não foi possível salvar as permissões.'
 	);
 }
+
+/** Runs access setup before upload, so a new asset is never briefly unrestricted. */
+export async function uploadLibraryAssetPrivately(
+	setGMOnlyAccess: () => Promise<unknown>,
+	upload: () => Promise<void>
+) {
+	await setGMOnlyAccess();
+	await upload();
+}

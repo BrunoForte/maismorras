@@ -13,7 +13,8 @@
 	import {
 		currentPlayerIds,
 		loadLibraryPermissions,
-		saveLibraryPermissions
+		saveLibraryPermissions,
+		uploadLibraryAssetPrivately
 	} from '$lib/services/libraryPermissionsApi';
 	import { libraryAccessMode } from '$lib/utils/libraryRules';
 	import { getPresentation, type Presentation } from '$lib/services/presentationApi';
@@ -520,13 +521,19 @@
 				const optimized = await optimizeImage(file);
 				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
 				const audioPrefix = optimized.file.type.startsWith('audio/') ? 'music_loop__' : '';
-				const { error } = await supabase.storage
-					.from('campaign-assets')
-					.upload(`${folder()}/${crypto.randomUUID()}-${audioPrefix}${name}`, optimized.file, {
-						contentType: optimized.file.type,
-						cacheControl: '3600'
-					});
-				if (error) throw error;
+				const path = `${folder()}/${crypto.randomUUID()}-${audioPrefix}${name}`;
+				await uploadLibraryAssetPrivately(
+					() => saveLibraryPermissions(session, campaignId, 'asset', path, [], true),
+					async () => {
+						const { error } = await supabase.storage
+							.from('campaign-assets')
+							.upload(path, optimized.file, {
+								contentType: optimized.file.type,
+								cacheControl: '3600'
+							});
+						if (error) throw error;
+					}
+				);
 				uploaded++;
 			}
 			await loadAssets();
@@ -534,7 +541,7 @@
 				message =
 					$appLocale === 'en'
 						? `${uploaded} media item(s) added.`
-						: `${uploaded} mídia(s) adicionada(s).`;
+						: `${uploaded} mídia(s) adicionada(s). Acesso inicial: somente o narrador.`;
 		} catch {
 			message = '';
 			notifyUserRequestError(
