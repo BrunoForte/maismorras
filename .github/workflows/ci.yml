@@ -423,6 +423,29 @@ jobs:
                 $phaseDurations['Campaign Sheets tab E2E'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
                 if ($LASTEXITCODE -ne 0) { throw 'Authenticated campaign Sheets tab E2E failed.' }
               }
+
+              $phaseWatch.Restart()
+              $audioMetadataReport = Join-Path $env:RUNNER_TEMP 'audio-original-filename-storage-playwright.json'
+              $audioMetadataOutput = Join-Path $env:RUNNER_TEMP 'audio-original-filename-storage-results'
+              $previousJsonOutputFile = $env:PLAYWRIGHT_JSON_OUTPUT_FILE
+              $env:PLAYWRIGHT_JSON_OUTPUT_FILE = $audioMetadataReport
+              try {
+                & npx playwright test e2e/local-audio-original-filename.spec.ts --project=chromium --workers=1 --retries=0 --reporter=json --output $audioMetadataOutput
+                $audioMetadataExitCode = $LASTEXITCODE
+              } finally {
+                if ($null -eq $previousJsonOutputFile) {
+                  Remove-Item Env:PLAYWRIGHT_JSON_OUTPUT_FILE -ErrorAction SilentlyContinue
+                } else {
+                  $env:PLAYWRIGHT_JSON_OUTPUT_FILE = $previousJsonOutputFile
+                }
+              }
+              if ($audioMetadataExitCode -ne 0) { throw 'Original audio filename Storage E2E failed; details remain in the ephemeral runner.' }
+              $audioMetadataResult = Get-Content -LiteralPath $audioMetadataReport -Raw | ConvertFrom-Json
+              if ($audioMetadataResult.stats.expected -ne 1 -or $audioMetadataResult.stats.skipped -ne 0 -or $audioMetadataResult.stats.unexpected -ne 0 -or $audioMetadataResult.stats.flaky -ne 0) {
+                throw 'Original audio filename Storage E2E did not report exactly one PASS, zero SKIP, and zero flaky results.'
+              }
+              Write-Output 'Original audio filename Storage E2E: explicit PASS, 0 SKIP, 0 flaky results.'
+              $phaseDurations['Original audio filename Storage E2E'] = [Math]::Round($phaseWatch.Elapsed.TotalMilliseconds)
             } finally { Pop-Location }
           } finally {
             $phaseWatch.Restart()

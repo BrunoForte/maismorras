@@ -8,7 +8,13 @@
 	import { clearSignedAssetCache, getSignedAssetUrl } from '$lib/services/assetApi';
 	import { notifyUserRequestError, request } from '$lib/services/httpClient';
 	import { optimizeImage } from '$lib/services/imageProcessing';
-	import { audioAssetKind, audioAssetLooping } from '$lib/services/audioPlayback';
+	import {
+		audioAssetDisplayName,
+		audioAssetKind,
+		audioAssetLooping,
+		audioStorageObjectName,
+		audioUploadMetadata
+	} from '$lib/services/audioPlayback';
 	import { listParticipants, type Participant } from '$lib/services/characterApi';
 	import {
 		currentPlayerIds,
@@ -451,13 +457,25 @@
 		}
 		const listed = await Promise.all(
 			(data ?? []).map(async (file) => {
-				if (!isGM && file.metadata?.mimetype?.startsWith('audio/')) return null;
-				const signed = await getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
+				const isAudio = file.metadata?.mimetype?.startsWith('audio/') === true;
+				if (!isGM && isAudio) return null;
+				const storage = supabase.storage.from('campaign-assets');
+				const signedPromise = getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
+				// list() omits custom user metadata; info() exposes it on the Storage API.
+				const metadataPromise = isAudio
+					? storage
+							.info(file.name)
+							.then(({ data: info }) => info?.metadata?.originalFileName)
+							.catch(() => undefined)
+					: undefined;
+				const [signed, originalFileName] = await Promise.all([signedPromise, metadataPromise]);
 				return signed
 					? {
-							name: file.name
-								.replace(/^[a-f0-9-]+-/, '')
-								.replace(/^(?:effect|sfx|music)(?:_(?:loop|once))?__/, ''),
+							name: isAudio
+								? audioAssetDisplayName(file.name, originalFileName)
+								: file.name
+										.replace(/^[a-f0-9-]+-/, '')
+										.replace(/^(?:effect|sfx|music)(?:_(?:loop|once))?__/, ''),
 							path: `${folder()}/${file.name}`,
 							url: signed,
 							type: file.metadata?.mimetype?.startsWith('audio/')
@@ -468,7 +486,7 @@
 									: /map|scene|battle|mapa|cena/i.test(file.name)
 										? ('map' as const)
 										: ('image' as const),
-							...(file.metadata?.mimetype?.startsWith('audio/')
+							...(isAudio
 								? {
 										audioKind: audioAssetKind(file.name),
 										audioLooping: audioAssetLooping(file.name)
@@ -518,13 +536,17 @@
 			if (!supabase) throw new Error('Supabase não está configurado.');
 			for (const file of accepted) {
 				const optimized = await optimizeImage(file);
-				const name = optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-				const audioPrefix = optimized.file.type.startsWith('audio/') ? 'music_loop__' : '';
+				const isAudio = optimized.file.type.startsWith('audio/');
+				const name = isAudio
+					? audioStorageObjectName(file.name, crypto.randomUUID())
+					: `${crypto.randomUUID()}-${optimized.file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+				const metadata = isAudio ? audioUploadMetadata(file.name) : undefined;
 				const { error } = await supabase.storage
 					.from('campaign-assets')
-					.upload(`${folder()}/${crypto.randomUUID()}-${audioPrefix}${name}`, optimized.file, {
+					.upload(`${folder()}/${name}`, optimized.file, {
 						contentType: optimized.file.type,
-						cacheControl: '3600'
+						cacheControl: '3600',
+						...(metadata ? { metadata } : {})
 					});
 				if (error) throw error;
 				uploaded++;

@@ -10,6 +10,30 @@ export type AudioPlaybackState = {
 
 export type AudioAssetKind = 'music' | 'effect';
 
+/**
+ * Creates an ASCII-only Storage key for an uploaded audio file.
+ * The UUID keeps duplicate display names distinct; the marker remains readable
+ * by the backend's reclassification endpoint and playback helpers.
+ */
+export function audioStorageObjectName(
+	originalFileName: string,
+	objectId: string,
+	kind: AudioAssetKind = 'music',
+	looping = true
+): string {
+	const id = objectId.toLowerCase();
+	if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) {
+		throw new Error('Audio Storage keys require a UUID.');
+	}
+	const safeExtension = /\.([a-zA-Z0-9]{1,10})$/.exec(originalFileName)?.[1]?.toLowerCase();
+	const loopMode = looping ? 'loop' : 'once';
+	return `${id}-${kind}_${loopMode}__audio${safeExtension ? `.${safeExtension}` : ''}`;
+}
+
+export function audioUploadMetadata(originalFileName: string): Record<string, string> {
+	return { originalFileName };
+}
+
 /** Legacy audio files remain music; new uploads carry an explicit, path-stable kind prefix. */
 export function audioAssetKind(name: string): AudioAssetKind {
 	return /(?:^|[-/])(?:effect(?:_(?:loop|once))?|sfx)__/.test(name) ? 'effect' : 'music';
@@ -22,7 +46,8 @@ export function audioAssetLooping(name: string): boolean {
 	return audioAssetKind(name) === 'music';
 }
 
-export function audioAssetDisplayName(name: string): string {
+export function audioAssetDisplayName(name: string, originalFileName?: unknown): string {
+	if (typeof originalFileName === 'string' && originalFileName.length > 0) return originalFileName;
 	return name
 		.split('/')
 		.at(-1)!

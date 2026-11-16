@@ -36,6 +36,7 @@ func TestReclassifiedAudioPathSupportsExistingAndTaggedAssets(t *testing.T) {
 	}{
 		{"campaigns/campaign-id/media/ambient.mp3", "effect", false, "campaigns/campaign-id/media/effect_once__ambient.mp3"},
 		{"campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-music__rain.mp3", "effect", false, "campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-effect_once__rain.mp3"},
+		{"campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-music_loop__audio.mp3", "effect", false, "campaigns/campaign-id/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-effect_once__audio.mp3"},
 		{"campaigns/campaign-id/media/sfx__thunder.ogg", "music", true, "campaigns/campaign-id/media/music_loop__thunder.ogg"},
 		{"campaigns/campaign-id/media/effect_once__rain.mp3", "effect", true, "campaigns/campaign-id/media/effect_loop__rain.mp3"},
 	}
