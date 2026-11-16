@@ -174,8 +174,10 @@ test('Storage keeps the original audio filename metadata after reclassification'
 		};
 		expect(uploadedInfo.metadata?.originalFileName).toBe(originalFileName);
 
+		infoResponses.clear();
 		await page.reload();
 		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20_000 });
+		await expect.poll(() => infoResponses.has(storagePath!), { timeout: 15_000 }).toBe(true);
 		const musicOption = page
 			.locator('.music-player select option')
 			.filter({ hasText: originalFileName });

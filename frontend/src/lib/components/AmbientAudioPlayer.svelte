@@ -191,7 +191,7 @@
 					const kind = audioAssetKind(file.name);
 					let originalFileName: unknown;
 					try {
-						const { data: info } = await supabase.storage.from('campaign-assets').info(file.name);
+						const { data: info } = await supabase.storage.from('campaign-assets').info(path);
 						originalFileName = info?.metadata?.originalFileName;
 					} catch {
 						// Keep legacy/path-based naming if custom metadata cannot be read.

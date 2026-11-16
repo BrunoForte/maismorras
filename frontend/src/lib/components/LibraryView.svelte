@@ -460,11 +460,12 @@
 				const isAudio = file.metadata?.mimetype?.startsWith('audio/') === true;
 				if (!isGM && isAudio) return null;
 				const storage = supabase.storage.from('campaign-assets');
-				const signedPromise = getSignedAssetUrl(session, campaignId, `${folder()}/${file.name}`);
+				const objectPath = `${folder()}/${file.name}`;
+				const signedPromise = getSignedAssetUrl(session, campaignId, objectPath);
 				// list() omits custom user metadata; info() exposes it on the Storage API.
 				const metadataPromise = isAudio
 					? storage
-							.info(file.name)
+							.info(objectPath)
 							.then(({ data: info }) => info?.metadata?.originalFileName)
 							.catch(() => undefined)
 					: undefined;
@@ -476,7 +477,7 @@
 								: file.name
 										.replace(/^[a-f0-9-]+-/, '')
 										.replace(/^(?:effect|sfx|music)(?:_(?:loop|once))?__/, ''),
-							path: `${folder()}/${file.name}`,
+							path: objectPath,
 							url: signed,
 							type: file.metadata?.mimetype?.startsWith('audio/')
 								? ('audio' as const)
