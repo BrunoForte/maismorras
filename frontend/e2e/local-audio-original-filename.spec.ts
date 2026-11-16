@@ -5,9 +5,62 @@ import {
 	localStackEnabled
 } from './local-authenticated.helpers';
 
+async function attachSanitizedStorageResponse(
+	testInfo: import('@playwright/test').TestInfo,
+	response: import('@playwright/test').Response,
+	objectPath: string
+) {
+	const payload = await response.json().catch(() => null);
+	const allowedKeys = new Set([
+		'Key',
+		'Id',
+		'key',
+		'id',
+		'status',
+		'statusCode',
+		'error',
+		'message'
+	]);
+	const sanitizedPayload =
+		payload && typeof payload === 'object' && !Array.isArray(payload)
+			? Object.fromEntries(
+					Object.entries(payload)
+						.filter(
+							([key, value]) => allowedKeys.has(key) && ['string', 'number'].includes(typeof value)
+						)
+						.map(([key, value]) => [
+							key,
+							typeof value === 'string'
+								? value
+										.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+										.replace(
+											/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{8,}\b/g,
+											'[REDACTED_JWT]'
+										)
+										.slice(0, 300)
+								: value
+						])
+				)
+			: null;
+	await testInfo.attach('storage-upload-response-sanitized.json', {
+		contentType: 'application/json',
+		body: Buffer.from(
+			JSON.stringify(
+				{
+					status: response.status(),
+					objectName: objectPath.split('/').at(-1),
+					body: sanitizedPayload
+				},
+				null,
+				2
+			)
+		)
+	});
+}
+
 test('Storage keeps the original audio filename metadata after reclassification', async ({
 	browser
-}) => {
+}, testInfo) => {
 	expect(localStackEnabled, 'This check must run against the isolated local Supabase stack').toBe(
 		true
 	);
@@ -44,10 +97,11 @@ test('Storage keeps the original audio filename metadata after reclassification'
 			page.getByTestId('audio-asset-card').filter({ hasText: 'e2e-music-old-' })
 		).toHaveCount(1);
 
-		const uploadRequestPromise = page.waitForRequest((request) => {
+		const uploadResponsePromise = page.waitForResponse((response) => {
+			const request = response.request();
 			if (request.method() !== 'POST') return false;
 			try {
-				return new URL(request.url()).pathname.includes(
+				return new URL(response.url()).pathname.startsWith(
 					`/storage/v1/object/campaign-assets/campaigns/${fixture!.campaignId}/media/`
 				);
 			} catch {
@@ -59,13 +113,23 @@ test('Storage keeps the original audio filename metadata after reclassification'
 			mimeType: 'audio/wav',
 			buffer: createSilentWav(32_000)
 		});
-		const uploadRequest = await uploadRequestPromise;
-		const uploadPathname = decodeURIComponent(new URL(uploadRequest.url()).pathname);
+		const uploadResponse = await uploadResponsePromise;
+		const uploadPathname = decodeURIComponent(new URL(uploadResponse.url()).pathname);
 		const uploadPrefix = '/storage/v1/object/campaign-assets/';
 		const uploadPrefixIndex = uploadPathname.indexOf(uploadPrefix);
 		if (uploadPrefixIndex >= 0) {
 			cleanupPaths.add(uploadPathname.slice(uploadPrefixIndex + uploadPrefix.length));
 		}
+		if (!uploadResponse.ok()) {
+			await attachSanitizedStorageResponse(
+				testInfo,
+				uploadResponse,
+				uploadPathname.slice(uploadPrefixIndex + uploadPrefix.length)
+			);
+		}
+		expect(uploadResponse.ok(), `Storage upload returned HTTP ${uploadResponse.status()}`).toBe(
+			true
+		);
 		expect(uploadPathname.startsWith(uploadPrefix)).toBe(true);
 		storagePath = uploadPathname.slice(uploadPrefix.length);
 		cleanupPaths.add(storagePath);
@@ -89,8 +153,14 @@ test('Storage keeps the original audio filename metadata after reclassification'
 
 		const legacyCard = page.getByTestId('audio-asset-card').filter({ hasText: 'e2e-music-old-' });
 		await expect(legacyCard).toHaveCount(1);
+		await expect(page.getByText('1 mídia(s) adicionada(s).', { exact: true })).toBeVisible();
 		const uploadedCard = page.getByTestId('audio-asset-card').filter({ hasText: originalFileName });
-		await expect(uploadedCard).toBeVisible();
+		try {
+			await expect(uploadedCard).toBeVisible();
+		} catch (error) {
+			await attachSanitizedStorageResponse(testInfo, uploadResponse, storagePath);
+			throw error;
+		}
 		await expect(uploadedCard.locator('audio')).toHaveAttribute(
 			'aria-label',
 			`Controles da faixa: ${originalFileName}`
