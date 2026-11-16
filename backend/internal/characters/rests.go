@@ -149,8 +149,9 @@ func (r *Repository) RestCharacterWithHitDiceCount(ctx context.Context, campaign
 		payload, marshalErr := json.Marshal(map[string]any{
 			"expressao": expression, "dados": result.Dice, "modo": "normal",
 			"modificador": result.Modifier, "total": result.Total, "hpRecovered": result.HPRecovered, "label": result.Label,
-			"text":    fmt.Sprintf("%s · descanso curto · dados [%s] · Constituição %+d por dado · recuperação %d PV", result.Label, joinDice(result.Dice), result.Modifier, result.HPRecovered),
-			"channel": "combat", "hitDie": true,
+			"characterName": sheet.Name,
+			"text":          fmt.Sprintf("%s · descanso curto · dados [%s] · Constituição %+d por dado · recuperação %d PV", result.Label, joinDice(result.Dice), result.Modifier, result.HPRecovered),
+			"channel":       "combat", "hitDie": true,
 		})
 		if marshalErr != nil {
 			return RestResult{}, marshalErr

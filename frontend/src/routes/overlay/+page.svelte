@@ -378,8 +378,9 @@
 				if (!initialized) seenRolls.add(message.id);
 				else if (!seenRolls.has(message.id) && message.detalhesRolagem) {
 					seenRolls.add(message.id);
+					const rollLabel = message.detalhesRolagem.label ?? message.detalhesRolagem.expressao;
 					diceOverlay.set({
-						expression: message.detalhesRolagem.label ?? message.detalhesRolagem.expressao,
+						expression: message.autor ? `${message.autor} · ${rollLabel}` : rollLabel,
 						notation: message.detalhesRolagem.expressao,
 						total: message.detalhesRolagem.total,
 						dice: message.detalhesRolagem.dados,

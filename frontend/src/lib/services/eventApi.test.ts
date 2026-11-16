@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('./httpClient', () => ({ request }));
 
-import { publishSpellToChat, rollDice } from './eventApi';
+import { campaignEventToMessage, publishSpellToChat, rollDice } from './eventApi';
 
 describe('publishSpellToChat', () => {
 	beforeEach(() => request.mockReset());
@@ -49,6 +49,27 @@ describe('publishSpellToChat', () => {
 describe('rollDice', () => {
 	beforeEach(() => request.mockReset());
 
+	it('envia a ficha associada à rolagem para validação pelo backend', async () => {
+		request.mockResolvedValueOnce({ id: 93, type: 'dice.roll', payload: {} });
+		await rollDice(
+			{} as Session,
+			'campaign-1',
+			'1d20+4',
+			undefined,
+			'combat',
+			undefined,
+			false,
+			false,
+			'character-1'
+		);
+
+		const body = JSON.parse(request.mock.calls[0][2].body as string);
+		expect(body).toEqual({
+			type: 'dice.roll',
+			payload: { expression: '1d20+4', channel: 'combat', characterId: 'character-1' }
+		});
+	});
+
 	it('marca a rolagem de dano de arma para validação e crítico no servidor', async () => {
 		request.mockResolvedValueOnce({ id: 92, type: 'dice.roll', payload: {} });
 		await rollDice(
@@ -78,5 +99,48 @@ describe('rollDice', () => {
 				})
 			})
 		);
+	});
+});
+
+describe('campaignEventToMessage roll authorship', () => {
+	const rollEvent = (author: string, payload: Record<string, unknown>) => ({
+		id: 94,
+		author,
+		type: 'dice.roll' as const,
+		payload: {
+			expressao: '1d20+4',
+			dados: [13],
+			total: 17,
+			label: 'Teste de Percepção',
+			text: 'Teste de Percepção · Normal · resultado 17',
+			channel: 'combat',
+			...payload
+		},
+		createdAt: '2026-11-15T12:00:00Z'
+	});
+
+	it('uses the associated character as chat author and supplies the overlay name-label pair', () => {
+		const message = campaignEventToMessage(
+			rollEvent('Conta do narrador', { characterName: 'Aela' })
+		);
+
+		expect(message).toMatchObject({
+			tipo: 'rolagem',
+			autor: 'Aela',
+			detalhesRolagem: { label: 'Teste de Percepção', expressao: '1d20+4' }
+		});
+		expect(`${message?.autor} · ${message?.detalhesRolagem?.label}`).toBe(
+			'Aela · Teste de Percepção'
+		);
+	});
+
+	it.each([
+		{ name: 'legacy event without characterName', payload: {} },
+		{ name: 'event without an associated character', payload: { characterName: '  ' } }
+	])('keeps the account author for a $name', ({ payload }) => {
+		const message = campaignEventToMessage(rollEvent('Conta da jogadora', payload));
+
+		expect(message?.autor).toBe('Conta da jogadora');
+		expect(message?.detalhesRolagem?.label).toBe('Teste de Percepção');
 	});
 });

@@ -72,6 +72,7 @@ export type CharacterCombatActionDependencies = {
 	getSheet: () => CharacterSheet;
 	getCanCastSelectedCharacter: () => boolean;
 	getCanDisplaySelectedCharacter: () => boolean;
+	getRollCharacterId?: () => string | null;
 	setSheet: (sheet: CharacterSheet) => void;
 	getResolvedCharacterId: () => string | null;
 	getInitiativeTokenId: () => string | null;
@@ -115,7 +116,8 @@ export type CharacterCombatActionDependencies = {
 		channel?: 'chat' | 'combat',
 		minimumDamageDie?: 0 | 3,
 		weaponDamage?: boolean,
-		critical?: boolean
+		critical?: boolean,
+		characterId?: string
 	) => Promise<DiceEvent>;
 	rollTokenInitiative: (
 		session: Session,
@@ -178,6 +180,13 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 	let structuralContextKey = structuralKeyFor(deps.getContext());
 	let lastCriticalWeapon: string | null = null;
 	let lastCriticalAttack: number | null = null;
+	const rollCharacterId = () => {
+		if (deps.getRollCharacterId) return deps.getRollCharacterId() ?? undefined;
+		const context = deps.getContext();
+		return context.isGM
+			? undefined
+			: (deps.getResolvedCharacterId() ?? context.characterId ?? undefined);
+	};
 
 	function structuralKeyFor(context: CharacterCombatContext) {
 		return [
@@ -386,7 +395,13 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					const event = await deps.rollDice(
 						context.session,
 						context.campaignId,
-						`1d${hitDie}${constitutionModifier >= 0 ? '+' : ''}${constitutionModifier}`
+						`1d${hitDie}${constitutionModifier >= 0 ? '+' : ''}${constitutionModifier}`,
+						undefined,
+						undefined,
+						undefined,
+						false,
+						false,
+						rollCharacterId()
 					);
 					if (!isCurrent(operation)) return;
 					rolledTotals.push((event.payload as { total: number }).total);
@@ -565,7 +580,11 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					context.campaignId,
 					`1d20${details.attackBonus >= 0 ? '+' : ''}${details.attackBonus}`,
 					mode === 'normal' ? undefined : mode,
-					'combat'
+					'combat',
+					undefined,
+					false,
+					false,
+					rollCharacterId()
 				);
 				if (!isCurrent(operation)) return;
 				const result = event.payload as { expressao: string; dados: number[]; total: number };
@@ -619,7 +638,8 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 					'combat',
 					components.length ? details.minimumDamageDie : undefined,
 					true,
-					isCritical
+					isCritical,
+					rollCharacterId()
 				);
 				if (!isCurrent(operation)) return;
 				const damage = event.payload as {
@@ -684,7 +704,11 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			context.campaignId,
 			`1d20${bonus >= 0 ? '+' : ''}${bonus}`,
 			mode === 'normal' ? undefined : mode,
-			'combat'
+			'combat',
+			undefined,
+			false,
+			false,
+			rollCharacterId()
 		);
 		if (!isCurrent(operation)) return;
 		const attack = event.payload as { dados: number[]; total: number; expressao: string };
@@ -731,7 +755,11 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 			context.campaignId,
 			`${count}d${match[2]}${modifier ? `${modifier >= 0 ? '+' : ''}${modifier}` : ''}`,
 			undefined,
-			'combat'
+			'combat',
+			undefined,
+			false,
+			false,
+			rollCharacterId()
 		);
 		if (!isCurrent(operation)) return;
 		const result = event.payload as { dados: number[]; total: number; expressao: string };
@@ -828,7 +856,11 @@ export function createCharacterCombatActions(deps: CharacterCombatActionDependen
 				context.campaignId,
 				expression,
 				undefined,
-				'combat'
+				'combat',
+				undefined,
+				false,
+				false,
+				rollCharacterId()
 			);
 			if (!isCurrent(operation)) return;
 			const result = event.payload as {

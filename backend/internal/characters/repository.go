@@ -389,7 +389,7 @@ func (r *Repository) rollSheetForActor(ctx context.Context, campaignID, userID s
 	result.Dice = d20.Rolls
 	result.Kept = d20.Kept
 	result.Total = d20.Total
-	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "dadoEscolhido": result.Kept, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "text": fmt.Sprintf("%s · %s · dados [%s] · escolhido %d · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Kept, result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
+	payload, _ := json.Marshal(map[string]any{"expressao": "1d20", "dados": result.Dice, "dadoEscolhido": result.Kept, "modo": mode, "modificador": result.Modifier, "total": result.Total, "label": result.Label, "characterName": sheet.Name, "text": fmt.Sprintf("%s · %s · dados [%s] · escolhido %d · modificador %+d · resultado %d", result.Label, map[string]string{"normal": "Normal", "advantage": "Vantagem", "disadvantage": "Desvantagem"}[mode], joinDice(result.Dice), result.Kept, result.Modifier, result.Total), "channel": "combat", "sheetRoll": true})
 	err := r.pool.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,'dice.roll',$3) returning id`, campaignID, userID, payload).Scan(&result.EventID)
 	return result, err
 }
@@ -745,7 +745,7 @@ func (r *Repository) CastSpell(ctx context.Context, campaignID, userID string, i
 		eventType = "chat.message"
 		payload, _ = json.Marshal(map[string]any{"text": chatText, "channel": "chat", "spellCast": true, "spellName": spell.Name, "baseLevel": 0, "slotLevel": 0})
 	} else {
-		payload, _ = json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "label": spell.Name, "text": chatText, "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect, "spellcastingAbility": castingAbility})
+		payload, _ = json.Marshal(map[string]any{"expressao": expression, "dados": dice, "modo": "normal", "modificador": modifier, "total": total, "label": spell.Name, "characterName": sheet.Name, "text": chatText, "channel": "combat", "spellCast": true, "spellName": spell.Name, "baseLevel": spell.Level, "slotLevel": slotLevel, "effect": effect, "spellcastingAbility": castingAbility})
 	}
 	var eventID int64
 	if err = tx.QueryRow(ctx, `insert into game_events(campaign_id,actor_id,event_type,payload) values($1,$2,$3,$4) returning id`, campaignID, userID, eventType, payload).Scan(&eventID); err != nil {

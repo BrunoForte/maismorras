@@ -536,6 +536,8 @@
 		getSheet: () => sheet,
 		getCanCastSelectedCharacter: () => !isGM || sheetOwnerId === session.user.id,
 		getCanDisplaySelectedCharacter: () => isGM || !characterId || sheetOwnerId === session.user.id,
+		getRollCharacterId: () =>
+			sheetOwnerId ? (characterId ?? lifecycle.state.resolvedCharacterId) : null,
 		setSheet: (next) => (sheet = next),
 		getResolvedCharacterId: () => lifecycle.state.resolvedCharacterId,
 		getInitiativeTokenId: () => lifecycle.state.initiativeTokenId,
