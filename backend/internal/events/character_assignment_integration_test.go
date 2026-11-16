@@ -74,16 +74,16 @@ func TestCreateEventValidatesCharacterAssignmentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var ownCharacterID, otherPlayerCharacterID, ownerlessCharacterID, otherCampaignCharacterID string
-	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','Aela da Aurora','{}') returning id::text`, campaignID, playerID).Scan(&ownCharacterID); err != nil {
+	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,full_npc,name,sheet) values($1,$2,'character',false,'Aela da Aurora','{}') returning id::text`, campaignID, playerID).Scan(&ownCharacterID); err != nil {
 		t.Fatal(err)
 	}
-	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','Personagem de outra jogadora','{}') returning id::text`, campaignID, otherPlayerID).Scan(&otherPlayerCharacterID); err != nil {
+	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,full_npc,name,sheet) values($1,$2,'character',false,'Personagem de outra jogadora','{}') returning id::text`, campaignID, otherPlayerID).Scan(&otherPlayerCharacterID); err != nil {
 		t.Fatal(err)
 	}
-	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,NULL,'character','NPC sem proprietário','{}') returning id::text`, campaignID).Scan(&ownerlessCharacterID); err != nil {
+	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,full_npc,name,sheet) values($1,NULL,'character',true,'NPC sem proprietário','{}') returning id::text`, campaignID).Scan(&ownerlessCharacterID); err != nil {
 		t.Fatal(err)
 	}
-	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,name,sheet) values($1,$2,'character','Ficha de outra campanha','{}') returning id::text`, otherCampaignID, playerID).Scan(&otherCampaignCharacterID); err != nil {
+	if err := setup.QueryRow(ctx, `insert into actors(campaign_id,owner_id,kind,full_npc,name,sheet) values($1,$2,'character',false,'Ficha de outra campanha','{}') returning id::text`, otherCampaignID, playerID).Scan(&otherCampaignCharacterID); err != nil {
 		t.Fatal(err)
 	}
 	if err := setup.Commit(ctx); err != nil {
