@@ -144,6 +144,31 @@ describe('library panels role controls', () => {
 		expect(audioHtml).not.toContain('Imagens e mapas');
 	});
 
+	it('renders the resolved original audio filename in the library card and player controls', () => {
+		const originalName = 'Trilha — São João (versão #2).mp3';
+		const html = render(LibraryAssetsPanel, {
+			props: {
+				assets: [
+					{
+						...asset,
+						name: originalName,
+						path: 'campaigns/c1/media/64d0ac72-music_loop__audio.mp3',
+						type: 'audio'
+					}
+				],
+				isGM: true,
+				filter: 'audio',
+				uploading: false,
+				deletingAsset: null,
+				changingAudioKind: null,
+				actions: assetActions
+			}
+		}).body;
+
+		expect(html).toContain(originalName);
+		expect(html).toContain(`Controles da faixa: ${originalName}`);
+	});
+
 	it('shows current presentation source state and offers hide only when media is active', () => {
 		const onhide = () => {};
 		const inactive = render(LibraryPresentationStatus, {

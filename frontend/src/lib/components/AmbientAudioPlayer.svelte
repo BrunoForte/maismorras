@@ -183,18 +183,29 @@
 				sortBy: { column: 'created_at', order: 'desc' }
 			});
 		if (scene.campaignId !== currentCampaignId) return;
-		tracks = (data ?? [])
-			.filter((file) => file.metadata?.mimetype?.startsWith('audio/'))
-			.map((file) => {
-				const path = `campaigns/${currentCampaignId}/media/${file.name}`;
-				const kind = audioAssetKind(file.name);
-				return {
-					path,
-					name: audioAssetDisplayName(file.name.replace(/^[a-f0-9-]+-/, '')),
-					// Keep previously selected, untagged effects usable after introducing categories.
-					kind: path === scene.ambientEffectPath ? 'effect' : kind
-				};
-			});
+		const loadedTracks = await Promise.all(
+			(data ?? [])
+				.filter((file) => file.metadata?.mimetype?.startsWith('audio/'))
+				.map(async (file) => {
+					const path = `campaigns/${currentCampaignId}/media/${file.name}`;
+					const kind = audioAssetKind(file.name);
+					let originalFileName: unknown;
+					try {
+						const { data: info } = await supabase.storage.from('campaign-assets').info(path);
+						originalFileName = info?.metadata?.originalFileName;
+					} catch {
+						// Keep legacy/path-based naming if custom metadata cannot be read.
+					}
+					return {
+						path,
+						name: audioAssetDisplayName(file.name, originalFileName),
+						// Keep previously selected, untagged effects usable after introducing categories.
+						kind: path === scene.ambientEffectPath ? 'effect' : kind
+					};
+				})
+		);
+		if (scene.campaignId !== currentCampaignId) return;
+		tracks = loadedTracks;
 	}
 
 	function sceneWithAudio(

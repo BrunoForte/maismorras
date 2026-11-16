@@ -3,6 +3,8 @@ import {
 	audioAssetDisplayName,
 	audioAssetKind,
 	audioAssetLooping,
+	audioStorageObjectName,
+	audioUploadMetadata,
 	CrossfadeAudio,
 	withListenerVolume
 } from './audioPlayback';
@@ -47,6 +49,38 @@ describe('CrossfadeAudio', () => {
 		expect(audioAssetLooping('effect__rain.mp3')).toBe(false);
 		expect(audioAssetLooping('theme.mp3')).toBe(true);
 	});
+
+	it('keeps original audio names in metadata while using unique safe keys', () => {
+		const originalName = 'Trilha — São João (versão #2).MP3';
+		const firstKey = audioStorageObjectName(originalName, '64d0ac72-44de-4f2a-b976-ef6d3088d741');
+		const duplicateKey = audioStorageObjectName(
+			originalName,
+			'64d0ac72-44de-4f2a-b976-ef6d3088d742'
+		);
+
+		expect(firstKey).toBe('64d0ac72-44de-4f2a-b976-ef6d3088d741-music_loop__audio.mp3');
+		expect([...firstKey].every((character) => (character.codePointAt(0) ?? 0) <= 0x7f)).toBe(true);
+		expect(firstKey).not.toContain(' ');
+		expect(duplicateKey).not.toBe(firstKey);
+		expect(audioUploadMetadata(originalName)).toEqual({ originalFileName: originalName });
+	});
+
+	it('shows original metadata after audio reclassification and falls back for legacy files', () => {
+		const originalName = 'Ambiente: floresta & chuva.ogg';
+		const metadata = audioUploadMetadata(originalName);
+		const reclassifiedPath =
+			'campaigns/c1/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-effect_once__audio.ogg';
+
+		expect(audioAssetKind(reclassifiedPath)).toBe('effect');
+		expect(audioAssetLooping(reclassifiedPath)).toBe(false);
+		expect(audioAssetDisplayName(reclassifiedPath, metadata.originalFileName)).toBe(originalName);
+		expect(
+			audioAssetDisplayName(
+				'campaigns/c1/media/64d0ac72-44de-4f2a-b976-ef6d3088d741-music_loop__legacy.mp3'
+			)
+		).toBe('legacy.mp3');
+	});
+
 	it('applies personal output volume without mutating the shared audio state', () => {
 		const shared = { path: 'music.mp3', playing: true, volume: 0.8, positionMs: 0, startedAt: 10 };
 		expect(withListenerVolume(shared, 50).volume).toBe(0.4);
