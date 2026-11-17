@@ -45,23 +45,29 @@
 			>
 		{/if}
 	</div>
-	<div>
+	<div class="saving-throws-grid">
 		{#each attributes as attribute (attribute.key)}
-			<article>
+			<article class="saving-throw-row">
 				<label
+					class="saving-throw-proficiency"
 					title={$appLocale === 'en'
 						? `${abilityLabel(attribute.key)} saving throw proficiency`
 						: `Proficiência em resistência de ${abilityLabel(attribute.key)}`}
 				>
-					<span>{abilityLabel(attribute.key)}</span>
 					<input
 						type="checkbox"
+						aria-label={$appLocale === 'en'
+							? `${abilityLabel(attribute.key)} saving throw proficiency`
+							: `Proficiência em resistência de ${abilityLabel(attribute.key)}`}
 						checked={sheet.savingThrows.includes(attribute.key)}
 						onchange={() => toggleSavingThrow(attribute.key)}
 					/>
 				</label>
+				<span class="saving-throw-ability">{abilityLabel(attribute.key)}</span>
 				<strong>{saveBonus(attribute.key) >= 0 ? '+' : ''}{saveBonus(attribute.key)}</strong>
 				<button
+					type="button"
+					class="saving-throw-roll"
 					onclick={() =>
 						void rollSave(
 							attribute.key,
@@ -97,30 +103,27 @@
 		color: #e8c786;
 		background: #211a1b;
 	}
-	.saving-throws > div:last-child {
+	.saving-throws-grid {
 		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.45rem;
 	}
-	.saving-throws article {
+	.saving-throw-row {
+		min-width: 0;
 		display: grid;
-		grid-template-rows: auto 1fr auto;
-		place-items: center;
-		gap: 0.3rem;
+		grid-template-columns: auto minmax(0, 1fr) auto auto;
+		align-items: center;
+		gap: 0.55rem;
 		border: 1px solid #493c39;
 		border-radius: 7px;
-		padding: 0.5rem;
+		padding: 0.55rem;
 		color: #cbbbab;
 	}
-	.saving-throws article label {
-		display: flex;
-		align-items: center;
-		gap: 0.28rem;
-		color: #d8c5aa;
-		font-size: 0.68rem;
-		font-weight: 800;
+	.saving-throw-proficiency {
+		display: grid;
+		place-items: center;
 	}
-	.saving-throws article input {
+	.saving-throw-proficiency input {
 		appearance: none;
 		width: 1rem;
 		height: 1rem;
@@ -130,29 +133,49 @@
 		padding: 0;
 		background: #171216;
 	}
-	.saving-throws article input:checked {
+	.saving-throw-proficiency input:checked {
 		border-color: #e0b86f;
 		background: #e0b86f;
 		box-shadow: inset 0 0 0 3px #211914;
 	}
-	.saving-throws strong {
+	.saving-throw-ability {
+		min-width: 0;
+		overflow: hidden;
+		color: #eee4d6;
+		font-size: 0.75rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.saving-throw-row strong {
+		min-width: 2.1rem;
 		display: grid;
 		place-items: center;
-		min-height: 1.8rem;
 		color: #f0d29d;
-		font-size: 1.05rem;
+		font-size: 1rem;
+		text-align: center;
 	}
-	.saving-throws button {
+	.saving-throw-roll {
+		min-height: 2rem;
 		border: 1px solid #765d3d;
 		border-radius: 6px;
-		padding: 0.28rem 0.4rem;
+		padding: 0.32rem 0.5rem;
 		color: #f0d29d;
 		background: #2b211c;
+		font: inherit;
+		font-size: 0.72rem;
 		cursor: pointer;
 	}
+	.saving-throw-roll:hover {
+		border-color: #c89655;
+		background: #38281f;
+	}
+	.saving-throw-roll:focus-visible {
+		outline: 2px solid #f0d29d;
+		outline-offset: 2px;
+	}
 	@media (max-width: 680px) {
-		.saving-throws > div:last-child {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
+		.saving-throws-grid {
+			grid-template-columns: minmax(0, 1fr);
 		}
 		.saving-throws .section-title h3 {
 			font-size: clamp(0.72rem, 3vw, 0.9rem);
