@@ -38,12 +38,13 @@ export function campaignEventToMessage(event: StoredEvent): Mensagem | null {
 				modo?: 'normal' | 'advantage' | 'disadvantage';
 				dadoEscolhido?: number;
 				label?: string;
+				characterName?: string;
 		  })
 		| undefined;
 	return p?.expressao
 		? {
 				id: String(event.id),
-				autor: event.author,
+				autor: p.characterName?.trim() || event.author,
 				texto: p.text ?? '',
 				tipo: 'rolagem',
 				canal: p.channel ?? 'chat',
@@ -97,7 +98,8 @@ export const rollDice = (
 	channel: 'chat' | 'combat' = 'chat',
 	minimumDamageDie?: 0 | 3,
 	weaponDamage = false,
-	critical = false
+	critical = false,
+	characterId?: string
 ) =>
 	request<StoredEvent>(session, `/api/v1/campaigns/${campaignId}/events`, {
 		method: 'POST',
@@ -108,7 +110,8 @@ export const rollDice = (
 				mode,
 				channel,
 				...(minimumDamageDie ? { minimumDamageDie } : {}),
-				...(weaponDamage ? { weaponDamage: true, critical } : {})
+				...(weaponDamage ? { weaponDamage: true, critical } : {}),
+				...(characterId ? { characterId } : {})
 			}
 		})
 	});

@@ -3,6 +3,7 @@ package events
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vtt-backend/internal/apperror"
 	"vtt-backend/internal/auth"
@@ -66,15 +68,16 @@ func parseDiceExpression(expression string) ([]diceGroup, int, error) {
 }
 
 type DiceResult struct {
-	Expression   string `json:"expressao"`
-	Dice         []int  `json:"dados"`
-	OriginalDice []int  `json:"dadosOriginais,omitempty"`
-	Mode         string `json:"modo,omitempty"`
-	Kept         int    `json:"dadoEscolhido,omitempty"`
-	Modifier     int    `json:"modificador"`
-	Total        int    `json:"total"`
-	Channel      string `json:"channel,omitempty"`
-	RuleApplied  string `json:"regraAplicada,omitempty"`
+	Expression    string `json:"expressao"`
+	Dice          []int  `json:"dados"`
+	OriginalDice  []int  `json:"dadosOriginais,omitempty"`
+	Mode          string `json:"modo,omitempty"`
+	Kept          int    `json:"dadoEscolhido,omitempty"`
+	Modifier      int    `json:"modificador"`
+	Total         int    `json:"total"`
+	Channel       string `json:"channel,omitempty"`
+	RuleApplied   string `json:"regraAplicada,omitempty"`
+	CharacterName string `json:"characterName,omitempty"`
 }
 
 func NewHandler(pool *pgxpool.Pool) *Handler { return &Handler{pool: pool} }
@@ -93,15 +96,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) error {
 	if err := h.pool.QueryRow(r.Context(), `select role::text from campaign_members where campaign_id=$1 and user_id=$2`, campaignID, p.UserID).Scan(&role); err != nil {
 		return apperror.Forbidden("Você não participa desta campanha.")
 	}
-	query := `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','system.info')`
+	query := `select e.id,coalesce(nullif(case when e.event_type='dice.roll' then e.payload->>'characterName' end,''),pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','system.info')`
 	// Combat logs currently contain the private token name. Until combat events
 	// carry per-token visibility metadata, do not send them to players at all.
 	// This conservative server-side rule prevents a hidden enemy leaking via chat.
 	if role == "gm" {
-		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info')`
+		query = `select e.id,coalesce(nullif(case when e.event_type='dice.roll' then e.payload->>'characterName' end,''),pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type in ('chat.message','dice.roll','combat.log','system.info')`
 	}
 	if p.OverlayOnly {
-		query = `select e.id,coalesce(pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type='dice.roll'`
+		query = `select e.id,coalesce(nullif(e.payload->>'characterName',''),pr.display_name,'Mesa'),e.event_type,e.payload,e.created_at::text from game_events e left join profiles pr on pr.id=e.actor_id where e.campaign_id=$1 and e.event_type='dice.roll'`
 	}
 	args := []any{campaignID}
 	if afterID > 0 {
@@ -167,6 +170,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 			MinimumDamageDie int    `json:"minimumDamageDie"`
 			WeaponDamage     bool   `json:"weaponDamage"`
 			Critical         bool   `json:"critical"`
+			CharacterID      string `json:"characterId"`
 		}
 		if err := json.Unmarshal(in.Payload, &payload); err != nil {
 			return apperror.BadRequest("INVALID_ROLL", "Rolagem inválida.")
@@ -211,6 +215,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 			result = applyMinimumDamageDie(result, 3)
 		}
 		result.Channel = payload.Channel
+		if payload.CharacterID != "" {
+			characterName, err := h.characterNameForRoll(r, campaignID, p.UserID, payload.CharacterID)
+			if err != nil {
+				return err
+			}
+			result.CharacterName = characterName
+		}
 		in.Payload, _ = json.Marshal(result)
 	}
 	var item Event
@@ -218,8 +229,34 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return apperror.Internal(err)
 	}
-	_ = h.pool.QueryRow(r.Context(), `select display_name from profiles where id=$1`, p.UserID).Scan(&item.Author)
+	if in.Type == "dice.roll" {
+		var result DiceResult
+		if err := json.Unmarshal(item.Payload, &result); err == nil {
+			item.Author = result.CharacterName
+		}
+	}
+	if item.Author == "" {
+		_ = h.pool.QueryRow(r.Context(), `select display_name from profiles where id=$1`, p.UserID).Scan(&item.Author)
+	}
 	return write(w, http.StatusCreated, item)
+}
+
+func (h *Handler) characterNameForRoll(r *http.Request, campaignID, userID, characterID string) (string, error) {
+	var name string
+	err := h.pool.QueryRow(r.Context(), `
+		select a.name
+		from actors a
+		join campaign_members m on m.campaign_id=a.campaign_id and m.user_id=$3
+		where a.id::text=$1 and a.campaign_id=$2 and a.kind='character' and a.owner_id is not null
+		  and (m.role='gm' or a.owner_id=$3)
+	`, characterID, campaignID, userID).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", apperror.Forbidden("Você não pode atribuir esta rolagem a essa ficha.")
+	}
+	if err != nil {
+		return "", apperror.Internal(err)
+	}
+	return name, nil
 }
 
 func validWeaponDamageRoll(expression string) bool {
